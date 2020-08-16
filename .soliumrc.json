@@ -1,0 +1,7 @@
+{
+    "extends": "solium:recommended",
+    "plugins": ["security"],
+    "rules": {
+      "no-call-value": "off"
+    }
+  }
