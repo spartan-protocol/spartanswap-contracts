@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
-//iERC20 Interface
-interface iERC20 {
-    function name() external view returns (string memory);
-    function symbol() external view returns (string memory);
-    function decimals() external view returns (uint);
-    function totalSupply() external view returns (uint);
-    function balanceOf(address account) external view returns (uint);
-    function transfer(address, uint) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint);
-    function approve(address, uint) external returns (bool);
-    function transferFrom(address, address, uint) external returns (bool);
-    event Transfer(address indexed from, address indexed to, uint value);
-    event Approval(address indexed owner, address indexed spender, uint value);
-}
+//ERC20 Interface
+interface ERC20 {
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address, uint256) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    }
 
 library SafeMath {
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -46,13 +43,13 @@ library SafeMath {
         return c;
     }
 }
-    //======================================SPARTA=========================================//
-contract Sparta is iERC20 {
+    //======================================SPARTAN=========================================//
+contract Sparta2 is ERC20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
-    string public override name; string public override symbol;
-    uint256 public override decimals; uint256 public override totalSupply;
+    string public name; string public symbol;
+    uint256 public decimals; uint256 public override totalSupply;
 
     // ERC-20 Mappings
     mapping(address => uint256) private _balances;
@@ -74,12 +71,12 @@ contract Sparta is iERC20 {
 
     address[] public tokenArray;
     mapping(address => bool) public isListed;
-    mapping(address => uint256) public mapToken_maxClaim;
-    mapping(address => uint256) public mapToken_claimRate;
-    mapping(address => mapping(address => bool)) public mapMemberToken_hasClaimed;
+    mapping(address => uint256) public mapAsset_maxClaim;
+    mapping(address => uint256) public mapAsset_claimRate;
+    mapping(address => mapping(address => bool)) public mapMemberAsset_hasClaimed;
 
     // Events
-    event ListedToken(address indexed DAO, address indexed token, uint256 maxClaim, uint256 claimRate);
+    event ListedAsset(address indexed DAO, address indexed token, uint256 maxClaim, uint256 claimRate);
     event NewCurve(address indexed DAO, uint256 newCurve);
     event NewIncentiveAddress(address indexed DAO, address newIncentiveAddress);
     event NewToken(address indexed DAO, string newName, string newSymbol);
@@ -112,19 +109,19 @@ contract Sparta is iERC20 {
         burnAddress = 0x0000000000000000000000000000000000000001;
     }
 
-    //========================================iERC20=========================================//
+    //========================================ERC20=========================================//
     function balanceOf(address account) public view override returns (uint256) {
         return _balances[account];
     }
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
         return _allowances[owner][spender];
     }
-    // iERC20 Transfer function
+    // ERC20 Transfer function
     function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(msg.sender, recipient, amount);
         return true;
     }
-    // iERC20 Approve, change allowance functions
+    // ERC20 Approve, change allowance functions
     function approve(address spender, uint256 amount) public virtual override returns (bool) {
         _approve(msg.sender, spender, amount);
         return true;
@@ -134,20 +131,20 @@ contract Sparta is iERC20 {
         return true;
     }
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, "iERC20: decreased allowance below zero"));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, "ERC20: decreased allowance below zero"));
         return true;
     }
     function _approve(address owner, address spender, uint256 amount) internal virtual {
-        require(owner != address(0), "iERC20: approve from the zero address");
-        require(spender != address(0), "iERC20: approve to the zero address");
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
     
-    // iERC20 TransferFrom function
+    // ERC20 TransferFrom function
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "iERC20: transfer amount exceeds allowance"));
+        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance"));
         return true;
     }
 
@@ -159,15 +156,15 @@ contract Sparta is iERC20 {
 
     // Internal transfer function
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
-        require(sender != address(0), "iERC20: transfer from the zero address");
-        _balances[sender] = _balances[sender].sub(amount, "iERC20: transfer amount exceeds balance");
+        require(sender != address(0), "ERC20: transfer from the zero address");
+        _balances[sender] = _balances[sender].sub(amount, "ERC20: transfer amount exceeds balance");
         _balances[recipient] = _balances[recipient].add(amount);
         _checkEmission();
         emit Transfer(sender, recipient, amount);
     }
     // Internal mint (upgrading and daily emissions)
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "iERC20: mint to the zero address");
+        require(account != address(0), "ERC20: mint to the zero address");
         totalSupply = totalSupply.add(amount);
         require(totalSupply <= totalCap, "Must not mint more than the cap");
         _balances[account] = _balances[account].add(amount);
@@ -178,33 +175,33 @@ contract Sparta is iERC20 {
         _burn(msg.sender, amount);
     }
     function burnFrom(address account, uint256 amount) public virtual {
-        uint256 decreasedAllowance = allowance(account, msg.sender).sub(amount, "iERC20: burn amount exceeds allowance");
+        uint256 decreasedAllowance = allowance(account, msg.sender).sub(amount, "ERC20: burn amount exceeds allowance");
         _approve(account, msg.sender, decreasedAllowance);
         _burn(account, amount);
     }
     function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "iERC20: burn from the zero address");
-        _balances[account] = _balances[account].sub(amount, "iERC20: burn amount exceeds balance");
+        require(account != address(0), "ERC20: burn from the zero address");
+        _balances[account] = _balances[account].sub(amount, "ERC20: burn amount exceeds balance");
         totalSupply = totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
 
     //=========================================DAO=========================================//
     // Can list
-    function listTokenWithClaim(address token, uint256 maxClaim, uint256 claimRate) public onlyDAO {
+    function listAssetWithClaim(address token, uint256 maxClaim, uint256 claimRate) public onlyDAO {
         if(!isListed[token]){
             isListed[token] = true;
             tokenArray.push(token);
         }
-        mapToken_maxClaim[token] = maxClaim;
-        mapToken_claimRate[token] = claimRate;
-        emit ListedToken(msg.sender, token, maxClaim, claimRate);
+        mapAsset_maxClaim[token] = maxClaim;
+        mapAsset_claimRate[token] = claimRate;
+        emit ListedAsset(msg.sender, token, maxClaim, claimRate);
     }
     // Can delist
-    function delistToken(address token) public onlyDAO {
+    function delistAsset(address token) public onlyDAO {
         isListed[token] = false;
-        mapToken_maxClaim[token] = 0;
-        mapToken_claimRate[token] = 0;
+        mapAsset_maxClaim[token] = 0;
+        mapAsset_claimRate[token] = 0;
     }
     // Can start
     function startEmissions() public onlyDAO {
@@ -262,14 +259,14 @@ contract Sparta is iERC20 {
     //======================================UPGRADE========================================//
     // Old Owners to Upgrade
     function upgrade(address token) public {
-        require(mapMemberToken_hasClaimed[msg.sender][token] == false, "Must not have already claimed");
-        uint256 balance = iERC20(token).balanceOf(msg.sender);
+        require(mapMemberAsset_hasClaimed[msg.sender][token] == false, "Must not have already claimed");
+        uint256 balance = ERC20(token).balanceOf(msg.sender);
         uint256 claim = balance;                           // Start at balance
-        if(balance > mapToken_maxClaim[token]){
-            claim = mapToken_maxClaim[token];           // Reduce to the maximum
+        if(balance > mapAsset_maxClaim[token]){
+            claim = mapAsset_maxClaim[token];           // Reduce to the maximum
         }
-        mapMemberToken_hasClaimed[msg.sender][token] = true;
-        require(iERC20(token).transferFrom(msg.sender, burnAddress, claim));
+        mapMemberAsset_hasClaimed[msg.sender][token] = true;
+        require(ERC20(token).transferFrom(msg.sender, burnAddress, claim));
         uint256 adjustedClaimRate = getAdjustedClaimRate(token);
         // sparta = rate * claim / 1e8
         uint256 sparta = (adjustedClaimRate.mul(claim)).div(one);
@@ -277,7 +274,7 @@ contract Sparta is iERC20 {
     }
      // Calculate Adjusted Claim Rate
     function getAdjustedClaimRate(address token) public view returns (uint256 adjustedClaimRate) {
-        uint256 claimRate = mapToken_claimRate[token];                           // Get Claim Rate
+        uint256 claimRate = mapAsset_claimRate[token];                           // Get Claim Rate
         if(totalSupply <= baseline){
             // return 100%
             return claimRate;
@@ -293,10 +290,10 @@ contract Sparta is iERC20 {
     function tokenCount() public view returns (uint256 count){
         return tokenArray.length;
     }
-    function allTokens() public view returns (address[] memory allTokens){
+    function allAssets() public view returns (address[] memory allAssets){
         return tokenArray;
     }
-    function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
+    function tokensInRange(uint start, uint count) public view returns (address[] memory someAssets){
         if(count > tokenCount()){count = tokenCount();}
         address[] memory result = new address[](count);
         for (uint i = start; i<start.add(count); i++){

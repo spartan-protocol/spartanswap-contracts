@@ -22,7 +22,7 @@ function BN2Int(BN) { return +(new BigNumber(BN)).toFixed() }
 
 function BN2Str(BN) { return (new BigNumber(BN)).toFixed() }
 
-function BN2Asset(BN) { return ((new BigNumber(BN)).dividedBy(one)).toFixed(2) }
+function BN2Token(BN) { return ((new BigNumber(BN)).dividedBy(one)).toFixed(2) }
 
 function int2BN(int) { return (new BigNumber(int)) }
 
@@ -47,7 +47,7 @@ function logType(thing) {
 module.exports = {
   BN2Int: BN2Int
   ,
-  BN2Str: BN2Str, BN2Asset,
+  BN2Str: BN2Str, BN2Token,
   getBN,
   int2BN: int2BN
   ,

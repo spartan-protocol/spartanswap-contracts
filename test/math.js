@@ -74,7 +74,7 @@ function calcShare(s, T, A, V){
   const share = s.div(T)
   const a = A.mul(share)
   const v = V.mul(share)
-  return ({'asset':a, 'spartan':v})
+  return ({'token':a, 'spartan':v})
 }
 
 function calcValueIn(a, A, V) {

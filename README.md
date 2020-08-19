@@ -1,19 +1,20 @@
 # Spartan Swap - Incentivised Liquidity Powered By SPARTAN
 
-Spartan Swap is a liquidity pool protocol that allows asset-agnostic provision of liquidity. Traders can swap between assets at arbitrarily low fees, but a liquidity-sensitive fee maximises revenue for stakers during periods of high demand. 
+Spartan Swap is a liquidity pool protocol that allows token-agnostic provision of liquidity. Traders can swap between tokens at arbitrarily low fees, but a liquidity-sensitive fee maximises revenue for stakers during periods of high demand. 
 
 ## Smart Contract
 
 Spartan Swap  has the following intended design:
 
 Staking
-* Stake any asset into any pool
+* Stake any token into any pool
 * Move capital between pools (unstake and stake in a single transaction)
-* Withdraw partial or full capital from any pool to any asset
+* Withdraw partial or full capital from any pool to any token
 
 Swapping
-* Swap from any asset to any asset
+* Swap from any token to any token
 
+0x4d523C380B76386c9e41D7F92456CcE6c712Db87
 
 1000000000000000000 // 10**18
 1000000000000000000000000 //1m
@@ -25,10 +26,13 @@ Swapping
 0xe6af83978de108ca71f43551a9f1e795d9edd546 SFactory
 
 
+https://explorer.binance.org/smart-testnet/address/0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D/transactions
 
 
-
-
+0x4c70e3Fb5D828f5f992B6aF9a49D13716F717cac Sparta
+0x89C8da7569085D406800C473619d0c6B7AC0CE8E USD Coin
+0x42E7A6e8e266d50d390c916c4715a5Fa01fd9522 BUsd
+0x2fE0c1d03218dede1a1ED8713F904071338e04D4 Utils
 
 
 
