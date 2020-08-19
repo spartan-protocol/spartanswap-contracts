@@ -556,22 +556,23 @@ contract SRouter {
     //==================================================================================//
     // Upgrade functions
 
-    // Upgrade from this contract to a new one - opt in
-    function upgrade(address payable newContract, address token) public {
-        address payable pool = getPool(token);
-        address payable member = msg.sender;
-        uint _units = iERC20(getPool(token)).balanceOf(member);
-        (uint _outputSparta, uint _outputToken) = SPool(pool).getMemberShare(member, _units);
-        SPool(pool)._handleUnstake(_units, _outputSparta, _outputToken, member);
-        emit Unstaked(member, _outputSparta, _outputToken, _units);
-        iERC20(SPARTA).approve(newContract, _outputSparta);
-        if(token == address(0)){
-            iSROUTER(newContract).stakeForMember{value:_outputToken}(_outputSparta, _outputToken, token, member);
-        } else {
-            iERC20(token).approve(newContract, _outputToken);
-            iSROUTER(newContract).stakeForMember(_outputSparta, _outputToken, token, member);
-        }
-    }
+    // // Upgrade from this contract to a new one - opt in
+    // function upgrade(address payable newContract, address token) public {
+    //     address payable pool = getPool(token);
+    //     address payable member = msg.sender;
+    //     uint _units = iERC20(getPool(token)).balanceOf(member);
+    //     (uint _outputSparta, uint _outputToken) = SPool(pool).getMemberShare(member, _units);
+    //     SPool(pool)._handleUnstake(_units, _outputSparta, _outputToken, member);
+    //     emit Unstaked(member, _outputSparta, _outputToken, _units);
+    //     iERC20(SPARTA).transferFrom(pool, address(this), _outputSparta); 
+    //     iERC20(SPARTA).approve(newContract, _outputSparta);
+    //     if(token == address(0)){
+    //         iSROUTER(newContract).stakeForMember{value:_outputToken}(_outputSparta, _outputToken, token, member);
+    //     } else {
+    //         iERC20(token).approve(newContract, _outputToken);
+    //         iSROUTER(newContract).stakeForMember(_outputSparta, _outputToken, token, member);
+    //     }
+    // }
 
     //==================================================================================//
     // Universal Swapping Functions

@@ -12,11 +12,11 @@ const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
 
-var SPARTAER = artifacts.require("./Sparta.sol");
-var VFACTORY = artifacts.require("./VFactory.sol");
+var SPARTA = artifacts.require("./Sparta.sol");
+var SROUTER = artifacts.require("./SRouter.sol");
 var MATH = artifacts.require("MathContract");
 
-var spartan;  var vFactory; var coreMath;
+var spartan;  var sRouter; var coreMath;
 var acc0; var acc1; var acc2; var acc3;
 
 contract('SPARTA', function (accounts) {
@@ -32,12 +32,12 @@ function constructor(accounts) {
 
     it("constructor events", async () => {
 
-        spartan = await SPARTAER.new()
+        spartan = await SPARTA.new()
         coreMath = await MATH.new()
-        vFactory = await VFACTORY.new(spartan.address, coreMath.address)
+        sRouter = await SROUTER.new(spartan.address, coreMath.address)
         console.log(`Acc0: ${acc0}`)
         console.log(`Acc1: ${acc1}`)
-        console.log(`Pools: ${vFactory.address}`)
+        console.log(`Pools: ${sRouter.address}`)
     });
 }
 
