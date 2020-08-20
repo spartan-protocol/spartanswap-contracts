@@ -48,6 +48,8 @@ contract('SPARTA', function (accounts) {
     unstakeETH(10000, acc0)
     unstakeTKN1(10000, acc1)
     unstakeTKN2(10000, acc1)
+
+    checkROI()
 })
 
 
@@ -517,17 +519,19 @@ function logTKN1() {
 
 function checkROI() {
     it("checks ROI", async () => {
-        let poolROI = await spartanPools.getPoolROI(_.ETH)
+        let poolROI = await spartanPools.getPoolROI()
         console.log('poolROI', _.BN2Str(poolROI))
-        let memberROI0 = await spartanPools.getMemberROI(acc0, _.ETH)
+        let memberROI0 = await spartanPools.getMemberROI(acc0)
         console.log('memberROI0', _.BN2Str(memberROI0))
-        let memberROI1 = await spartanPools.getMemberROI(acc1, _.ETH)
+        let memberROI1 = await spartanPools.getMemberROI(acc1)
         console.log('memberROI1', _.BN2Str(memberROI1))
 
-        let tokenStaked = _.BN2Str((await spartanPools.poolData(_.ETH)).tokenStaked)
+        let tokenStaked = _.BN2Str((await spartanPools.poolData()).tokenStaked)
         console.log('tokenStaked', _.BN2Token(tokenStaked))
-        let _tokenStakedInSparta = _.BN2Str((await spartanPools.calcValueInSparta(tokenStaked, _.ETH)))
+        let _tokenStakedInSparta = _.BN2Str((await spartanPools.calcValueInSparta(tokenStaked)))
         console.log('tokenStakedInSparta', _.BN2Token(_tokenStakedInSparta))
+
+        console.log('getGlobalDetails', (await sRouter.getGlobalDetails()))
     })
 }
 

@@ -466,6 +466,15 @@ contract SRouter {
         uint totalSupply;
     }
 
+    uint spartaStaked; 
+    uint allTimeVolume;
+    uint allTimeTx;
+    struct GlobalDetails {
+        uint spartaStaked;
+        uint allTimeVolume;
+        uint allTimeTx;
+    }
+
     address[] arrayPools;
     mapping(address=>address payable) private mapToken_Pool;
 
@@ -488,12 +497,9 @@ contract SRouter {
         mapToken_Pool[token] = pool;
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
         uint _actualInputSparta = _handleTransferIn(SPARTA, inputSparta, pool);
+        spartaStaked += _actualInputSparta;
         SPool(pool)._handleStake(_actualInputSparta, _actualInputToken, msg.sender);
         return pool;
-    }
-
-    function getPool(address token) public view returns(address payable pool){
-        return mapToken_Pool[token];
     }
 
     //==================================================================================//
@@ -510,6 +516,7 @@ contract SRouter {
         uint _actualInputSparta = _handleTransferIn(SPARTA, inputSparta, pool);
         units = SPool(pool)._handleStake(_actualInputSparta, _actualInputToken, member);
         emit Staked(member, _actualInputSparta, _actualInputToken, units);
+        spartaStaked += _actualInputSparta;
         return units;
     }
 
@@ -531,6 +538,7 @@ contract SRouter {
         (uint _outputSparta, uint _outputToken) = SPool(pool).getMemberShare(member, units);
         SPool(pool)._handleUnstake(units, _outputSparta, _outputToken, member);
         emit Unstaked(member, _outputSparta, _outputToken, units);
+        spartaStaked = spartaStaked.sub(_outputSparta);
         _handleTransferOut(token, _outputToken, pool, member);
         _handleTransferOut(SPARTA, _outputSparta, pool, member);
         return true;
@@ -548,6 +556,7 @@ contract SRouter {
         (uint _outputSparta, uint _outputToken, uint _outputAmount) = SPool(pool).getMemberShareAssym(msg.sender, units, toSparta);
         SPool(pool)._handleAssymUnstake(units, toSparta, msg.sender);
         emit Unstaked(msg.sender, _outputSparta, _outputToken, units);
+        spartaStaked = spartaStaked.sub(_outputSparta);
         _handleTransferOut(token, _outputToken, pool, msg.sender);
         _handleTransferOut(SPARTA, _outputSparta, pool, msg.sender);
         return _outputAmount;
@@ -586,6 +595,8 @@ contract SRouter {
         uint _actualAmount = _handleTransferIn(SPARTA, amount, pool);
         (outputAmount, fee) = SPool(pool)._swapSpartaToToken(amount);
         emit Swapped(SPARTA, token, _actualAmount, 0, outputAmount, fee, member);
+        allTimeVolume += _actualAmount;
+        allTimeTx += 1;
         _handleTransferOut(token, outputAmount, pool, member);
         return (outputAmount, fee);
     }
@@ -599,6 +610,8 @@ contract SRouter {
         uint _actualAmount = _handleTransferIn(token, amount, pool);
         (outputAmount, fee) = SPool(pool)._swapTokenToSparta(amount);
         emit Swapped(token, SPARTA, _actualAmount, 0, outputAmount, fee, member);
+        allTimeVolume += outputAmount;
+        allTimeTx += 1;
         _handleTransferOut(SPARTA, outputAmount, pool, member);
         return (outputAmount, fee);
     }
@@ -610,16 +623,20 @@ contract SRouter {
         uint _transferAmount = 0;
         if(fromToken == SPARTA){
             (outputAmount, fee) = SPool(poolFrom)._swapSpartaToToken(_actualAmount);      // Buy to token
+            allTimeVolume += _actualAmount;
         } else if(toToken == SPARTA) {
             (outputAmount, fee) = SPool(poolFrom)._swapTokenToSparta(_actualAmount);   // Sell to token
+            allTimeVolume += outputAmount;
         } else {
             (uint _yy, uint _feey) = SPool(poolFrom)._swapTokenToSparta(_actualAmount);             // Sell to SPARTA
+            allTimeVolume += _yy;
             iERC20(SPARTA).transferFrom(poolFrom, poolTo, _yy); 
             (uint _zz, uint _feez) = SPool(poolTo)._swapSpartaToToken(_yy);              // Buy to token
             _transferAmount = _yy; outputAmount = _zz; 
             fee = _feez + SPool(poolTo).calcValueInToken(_feey);
         }
         emit Swapped(fromToken, toToken, _actualAmount, _transferAmount, outputAmount, fee, msg.sender);
+        allTimeTx += 1;
         _handleTransferOut(toToken, outputAmount, poolTo, msg.sender);
         return (outputAmount, fee);
     }
@@ -660,6 +677,17 @@ contract SRouter {
         tokenDetails.decimals = iERC20(token).decimals();
         tokenDetails.totalSupply = iERC20(token).totalSupply();
         return tokenDetails;
+    }
+
+    function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
+        globalDetails.spartaStaked = spartaStaked;
+        globalDetails.allTimeVolume = allTimeVolume;
+        globalDetails.allTimeTx = allTimeTx;
+        return globalDetails;
+    }
+
+    function getPool(address token) public view returns(address payable pool){
+        return mapToken_Pool[token];
     }
 
 }
