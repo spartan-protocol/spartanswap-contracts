@@ -15,15 +15,13 @@ interface iERC20 {
     event Transfer(address indexed from, address indexed to, uint value);
     event Approval(address indexed owner, address indexed spender, uint value);
 }
-interface iUTILS {
+interface iMATH {
     function calcPart(uint bp, uint total) external pure returns (uint part);
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
     function calcStakeUnits(uint a, uint A, uint v, uint S) external pure returns (uint units);
     function calcAsymmetricShare(uint s, uint T, uint A) external pure returns (uint share);
-    function getPoolShare(address token, uint units) external view returns(uint baseAmt, uint tokenAmt);
-    function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmt, uint tokenAmt, uint outputAmt);
 }
 
 // SafeMath
@@ -40,12 +38,12 @@ library SafeMath {
             return 0;
         }
         uint c = a * b;
-        require(c / a == b, "SafeMath");
+        require(c / a == b, "SafeMath: multiplication overflow");
         return c;
     }
 
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath");
+        return sub(a, b, "SafeMath: subtraction overflow");
     }
     function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b <= a, errorMessage);
@@ -54,7 +52,7 @@ library SafeMath {
     }
 
     function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "SafeMath");
+        return div(a, b, "SafeMath: division by zero");
     }
     function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b > 0, errorMessage);
@@ -68,8 +66,8 @@ contract SPool is iERC20 {
 
     address public SPARTA;
     address public TOKEN;
-    address public ROUTER;
-    iUTILS public UTILS;
+    address public router;
+    iMATH public math;
     uint public one = 10**18;
 
     // ERC-20 Parameters
@@ -93,16 +91,16 @@ contract SPool is iERC20 {
    
     // Only Router can execute
     modifier onlyRouter() {
-        require(msg.sender == ROUTER, "RouterErr");
+        require(msg.sender == router, "Must be Router");
         _;
     }
 
-    constructor (address _sparta, address _token, iUTILS _utils) public payable {
+    constructor (address _sparta, address _token, iMATH _math) public payable {
         //local
         SPARTA = _sparta;
         TOKEN = _token;
-        ROUTER = msg.sender;
-        UTILS = _utils;
+        router = msg.sender;
+        math = _math;
 
         if(_token == address(0)){
             _name = "SpartanPoolV1-BinanceCoin";
@@ -112,13 +110,13 @@ contract SPool is iERC20 {
             _name = string(abi.encodePacked("SpartanPoolV1-", tokenName));
             string memory tokenSymbol = iERC20(_token).symbol();
             _symbol = string(abi.encodePacked("SPT1-", tokenSymbol));
-            iERC20(_token).approve(ROUTER, (2**256)-1);
+            iERC20(_token).approve(router, (2**256)-1);
         }
 
         decimals = 18;
         genesis = now;
-        _allowances[address(this)][ROUTER] = (2**256)-1;
-        iERC20(SPARTA).approve(ROUTER, (2**256)-1);
+        _allowances[address(this)][router] = (2**256)-1;
+        iERC20(SPARTA).approve(router, (2**256)-1);
     }
 
     receive() external payable {}
@@ -153,7 +151,7 @@ contract SPool is iERC20 {
     }
     // iERC20 TransferFrom function
     function transferFrom(address from, address to, uint value) public override returns (bool success) {
-        require(value <= _allowances[from][msg.sender], 'AllowanceErr');
+        require(value <= _allowances[from][msg.sender], 'Must not send more than allowance');
         _allowances[from][msg.sender] = _allowances[from][msg.sender].sub(value);
         _transfer(from, to, value);
         return true;
@@ -161,8 +159,8 @@ contract SPool is iERC20 {
 
     // Internal transfer function
     function _transfer(address _from, address _to, uint _value) private {
-        require(_balances[_from] >= _value, 'BalanceErr');
-        require(_balances[_to] + _value >= _balances[_to], 'BalanceErr');
+        require(_balances[_from] >= _value, 'Must not send more than balance');
+        require(_balances[_to] + _value >= _balances[_to], 'Balance overflow');
         _balances[_from] =_balances[_from].sub(_value);
         _balances[_to] += _value;
         emit Transfer(_from, _to, _value);
@@ -179,12 +177,12 @@ contract SPool is iERC20 {
         _burn(msg.sender, amount);
     }
     function burnFrom(address account, uint256 amount) public virtual {
-        uint256 decreasedAllowance = allowance(account, msg.sender).sub(amount, "AllowanceErr");
+        uint256 decreasedAllowance = allowance(account, msg.sender).sub(amount, "Burn amount exceeds allowance");
         _approve(account, msg.sender, decreasedAllowance);
         _burn(account, amount);
     }
     function _burn(address account, uint256 amount) internal virtual {
-        _balances[account] = _balances[account].sub(amount, "BalanceErr");
+        _balances[account] = _balances[account].sub(amount, "Burn amount exceeds balance");
         totalSupply = totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
@@ -197,7 +195,7 @@ contract SPool is iERC20 {
         uint _A = tokenAmt.add(_tokenAmt);
         _incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
         _addDataForMember(_member, _baseAmt, _tokenAmt);
-        _units = UTILS.calcStakeUnits(_tokenAmt, _A, _baseAmt, _S);  
+        _units = math.calcStakeUnits(_tokenAmt, _A, _baseAmt, _S);  
         _mint(_member, _units);
         return _units;
     }
@@ -218,8 +216,8 @@ contract SPool is iERC20 {
     function _swapBaseToToken(uint _x) external onlyRouter returns (uint _y, uint _fee){
         uint _X = baseAmt;
         uint _Y = tokenAmt;
-        _y =  UTILS.calcSwapOutput(_x, _X, _Y);
-        _fee = UTILS.calcSwapFee(_x, _X, _Y);
+        _y =  math.calcSwapOutput(_x, _X, _Y);
+        _fee = math.calcSwapFee(_x, _X, _Y);
         baseAmt = baseAmt.add(_x);
         tokenAmt = tokenAmt.sub(_y);
         _updatePoolMetrics(_y+_fee, _fee, false);
@@ -229,8 +227,8 @@ contract SPool is iERC20 {
     function _swapTokenToBase(uint _x) external onlyRouter returns (uint _y, uint _fee){
         uint _X = tokenAmt;
         uint _Y = baseAmt;
-        _y =  UTILS.calcSwapOutput(_x, _X, _Y);
-        _fee = UTILS.calcSwapFee(_x, _X, _Y);
+        _y =  math.calcSwapOutput(_x, _X, _Y);
+        _fee = math.calcSwapFee(_x, _X, _Y);
         tokenAmt = tokenAmt.add(_x);
         baseAmt = baseAmt.sub(_y);
         _updatePoolMetrics(_y+_fee, _fee, true);
@@ -248,8 +246,8 @@ contract SPool is iERC20 {
     }
 
     function _decrementPoolBalances(uint _baseAmt, uint _tokenAmt) internal {
-        uint _unstakedBase = UTILS.calcShare(_baseAmt, baseAmt, baseAmtStaked);
-        uint _unstakedToken = UTILS.calcShare(_tokenAmt, tokenAmt, tokenAmtStaked);
+        uint _unstakedBase = math.calcShare(_baseAmt, baseAmt, baseAmtStaked);
+        uint _unstakedToken = math.calcShare(_tokenAmt, tokenAmt, tokenAmtStaked);
         baseAmtStaked = baseAmtStaked.sub(_unstakedBase);
         tokenAmtStaked = tokenAmtStaked.sub(_unstakedToken); 
         baseAmt = baseAmt.sub(_baseAmt);
@@ -263,8 +261,8 @@ contract SPool is iERC20 {
 
     function _removeDataForMember(address _member, uint _units) internal{
         uint stakeUnits = balanceOf(_member);
-        uint _baseAmt = UTILS.calcShare(_units, stakeUnits, member_baseAmtStaked[_member]);
-        uint _tokenAmt = UTILS.calcShare(_units, stakeUnits, member_tokenAmtStaked[_member]);
+        uint _baseAmt = math.calcShare(_units, stakeUnits, member_baseAmtStaked[_member]);
+        uint _tokenAmt = math.calcShare(_units, stakeUnits, member_tokenAmtStaked[_member]);
         member_baseAmtStaked[_member] = member_baseAmtStaked[_member].sub(_baseAmt);
         member_tokenAmtStaked[_member] = member_tokenAmtStaked[_member].sub(_tokenAmt);
     }
@@ -325,12 +323,12 @@ contract SPool is iERC20 {
         return (v.mul(tokenAmt)).div(baseAmt);
     }
 
-   function calcTokenPPinBase(uint amount) public view returns (uint output){
-        return  UTILS.calcSwapOutput(amount, tokenAmt, baseAmt);
+   function calcTokenPPinBase(uint amount) public view returns (uint _output){
+        return  math.calcSwapOutput(amount, tokenAmt, baseAmt);
     }
 
-    function calcBasePPinToken(uint amount) public view returns (uint output){
-        return  UTILS.calcSwapOutput(amount, baseAmt, tokenAmt);
+    function calcBasePPinToken(uint amount) public view returns (uint _output){
+        return  math.calcSwapOutput(amount, baseAmt, tokenAmt);
     }
 }
 
@@ -339,13 +337,42 @@ contract SRouter {
     using SafeMath for uint;
 
     address public SPARTA;
-    iUTILS public UTILS;
+    iMATH public math;
 
-    uint public totalStaked; 
-    uint public allTimeVolume;
-    uint public allTimeTx;
+    struct TokenDetails {
+        string name;
+        string symbol;
+        uint decimals;
+        uint totalSupply;
+    }
 
-    address[] public arrayTokens;
+    uint totalStaked; 
+    uint allTimeVolume;
+    uint allTimeTx;
+    struct GlobalDetails {
+        uint totalStaked;
+        uint allTimeVolume;
+        uint allTimeTx;
+    }
+
+    struct PoolDataStruct {
+        uint genesis;
+        uint baseAmt;
+        uint tokenAmt;
+        uint baseAmtStaked;
+        uint tokenAmtStaked;
+        uint fees;
+        uint volume;
+        uint txCount;
+        uint poolUnits;
+    }
+    struct MemberDataStruct {
+        uint baseAmtStaked;
+        uint tokenAmtStaked;
+        uint stakerUnits;
+    }
+
+    address[] arrayTokens;
     mapping(address=>address payable) private mapToken_Pool;
 
     event Staked(address member, uint inputBase, uint inputToken, uint unitsIssued);
@@ -353,16 +380,16 @@ contract SRouter {
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
 
 
-    constructor (address _sparta, address _utils) public payable {
-        SPARTA = _sparta; //0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D;
-        UTILS = iUTILS(_utils); //0x17218e58Fdf07c989faCca25De4c6FdB06502186;
+    constructor () public payable {
+        SPARTA = 0x0C1d8c5911A1930ab68b3277D35f45eEd25e1F26;
+        math = iMATH(0xeB1AF950Afe997F8401CdbDd9A3BdA4f1E5D3B6a);
     }
 
     function createPool(uint inputBase, uint inputToken, address token) public payable returns(address payable pool){
-        require(getPool(token) == address(0), "CreateErr");
-        require(token != SPARTA, "CreateErr");
-        require((inputToken > 0 && inputBase > 0), "CreateErr");
-        SPool newPool = new SPool(SPARTA, token, UTILS);
+        require(getPool(token) == address(0), "Must not be created already");
+        require(token != SPARTA, "Token must not be Sparta");
+        require((inputToken > 0 && inputBase > 0), "Must get both tokens for new pool");
+        SPool newPool = new SPool(SPARTA, token, math);
         pool = payable(address(newPool));
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
         uint _actualInputBase = _handleTransferIn(SPARTA, inputBase, pool);
@@ -398,8 +425,8 @@ contract SRouter {
 
     // Unstake % for self
     function unstake(uint basisPoints, address token) public returns (bool success) {
-        require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
-        uint _units = UTILS.calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
+        require((basisPoints > 0 && basisPoints <= 10000), "Must be valid BasisPoints");
+        uint _units = math.calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
         unstakeExact(_units, token);
         return true;
     }
@@ -408,7 +435,7 @@ contract SRouter {
     function unstakeExact(uint units, address token) public returns (bool success) {
         address payable pool = getPool(token);
         address payable member = msg.sender;
-        (uint _outputBase, uint _outputToken) = UTILS.getPoolShare(token, units);
+        (uint _outputBase, uint _outputToken) = getPoolShare(token, units);
         SPool(pool)._handleUnstake(units, _outputBase, _outputToken, member);
         emit Unstaked(member, _outputBase, _outputToken, units);
         totalStaked = totalStaked.sub(_outputBase);
@@ -420,15 +447,15 @@ contract SRouter {
 
     // // Unstake % Asymmetrically
     function unstakeAsymmetric(uint basisPoints, bool toBase, address token) public returns (uint outputAmount){
-        uint _units = UTILS.calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
+        uint _units = math.calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
         outputAmount = unstakeExactAsymmetric(_units, toBase, token);
         return outputAmount;
     }
     // Unstake Exact Asymmetrically
     function unstakeExactAsymmetric(uint units, bool toBase, address token) public returns (uint outputAmount){
         address payable pool = getPool(token);
-        require(units < iERC20(pool).totalSupply(), "InputErr");
-        (uint _outputBase, uint _outputToken, uint _outputAmount) = UTILS.getPoolShareAssym(token, units, toBase);
+        require(units < iERC20(pool).totalSupply(), "Must not be last staker");
+        (uint _outputBase, uint _outputToken, uint _outputAmount) = getPoolShareAssym(token, units, toBase);
         SPool(pool)._handleUnstake(units, _outputBase, _outputToken, msg.sender);
         emit Unstaked(msg.sender, _outputBase, _outputToken, units);
         totalStaked = totalStaked.sub(_outputBase);
@@ -474,7 +501,7 @@ contract SRouter {
     }
 
     function swap(uint inputAmount, address fromToken, address toToken) public payable returns (uint outputAmount, uint fee) {
-        require(fromToken != toToken, "InputErr");
+        require(fromToken != toToken, "Token must not be the same");
         address payable poolFrom = getPool(fromToken); address payable poolTo = getPool(toToken);
         uint _actualAmount = _handleTransferIn(fromToken, inputAmount, poolFrom);
         uint _transferAmount = 0;
@@ -506,7 +533,7 @@ contract SRouter {
     function _handleTransferIn(address _token, uint _amount, address _pool) internal returns(uint actual){
         if(_amount > 0) {
             if(_token == address(0)){
-                require((_amount == msg.value), "InputErr");
+                require((_amount == msg.value), "Must get Eth");
                 payable(_pool).call{value:_amount}(""); 
                 actual = _amount;
             } else {
@@ -530,38 +557,186 @@ contract SRouter {
     //======================================HELPERS========================================//
     // Helper Functions
 
+    function getTokenDetails(address token) public view returns (TokenDetails memory tokenDetails){
+        if(token == address(0)){
+            tokenDetails.name = 'Binance Chain Token';
+            tokenDetails.symbol = 'BNB';
+            tokenDetails.decimals = 18;
+            tokenDetails.totalSupply = 100000000 * 10**18;
+        } else {
+            tokenDetails.name = iERC20(token).name();
+            tokenDetails.symbol = iERC20(token).symbol();
+            tokenDetails.decimals = iERC20(token).decimals();
+            tokenDetails.totalSupply = iERC20(token).totalSupply();
+        }
+        return tokenDetails;
+    }
+
+    function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
+        globalDetails.totalStaked = totalStaked;
+        globalDetails.allTimeVolume = allTimeVolume;
+        globalDetails.allTimeTx = allTimeTx;
+        return globalDetails;
+    }
+
     function getPool(address token) public view returns(address payable pool){
         return mapToken_Pool[token];
     }
 
-    function tokenCount() public view returns(uint){
+    function tokenCount() public view returns (uint256 count){
         return arrayTokens.length;
     }
-
-    function getToken(uint i) public view returns(address){
-        return arrayTokens[i];
+    function allTokens() public view returns (address[] memory _allTokens){
+        return arrayTokens;
+    }
+    function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
+        if(start.add(count) > tokenCount()){
+            count = tokenCount().sub(start);
+        }
+        address[] memory result = new address[](count);
+        for (uint i = 0; i < count; i++){
+            result[i] = arrayTokens[i];
+        }
+        return result;
+    }
+    function allPools() public view returns (address[] memory _allPools){
+        return poolsInRange(0, tokenCount());
+    }
+    function poolsInRange(uint start, uint count) public view returns (address[] memory somePools){
+        if(start.add(count) > tokenCount()){
+            count = tokenCount().sub(start);
+        }
+        address[] memory result = new address[](count);
+        for (uint i = 0; i<count; i++){
+            result[i] = mapToken_Pool[arrayTokens[i]];
+        }
+        return result;
     }
 
+    function getPoolData(address token) public view returns(PoolDataStruct memory poolData){
+        address payable pool = getPool(token);
+        poolData.genesis = SPool(pool).genesis();
+        poolData.baseAmt = SPool(pool).baseAmt();
+        poolData.tokenAmt = SPool(pool).tokenAmt();
+        poolData.baseAmtStaked = SPool(pool).baseAmtStaked();
+        poolData.tokenAmtStaked = SPool(pool).tokenAmtStaked();
+        poolData.fees = SPool(pool).fees();
+        poolData.volume = SPool(pool).volume();
+        poolData.txCount = SPool(pool).txCount();
+        poolData.poolUnits = iERC20(pool).totalSupply();
+        return poolData;
+    }
+
+    function getMemberShare(address token, address member) public view returns(uint baseAmt, uint tokenAmt){
+        address pool = getPool(token);
+        uint units = iERC20(pool).balanceOf(member);
+        return getPoolShare(token, units);
+    }
+
+    function getPoolShare(address token, uint units) public view returns(uint baseAmt, uint tokenAmt){
+        address payable pool = getPool(token);
+        baseAmt = math.calcShare(units, iERC20(pool).totalSupply(), SPool(pool).baseAmt());
+        tokenAmt = math.calcShare(units, iERC20(pool).totalSupply(), SPool(pool).tokenAmt());
+        return (baseAmt, tokenAmt);
+    }
+
+    function getPoolShareAssym(address token, uint units, bool toBase) public view returns(uint baseAmt, uint tokenAmt, uint outputAmt){
+        address payable pool = getPool(token);
+        if(toBase){
+            baseAmt = math.calcAsymmetricShare(units, iERC20(pool).totalSupply(), SPool(pool).baseAmt());
+            tokenAmt = 0;
+            outputAmt = baseAmt;
+        } else {
+            baseAmt = 0;
+            tokenAmt = math.calcAsymmetricShare(units, iERC20(pool).totalSupply(), SPool(pool).tokenAmt());
+            outputAmt = tokenAmt;
+        }
+        return (baseAmt, tokenAmt, outputAmt);
+    }
+
+    function getMemberData(address token, address member) public view returns(MemberDataStruct memory memberData){
+        address payable pool = getPool(token);
+        memberData.baseAmtStaked = SPool(pool).getBaseAmtStaked(member);
+        memberData.tokenAmtStaked = SPool(pool).getTokenAmtStaked(member);
+        memberData.stakerUnits = iERC20(pool).balanceOf(member);
+        return memberData;
+    }
+
+    function getPoolAge(address token) public view returns (uint daysSinceGenesis){
+        address payable pool = getPool(token);
+        uint genesis = SPool(pool).genesis();
+        if(now < genesis.add(86400)){
+            return 1;
+        } else {
+            return (now.sub(genesis)).div(86400);
+        }
+    }
+
+    function getPoolROI(address token) public view returns (uint roi){
+        address payable pool = getPool(token);
+        uint _baseStart = SPool(pool).baseAmtStaked().mul(2);
+        uint _baseEnd = SPool(pool).baseAmt().mul(2);
+        uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
+        uint _tokenStart = SPool(pool).tokenAmtStaked().mul(2);
+        uint _tokenEnd = SPool(pool).tokenAmt().mul(2);
+        uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
+        return (_ROIS + _ROIA).div(2);
+   }
+
+   function getPoolAPY(address token) public view returns (uint apy){
+        uint avgROI = getPoolROI(token);
+        uint poolAge = getPoolAge(token);
+        return (avgROI.mul(365)).div(poolAge);
+   }
+
+    function getMemberROI(address token, address member) public view returns (uint roi){
+        MemberDataStruct memory memberData = getMemberData(token, member);
+        uint _baseStart = memberData.baseAmtStaked.mul(2);
+        if(isMember(token, member)){
+            (uint _baseShare, uint _tokenShare) = getMemberShare(token, member);
+            uint _baseEnd = _baseShare.mul(2);
+            uint _ROIS = 0; uint _ROIA = 0;
+            if(_baseStart > 0){
+                _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
+            }
+            uint _tokenStart = memberData.tokenAmtStaked.mul(2);
+            uint _tokenEnd = _tokenShare.mul(2);
+            if(_tokenStart > 0){
+                _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
+            }
+            return (_ROIS + _ROIA).div(2);
+        } else {
+            return 0;
+        }
+    }
+
+    function isMember(address token, address member) public view returns(bool){
+        address payable pool = getPool(token);
+        if (iERC20(pool).balanceOf(member) > 0){
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+   function calcValueInBase(address token, uint amount) public view returns (uint value){
+       address payable pool = getPool(token);
+       return SPool(pool).calcValueInBase(amount);
+   }
+
+    function calcValueInToken(address token, uint amount) public view returns (uint value){
+        address payable pool = getPool(token);
+        return SPool(pool).calcValueInToken(amount);
+   }
+
+   function calcTokenPPinBase(address token, uint amount) public view returns (uint _output){
+       address payable pool = getPool(token);
+        return  SPool(pool).calcTokenPPinBase(amount);
+   }
+
+    function calcBasePPinToken(address token, uint amount) public view returns (uint _output){
+        address payable pool = getPool(token);
+        return  SPool(pool).calcBasePPinToken(amount);
+   }
+
 }
-
-
-    //==================================================================================//
-    // Upgrade functions
-
-    // // Upgrade from this contract to a new one - opt in
-    // function upgrade(address payable newContract, address token) public {
-    //     address payable pool = getPool(token);
-    //     address payable member = msg.sender;
-    //     uint _units = iERC20(getPool(token)).balanceOf(member);
-    //     (uint _outputBase, uint _outputToken) = SPool(pool).getMemberShare(member, _units);
-    //     SPool(pool)._handleUnstake(_units, _outputBase, _outputToken, member);
-    //     emit Unstaked(member, _outputBase, _outputToken, _units);
-    //     iERC20(SPARTA).transferFrom(pool, address(this), _outputBase); 
-    //     iERC20(SPARTA).approve(newContract, _outputBase);
-    //     if(token == address(0)){
-    //         iSROUTER(newContract).stakeForMember{value:_outputToken}(_outputBase, _outputToken, token, member);
-    //     } else {
-    //         iERC20(token).approve(newContract, _outputToken);
-    //         iSROUTER(newContract).stakeForMember(_outputBase, _outputToken, token, member);
-    //     }
-    // }

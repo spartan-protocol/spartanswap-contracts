@@ -12,11 +12,11 @@ const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
 
-var SPARTA = artifacts.require("./Sparta.sol");
+var SPARTA = artifacts.require("./SpartaMinted.sol");
 var SROUTER = artifacts.require("./SRouter.sol");
-var MATH = artifacts.require("MathContract");
+var UTILS = artifacts.require("./Utils.sol");
 
-var spartan;  var sRouter; var coreMath;
+var spartan;  var sRouter; var utils;
 var acc0; var acc1; var acc2; var acc3;
 
 contract('SPARTA', function (accounts) {
@@ -33,8 +33,8 @@ function constructor(accounts) {
     it("constructor events", async () => {
 
         spartan = await SPARTA.new()
-        coreMath = await MATH.new()
-        sRouter = await SROUTER.new(spartan.address, coreMath.address)
+        utils = await UTILS.new()
+        sRouter = await SROUTER.new(spartan.address, utils.address)
         console.log(`Acc0: ${acc0}`)
         console.log(`Acc1: ${acc1}`)
         console.log(`Pools: ${sRouter.address}`)
@@ -51,28 +51,28 @@ async function mathCheck() {
     const T = _.getBN(10000)
 
     it(`Checks staking`, async () => {
-        let sparta = await coreMath.calcStakeUnits(a, A.plus(a), v, V.plus(v))
+        let sparta = await utils.calcStakeUnits(a, A.plus(a), v, V.plus(v))
         let js = math.calcStakeUnits(a, A.plus(a), v, V.plus(v))
         assert.equal(_.BN2Str(sparta), _.BN2Str(js))
         assert.equal(_.BN2Str(sparta), '5500000000000000000')
     })
 
     it(`Checks assym withdrawal`, async () => {
-        let sparta = await coreMath.calcAsymmetricShare(s, T, V)
+        let sparta = await utils.calcAsymmetricShare(s, T, V)
         let js = math.calcAsymmetricShare(s, T, V)
         assert.equal(_.BN2Str(sparta), _.BN2Str(js))
         assert.equal(_.BN2Str(sparta), '18100000000000000000')
     })
 
     it(`Checks swapping`, async () => {
-        let sparta = await coreMath.calcSwapOutput(a, A, V)
+        let sparta = await utils.calcSwapOutput(a, A, V)
         let js = math.calcSwapOutput(a, A, V)
         assert.equal(_.BN2Str(sparta), _.BN2Str(js))
         assert.equal(_.BN2Str(sparta), '8264462809917355371')
     })
 
     it(`Checks swapping fee`, async () => {
-        let sparta = await coreMath.calcSwapFee(a, A, V)
+        let sparta = await utils.calcSwapFee(a, A, V)
         let js = math.calcSwapFee(a, A, V)
         assert.equal(_.BN2Str(sparta), _.BN2Str(js))
         assert.equal(_.BN2Str(sparta), '826446280991735537')
@@ -83,7 +83,7 @@ async function mathCheck() {
         const a = _.getBN(1000000000000000000)
         const A = _.getBN(100000000000000000)
         const V = _.getBN(10000000000000000000)
-        let sparta = await coreMath.calcSwapFee(a, A, V)
+        let sparta = await utils.calcSwapFee(a, A, V)
         let js = math.calcSwapFee(a, A, V)
         assert.equal(_.BN2Str(sparta), _.BN2Str(js))
         assert.equal(_.BN2Str(sparta), '8264462809917355371')

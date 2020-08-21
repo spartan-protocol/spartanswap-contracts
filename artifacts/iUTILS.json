@@ -1,5 +1,5 @@
 {
-  "contractName": "iMATH",
+  "contractName": "iUTILS",
   "abi": [
     {
       "inputs": [
@@ -173,6 +173,74 @@
         }
       ],
       "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "units",
+          "type": "uint256"
+        }
+      ],
+      "name": "getPoolShare",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "baseAmt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenAmt",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "units",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "toBase",
+          "type": "bool"
+        }
+      ],
+      "name": "getPoolShareAssym",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "baseAmt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenAmt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "outputAmt",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     }
   ],

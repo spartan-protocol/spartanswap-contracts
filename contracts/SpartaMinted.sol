@@ -47,7 +47,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract Sparta is iERC20 {
+contract SpartaMinted is iERC20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -101,7 +101,7 @@ contract Sparta is iERC20 {
         decimals = 18;
         one = 10 ** decimals;
         baseline = 100 * 10**6 * one;
-        totalSupply = 0;
+        totalSupply = baseline;
         totalCap = 300 * 10**6 * one;
         emissionCurve = 2048;
         emitting = false;
@@ -110,6 +110,8 @@ contract Sparta is iERC20 {
         nextEraTime = now + secondsPerEra;
         DAO = msg.sender;
         burnAddress = 0x0000000000000000000000000000000000000001;
+        _balances[msg.sender] = totalSupply;
+        emit Transfer(address(0), msg.sender, totalSupply);
     }
 
     //========================================iERC20=========================================//
@@ -293,7 +295,7 @@ contract Sparta is iERC20 {
     function tokenCount() public view returns (uint256 count){
         return tokenArray.length;
     }
-    function allTokens() public view returns (address[] memory _allTokens){
+    function allTokens() public view returns (address[] memory allTokens){
         return tokenArray;
     }
     function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){

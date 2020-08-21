@@ -15,19 +15,19 @@ async function calcValueInVeth(instance, token) {
   var result;
   var tokenBal; var maiBal; 
   if (token == _.addressETH) {
-    tokenBal = new BigNumber((await instance.mapToken_ExchangeData(token)).token);
-    maiBal = new BigNumber((await instance.mapToken_ExchangeData(token)).sparta);
+    tokenBal = new BigNumber((await instance.mapToken_ExchangeData(token)).tokenAmt);
+    maiBal = new BigNumber((await instance.mapToken_ExchangeData(token)).baseAmt);
     result = (_.oneBN.times(maiBal)).div(tokenBal)
   } else {
-    tokenBal = new BigNumber((await instance.mapToken_ExchangeData(token)).token);
-    maiBal = new BigNumber((await instance.mapToken_ExchangeData(token)).sparta);
+    tokenBal = new BigNumber((await instance.mapToken_ExchangeData(token)).tokenAmt);
+    maiBal = new BigNumber((await instance.mapToken_ExchangeData(token)).baseAmt);
     result = (_.oneBN.times(maiBal)).div(tokenBal)
   }
   return result.toFixed()
 }
 
 async function calcValueInToken() {
-  var usdBal = new BigNumber(usdPool.token)
+  var usdBal = new BigNumber(usdPool.tokenAmt)
   var maiBal = new BigNumber(usdPool.mai)
   return ((_.oneBN.times(usdBal)).div(maiBal)).toFixed()
 }
@@ -39,20 +39,20 @@ async function calcEtherPriceInUSD(instance, amount) {
   return ((_amount.times(ethPriceInUSD)).div(_.oneBN)).toFixed()
 }
 async function calcEtherPPinSPARTA(instance, amount) {
-  var tokenBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).token);
-  var maiBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).sparta);
+  var tokenBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).tokenAmt);
+  var maiBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).baseAmt);
   const outputVeth = math.calcCLPSwap(amount, tokenBal, maiBal);
   return outputVeth;
 }
 async function calcSPARTAPPInUSD(amount) {
-  var usdBal = new BigNumber(usdPool.token)
+  var usdBal = new BigNumber(usdPool.tokenAmt)
   var maiBal = new BigNumber(usdPool.mai)
   const outputUSD = math.calcCLPSwap(amount.toString(), maiBal, usdBal);
   return outputUSD;
 }
 async function checkLiquidateCDP(instance, _collateral, _debt) {
-  var tokenBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).token);
-  var maiBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).sparta);
+  var tokenBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).tokenAmt);
+  var maiBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).baseAmt);
   const outputVeth = math.calcCLPLiquidation(_collateral, tokenBal, maiBal);
   var canLiquidate
   if (outputVeth < _debt) {
@@ -63,27 +63,29 @@ async function checkLiquidateCDP(instance, _collateral, _debt) {
   return canLiquidate;
 }
 async function logPool(instance, addressToken, ticker) {
-  const token = _.BN2Token((await instance.poolData()).token);
-  const sparta = _.BN2Token((await instance.poolData()).sparta);
-  const tokenStaked = _.BN2Token((await instance.poolData()).tokenStaked);
-  const spartaStaked = _.BN2Token((await instance.poolData()).spartaStaked);
-  const poolUnits = _.BN2Token((await instance.totalSupply()));
-  const fees = _.BN2Token((await instance.poolData()).fees);
-  const volume = _.BN2Token((await instance.poolData()).volume);
-  const txCount = _.getBN((await instance.poolData()).txCount);
+  const poolData = await instance.getPoolData(addressToken)
+  const token = _.BN2Token(poolData.tokenAmt);
+  const sparta = _.BN2Token(poolData.baseAmt);
+  const tokenAmtStaked = _.BN2Token(poolData.tokenAmtStaked);
+  const baseAmtStaked = _.BN2Token(poolData.baseAmtStaked);
+  const fees = _.BN2Token(poolData.fees);
+  const volume = _.BN2Token(poolData.volume);
+  const txCount = _.getBN(poolData.txCount);
+  const poolUnits = _.BN2Token(poolData.poolUnits);
   console.log("\n-------------------Token-Sparta Details -------------------")
   console.log(`ADDRESS: ${addressToken}`)
   console.log(`MAPPINGS: [ ${token} ${ticker} | ${sparta} SPARTA ]`)
-  console.log(`STAKES: [ ${tokenStaked}  ${ticker} | ${spartaStaked} SPARTA ]`)
+  console.log(`STAKES: [ ${tokenAmtStaked}  ${ticker} | ${baseAmtStaked} SPARTA ]`)
   console.log(`UNITS: [ ${poolUnits} units ]`)
   console.log(`AVE: [ ${fees} fees, ${volume} volume, ${txCount} txCount ]`)
   console.log("-----------------------------------------------------------\n")
 }
-async function logStaker(instance, acc, pool) {
-  let stakeData = (await instance.getMemberData(acc))
+async function logStaker(instance, acc, token) {
+  let stakeData = (await instance.getMemberData(token, acc))
   console.log("\n-------------------Staker Details -------------------")
-  console.log(`ADDRESS: ${acc} | POOL: ${pool}`)
-  console.log(`StakeData: [ ${_.BN2Token(stakeData.sparta)} SPARTA | ${_.BN2Token(stakeData.token)} ETH ]`)
+  console.log(`ADDRESS: ${acc} | POOL: ${token}`)
+  console.log(`StakeData: [ ${_.BN2Token(stakeData.baseAmtStaked)} SPARTA | ${_.BN2Token(stakeData.tokenAmtStaked)} ETH ]`)
+  console.log(`StakeData: [ ${_.BN2Token(stakeData.stakerUnits)} UNITS ]`)
   console.log("-----------------------------------------------------------\n")
 }
 async function logETHBalances(acc0, acc1, ETH) {

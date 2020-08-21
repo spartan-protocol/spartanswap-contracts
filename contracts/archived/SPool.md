@@ -72,7 +72,7 @@ library SafeMath {
 contract SPool is ERC20 {
     using SafeMath for uint;
 
-    address public SPARTAN;
+    address public SPARTA;
     address public TOKEN;
     address public factory;
     MATH public math;
@@ -92,10 +92,10 @@ contract SPool is ERC20 {
     PoolDataStruct public poolData;
     struct PoolDataStruct {
         uint genesis;
-        uint spartan;
-        uint token;
-        uint spartanStaked;
-        uint tokenStaked;
+        uint baseAmt;
+        uint tokenAmt;
+        uint baseAmtStaked;
+        uint tokenAmtStaked;
         uint fees;
         uint volume;
         uint txCount;
@@ -103,17 +103,17 @@ contract SPool is ERC20 {
     
     mapping(address => MemberDataStruct) public memberData;
     struct MemberDataStruct {
-        uint spartan;
-        uint token;
+        uint baseAmt;
+        uint tokenAmt;
     }
    
     event Staked(address member, uint inputAsset, uint inputSpartan, uint unitsIssued);
     event Unstaked(address member, uint outputAsset, uint outputSpartan, uint unitsClaimed);
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
 
-    constructor (address _spartan, address _token, address _math) public payable {
+    constructor (address _baseAmt, address _token, address _math) public payable {
         //local
-        SPARTAN = _spartan;
+        SPARTA = _baseAmt;
         TOKEN = _token;
         factory = msg.sender;
         math = MATH(_math);
@@ -132,16 +132,16 @@ contract SPool is ERC20 {
         poolData.genesis = now;
 
         // testnet
-        // SPARTAN = 0x95D0C08e59bbC354eE2218Da9F82A04D7cdB6fDF;
+        // SPARTA = 0x95D0C08e59bbC354eE2218Da9F82A04D7cdB6fDF;
         // math = MATH(0x476B05e742Bd0Eed4C7cba11A8dDA72BE592B549);
 
         // mainnet
-        // SPARTAN = 0x4Ba6dDd7b89ed838FEd25d208D4f644106E34279;
+        // SPARTA = 0x4Ba6dDd7b89ed838FEd25d208D4f644106E34279;
         // math = MATH(0xe5087d4B22194bEd83556edEDca846c91E550b5B);
     }
 
     // receive() external payable {
-    //     sell(msg.value, address(0), SPARTAN);
+    //     sell(msg.value, address(0), SPARTA);
     // }
 
     function getThisAddress() public view returns(address pool){
@@ -224,20 +224,20 @@ contract SPool is ERC20 {
 
     function stakeForMember(uint inputSpartan, uint inputAsset, address member) public payable returns (uint units) {
         uint _actualInputAsset = _handleTransferIn(TOKEN, inputAsset);
-        uint _actualInputSpartan = _handleTransferIn(SPARTAN, inputSpartan);
+        uint _actualInputSpartan = _handleTransferIn(SPARTA, inputSpartan);
         units = _stake(_actualInputSpartan, _actualInputAsset, member);
         return units;
     }
 
-    function _stake(uint _spartan, uint _token, address _member) internal returns (uint _units) {
-        uint _S = poolData.spartan.add(_spartan);
-        uint _A = poolData.token.add(_token);
-        _units = math.calcStakeUnits(_token, _A, _spartan, _S);   
-        _incrementPoolBalances(_spartan, _token);                                                  
-        _addDataForMember(_member, _spartan, _token);
+    function _stake(uint _baseAmt, uint _token, address _member) internal returns (uint _units) {
+        uint _S = poolData.baseAmt.add(_baseAmt);
+        uint _A = poolData.tokenAmt.add(_token);
+        _units = math.calcStakeUnits(_token, _A, _baseAmt, _S);   
+        _incrementPoolBalances(_baseAmt, _token);                                                  
+        _addDataForMember(_member, _baseAmt, _token);
         _allowances[_member][address(this)] += _units;
         _mint(_member, _units);
-        emit Staked(_member, _token, _spartan, _units);
+        emit Staked(_member, _token, _baseAmt, _units);
         return _units;
     }
 
@@ -254,8 +254,8 @@ contract SPool is ERC20 {
 
     // Unstake an exact qty of units
     function unstakeExact(uint units) public returns (bool success) {
-        uint _outputSpartan = math.calcShare(units, totalSupply, poolData.spartan);
-        uint _outputAsset = math.calcShare(units, totalSupply, poolData.token);
+        uint _outputSpartan = math.calcShare(units, totalSupply, poolData.baseAmt);
+        uint _outputAsset = math.calcShare(units, totalSupply, poolData.tokenAmt);
         _handleUnstake(units, _outputSpartan, _outputAsset, msg.sender);
         return true;
     }
@@ -271,12 +271,12 @@ contract SPool is ERC20 {
         require(units < totalSupply, "Must not be last staker");
         uint _outputSpartan; uint _outputAsset; 
         if(toSpartan){
-            _outputSpartan = math.calcAsymmetricShare(units, totalSupply, poolData.spartan);
+            _outputSpartan = math.calcAsymmetricShare(units, totalSupply, poolData.baseAmt);
             _outputAsset = 0;
             outputAmount = _outputSpartan;
         } else {
             _outputSpartan = 0;
-            _outputAsset = math.calcAsymmetricShare(units, totalSupply, poolData.token);
+            _outputAsset = math.calcAsymmetricShare(units, totalSupply, poolData.tokenAmt);
             outputAmount = _outputAsset;
         }
         _handleUnstake(units, _outputSpartan, _outputAsset, msg.sender);
@@ -290,7 +290,7 @@ contract SPool is ERC20 {
         _burn(_member, _units);
         emit Unstaked(_member, _outputAsset, _outputSpartan, _units);
         _handleTransferOut(TOKEN, _outputAsset, _member);
-        _handleTransferOut(SPARTAN, _outputSpartan, _member);
+        _handleTransferOut(SPARTA, _outputSpartan, _member);
     } 
 
     //==================================================================================//
@@ -299,12 +299,12 @@ contract SPool is ERC20 {
     // Upgrade from this contract to a new one - opt in
     function upgrade(address payable newContract) public {
         uint _units = balanceOf(msg.sender);
-        uint _outputSpartan = math.calcShare(_units, totalSupply, poolData.spartan);
-        uint _outputAsset = math.calcShare(_units, totalSupply, poolData.token);
+        uint _outputSpartan = math.calcShare(_units, totalSupply, poolData.baseAmt);
+        uint _outputAsset = math.calcShare(_units, totalSupply, poolData.tokenAmt);
         _decrementPoolBalances(_outputSpartan, _outputAsset);
         _removeDataForMember(msg.sender, _units);
         emit Unstaked(msg.sender, _outputAsset, _outputSpartan, _units);
-        ERC20(SPARTAN).approve(newContract, _outputSpartan);
+        ERC20(SPARTA).approve(newContract, _outputSpartan);
         if(TOKEN == address(0)){
             SPOOL(newContract).stakeForMember{value:_outputAsset}(_outputSpartan, _outputAsset, msg.sender);
         } else {
@@ -321,9 +321,9 @@ contract SPool is ERC20 {
         return (outputAmount, fee);
     }
     function buyTo(uint amount, address payable member) public payable returns (uint outputAmount, uint fee) {
-        uint _actualAmount = _handleTransferIn(SPARTAN, amount);
+        uint _actualAmount = _handleTransferIn(SPARTA, amount);
         (outputAmount, fee) = _swapSpartanToAsset(amount);
-        emit Swapped(SPARTAN, TOKEN, _actualAmount, 0, outputAmount, fee, member);
+        emit Swapped(SPARTA, TOKEN, _actualAmount, 0, outputAmount, fee, member);
         _handleTransferOut(TOKEN, outputAmount, member);
         return (outputAmount, fee);
     }
@@ -335,8 +335,8 @@ contract SPool is ERC20 {
     function sellTo(uint amount, address payable member) public payable returns (uint outputAmount, uint fee) {
         uint _actualAmount = _handleTransferIn(TOKEN, amount);
         (outputAmount, fee) = _swapAssetToSpartan(amount);
-        emit Swapped(TOKEN, SPARTAN, _actualAmount, 0, outputAmount, fee, member);
-        _handleTransferOut(SPARTAN, outputAmount, member);
+        emit Swapped(TOKEN, SPARTA, _actualAmount, 0, outputAmount, fee, member);
+        _handleTransferOut(SPARTA, outputAmount, member);
         return (outputAmount, fee);
     }
 
@@ -345,14 +345,14 @@ contract SPool is ERC20 {
         return (outputAmount, fee);
     }
     function swapTo(uint inputAmount, address toAsset, address payable member) public payable returns (uint outputAmount, uint fee) {
-        require(toAsset != SPARTAN, "Asset must not be SPARTAN");
+        require(toAsset != SPARTA, "Asset must not be SPARTA");
         address addrTo = SFactory(factory).getPoolAddress(toAsset); SPool toPool = SPool(addrTo);
 
         uint _actualAmount = _handleTransferIn(TOKEN, inputAmount);
         (uint _tfr, uint _feeTfr) = _swapAssetToSpartan(_actualAmount);
-        emit Swapped(TOKEN, SPARTAN, _actualAmount, 0, _tfr, _feeTfr, member);
+        emit Swapped(TOKEN, SPARTA, _actualAmount, 0, _tfr, _feeTfr, member);
 
-        ERC20(SPARTAN).approve(addrTo, _tfr);                                 // Approve pool to spend SPARTAN
+        ERC20(SPARTA).approve(addrTo, _tfr);                                 // Approve pool to spend SPARTA
         (uint _out, uint _feeOut) = toPool.buyTo(_tfr, member);                 // Buy to token
         outputAmount = _out;
         fee = _feeOut + toPool.calcValueInAsset(_feeTfr);
@@ -360,23 +360,23 @@ contract SPool is ERC20 {
     }
 
     function _swapSpartanToAsset(uint _x) internal returns (uint _y, uint _fee){
-        uint _X = poolData.spartan;
-        uint _Y = poolData.token;
+        uint _X = poolData.baseAmt;
+        uint _Y = poolData.tokenAmt;
         _y =  math.calcSwapOutput(_x, _X, _Y);
         _fee = math.calcSwapFee(_x, _X, _Y);
-        poolData.spartan = poolData.spartan.add(_x);
-        poolData.token = poolData.token.sub(_y);
+        poolData.baseAmt = poolData.baseAmt.add(_x);
+        poolData.tokenAmt = poolData.tokenAmt.sub(_y);
         _updatePoolMetrics(_y+_fee, _fee, false);
         return (_y, _fee);
     }
 
     function _swapAssetToSpartan(uint _x) internal returns (uint _y, uint _fee){
-        uint _X = poolData.token;
-        uint _Y = poolData.spartan;
+        uint _X = poolData.tokenAmt;
+        uint _Y = poolData.baseAmt;
         _y =  math.calcSwapOutput(_x, _X, _Y);
         _fee = math.calcSwapFee(_x, _X, _Y);
-        poolData.token = poolData.token.add(_x);
-        poolData.spartan = poolData.spartan.sub(_y);
+        poolData.tokenAmt = poolData.tokenAmt.add(_x);
+        poolData.baseAmt = poolData.baseAmt.sub(_y);
         _updatePoolMetrics(_y+_fee, _fee, true);
         return (_y, _fee);
     }
@@ -384,33 +384,33 @@ contract SPool is ERC20 {
     //==================================================================================//
     // Data Model
 
-    function _incrementPoolBalances(uint _spartan, uint _token) internal {
-        poolData.spartan = poolData.spartan.add(_spartan);
-        poolData.token = poolData.token.add(_token); 
-        poolData.spartanStaked = poolData.spartanStaked.add(_spartan);
-        poolData.tokenStaked = poolData.tokenStaked.add(_token); 
+    function _incrementPoolBalances(uint _baseAmt, uint _token) internal {
+        poolData.baseAmt = poolData.baseAmt.add(_baseAmt);
+        poolData.tokenAmt = poolData.tokenAmt.add(_token); 
+        poolData.baseAmtStaked = poolData.baseAmtStaked.add(_baseAmt);
+        poolData.tokenAmtStaked = poolData.tokenAmtStaked.add(_token); 
     }
 
-    function _decrementPoolBalances(uint _spartan, uint _token) internal {
-        uint _unstakedSpartan = math.calcShare(_spartan, poolData.spartan, poolData.spartanStaked);
-        uint _unstakedAsset = math.calcShare(_token, poolData.token, poolData.tokenStaked);
-        poolData.spartanStaked = poolData.spartanStaked.sub(_unstakedSpartan);
-        poolData.tokenStaked = poolData.tokenStaked.sub(_unstakedAsset); 
-        poolData.spartan = poolData.spartan.sub(_spartan);
-        poolData.token = poolData.token.sub(_token); 
+    function _decrementPoolBalances(uint _baseAmt, uint _token) internal {
+        uint _unstakedSpartan = math.calcShare(_baseAmt, poolData.baseAmt, poolData.baseAmtStaked);
+        uint _unstakedAsset = math.calcShare(_token, poolData.tokenAmt, poolData.tokenAmtStaked);
+        poolData.baseAmtStaked = poolData.baseAmtStaked.sub(_unstakedSpartan);
+        poolData.tokenAmtStaked = poolData.tokenAmtStaked.sub(_unstakedAsset); 
+        poolData.baseAmt = poolData.baseAmt.sub(_baseAmt);
+        poolData.tokenAmt = poolData.tokenAmt.sub(_token); 
     }
 
-    function _addDataForMember(address _member, uint _spartan, uint _token) internal {
-        memberData[_member].spartan = memberData[_member].spartan.add(_spartan);
-        memberData[_member].token = memberData[_member].token.add(_token);
+    function _addDataForMember(address _member, uint _baseAmt, uint _token) internal {
+        memberData[_member].baseAmt = memberData[_member].baseAmt.add(_baseAmt);
+        memberData[_member].tokenAmt = memberData[_member].tokenAmt.add(_token);
     }
 
     function _removeDataForMember(address _member, uint _units) internal{
         uint stakeUnits = balanceOf(_member);
-        uint _spartan = math.calcShare(_units, stakeUnits, memberData[_member].spartan);
-        uint _token = math.calcShare(_units, stakeUnits, memberData[_member].token);
-        memberData[_member].spartan = memberData[_member].spartan.sub(_spartan);
-        memberData[_member].token = memberData[_member].token.sub(_token);
+        uint _baseAmt = math.calcShare(_units, stakeUnits, memberData[_member].baseAmt);
+        uint _token = math.calcShare(_units, stakeUnits, memberData[_member].tokenAmt);
+        memberData[_member].baseAmt = memberData[_member].baseAmt.sub(_baseAmt);
+        memberData[_member].tokenAmt = memberData[_member].tokenAmt.sub(_token);
     }
 
     function _updatePoolMetrics(uint _tx, uint _fee, bool _toSpartan) internal {
@@ -456,9 +456,9 @@ contract SPool is ERC20 {
 
     function sync() public {
         if (TOKEN == address(0)) {
-            poolData.token = address(this).balance;
+            poolData.tokenAmt = address(this).balance;
         } else {
-            poolData.token = ERC20(TOKEN).balanceOf(address(this));
+            poolData.tokenAmt = ERC20(TOKEN).balanceOf(address(this));
         }
     }
 
@@ -468,12 +468,12 @@ contract SPool is ERC20 {
     function getStakerShare(address member) public view returns(uint stakerShare){
         return math.calcShare(balanceOf(member), totalSupply, 10000);
     }
-    function getStakerShareSpartan(address member) public view returns(uint spartan){
-        spartan = math.calcShare(balanceOf(member), totalSupply, poolData.spartan);
-        return spartan;
+    function getStakerShareSpartan(address member) public view returns(uint baseAmt){
+        baseAmt = math.calcShare(balanceOf(member), totalSupply, poolData.baseAmt);
+        return baseAmt;
     }
     function getStakerShareAsset(address member) public view returns(uint token){
-        token = math.calcShare(balanceOf(member), totalSupply, poolData.token);
+        token = math.calcShare(balanceOf(member), totalSupply, poolData.tokenAmt);
         return token;
     }
 
@@ -499,11 +499,11 @@ contract SPool is ERC20 {
     }
 
     function getPoolROI() public view returns (uint roi){
-        uint _spartanStart = poolData.spartanStaked.mul(2);
-        uint _spartanEnd = poolData.spartan.mul(2);
-        uint _ROIS = (_spartanEnd.mul(10000)).div(_spartanStart);
-        uint _tokenStart = poolData.tokenStaked.mul(2);
-        uint _tokenEnd = poolData.token.mul(2);
+        uint _baseAmtStart = poolData.baseAmtStaked.mul(2);
+        uint _baseAmtEnd = poolData.baseAmt.mul(2);
+        uint _ROIS = (_baseAmtEnd.mul(10000)).div(_baseAmtStart);
+        uint _tokenStart = poolData.tokenAmtStaked.mul(2);
+        uint _tokenEnd = poolData.tokenAmt.mul(2);
         uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
         return (_ROIS + _ROIA).div(2);
    }
@@ -515,14 +515,14 @@ contract SPool is ERC20 {
    }
 
     function getMemberROI(address member) public view returns (uint roi){
-        uint _spartanStart = memberData[member].spartan.mul(2);
+        uint _baseAmtStart = memberData[member].baseAmt.mul(2);
         if(isMember(member)){
-            uint _spartanEnd = getStakerShareSpartan(member).mul(2);
+            uint _baseAmtEnd = getStakerShareSpartan(member).mul(2);
             uint _ROIS = 0; uint _ROIA = 0;
-            if(_spartanStart > 0){
-                _ROIS = (_spartanEnd.mul(10000)).div(_spartanStart);
+            if(_baseAmtStart > 0){
+                _ROIS = (_baseAmtEnd.mul(10000)).div(_baseAmtStart);
             }
-            uint _tokenStart = memberData[member].token.mul(2);
+            uint _tokenStart = memberData[member].tokenAmt.mul(2);
             uint _tokenEnd = getStakerShareAsset(member).mul(2);
             if(_tokenStart > 0){
                 _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
@@ -535,26 +535,26 @@ contract SPool is ERC20 {
    }
 
    function calcValueInSpartan(uint a) public view returns (uint value){
-       uint _token = poolData.token;
-       uint _spartan = poolData.spartan;
-       return (a.mul(_spartan)).div(_token);
+       uint _token = poolData.tokenAmt;
+       uint _baseAmt = poolData.baseAmt;
+       return (a.mul(_baseAmt)).div(_token);
    }
 
     function calcValueInAsset(uint v) public view returns (uint value){
-       uint _token = poolData.token;
-       uint _spartan = poolData.spartan;
-       return (v.mul(_token)).div(_spartan);
+       uint _token = poolData.tokenAmt;
+       uint _baseAmt = poolData.baseAmt;
+       return (v.mul(_token)).div(_baseAmt);
    }
 
    function calcAssetPPinSpartan(uint amount) public view returns (uint _output){
-        uint _token = poolData.token;
-        uint _spartan = poolData.spartan;
-        return  math.calcSwapOutput(amount, _token, _spartan);
+        uint _token = poolData.tokenAmt;
+        uint _baseAmt = poolData.baseAmt;
+        return  math.calcSwapOutput(amount, _token, _baseAmt);
    }
 
     function calcSpartanPPinAsset(uint amount) public view returns (uint _output){
-        uint _token = poolData.token;
-        uint _spartan = poolData.spartan;
-        return  math.calcSwapOutput(amount, _spartan, _token);
+        uint _token = poolData.tokenAmt;
+        uint _baseAmt = poolData.baseAmt;
+        return  math.calcSwapOutput(amount, _baseAmt, _token);
    }
 }
