@@ -11,15 +11,17 @@ var BigNumber = require('bignumber.js');
 const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
+const { SupportedAlgorithm } = require("ethers/lib/utils");
 
 var SPARTA = artifacts.require("./SpartaMinted.sol");
+var SDAO = artifacts.require("./SDao.sol");
 var SROUTER = artifacts.require("./SRouter.sol");
 var SPOOL = artifacts.require("./SPool.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
 
 var sparta; var spartanPools;  var utils; var token1; var token2;
-var sPool; var sRouter;
+var sPool; var sRouter; var sDao;
 var acc0; var acc1; var acc2; var acc3;
 
 contract('SPT', function (accounts) {
@@ -77,18 +79,24 @@ function constructor(accounts) {
     it("constructor events", async () => {
         sparta = await SPARTA.new()
         utils = await UTILS.new()
+        sDao = await SDAO.new(utils.address)
+        sRouter = await SROUTER.new(sparta.address, sDao.address, utils.address)
+        await utils.setGenesisDao(sDao.address)
+        await sDao.setGenesisRouter(sRouter.address)
+        assert.equal(await utils.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
+        assert.equal(await sDao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
+        console.log(await utils.SDAO())
+        console.log(await sDao.ROUTER())
+
         token1 = await TOKEN1.new();
         token2 = await TOKEN1.new();
-        sRouter = await SROUTER.new(sparta.address, utils.address)
 
         console.log(`Acc0: ${acc0}`)
         console.log(`sparta: ${sparta.address}`)
-        console.log(`token1: ${token1.address}`)
+        console.log(`dao: ${sDao.address}`)
         console.log(`utils: ${utils.address}`)
         console.log(`sRouter: ${sRouter.address}`)
-
-        await utils.setRouter(sRouter.address)
-        console.log(await utils.ROUTER())
+        console.log(`token1: ${token1.address}`)
 
         let supply = await token1.totalSupply()
         await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))

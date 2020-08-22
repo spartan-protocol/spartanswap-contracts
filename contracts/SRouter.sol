@@ -29,6 +29,9 @@ interface iUTILS {
     function getPoolShare(address token, uint units) external view returns(uint baseAmt, uint tokenAmt);
     function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmt, uint tokenAmt, uint outputAmt);
 }
+interface iSDAO {
+    function ROUTER() external view returns(address);
+}
 
 // SafeMath
 library SafeMath {
@@ -71,9 +74,11 @@ contract SPool is iERC20 {
     using SafeMath for uint;
 
     address public SPARTA;
-    address public TOKEN;
-    address public ROUTER;
+    iSDAO public SDAO;
     iUTILS public UTILS;
+    address public TOKEN;
+    // address public SDAO.ROUTER();
+
     uint public one = 10**18;
 
     // ERC-20 Parameters
@@ -97,15 +102,16 @@ contract SPool is iERC20 {
    
     // Only Router can execute
     modifier onlyRouter() {
-        require(msg.sender == ROUTER, "RouterErr");
+        require(msg.sender == SDAO.ROUTER(), "RouterErr");
         _;
     }
 
-    constructor (address _sparta, address _token, iUTILS _utils) public payable {
+    constructor (address _sparta, iSDAO _sDao, iUTILS _utils, address _token) public payable {
         //local
         SPARTA = _sparta;
+        SDAO = _sDao;
         TOKEN = _token;
-        ROUTER = msg.sender;
+        // SDAO.ROUTER() = msg.sender;
         UTILS = _utils;
 
         if(_token == address(0)){
@@ -116,13 +122,13 @@ contract SPool is iERC20 {
             _name = string(abi.encodePacked("SpartanPoolV1-", tokenName));
             string memory tokenSymbol = iERC20(_token).symbol();
             _symbol = string(abi.encodePacked("SPT1-", tokenSymbol));
-            iERC20(_token).approve(ROUTER, (2**256)-1);
+            iERC20(_token).approve(SDAO.ROUTER(), (2**256)-1);
         }
 
         decimals = 18;
         genesis = now;
-        _allowances[address(this)][ROUTER] = (2**256)-1;
-        iERC20(SPARTA).approve(ROUTER, (2**256)-1);
+        _allowances[address(this)][SDAO.ROUTER()] = (2**256)-1;
+        iERC20(SPARTA).approve(SDAO.ROUTER(), (2**256)-1);
     }
 
     receive() external payable {}
@@ -360,6 +366,7 @@ contract SRouter {
     using SafeMath for uint;
 
     address public SPARTA;
+    iSDAO public SDAO;
     iUTILS public UTILS;
 
     uint256 public currentEra;
@@ -375,6 +382,7 @@ contract SRouter {
 
     address[] public arrayTokens;
     mapping(address=>address payable) private mapToken_Pool;
+    mapping(address=>bool) public isPool;
 
     event NewPool(address token, address pool, uint genesis);
     event Staked(address member, uint inputBase, uint inputToken, uint unitsIssued);
@@ -382,21 +390,23 @@ contract SRouter {
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
     event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 reserve);
 
-    constructor (address _sparta, address _utils) public payable {
+    constructor (address _sparta, iSDAO _sDao, iUTILS _utils) public payable {
         SPARTA = _sparta; //0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D;
-        UTILS = iUTILS(_utils); //0x17218e58Fdf07c989faCca25De4c6FdB06502186;
+        SDAO = _sDao;
+        UTILS = _utils; //0x17218e58Fdf07c989faCca25De4c6FdB06502186;
     }
 
     function createPool(uint inputBase, uint inputToken, address token) public payable returns(address payable pool){
         require(getPool(token) == address(0), "CreateErr");
         require(token != SPARTA, "CreateErr");
         require((inputToken > 0 && inputBase > 0), "CreateErr");
-        SPool newPool = new SPool(SPARTA, token, UTILS);
+        SPool newPool = new SPool(SPARTA, SDAO, UTILS, token);
         pool = payable(address(newPool));
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
         uint _actualInputBase = _handleTransferIn(SPARTA, inputBase, pool);
         mapToken_Pool[token] = pool;
         arrayTokens.push(token);
+        isPool[pool] = true;
         totalStaked += _actualInputBase;
         stakeTx += 1;
         SPool(pool)._handleStake(_actualInputBase, _actualInputToken, msg.sender);
@@ -639,9 +649,9 @@ contract SRouter {
     //     iERC20(SPARTA).transferFrom(pool, address(this), _outputBase); 
     //     iERC20(SPARTA).approve(newContract, _outputBase);
     //     if(token == address(0)){
-    //         iSROUTER(newContract).stakeForMember{value:_outputToken}(_outputBase, _outputToken, token, member);
+    //         iSSDAO.ROUTER()(newContract).stakeForMember{value:_outputToken}(_outputBase, _outputToken, token, member);
     //     } else {
     //         iERC20(token).approve(newContract, _outputToken);
-    //         iSROUTER(newContract).stakeForMember(_outputBase, _outputToken, token, member);
+    //         iSSDAO.ROUTER()(newContract).stakeForMember(_outputBase, _outputToken, token, member);
     //     }
     // }

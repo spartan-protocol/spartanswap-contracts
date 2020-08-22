@@ -2,6 +2,21 @@
 
 Spartan Swap is a liquidity pool protocol that allows token-agnostic provision of liquidity. Traders can swap between tokens at arbitrarily low fees, but a liquidity-sensitive fee maximises revenue for stakers during periods of high demand. 
 
+## Deploy
+1) Deploy SPARTA
+2) Deploy UTILS
+3) Deploy DAO(UTILS)
+4) Deploy Router(SPARTA, DAO, UTILS)
+5) Set DAO in UTILS
+6) Set Router in DAO
+
+Sparta is the base currency.
+Utils needs to know Router (to calculate state) and DAO (to ask for router)
+DAO needs to know Utils (to calculate state)
+Router needs to know Sparta, Utils, DAO (to tell Pools)
+Pools needs to know DAO to ask for Router
+
+
 ## Smart Contract
 
 Spartan Swap  has the following intended design:

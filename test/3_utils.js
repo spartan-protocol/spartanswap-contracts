@@ -13,10 +13,9 @@ const math = require('./math.js');
 const help = require('./helper.js');
 
 var SPARTA = artifacts.require("./SpartaMinted.sol");
-var SROUTER = artifacts.require("./SRouter.sol");
 var UTILS = artifacts.require("./Utils.sol");
 
-var spartan;  var sRouter; var utils;
+var spartan; var utils;
 var acc0; var acc1; var acc2; var acc3;
 
 contract('SPARTA', function (accounts) {
@@ -34,10 +33,8 @@ function constructor(accounts) {
 
         spartan = await SPARTA.new()
         utils = await UTILS.new()
-        sRouter = await SROUTER.new(spartan.address, utils.address)
         console.log(`Acc0: ${acc0}`)
         console.log(`Acc1: ${acc1}`)
-        console.log(`Pools: ${sRouter.address}`)
     });
 }
 

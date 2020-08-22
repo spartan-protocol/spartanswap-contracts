@@ -13,13 +13,14 @@ const math = require('./math.js');
 const help = require('./helper.js');
 
 var SPARTA = artifacts.require("./SpartaMinted.sol");
+var SDAO = artifacts.require("./SDao.sol");
 var SROUTER = artifacts.require("./SRouter.sol");
 var SPOOL = artifacts.require("./SPool.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
 
 var sparta; var token1;  var token2; var addr1; var addr2;
-var utils; var sRouter;
+var utils; var sRouter; var sDao;
 var sPoolETH; var sPoolTKN1; var sPoolTKN2;
 var acc0; var acc1; var acc2; var acc3;
 
@@ -30,42 +31,42 @@ contract('SPARTA', function (accounts) {
     stake(acc1, _.BN2Str(_.one * 10), _.dot1BN)
     // checkDetails()
 
-    // // Single swap
-    // swapSPARTAToETH(acc0, _.BN2Str(_.one * 10))
-    // // checkDetails()
-    // swapETHToSPARTA(acc0, _.BN2Str(_.one * 1))
-    // // checkDetails()
+    // Single swap
+    swapSPARTAToETH(acc0, _.BN2Str(_.one * 10))
+    // checkDetails()
+    swapETHToSPARTA(acc0, _.BN2Str(_.one * 1))
+    // checkDetails()
 
     stakeTKN1(acc1, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100))
     // checkDetails()
 
-    // // // Double swap
-    // swapTKN1ToETH(acc0, _.BN2Str(_.one * 10))
-    // // checkDetails()
-    // swapETHToTKN1(acc0, _.BN2Str(_.one * 1))
-    // // checkDetails()
+    // // Double swap
+    swapTKN1ToETH(acc0, _.BN2Str(_.one * 10))
+    // checkDetails()
+    swapETHToTKN1(acc0, _.BN2Str(_.one * 1))
+    // checkDetails()
 
     stakeTKN2(acc1, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100))
     checkDetails()
 
-    // // // // // // Double swap back
-    // swapTKN2ToETH(acc0, _.BN2Str(_.one * 10))
-    // // checkDetails()
-    // swapETHToTKN2(acc0, _.BN2Str(_.one * 1))
-    // // checkDetails()
-
-    // unstakeETH(10000, acc1)
-    // // checkDetails()
-    // unstakeTKN1(10000, acc1)
-    // // checkDetails()
-    // unstakeTKN2(10000, acc1)
-    // // checkDetails()
-    // unstakeETH(10000, acc0)
-    // // checkDetails()
-    // unstakeTKN1(10000, acc0)
-    // // checkDetails()
-    // unstakeTKN2(10000, acc0)
+    // // // // // Double swap back
+    swapTKN2ToETH(acc0, _.BN2Str(_.one * 10))
     // checkDetails()
+    swapETHToTKN2(acc0, _.BN2Str(_.one * 1))
+    // checkDetails()
+
+    unstakeETH(10000, acc1)
+    // checkDetails()
+    unstakeTKN1(10000, acc1)
+    // checkDetails()
+    unstakeTKN2(10000, acc1)
+    // checkDetails()
+    unstakeETH(10000, acc0)
+    // checkDetails()
+    unstakeTKN1(10000, acc0)
+    // checkDetails()
+    unstakeTKN2(10000, acc0)
+    checkDetails()
 
 })
 
@@ -78,20 +79,24 @@ before(async function() {
 
     sparta = await SPARTA.new()
     utils = await UTILS.new()
+    sDao = await SDAO.new(utils.address)
+    sRouter = await SROUTER.new(sparta.address, sDao.address, utils.address)
+    await utils.setGenesisDao(sDao.address)
+    await sDao.setGenesisRouter(sRouter.address)
+    assert.equal(await utils.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
+    assert.equal(await sDao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
+    console.log(await utils.SDAO())
+    console.log(await sDao.ROUTER())
+
     token1 = await TOKEN1.new();
     token2 = await TOKEN1.new();
-    addr1 = token1.address
-    addr2 = token2.address
-    sRouter = await SROUTER.new(sparta.address, utils.address)
 
     console.log(`Acc0: ${acc0}`)
+    console.log(`sparta: ${sparta.address}`)
+    console.log(`dao: ${sDao.address}`)
+    console.log(`utils: ${utils.address}`)
     console.log(`sRouter: ${sRouter.address}`)
-    console.log(`spartan: ${sparta.address}`)
     console.log(`token1: ${token1.address}`)
-    console.log(`coreMath: ${utils.address}`)
-
-    await utils.setRouter(sRouter.address)
-    console.log(await utils.ROUTER())
 
     await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
     await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -214,7 +219,7 @@ async function _stakeTKN(acc, a, v, token, sPool) {
     let units = math.calcStakeUnits(a, A.plus(a), v, S.plus(v))
     console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(S.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
     
-    let tx = await sRouter.stake(v, a, token.address, { from: acc, value: a })
+    let tx = await sRouter.stake(v, a, token.address, { from: acc})
     poolData = await utils.getPoolData(token.address);
     assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(v)))
     assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(A.plus(a)))

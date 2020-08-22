@@ -44,6 +44,10 @@ interface iSPOOL {
     function calcBasePPinToken(uint) external view returns (uint);
 }
 
+interface iSDAO {
+    function ROUTER() external view returns(address);
+}
+
 // SafeMath
 library SafeMath {
 
@@ -85,7 +89,7 @@ contract Utils {
 
     using SafeMath for uint;
 
-    address public ROUTER;
+    iSDAO public SDAO;
     address public DEPLOYER;
 
     struct TokenDetails {
@@ -144,8 +148,9 @@ contract Utils {
         DEPLOYER = msg.sender;
     }
 
-    function setRouter(address router) public onlyDeployer {
-        ROUTER = router;
+    function setGenesisDao(iSDAO sDao) public onlyDeployer {
+        SDAO = sDao;
+        DEPLOYER = address(0);
     }
 
     function getTokenDetails(address token) public view returns (TokenDetails memory tokenDetails){
@@ -186,23 +191,23 @@ contract Utils {
     }
 
     function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
-        globalDetails.totalStaked = iSROUTER(ROUTER).totalStaked();
-        globalDetails.totalVolume = iSROUTER(ROUTER).totalVolume();
-        globalDetails.totalFees = iSROUTER(ROUTER).totalFees();
-        globalDetails.unstakeTx = iSROUTER(ROUTER).unstakeTx();
-        globalDetails.stakeTx = iSROUTER(ROUTER).stakeTx();
-        globalDetails.swapTx = iSROUTER(ROUTER).swapTx();
+        globalDetails.totalStaked = iSROUTER(SDAO.ROUTER()).totalStaked();
+        globalDetails.totalVolume = iSROUTER(SDAO.ROUTER()).totalVolume();
+        globalDetails.totalFees = iSROUTER(SDAO.ROUTER()).totalFees();
+        globalDetails.unstakeTx = iSROUTER(SDAO.ROUTER()).unstakeTx();
+        globalDetails.stakeTx = iSROUTER(SDAO.ROUTER()).stakeTx();
+        globalDetails.swapTx = iSROUTER(SDAO.ROUTER()).swapTx();
         return globalDetails;
     }
 
     function getPool(address token) public view returns(address payable pool){
-        return iSROUTER(ROUTER).getPool(token);
+        return iSROUTER(SDAO.ROUTER()).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
-        return iSROUTER(ROUTER).tokenCount();
+        return iSROUTER(SDAO.ROUTER()).tokenCount();
     }
     function allTokens() public view returns (address[] memory _allTokens){
-        return tokensInRange(0, iSROUTER(ROUTER).tokenCount()) ;
+        return tokensInRange(0, iSROUTER(SDAO.ROUTER()).tokenCount()) ;
     }
     function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
         if(start.add(count) > tokenCount()){
@@ -210,7 +215,7 @@ contract Utils {
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i < count; i++){
-            result[i] = iSROUTER(ROUTER).getToken(i);
+            result[i] = iSROUTER(SDAO.ROUTER()).getToken(i);
         }
         return result;
     }
@@ -223,7 +228,7 @@ contract Utils {
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = getPool(iSROUTER(ROUTER).getToken(i));
+            result[i] = getPool(iSROUTER(SDAO.ROUTER()).getToken(i));
         }
         return result;
     }
