@@ -16,8 +16,11 @@ interface iSPARTA {
 
 interface iSROUTER {
     function totalStaked() external view returns (uint);
-    function allTimeVolume() external view returns (uint);
-    function allTimeTx() external view returns (uint);
+    function totalVolume() external view returns (uint);
+    function totalFees() external view returns (uint);
+    function unstakeTx() external view returns (uint);
+    function stakeTx() external view returns (uint);
+    function swapTx() external view returns (uint);
     function tokenCount() external view returns(uint);
     function getToken(uint) external view returns(address);
     function getPool(address) external view returns(address payable);
@@ -106,11 +109,16 @@ contract Utils {
 
     struct GlobalDetails {
         uint totalStaked;
-        uint allTimeVolume;
-        uint allTimeTx;
+        uint totalVolume;
+        uint totalFees;
+        uint unstakeTx;
+        uint stakeTx;
+        uint swapTx;
     }
 
     struct PoolDataStruct {
+        address tokenAddress;
+        address poolAddress;
         uint genesis;
         uint baseAmt;
         uint tokenAmt;
@@ -179,8 +187,11 @@ contract Utils {
 
     function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
         globalDetails.totalStaked = iSROUTER(ROUTER).totalStaked();
-        globalDetails.allTimeVolume = iSROUTER(ROUTER).allTimeVolume();
-        globalDetails.allTimeTx = iSROUTER(ROUTER).allTimeTx();
+        globalDetails.totalVolume = iSROUTER(ROUTER).totalVolume();
+        globalDetails.totalFees = iSROUTER(ROUTER).totalFees();
+        globalDetails.unstakeTx = iSROUTER(ROUTER).unstakeTx();
+        globalDetails.stakeTx = iSROUTER(ROUTER).stakeTx();
+        globalDetails.swapTx = iSROUTER(ROUTER).swapTx();
         return globalDetails;
     }
 
@@ -219,6 +230,8 @@ contract Utils {
 
     function getPoolData(address token) public view returns(PoolDataStruct memory poolData){
         address payable pool = getPool(token);
+        poolData.poolAddress = pool;
+        poolData.tokenAddress = token;
         poolData.genesis = iSPOOL(pool).genesis();
         poolData.baseAmt = iSPOOL(pool).baseAmt();
         poolData.tokenAmt = iSPOOL(pool).tokenAmt();
@@ -266,7 +279,7 @@ contract Utils {
         return memberData;
     }
 
-        function getPoolAge(address token) public view returns (uint daysSinceGenesis){
+    function getPoolAge(address token) public view returns (uint daysSinceGenesis){
         address payable pool = getPool(token);
         uint genesis = iSPOOL(pool).genesis();
         if(now < genesis.add(86400)){

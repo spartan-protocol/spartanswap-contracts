@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 var Token1 = artifacts.require('./Token1')
-var Sparta = artifacts.require('./Sparta2')
+var Sparta = artifacts.require('./Sparta')
 const BigNumber = require('bignumber.js')
 const truffleAssert = require('truffle-assertions')
 
@@ -53,11 +53,11 @@ describe("Deploy", function() {
 
 describe("Upgrade", function() {
     it("DAO list token", async function() {
-        // console.log(await sparta.tokenCount())
+        // console.log(await sparta.assetCount())
         expect(await sparta.isListed(token1.address)).to.equal(false);
         await sparta.listAssetWithClaim(token1.address, BN2Str(50000000 * one), BN2Str(one));
         expect(BN2Str(await sparta.getAdjustedClaimRate(token1.address))).to.equal(BN2Str(1000000000000000000));
-        expect(BN2Str(await sparta.tokenCount())).to.equal(BN2Str(1));
+        expect(BN2Str(await sparta.assetCount())).to.equal(BN2Str(1));
         expect(await sparta.isListed(token1.address)).to.equal(true);
         console.log(await sparta.allAssets())
         // expect(await sparta.allAssets()).to.deeplyEqual([ '0x7c2C195CD6D34B8F845992d380aADB2730bB9C6F' ]);
@@ -68,10 +68,10 @@ describe("Upgrade", function() {
         await sparta.listAssetWithClaim(acc2, BN2Str(50000000 * one), BN2Str(one));
         await sparta.listAssetWithClaim(acc3, BN2Str(50000000 * one), BN2Str(one));
         await sparta.listAssetWithClaim(acc4, BN2Str(50000000 * one), BN2Str(one));
-        console.log(BN2Str(await sparta.tokenCount()))
+        console.log(BN2Str(await sparta.assetCount()))
         console.log(await sparta.allAssets())
-        console.log(await sparta.tokensInRange('0', '3'))
-        console.log(await sparta.tokensInRange('0', '9'))
+        console.log(await sparta.assetsInRange('0', '3'))
+        console.log(await sparta.assetsInRange('0', '9'))
       });
 
   it("Should upgrade acc1", async function() {

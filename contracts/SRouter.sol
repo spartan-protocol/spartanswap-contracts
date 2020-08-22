@@ -15,6 +15,9 @@ interface iERC20 {
     event Transfer(address indexed from, address indexed to, uint value);
     event Approval(address indexed owner, address indexed spender, uint value);
 }
+interface iSPARTA {
+    function secondsPerEra() external view returns (uint);
+}
 interface iUTILS {
     function calcPart(uint bp, uint total) external pure returns (uint part);
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
@@ -22,6 +25,7 @@ interface iUTILS {
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
     function calcStakeUnits(uint a, uint A, uint v, uint S) external pure returns (uint units);
     function calcAsymmetricShare(uint s, uint T, uint A) external pure returns (uint share);
+    function getPoolAge(address token) external view returns(uint age);
     function getPoolShare(address token, uint units) external view returns(uint baseAmt, uint tokenAmt);
     function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmt, uint tokenAmt, uint outputAmt);
 }
@@ -238,6 +242,23 @@ contract SPool is iERC20 {
     }
 
     //==================================================================================//
+    // Dividend functions
+
+    function add(address token, uint amount) public returns (bool success) {
+        if(token == SPARTA){
+            iERC20(SPARTA).transferFrom(msg.sender, address(this), amount);
+            baseAmt = baseAmt.add(amount);
+            return true;
+        } else if (token == TOKEN){
+            iERC20(TOKEN).transferFrom(msg.sender, address(this), amount);
+            tokenAmt = tokenAmt.add(amount); 
+            return true;
+        } else {
+            return false;
+        }
+    } 
+
+    //==================================================================================//
     // Data Model
 
     function _incrementPoolBalances(uint _baseAmt, uint _tokenAmt) internal {
@@ -341,17 +362,25 @@ contract SRouter {
     address public SPARTA;
     iUTILS public UTILS;
 
+    uint256 public currentEra;
+    uint256 public nextEraTime;
+    uint256 public reserve;
+
     uint public totalStaked; 
-    uint public allTimeVolume;
-    uint public allTimeTx;
+    uint public totalVolume;
+    uint public totalFees;
+    uint public unstakeTx;
+    uint public stakeTx;
+    uint public swapTx;
 
     address[] public arrayTokens;
     mapping(address=>address payable) private mapToken_Pool;
 
+    event NewPool(address token, address pool, uint genesis);
     event Staked(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event Unstaked(address member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
-
+    event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 reserve);
 
     constructor (address _sparta, address _utils) public payable {
         SPARTA = _sparta; //0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D;
@@ -369,8 +398,9 @@ contract SRouter {
         mapToken_Pool[token] = pool;
         arrayTokens.push(token);
         totalStaked += _actualInputBase;
-        allTimeTx += 1;
+        stakeTx += 1;
         SPool(pool)._handleStake(_actualInputBase, _actualInputToken, msg.sender);
+        emit NewPool(token, pool, now);
         return pool;
     }
 
@@ -389,7 +419,7 @@ contract SRouter {
         units = SPool(pool)._handleStake(_actualInputBase, _actualInputToken, member);
         emit Staked(member, _actualInputBase, _actualInputToken, units);
         totalStaked += _actualInputBase;
-        allTimeTx += 1;
+        stakeTx += 1;
         return units;
     }
 
@@ -412,7 +442,7 @@ contract SRouter {
         SPool(pool)._handleUnstake(units, _outputBase, _outputToken, member);
         emit Unstaked(member, _outputBase, _outputToken, units);
         totalStaked = totalStaked.sub(_outputBase);
-        allTimeTx += 1;
+        unstakeTx += 1;
         _handleTransferOut(token, _outputToken, pool, member);
         _handleTransferOut(SPARTA, _outputBase, pool, member);
         return true;
@@ -432,7 +462,7 @@ contract SRouter {
         SPool(pool)._handleUnstake(units, _outputBase, _outputToken, msg.sender);
         emit Unstaked(msg.sender, _outputBase, _outputToken, units);
         totalStaked = totalStaked.sub(_outputBase);
-        allTimeTx += 1;
+        unstakeTx += 1;
         _handleTransferOut(token, _outputToken, pool, msg.sender);
         _handleTransferOut(SPARTA, _outputBase, pool, msg.sender);
         return _outputAmount;
@@ -449,11 +479,13 @@ contract SRouter {
         address payable pool = getPool(token);
         uint _actualAmount = _handleTransferIn(SPARTA, amount, pool);
         (outputAmount, fee) = SPool(pool)._swapBaseToToken(amount);
-        emit Swapped(SPARTA, token, _actualAmount, 0, outputAmount, fee, member);
+        // addDividend(pool, outputAmount, fee);
         totalStaked += _actualAmount;
-        allTimeVolume += _actualAmount;
-        allTimeTx += 1;
+        totalVolume += _actualAmount;
+        totalFees += SPool(pool).calcValueInBase(fee);
+        swapTx += 1;
         _handleTransferOut(token, outputAmount, pool, member);
+        emit Swapped(SPARTA, token, _actualAmount, 0, outputAmount, fee, member);
         return (outputAmount, fee);
     }
 
@@ -465,11 +497,13 @@ contract SRouter {
         address payable pool = getPool(token);
         uint _actualAmount = _handleTransferIn(token, amount, pool);
         (outputAmount, fee) = SPool(pool)._swapTokenToBase(amount);
-        emit Swapped(token, SPARTA, _actualAmount, 0, outputAmount, fee, member);
+        // addDividend(pool, outputAmount, fee);
         totalStaked = totalStaked.sub(outputAmount);
-        allTimeVolume += outputAmount;
-        allTimeTx += 1;
+        totalVolume += outputAmount;
+        totalFees += fee;
+        swapTx += 1;
         _handleTransferOut(SPARTA, outputAmount, pool, member);
+        emit Swapped(token, SPARTA, _actualAmount, 0, outputAmount, fee, member);
         return (outputAmount, fee);
     }
 
@@ -481,24 +515,70 @@ contract SRouter {
         if(fromToken == SPARTA){
             (outputAmount, fee) = SPool(poolFrom)._swapBaseToToken(_actualAmount);      // Buy to token
             totalStaked += _actualAmount;
-            allTimeVolume += _actualAmount;
+            totalVolume += _actualAmount;
+            // addDividend(poolFrom, outputAmount, fee);
         } else if(toToken == SPARTA) {
             (outputAmount, fee) = SPool(poolFrom)._swapTokenToBase(_actualAmount);   // Sell to token
             totalStaked = totalStaked.sub(outputAmount);
-            allTimeVolume += outputAmount;
+            totalVolume += outputAmount;
+            // addDividend(poolFrom, outputAmount, fee);
         } else {
             (uint _yy, uint _feey) = SPool(poolFrom)._swapTokenToBase(_actualAmount);             // Sell to SPARTA
-            allTimeVolume += _yy;
+            totalVolume += _yy; totalFees += _feey;
+            // addDividend(poolFrom, _yy, _feey);
             iERC20(SPARTA).transferFrom(poolFrom, poolTo, _yy); 
             (uint _zz, uint _feez) = SPool(poolTo)._swapBaseToToken(_yy);              // Buy to token
+            totalFees += SPool(poolTo).calcValueInBase(_feez);
+            // addDividend(poolTo, _zz, _feez);
             _transferAmount = _yy; outputAmount = _zz; 
             fee = _feez + SPool(poolTo).calcValueInToken(_feey);
         }
-        emit Swapped(fromToken, toToken, _actualAmount, _transferAmount, outputAmount, fee, msg.sender);
-        allTimeTx += 1;
+        swapTx += 1;
         _handleTransferOut(toToken, outputAmount, poolTo, msg.sender);
+        emit Swapped(fromToken, toToken, _actualAmount, _transferAmount, outputAmount, fee, msg.sender);
         return (outputAmount, fee);
     }
+
+
+    //==================================================================================//
+    // Revenue Functions
+
+    // Every swap after every Era, updates the balance
+    // Every swap takes 1000th of the reserve, adds it baseAmt balance
+    // Every swap charges 30 BP from swapper, burns it
+
+    // function _checkEmission() private {
+    //     if (now >= nextEraTime) {                                                           // If new Era and allowed to emit
+    //         currentEra += 1;                                                               // Increment Era
+    //         nextEraTime = now + iSPARTA(SPARTA).secondsPerEra() + 100;                     // Set next Era time
+    //         syncReserve();
+    //         emit NewEra(currentEra, nextEraTime, reserve);                               // Emit Event
+    //     }
+    // }
+
+    // function syncReserves() public {
+    //     reserve = iERC20(SPARTA).balanceOf(address(this));
+    //     // burn income
+    // }
+
+    // function payDividends(address token) public {
+    //     uint dividend = getDividend(token);
+    //     reserve = reserve.sub(dividend);
+    //     SPool(pool).add(SPARTA, dividend);
+    // }
+
+    // function getSwapShare(uint amount, uint fee) public view returns(uint share) {
+    //     uint dayCount = UTILS.getPoolAge(address(0));
+    //     uint txPerDay = swapTx.div(dayCount); // Average tx per day, eg 200
+    //     uint txShare = reserve.div(txPerDay); // txShare is reserve / 200 
+    //     return txShare.mul(fee).div(amount); // 10% slip -> 10% of txShare
+    // }
+
+    // function addDividend(address payable pool, uint outputAmount, uint fee) private {
+    //     uint dividend = getSwapShare(outputAmount, fee);
+    //     reserve = reserve.sub(dividend);
+    //     SPool(pool).add(SPARTA, dividend);
+    // }
 
     //==================================================================================//
     // Token Transfer Functions
