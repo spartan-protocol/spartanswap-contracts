@@ -103,7 +103,7 @@ contract SDao {
     uint256 private _status;
     address public DEPLOYER;
 
-    address private _router;
+    
     iUTILS public UTILS;
 
     uint256 public totalWeight;
@@ -113,6 +113,8 @@ contract SDao {
     address public proposedRouter;
     bool public proposedRouterChange;
     uint public routerChangeStart;
+    bool public routerHasMoved;
+    address private _router;
 
     address public proposedDao;
     bool public proposedDaoChange;
@@ -126,9 +128,7 @@ contract SDao {
     mapping(address => uint256) public mapMember_Weight; // Value of weight
 
     mapping(address => uint256) public mapAddress_Votes; // Value of weight
-    mapping(address => mapping(address => uint256)) public mapRouterMember_Votes; // Value of weight
-    mapping(address => uint256) public mapAddress_Votes; // Value of weight
-    mapping(address => mapping(address => uint256)) public mapDaoMember_Votes; // Value of weight
+    mapping(address => mapping(address => uint256)) public mapAddressMember_Votes; // Value of weight
 
     event MemberLocks(address indexed member,address indexed pool,uint256 amount);
     event MemberUnlocks(address indexed member,address indexed pool,uint256 balance);
@@ -205,29 +205,30 @@ contract SDao {
     //============================== GOVERNANCE ================================//
 
     // Member votes new Router
-    function voteRouterChange(address router) public nonReentrant {
-        mapAddress_Votes[router] = mapAddress_Votes[router].sub(mapRouterMember_Votes[router][msg.sender]);
-        uint voteWeight = mapMember_Weight[msg.sender];
-        mapAddress_Votes[router] += voteWeight;
-        mapRouterMember_Votes[router][msg.sender] = voteWeight;
+    function voteRouterChange(address router) public nonReentrant returns (uint voteWeight) {
+        voteWeight = countVotes(router);
         updateRouterChange(router);
         emit NewVote(msg.sender, router, voteWeight, mapAddress_Votes[router], 'ROUTER');
     }
+
     function updateRouterChange(address _newRouter) internal {
         if(hasQuorum(_newRouter)){
             proposedRouter = _newRouter;
             proposedRouterChange = true;
             routerChangeStart = now;
+            routerHasMoved = false;
             emit ProposalFinalising(msg.sender, _newRouter, now+coolOffPeriod, 'ROUTER');
         }
     }
 
     function moveRouter() public nonReentrant {
+        require(proposedRouter != address(0));
         checkRouterChange(proposedRouter);
         if(proposedRouterChange){
             if((now - routerChangeStart) > coolOffPeriod){
                 _router = proposedRouter;
-                emit NewAddress(msg.sender, _router, mapAddress_Votes[proposedRouter], totalWeight, 'ROUTER');
+                routerHasMoved = true;
+                emit NewAddress(msg.sender, proposedRouter, mapAddress_Votes[proposedRouter], totalWeight, 'ROUTER');
                 mapAddress_Votes[proposedRouter] = 0;
                 proposedRouter = address(0);
                 proposedRouterChange = false;
@@ -235,17 +236,14 @@ contract SDao {
         }
     }
     function checkRouterChange(address _newRouter) internal {
-        if(hasQuorum(_newRouter)){
+        if(!hasQuorum(_newRouter)){
             proposedRouterChange = false;
         }
     }
 
     // Member votes new DAO
-    function voteDaoChange(address newDao) public nonReentrant {
-        mapAddress_Votes[newDao] = mapAddress_Votes[newDao].sub(mapDaoMember_Votes[newDao][msg.sender]);
-        uint voteWeight = mapMember_Weight[msg.sender];
-        mapAddress_Votes[newDao] += voteWeight;
-        mapDaoMember_Votes[newDao][msg.sender] += voteWeight;
+    function voteDaoChange(address newDao) public nonReentrant returns (uint voteWeight) {
+        voteWeight = countVotes(newDao);
         updateDaoChange(newDao);
         emit NewVote(msg.sender, newDao, voteWeight, mapAddress_Votes[newDao], 'DAO');
     }
@@ -258,22 +256,31 @@ contract SDao {
         }
     }
     function moveDao() public nonReentrant{
+        require(proposedDao != address(0));
         checkDaoChange(proposedDao);
         if(proposedDaoChange){
             if((now - daoChangeStart) > coolOffPeriod){
                 daoHasMoved = true;
                 SDAO = proposedDao;
+                emit NewAddress(msg.sender, proposedDao, mapAddress_Votes[proposedDao], totalWeight, 'DAO');
+                mapAddress_Votes[proposedDao] = 0;
+                proposedDao = address(0);
+                proposedDaoChange = false;
             }
         }
     }
     function checkDaoChange(address _newDao) internal {
-        uint yesVotes = mapAddress_Votes[_newDao];
-        uint consensus = totalWeight.div(2);
-        if(yesVotes <= consensus){
-            proposedDao = _newDao;
-            proposedDaoChange = true;
-            daoChangeStart = now;
+        if(!hasQuorum(_newDao)){
+            proposedDaoChange = false;
         }
+    }
+
+    function countVotes(address _address) internal returns (uint voteWeight){
+        mapAddress_Votes[_address] = mapAddress_Votes[_address].sub(mapAddressMember_Votes[_address][msg.sender]);
+        voteWeight = mapMember_Weight[msg.sender];
+        mapAddress_Votes[_address] += voteWeight;
+        mapAddressMember_Votes[_address][msg.sender] = voteWeight;
+        return voteWeight;
     }
 
     function hasQuorum(address _address) public view returns(bool){

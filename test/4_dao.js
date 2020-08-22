@@ -14,7 +14,7 @@ var UTILS = artifacts.require("./Utils.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
 
 var sparta; var token1;  var token2; var addr1; var addr2;
-var utils; var sRouter; var sRouter2; var sDao;
+var utils; var sRouter; var sRouter2; var sDao; var sDao2;
 var sPoolETH; var sPoolTKN1; var sPoolTKN2;
 var acc0; var acc1; var acc2; var acc3;
 
@@ -30,8 +30,10 @@ contract('SPT', function (accounts) {
     lockFail()
     lockETH(acc0)
     lockTKN(acc1)
-    voteRouter(acc0)
-    tryToMove()
+    // voteRouter(acc0)
+    // tryToMove()
+    voteDao(acc0)
+    tryToMoveDao()
 
 })
 
@@ -172,18 +174,18 @@ async function voteRouter() {
         sRouter2 = await SROUTER.new(sparta.address, sDao.address, utils.address)
         console.log(`sRouter2: ${sRouter2.address}`)
         await sDao.voteRouterChange(sRouter2.address, { from: acc0 })
-        console.log(`mapRouter_Votes: ${await sDao.mapRouter_Votes(sRouter2.address)}`)
-        console.log(`mapRouterMember_Votes: ${await sDao.mapRouterMember_Votes(sRouter2.address, acc0)}`)
-        console.log(`checkQuorumRouter: ${await sDao.checkQuorumRouter(sRouter2.address)}`)
+        console.log(`mapAddress_Votes: ${await sDao.mapAddress_Votes(sRouter2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await sDao.mapAddressMember_Votes(sRouter2.address, acc0)}`)
+        console.log(`hasQuorum: ${await sDao.hasQuorum(sRouter2.address)}`)
         console.log(`proposedRouter: ${await sDao.proposedRouter()}`)
         console.log(`proposedRouterChange: ${await sDao.proposedRouterChange()}`)
         console.log(`routerChangeStart: ${await sDao.routerChangeStart()}`)
     })
     it("It should vote again", async () => {
         await sDao.voteRouterChange(sRouter2.address, { from: acc1 })
-        console.log(`mapRouter_Votes: ${await sDao.mapRouter_Votes(sRouter2.address)}`)
-        console.log(`mapRouterMember_Votes: ${await sDao.mapRouterMember_Votes(sRouter2.address, acc1)}`)
-        console.log(`checkQuorumRouter: ${await sDao.checkQuorumRouter(sRouter2.address)}`)
+        console.log(`mapAddress_Votes: ${await sDao.mapAddress_Votes(sRouter2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await sDao.mapAddressMember_Votes(sRouter2.address, acc1)}`)
+        console.log(`hasQuorum: ${await sDao.hasQuorum(sRouter2.address)}`)
         console.log(`proposedRouter: ${await sDao.proposedRouter()}`)
         console.log(`proposedRouterChange: ${await sDao.proposedRouterChange()}`)
         console.log(`routerChangeStart: ${await sDao.routerChangeStart()}`)
@@ -193,21 +195,77 @@ async function voteRouter() {
 async function tryToMove() {
     it("It should move again", async () => {
         await sDao.moveRouter()
-        console.log(`mapRouter_Votes: ${await sDao.mapRouter_Votes(sRouter2.address)}`)
-        console.log(`mapRouterMember_Votes: ${await sDao.mapRouterMember_Votes(sRouter2.address, acc1)}`)
-        console.log(`checkQuorumRouter: ${await sDao.checkQuorumRouter(sRouter2.address)}`)
+        console.log(`mapAddress_Votes: ${await sDao.mapAddress_Votes(sRouter2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await sDao.mapAddressMember_Votes(sRouter2.address, acc1)}`)
+        console.log(`hasQuorum: ${await sDao.hasQuorum(sRouter2.address)}`)
         console.log(`proposedRouter: ${await sDao.proposedRouter()}`)
         console.log(`proposedRouterChange: ${await sDao.proposedRouterChange()}`)
         console.log(`routerChangeStart: ${await sDao.routerChangeStart()}`)
+        console.log(`routerHasMoved: ${await sDao.routerHasMoved()}`)
+        console.log(`ROUTER: ${await sDao.ROUTER()}`)
     })
     it("It should try to move again", async () => {
         await sleep(2000)
         await sDao.moveRouter()
-        console.log(`mapRouter_Votes: ${await sDao.mapRouter_Votes(sRouter2.address)}`)
-        console.log(`mapRouterMember_Votes: ${await sDao.mapRouterMember_Votes(sRouter2.address, acc1)}`)
-        console.log(`checkQuorumRouter: ${await sDao.checkQuorumRouter(sRouter2.address)}`)
+        console.log(`mapAddress_Votes: ${await sDao.mapAddress_Votes(sRouter2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await sDao.mapAddressMember_Votes(sRouter2.address, acc1)}`)
+        console.log(`hasQuorum: ${await sDao.hasQuorum(sRouter2.address)}`)
         console.log(`proposedRouter: ${await sDao.proposedRouter()}`)
         console.log(`proposedRouterChange: ${await sDao.proposedRouterChange()}`)
         console.log(`routerChangeStart: ${await sDao.routerChangeStart()}`)
+        console.log(`routerHasMoved: ${await sDao.routerHasMoved()}`)
+        console.log(`ROUTER: ${await sDao.ROUTER()}`)
+    })
+}
+
+async function voteDao() {
+    it("It should vote", async () => {
+        sDao2 = await SDAO.new(utils.address)
+        console.log(`sDao2: ${sDao2.address}`)
+        await sDao.voteDaoChange(sDao2.address, { from: acc0 })
+        console.log(`mapAddress_Votes: ${await sDao.mapAddress_Votes(sDao2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await sDao.mapAddressMember_Votes(sDao2.address, acc0)}`)
+        console.log(`hasQuorum: ${await sDao.hasQuorum(sDao2.address)}`)
+        console.log(`proposedDao: ${await sDao.proposedDao()}`)
+        console.log(`proposedDaoChange: ${await sDao.proposedDaoChange()}`)
+        console.log(`daoChangeStart: ${await sDao.daoChangeStart()}`)
+    })
+    it("It should vote again", async () => {
+        await sDao.voteDaoChange(sDao2.address, { from: acc1 })
+        console.log(`mapAddress_Votes: ${await sDao.mapAddress_Votes(sDao2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await sDao.mapAddressMember_Votes(sDao2.address, acc1)}`)
+        console.log(`hasQuorum: ${await sDao.hasQuorum(sDao2.address)}`)
+        console.log(`proposedDao: ${await sDao.proposedDao()}`)
+        console.log(`proposedDaoChange: ${await sDao.proposedDaoChange()}`)
+        console.log(`daoChangeStart: ${await sDao.daoChangeStart()}`)
+    })
+}
+
+async function tryToMoveDao() {
+    it("It should revert for address(0)", async () => {
+        await truffleAssert.reverts(sDao.moveRouter());
+    })
+    it("It should move again", async () => {
+        await sDao.moveDao()
+        console.log(`mapAddress_Votes: ${await sDao.mapAddress_Votes(sDao2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await sDao.mapAddressMember_Votes(sDao2.address, acc1)}`)
+        console.log(`hasQuorum: ${await sDao.hasQuorum(sDao2.address)}`)
+        console.log(`proposedDao: ${await sDao.proposedDao()}`)
+        console.log(`proposedDaoChange: ${await sDao.proposedDaoChange()}`)
+        console.log(`daoChangeStart: ${await sDao.daoChangeStart()}`)
+        console.log(`daoHasMoved: ${await sDao.daoHasMoved()}`)
+        console.log(`SDAO: ${await sDao.SDAO()}`)
+    })
+    it("It should try to move again", async () => {
+        await sleep(2000)
+        await sDao.moveDao()
+        console.log(`mapAddress_Votes: ${await sDao.mapAddress_Votes(sDao2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await sDao.mapAddressMember_Votes(sDao2.address, acc1)}`)
+        console.log(`hasQuorum: ${await sDao.hasQuorum(sDao2.address)}`)
+        console.log(`proposedDao: ${await sDao.proposedDao()}`)
+        console.log(`proposedDaoChange: ${await sDao.proposedDaoChange()}`)
+        console.log(`daoChangeStart: ${await sDao.daoChangeStart()}`)
+        console.log(`daoHasMoved: ${await sDao.daoHasMoved()}`)
+        console.log(`SDAO: ${await sDao.SDAO()}`)
     })
 }
