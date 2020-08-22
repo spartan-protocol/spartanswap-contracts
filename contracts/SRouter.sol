@@ -398,8 +398,8 @@ contract SRouter {
 
     function createPool(uint inputBase, uint inputToken, address token) public payable returns(address payable pool){
         require(getPool(token) == address(0), "CreateErr");
-        require(token != SPARTA, "CreateErr");
-        require((inputToken > 0 && inputBase > 0), "CreateErr");
+        require(token != SPARTA, "Must not be Sparta");
+        require((inputToken > 0 && inputBase > 0), "Must get tokens for both");
         SPool newPool = new SPool(SPARTA, SDAO, UTILS, token);
         pool = payable(address(newPool));
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);

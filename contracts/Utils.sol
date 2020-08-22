@@ -390,26 +390,26 @@ contract Utils {
         return numerator.div(denominator);
     }
 
-    function calcStakeUnits(uint a, uint A, uint v, uint V) public pure returns (uint units){
-        // units = ((V + A) * (v * A + V * a))/(4 * V * A)
+    function calcStakeUnits(uint b, uint B, uint t, uint T) public pure returns (uint units){
+        // units = ((T + B) * (t * B + T * b))/(4 * T * B)
         // (part1 * (part2 + part3)) / part4
-        uint part1 = V.add(A);
-        uint part2 = v.mul(A);
-        uint part3 = V.mul(a);
+        uint part1 = T.add(B);
+        uint part2 = t.mul(B);
+        uint part3 = T.mul(b);
         uint numerator = part1.mul((part2.add(part3)));
-        uint part4 = 4 * (V.mul(A));
+        uint part4 = 4 * (T.mul(B));
         return numerator.div(part4);
     }
 
-    function calcAsymmetricShare(uint s, uint T, uint A) public pure returns (uint share){
-        // share = (s * A * (2 * T^2 - 2 * T * s + s^2))/T^3
+    function calcAsymmetricShare(uint u, uint U, uint A) public pure returns (uint share){
+        // share = (u * U * (2 * A^2 - 2 * U * u + U^2))/U^3
         // (part1 * (part2 - part3 + part4)) / part5
-        uint part1 = s.mul(A);
-        uint part2 = T.mul(T).mul(2);
-        uint part3 = T.mul(s).mul(2);
-        uint part4 = s.mul(s);
+        uint part1 = u.mul(A);
+        uint part2 = U.mul(U).mul(2);
+        uint part3 = U.mul(u).mul(2);
+        uint part4 = u.mul(u);
         uint numerator = part1.mul(part2.sub(part3).add(part4));
-        uint part5 = T.mul(T).mul(T);
+        uint part5 = U.mul(U).mul(U);
         return numerator.div(part5);
     }
 
