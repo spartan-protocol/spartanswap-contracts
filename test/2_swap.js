@@ -24,7 +24,7 @@ var utils; var sRouter; var sDao;
 var sPoolETH; var sPoolTKN1; var sPoolTKN2;
 var acc0; var acc1; var acc2; var acc3;
 
-contract('SPARTA', function (accounts) {
+contract('BASE', function (accounts) {
     acc0 = accounts[0]; acc1 = accounts[1]; acc2 = accounts[2]; acc3 = accounts[3]
     createPool()
     // checkDetails()
@@ -32,9 +32,9 @@ contract('SPARTA', function (accounts) {
     // checkDetails()
 
     // Single swap
-    swapSPARTAToETH(acc0, _.BN2Str(_.one * 10))
+    swapBASEToETH(acc0, _.BN2Str(_.one * 10))
     // checkDetails()
-    swapETHToSPARTA(acc0, _.BN2Str(_.one * 1))
+    swapETHToBASE(acc0, _.BN2Str(_.one * 1))
     // checkDetails()
 
     stakeTKN1(acc1, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100))
@@ -161,34 +161,34 @@ async function createPool() {
     })
 }
 
-async function stake(acc, v, a) {
+async function stake(acc, b, t) {
 
     it(`It should stake ETH from ${acc}`, async () => {
         let token = _.ETH
         let sPool = sPoolETH
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
-        var A = _.getBN(poolData.tokenAmt)
+        var T = _.getBN(poolData.tokenAmt)
         poolUnits = _.getBN((await sPool.totalSupply()))
-        console.log('start data', _.BN2Str(S), _.BN2Str(A), _.BN2Str(poolUnits))
+        console.log('start data', _.BN2Str(S), _.BN2Str(T), _.BN2Str(poolUnits))
 
-        let units = math.calcStakeUnits(a, A.plus(a), v, S.plus(v))
-        console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(S.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
+        let units = math.calcStakeUnits(t, T.plus(t), b, S.plus(b))
+        console.log(_.BN2Str(units), _.BN2Str(b), _.BN2Str(S.plus(b)), _.BN2Str(t), _.BN2Str(T.plus(t)))
         
-        let tx = await sRouter.stake(v, a, token, { from: acc, value: a })
+        let tx = await sRouter.stake(b, t, token, { from: acc, value: t })
         poolData = await utils.getPoolData(token);
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(v)))
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(A.plus(a)))
-        assert.equal(_.BN2Str(poolData.baseAmtStaked), _.BN2Str(S.plus(v)))
-        assert.equal(_.BN2Str(poolData.tokenAmtStaked), _.BN2Str(A.plus(a)))
+        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.plus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmtStaked), _.BN2Str(S.plus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmtStaked), _.BN2Str(T.plus(t)))
         assert.equal(_.BN2Str((await sPool.totalSupply())), _.BN2Str(units.plus(poolUnits)), 'poolUnits')
         assert.equal(_.BN2Str(await sPool.balanceOf(acc)), _.BN2Str(units), 'units')
-        assert.equal(_.BN2Str(await sparta.balanceOf(sPool.address)), _.BN2Str(S.plus(v)), 'spartan balance')
-        assert.equal(_.BN2Str(await web3.eth.getBalance(sPool.address)), _.BN2Str(A.plus(a)), 'ether balance')
+        assert.equal(_.BN2Str(await sparta.balanceOf(sPool.address)), _.BN2Str(S.plus(b)), 'spartan balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(sPool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
         let memberData = (await utils.getMemberData(token, acc))
-        assert.equal(memberData.baseAmtStaked, v, 'baseAmt')
-        assert.equal(memberData.tokenAmtStaked, a, 'tokenAmt')
+        assert.equal(memberData.baseAmtStaked, b, 'baseAmt')
+        assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(sPool.address));
         const spartanBal = _.BN2Token(await sparta.balanceOf(sPool.address));
@@ -196,43 +196,43 @@ async function stake(acc, v, a) {
     })
 }
 
-async function stakeTKN1(acc, a, v) {
+async function stakeTKN1(acc, t, b) {
     it(`It should stake TKN1 from ${acc}`, async () => {
-        await _stakeTKN(acc, a, v, token1, sPoolTKN1)
+        await _stakeTKN(acc, t, b, token1, sPoolTKN1)
         await help.logPool(utils, token1.address, 'TKN1')
     })
 }
-async function stakeTKN2(acc, a, v) {
+async function stakeTKN2(acc, t, b) {
     it(`It should stake TKN2 from ${acc}`, async () => {
-        await _stakeTKN(acc, a, v, token2, sPoolTKN2)
+        await _stakeTKN(acc, t, b, token2, sPoolTKN2)
         await help.logPool(utils, token2.address, 'TKN2')
     })
 }
 
-async function _stakeTKN(acc, a, v, token, sPool) {
+async function _stakeTKN(acc, t, b, token, sPool) {
     let poolData = await utils.getPoolData(token.address);
     var S = _.getBN(poolData.baseAmt)
-    var A = _.getBN(poolData.tokenAmt)
+    var T = _.getBN(poolData.tokenAmt)
     poolUnits = _.getBN((await sPool.totalSupply()))
-    console.log('start data', _.BN2Str(S), _.BN2Str(A), _.BN2Str(poolUnits))
+    console.log('start data', _.BN2Str(S), _.BN2Str(T), _.BN2Str(poolUnits))
 
-    let units = math.calcStakeUnits(a, A.plus(a), v, S.plus(v))
-    console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(S.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
+    let units = math.calcStakeUnits(t, T.plus(t), b, S.plus(b))
+    console.log(_.BN2Str(units), _.BN2Str(b), _.BN2Str(S.plus(b)), _.BN2Str(t), _.BN2Str(T.plus(t)))
     
-    let tx = await sRouter.stake(v, a, token.address, { from: acc})
+    let tx = await sRouter.stake(b, t, token.address, { from: acc})
     poolData = await utils.getPoolData(token.address);
-    assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(v)))
-    assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(A.plus(a)))
-    assert.equal(_.BN2Str(poolData.baseAmtStaked), _.BN2Str(S.plus(v)))
-    assert.equal(_.BN2Str(poolData.tokenAmtStaked), _.BN2Str(A.plus(a)))
+    assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(b)))
+    assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.plus(t)))
+    assert.equal(_.BN2Str(poolData.baseAmtStaked), _.BN2Str(S.plus(b)))
+    assert.equal(_.BN2Str(poolData.tokenAmtStaked), _.BN2Str(T.plus(t)))
     assert.equal(_.BN2Str((await sPool.totalSupply())), _.BN2Str(units.plus(poolUnits)), 'poolUnits')
     assert.equal(_.BN2Str(await sPool.balanceOf(acc)), _.BN2Str(units), 'units')
-    assert.equal(_.BN2Str(await sparta.balanceOf(sPool.address)), _.BN2Str(S.plus(v)), 'spartan balance')
-    assert.equal(_.BN2Str(await token.balanceOf(sPool.address)), _.BN2Str(A.plus(a)), 'ether balance')
+    assert.equal(_.BN2Str(await sparta.balanceOf(sPool.address)), _.BN2Str(S.plus(b)), 'spartan balance')
+    assert.equal(_.BN2Str(await token.balanceOf(sPool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
     let memberData = (await utils.getMemberData(token.address, acc))
-    assert.equal(memberData.baseAmtStaked, v, 'baseAmt')
-    assert.equal(memberData.tokenAmtStaked, a, 'tokenAmt')
+    assert.equal(memberData.baseAmtStaked, b, 'baseAmt')
+    assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
 
     const tokenBal = _.BN2Token(await web3.eth.getBalance(sPool.address));
     const spartanBal = _.BN2Token(await sparta.balanceOf(sPool.address));
@@ -240,62 +240,66 @@ async function _stakeTKN(acc, a, v, token, sPool) {
 }
 
 
-async function swapSPARTAToETH(acc, v) {
+async function swapBASEToETH(acc, b) {
 
-    it(`It should buy ETH with SPARTA from ${acc}`, async () => {
+    it(`It should buy ETH with BASE from ${acc}`, async () => {
         let token = _.ETH
         let poolData = await utils.getPoolData(token);
-        const V = _.getBN(poolData.baseAmt)
-        const A = _.getBN(poolData.tokenAmt)
-        // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
+        const B = _.getBN(poolData.baseAmt)
+        const T = _.getBN(poolData.tokenAmt)
+        console.log('start data', _.BN2Str(B), _.BN2Str(T))
 
-        let a = math.calcSwapOutput(v, V, A)
-        let fee = math.calcSwapFee(v, V, A)
-        // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
+        let t = math.calcSwapOutput(b, B, T)
+        let fee = math.calcSwapFee(b, B, T)
+        console.log(_.BN2Str(t), _.BN2Str(T), _.BN2Str(B), _.BN2Str(b), _.BN2Str(fee))
         
-        let tx = await sRouter.buy(v, _.ETH)
+        let tx = await sRouter.buy(b, _.ETH)
         poolData = await utils.getPoolData(token);
 
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(v))
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(a))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(b))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(t))
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
 
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(A.minus(a)))
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(V.plus(v)))
+        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.plus(b)))
 
-        assert.equal(_.BN2Str(await web3.eth.getBalance(sPoolETH.address)), _.BN2Str(A.minus(a)), 'ether balance')
-        assert.equal(_.BN2Str(await sparta.balanceOf(sPoolETH.address)), _.BN2Str(V.plus(v)), 'spartan balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(sPoolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
+        assert.equal(_.BN2Str(await sparta.balanceOf(sPoolETH.address)), _.BN2Str(B.plus(b)), 'spartan balance')
 
         await help.logPool(utils, _.ETH, 'ETH')
     })
 }
 
-async function swapETHToSPARTA(acc, a) {
+async function swapETHToBASE(acc, t) {
 
-    it(`It should sell ETH to SPARTA from ${acc}`, async () => {
+    it(`It should sell ETH to BASE from ${acc}`, async () => {
         let token = _.ETH
+        await help.logPool(utils, token, 'ETH')
         let poolData = await utils.getPoolData(token);
-        const V = _.getBN(poolData.baseAmt)
-        const A = _.getBN(poolData.tokenAmt)
-        // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
+        const B = _.getBN(poolData.baseAmt)
+        const T = _.getBN(poolData.tokenAmt)
+        // console.log('start data', _.BN2Str(B), _.BN2Str(T), stakerCount, _.BN2Str(poolUnits))
+        console.log(poolData)
 
-        let v = math.calcSwapOutput(a, A, V)
-        let fee = math.calcSwapFee(a, A, V)
-        // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
+        let b = math.calcSwapOutput(t, T, B)
+        let fee = math.calcSwapFee(t, T, B)
+        console.log(_.BN2Str(t), _.BN2Str(T), _.BN2Str(B), _.BN2Str(b), _.BN2Str(fee))
         
-        let tx = await sRouter.sell(a, _.ETH, { from: acc, value: a })
+        let tx = await sRouter.sell(t, token, { from: acc, value: t })
         poolData = await utils.getPoolData(token);
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(a))
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(v))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(t))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(b))
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
+        console.log(poolData)
+        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.plus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.minus(b)))
+        
 
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(A.plus(a)))
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(V.minus(v)))
 
-        assert.equal(_.BN2Str(await web3.eth.getBalance(sPoolETH.address)), _.BN2Str(A.plus(a)), 'ether balance')
-        // assert.equal(_.BN2Str(await sparta.balanceOf(sPoolETH.address)), _.BN2Str(V.minus(v)), 'spartan balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(sPoolETH.address)), _.BN2Str(T.plus(t)), 'ether balance')
+        assert.equal(_.BN2Str(await sparta.balanceOf(sPoolETH.address)), _.BN2Str(B.minus(b)), 'spartan balance')
 
-        await help.logPool(utils, _.ETH, 'ETH')
+        await help.logPool(utils, token, 'ETH')
     })
 }
 
@@ -320,16 +324,16 @@ async function _swapTKNToETH(acc, x, token, sPool) {
     let poolData2 = await utils.getPoolData(toToken);
     const X = _.getBN(poolData1.tokenAmt)
     const Y = _.getBN(poolData1.baseAmt)
-    const V = _.getBN(poolData2.baseAmt)
+    const B = _.getBN(poolData2.baseAmt)
     const Z = _.getBN(poolData2.tokenAmt)
-    // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
+    // console.log('start data', _.BN2Str(B), _.BN2Str(T), stakerCount, _.BN2Str(poolUnits))
 
     let y = math.calcSwapOutput(x, X, Y)
     let feey = math.calcSwapFee(x, X, Y)
-    let z = math.calcSwapOutput(y, V, Z)
-    let feez = math.calcSwapFee(y, V, Z)
-    let fee = math.calcValueIn(feey, V.plus(y), Z.minus(z)).plus(feez)
-    // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
+    let z = math.calcSwapOutput(y, B, Z)
+    let feez = math.calcSwapFee(y, B, Z)
+    let fee = math.calcValueIn(feey, B.plus(y), Z.minus(z)).plus(feez)
+    // console.log(_.BN2Str(t), _.BN2Str(T), _.BN2Str(B), _.BN2Str(b), _.BN2Str(fee))
     
     let tx = await sRouter.swap(x, token.address, toToken)
     poolData1 = await utils.getPoolData(token.address);
@@ -346,12 +350,12 @@ async function _swapTKNToETH(acc, x, token, sPool) {
 
     assert.equal(_.BN2Str(poolData1.tokenAmt), _.BN2Str(X.plus(x)))
     assert.equal(_.BN2Str(poolData1.baseAmt), _.BN2Str(Y.minus(y)))
-    assert.equal(_.BN2Str(poolData2.baseAmt), _.BN2Str(V.plus(y)))
+    assert.equal(_.BN2Str(poolData2.baseAmt), _.BN2Str(B.plus(y)))
     assert.equal(_.BN2Str(poolData2.tokenAmt), _.BN2Str(Z.minus(z)))
 
     assert.equal(_.BN2Str(await token.balanceOf(sPool.address)), _.BN2Str(X.plus(x)), 'token1 balance')
     assert.equal(_.BN2Str(await sparta.balanceOf(sPool.address)), _.BN2Str(Y.minus(y)), 'spartan balance')
-    assert.equal(_.BN2Str(await sparta.balanceOf(sPoolETH.address)), _.BN2Str(V.plus(y)), 'spartan balance eth')
+    assert.equal(_.BN2Str(await sparta.balanceOf(sPoolETH.address)), _.BN2Str(B.plus(y)), 'spartan balance eth')
     assert.equal(_.BN2Str(await web3.eth.getBalance(sPoolETH.address)), _.BN2Str(Z.minus(z)), 'ether balance')
 
     await help.logPool(utils, token.address, 'TKN1')
@@ -378,16 +382,16 @@ async function _swapETHToTKN(acc, x, token, sPool) {
     let poolData2 = await utils.getPoolData(token.address);
     const X = _.getBN(poolData1.tokenAmt)
     const Y = _.getBN(poolData1.baseAmt)
-    const V = _.getBN(poolData2.baseAmt)
+    const B = _.getBN(poolData2.baseAmt)
     const Z = _.getBN(poolData2.tokenAmt)
-    // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
+    // console.log('start data', _.BN2Str(B), _.BN2Str(T), stakerCount, _.BN2Str(poolUnits))
 
     let y = math.calcSwapOutput(x, X, Y)
     let feey = math.calcSwapFee(x, X, Y)
-    let z = math.calcSwapOutput(y, V, Z)
-    let feez = math.calcSwapFee(y, V, Z)
-    let fee = math.calcValueIn(feey, V.plus(y), Z.minus(z)).plus(feez)
-    // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
+    let z = math.calcSwapOutput(y, B, Z)
+    let feez = math.calcSwapFee(y, B, Z)
+    let fee = math.calcValueIn(feey, B.plus(y), Z.minus(z)).plus(feez)
+    // console.log(_.BN2Str(t), _.BN2Str(T), _.BN2Str(B), _.BN2Str(b), _.BN2Str(fee))
     
     let tx = await sRouter.swap(x, _.ETH, token.address, {from:acc, value: x})
     poolData1 = await utils.getPoolData(_.ETH);
@@ -400,12 +404,12 @@ async function _swapETHToTKN(acc, x, token, sPool) {
 
     assert.equal(_.BN2Str(poolData1.tokenAmt), _.BN2Str(X.plus(x)))
     assert.equal(_.BN2Str(poolData1.baseAmt), _.BN2Str(Y.minus(y)))
-    assert.equal(_.BN2Str(poolData2.baseAmt), _.BN2Str(V.plus(y)))
+    assert.equal(_.BN2Str(poolData2.baseAmt), _.BN2Str(B.plus(y)))
     assert.equal(_.BN2Str(poolData2.tokenAmt), _.BN2Str(Z.minus(z)))
 
     assert.equal(_.BN2Str(await web3.eth.getBalance(sPoolETH.address)), _.BN2Str(X.plus(x)), 'token1 balance')
     assert.equal(_.BN2Str(await sparta.balanceOf(sPoolETH.address)), _.BN2Str(Y.minus(y)), 'spartan balance')
-    assert.equal(_.BN2Str(await sparta.balanceOf(sPool.address)), _.BN2Str(V.plus(y)), 'spartan balance eth')
+    assert.equal(_.BN2Str(await sparta.balanceOf(sPool.address)), _.BN2Str(B.plus(y)), 'spartan balance eth')
     assert.equal(_.BN2Str(await token.balanceOf(sPool.address)), _.BN2Str(Z.minus(z)), 'ether balance')
 
     await help.logPool(utils, token.address, 'TKN1')
@@ -429,35 +433,35 @@ async function unstakeETH(bp, acc) {
         console.log('memberROI1', _.BN2Str(memberROI1))
 
         let poolData = await utils.getPoolData(_.ETH);
-        var V = _.getBN(poolData.baseAmt)
-        var A = _.getBN(poolData.tokenAmt)
+        var B = _.getBN(poolData.baseAmt)
+        var T = _.getBN(poolData.tokenAmt)
 
         let totalUnits = _.getBN((await sPoolETH.totalSupply()))
         let stakerUnits = _.getBN(await sPoolETH.balanceOf(acc))
         let share = (stakerUnits.times(bp)).div(10000)
-        let v = _.floorBN((V.times(share)).div(totalUnits))
-        let a = _.floorBN((A.times(share)).div(totalUnits))
+        let b = _.floorBN((B.times(share)).div(totalUnits))
+        let t = _.floorBN((T.times(share)).div(totalUnits))
         // let vs = poolData.spartaStaked
         // let as = poolData.tokenStaked
-        // let vsShare = _.floorBN((V.times(share)).div(totalUnits))
-        // let asShare = _.floorBN((A.times(share)).div(totalUnits))
-        console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(v), _.BN2Str(a))
+        // let vsShare = _.floorBN((B.times(share)).div(totalUnits))
+        // let asShare = _.floorBN((T.times(share)).div(totalUnits))
+        console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(b), _.BN2Str(t))
         
         let tx = await sRouter.unstake(bp, _.ETH, { from: acc})
         poolData = await utils.getPoolData(_.ETH);
 
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(v), 'outputBase')
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(a), 'outputToken')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(b), 'outputBase')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(t), 'outputToken')
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
 
         assert.equal(_.BN2Str((await sPoolETH.totalSupply())), totalUnits.minus(share), 'poolUnits')
 
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(V.minus(v)))
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(A.minus(a)))
-        // assert.equal(_.BN2Str(poolData.spartaStaked), _.BN2Str(V.minus(v)))
-        // assert.equal(_.BN2Str(poolData.tokenStaked), _.BN2Str(A.minus(a)))
-        assert.equal(_.BN2Str(await sparta.balanceOf(sPoolETH.address)), _.BN2Str(V.minus(v)), 'spartan balance')
-        assert.equal(_.BN2Str(await web3.eth.getBalance(sPoolETH.address)), _.BN2Str(A.minus(a)), 'ether balance')
+        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.minus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
+        // assert.equal(_.BN2Str(poolData.spartaStaked), _.BN2Str(B.minus(b)))
+        // assert.equal(_.BN2Str(poolData.tokenStaked), _.BN2Str(T.minus(t)))
+        assert.equal(_.BN2Str(await sparta.balanceOf(sPoolETH.address)), _.BN2Str(B.minus(b)), 'spartan balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(sPoolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
 
         let stakerUnits2 = _.getBN(await sPoolETH.balanceOf(acc))
         assert.equal(_.BN2Str(stakerUnits2), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
@@ -508,31 +512,31 @@ async function unstakeTKN2(bp, acc) {
 
 async function _unstakeTKN(bp, acc, pools, token) {
     let poolData = await utils.getPoolData(token.address);
-    var V = _.getBN(poolData.baseAmt)
-    var A = _.getBN(poolData.tokenAmt)
+    var B = _.getBN(poolData.baseAmt)
+    var T = _.getBN(poolData.tokenAmt)
 
     let totalUnits = _.getBN((await pools.totalSupply()))
     let stakerUnits = _.getBN(await pools.balanceOf(acc))
     let share = (stakerUnits.times(bp)).div(10000)
-    let v = _.floorBN((V.times(share)).div(totalUnits))
-    let a = _.floorBN((A.times(share)).div(totalUnits))
-    console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(v), _.BN2Str(a))
+    let b = _.floorBN((B.times(share)).div(totalUnits))
+    let t = _.floorBN((T.times(share)).div(totalUnits))
+    console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(b), _.BN2Str(t))
     
     let tx = await sRouter.unstake(bp, token.address, { from: acc})
     poolData = await utils.getPoolData(token.address);
 
-    assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(v), 'outputBase')
-    assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(a), 'outputToken')
+    assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(b), 'outputBase')
+    assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(t), 'outputToken')
     assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
 
     assert.equal(_.BN2Str((await pools.totalSupply())), _.BN2Str(totalUnits.minus(share)), 'poolUnits')
 
-    assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(V.minus(v)))
-    assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(A.minus(a)))
-    // assert.equal(_.BN2Str(poolData.spartaStaked), _.BN2Str(V.minus(v)))
-    // assert.equal(_.BN2Str(poolData.tokenStaked), _.BN2Str(A.minus(a)))
-    assert.equal(_.BN2Str(await sparta.balanceOf(pools.address)), _.BN2Str(V.minus(v)), 'spartan balance')
-    assert.equal(_.BN2Str(await token.balanceOf(pools.address)), _.BN2Str(A.minus(a)), 'token balance')
+    assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.minus(b)))
+    assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
+    // assert.equal(_.BN2Str(poolData.spartaStaked), _.BN2Str(B.minus(b)))
+    // assert.equal(_.BN2Str(poolData.tokenStaked), _.BN2Str(T.minus(t)))
+    assert.equal(_.BN2Str(await sparta.balanceOf(pools.address)), _.BN2Str(B.minus(b)), 'spartan balance')
+    assert.equal(_.BN2Str(await token.balanceOf(pools.address)), _.BN2Str(T.minus(t)), 'token balance')
 
     let stakerUnits2 = _.getBN(await pools.balanceOf(acc))
     assert.equal(_.BN2Str(stakerUnits2), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
