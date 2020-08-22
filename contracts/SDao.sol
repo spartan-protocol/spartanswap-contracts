@@ -3,58 +3,23 @@ pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
 interface iERC20 {
-    // function name() external view returns (string memory);
-    // function symbol() external view returns (string memory);
-    // function decimals() external view returns (uint);
-    // function totalSupply() external view returns (uint);
     function balanceOf(address account) external view returns (uint);
     function transfer(address, uint) external returns (bool);
-    // function allowance(address owner, address spender) external view returns (uint);
-    // function approve(address, uint) external returns (bool);
     function transferFrom(address, address, uint) external returns (bool);
-    // event Transfer(address indexed from, address indexed to, uint value);
-    // event Approval(address indexed owner, address indexed spender, uint value);
 }
 interface iSROUTER {
-    // function totalStaked() external view returns (uint);
-    // function totalVolume() external view returns (uint);
-    // function totalFees() external view returns (uint);
-    // function unstakeTx() external view returns (uint);
-    // function stakeTx() external view returns (uint);
-    // function swapTx() external view returns (uint);
-    // function tokenCount() external view returns(uint);
-    // function getToken(uint) external view returns(address);
-    // function getPool(address) external view returns(address payable);
     function isPool(address) external view returns(bool);
-    // function stakeForMember(uint inputBase, uint inputToken, address token, address member) external payable returns (uint units);
 }
 interface iSPOOL {
-    // function genesis() external view returns(uint);
-    // function baseAmt() external view returns(uint);
-    // function tokenAmt() external view returns(uint);
-    // function baseAmtStaked() external view returns(uint);
-    // function tokenAmtStaked() external view returns(uint);
-    // function fees() external view returns(uint);
-    // function volume() external view returns(uint);
-    // function txCount() external view returns(uint);
     function getBaseAmtStaked(address) external view returns(uint);
-    // function getTokenAmtStaked(address) external view returns(uint);
-    // function calcValueInBase(uint) external view returns (uint);
-    // function calcValueInToken(uint) external view returns (uint);
-    // function calcTokenPPinBase(uint) external view returns (uint);
-    // function calcBasePPinToken(uint) external view returns (uint);
     function transferTo(address, uint) external returns (bool);
 }
 interface iUTILS {
-    // function calcPart(uint bp, uint total) external pure returns (uint part);
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
-    // function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
-    // function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
-    // function calcStakeUnits(uint a, uint A, uint v, uint S) external pure returns (uint units);
-    // function calcAsymmetricShare(uint s, uint T, uint A) external pure returns (uint share);
-    // function getPoolAge(address token) external view returns(uint age);
-    // function getPoolShare(address token, uint units) external view returns(uint baseAmt, uint tokenAmt);
-    // function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmt, uint tokenAmt, uint outputAmt);
+}
+interface iSPARTA {
+    function changeIncentiveAddress(address) external returns(bool);
+    function changeDAO(address) external returns(bool);
 }
 
 // SafeMath
@@ -103,12 +68,13 @@ contract SDao {
     uint256 private _status;
     address public DEPLOYER;
 
-    
     iUTILS public UTILS;
+    address public SPARTA;
 
     uint256 public totalWeight;
     uint public one = 10**18;
     uint public coolOffPeriod = 1 * 2;
+    uint public blocksPerDay = 5760;
 
     address public proposedRouter;
     bool public proposedRouterChange;
@@ -126,6 +92,7 @@ contract SDao {
     mapping(address => bool) public isMember; // Is Member
     mapping(address => mapping(address => uint256)) public mapMemberPool_Balance; // Member's balance in pool
     mapping(address => uint256) public mapMember_Weight; // Value of weight
+    mapping(address => uint256) public mapMember_Block;
 
     mapping(address => uint256) public mapAddress_Votes; // Value of weight
     mapping(address => mapping(address => uint256)) public mapAddressMember_Votes; // Value of weight
@@ -149,10 +116,11 @@ contract SDao {
         _;
     }
 
-    constructor (iUTILS _utils) public payable {
-        _status = _NOT_ENTERED;
+    constructor (address _sparta, iUTILS _utils) public payable {
+        SPARTA = _sparta;
         UTILS = _utils;
         DEPLOYER = msg.sender;
+        _status = _NOT_ENTERED;
     }
     function setGenesisRouter(address genesisRouter) public onlyDeployer {
         _router = genesisRouter;
@@ -260,6 +228,10 @@ contract SDao {
         checkDaoChange(proposedDao);
         if(proposedDaoChange){
             if((now - daoChangeStart) > coolOffPeriod){
+                iSPARTA(SPARTA).changeIncentiveAddress(proposedDao);
+                iSPARTA(SPARTA).changeDAO(proposedDao);
+                uint reserve = iERC20(SPARTA).balanceOf(address(this));
+                iERC20(SPARTA).transfer(proposedDao, reserve);
                 daoHasMoved = true;
                 SDAO = proposedDao;
                 emit NewAddress(msg.sender, proposedDao, mapAddress_Votes[proposedDao], totalWeight, 'DAO');
@@ -302,31 +274,38 @@ contract SDao {
             return _router;
         }
     }
+
+    //============================== REWARDS ================================//
+    // Rewards
+    function harvest() public nonReentrant {
+        uint reward = calcCurrentReward(msg.sender);
+        mapMember_Block[msg.sender] = block.number;
+        iERC20(SPARTA).transfer(msg.sender, reward);
+    }
+
+    function calcCurrentReward(address member) public view returns(uint){
+        uint blocksSinceClaim = block.number.sub(mapMember_Block[member]);
+        uint share = calcDailyReward(member);
+        return share.mul(blocksSinceClaim).div(blocksPerDay);
+    }
+
+    function calcDailyReward(address member) public view returns(uint){
+        uint weight = mapMember_Weight[member];
+        uint reserve = iERC20(SPARTA).balanceOf(address(this));
+        return UTILS.calcShare(weight, totalWeight, reserve);
+    }
+
+    //============================== HELPERS ================================//
+    // Sync a member
+    function syncMemberPool(address member, address pool) public returns(uint){
+        totalWeight = totalWeight.sub(mapMember_Weight[member]);
+        uint weight = iSPOOL(pool).getBaseAmtStaked(member);
+        mapMember_Weight[member] = weight;
+        totalWeight += weight;
+        return weight;
+    }
+
 }
 
-        // if (!poolHasMembers[pool]) {
-        //     poolHasMembers[pool] = true;
-        // }
-        // if (!mapMemberPool_Added[msg.sender][pool]) {
-        //     mapMember_poolCount[msg.sender] = mapMember_poolCount[msg.sender].add(1);
-        //     mapMember_arrayPools[msg.sender].push(pool);
-        //     mapMemberPool_Added[msg.sender][pool] = true;
-        // }
 
-    // // Member registers weight in a single pool
-    // function harvestOne(address member, address pool) internal {
-    //     // Update weights with latest data
-    //     // Calculate share of rewards
-    //     // Pay out
-    //     totalWeight = totalWeight.sub(mapMember_Weight[member]); // Remove that weight
-    //     uint sparta = iSPOOL(pool).getBaseAmtStaked(member);
-    //     mapMember_Weight[member] = sparta;
-    //     totalWeight += sparta;
-        
-    //     emit MemberRegisters(member, sparta);
-    //     uint reward = calcReward(member);
-    // }
-
-    // function calcReward(address member) public view returns(uint){
-    //     uint blocksPast = block.number - mapMember_Block[member];
-    // }
+   

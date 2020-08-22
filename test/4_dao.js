@@ -44,14 +44,13 @@ function constructor(accounts) {
     acc0 = accounts[0]; acc1 = accounts[1]; acc2 = accounts[2]; acc3 = accounts[3]
     it("constructor events", async () => {
         sparta = await SPARTA.new()
-        utils = await UTILS.new()
-        sDao = await SDAO.new(utils.address)
-        sRouter = await SROUTER.new(sparta.address, sDao.address, utils.address)
-        await utils.setGenesisDao(sDao.address)
+        utils = await UTILS.new(sparta.address)
+        sDao = await SDAO.new(sparta.address, utils.address)
+        sRouter = await SROUTER.new(sparta.address, utils.address)
+        await sparta.changeDAO(sDao.address)
         await sDao.setGenesisRouter(sRouter.address)
-        assert.equal(await utils.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
         assert.equal(await sDao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
-        console.log(await utils.SDAO())
+        console.log(await utils.SPARTA())
         console.log(await sDao.ROUTER())
 
         token1 = await TOKEN1.new();
@@ -220,7 +219,7 @@ async function tryToMove() {
 
 async function voteDao() {
     it("It should vote", async () => {
-        sDao2 = await SDAO.new(utils.address)
+        sDao2 = await SDAO.new(sparta.address, utils.address)
         console.log(`sDao2: ${sDao2.address}`)
         await sDao.voteDaoChange(sDao2.address, { from: acc0 })
         console.log(`mapAddress_Votes: ${await sDao.mapAddress_Votes(sDao2.address)}`)

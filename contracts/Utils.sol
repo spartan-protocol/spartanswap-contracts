@@ -12,6 +12,7 @@ interface iERC20 {
 
 interface iSPARTA {
     function mapAddressHasClaimed() external view returns (bool);
+    function DAO() external view returns (address);
 }
 
 interface iSROUTER {
@@ -89,8 +90,7 @@ contract Utils {
 
     using SafeMath for uint;
 
-    iSDAO public SDAO;
-    address public DEPLOYER;
+    address public SPARTA;
 
     struct TokenDetails {
         string name;
@@ -138,19 +138,9 @@ contract Utils {
         uint tokenAmtStaked;
         uint stakerUnits;
     }
-    // Only Deployer can execute
-    modifier onlyDeployer() {
-        require(msg.sender == DEPLOYER, "AdminErr");
-        _;
-    }
 
-    constructor () public payable {
-        DEPLOYER = msg.sender;
-    }
-
-    function setGenesisDao(iSDAO sDao) public onlyDeployer {
-        SDAO = sDao;
-        DEPLOYER = address(0);
+    constructor (address _sparta) public payable {
+        SPARTA = _sparta;
     }
 
     function getTokenDetails(address token) public view returns (TokenDetails memory tokenDetails){
@@ -159,22 +149,14 @@ contract Utils {
             tokenDetails.symbol = 'BNB';
             tokenDetails.decimals = 18;
             tokenDetails.totalSupply = 100000000 * 10**18;
+            tokenDetails.balance = msg.sender.balance;
         } else {
             tokenDetails.name = iERC20(token).name();
             tokenDetails.symbol = iERC20(token).symbol();
             tokenDetails.decimals = iERC20(token).decimals();
             tokenDetails.totalSupply = iERC20(token).totalSupply();
+            tokenDetails.balance = iERC20(token).balanceOf(msg.sender);
         }
-        tokenDetails.tokenAddress = token;
-        return tokenDetails;
-    }
-
-    function getTokenDetailsWithBalance(address token, address member) public view returns (TokenDetails memory tokenDetails){
-        tokenDetails.name = iERC20(token).name();
-        tokenDetails.symbol = iERC20(token).symbol();
-        tokenDetails.decimals = iERC20(token).decimals();
-        tokenDetails.totalSupply = iERC20(token).totalSupply();
-        tokenDetails.balance = iERC20(token).balanceOf(member);
         tokenDetails.tokenAddress = token;
         return tokenDetails;
     }
@@ -191,31 +173,36 @@ contract Utils {
     }
 
     function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
-        globalDetails.totalStaked = iSROUTER(SDAO.ROUTER()).totalStaked();
-        globalDetails.totalVolume = iSROUTER(SDAO.ROUTER()).totalVolume();
-        globalDetails.totalFees = iSROUTER(SDAO.ROUTER()).totalFees();
-        globalDetails.unstakeTx = iSROUTER(SDAO.ROUTER()).unstakeTx();
-        globalDetails.stakeTx = iSROUTER(SDAO.ROUTER()).stakeTx();
-        globalDetails.swapTx = iSROUTER(SDAO.ROUTER()).swapTx();
+        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
+        globalDetails.totalStaked = iSROUTER(sdao.ROUTER()).totalStaked();
+        globalDetails.totalVolume = iSROUTER(sdao.ROUTER()).totalVolume();
+        globalDetails.totalFees = iSROUTER(sdao.ROUTER()).totalFees();
+        globalDetails.unstakeTx = iSROUTER(sdao.ROUTER()).unstakeTx();
+        globalDetails.stakeTx = iSROUTER(sdao.ROUTER()).stakeTx();
+        globalDetails.swapTx = iSROUTER(sdao.ROUTER()).swapTx();
         return globalDetails;
     }
 
     function getPool(address token) public view returns(address payable pool){
-        return iSROUTER(SDAO.ROUTER()).getPool(token);
+        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
+        return iSROUTER(sdao.ROUTER()).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
-        return iSROUTER(SDAO.ROUTER()).tokenCount();
+        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
+        return iSROUTER(sdao.ROUTER()).tokenCount();
     }
     function allTokens() public view returns (address[] memory _allTokens){
-        return tokensInRange(0, iSROUTER(SDAO.ROUTER()).tokenCount()) ;
+        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
+        return tokensInRange(0, iSROUTER(sdao.ROUTER()).tokenCount()) ;
     }
     function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
+        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i < count; i++){
-            result[i] = iSROUTER(SDAO.ROUTER()).getToken(i);
+            result[i] = iSROUTER(sdao.ROUTER()).getToken(i);
         }
         return result;
     }
@@ -223,12 +210,13 @@ contract Utils {
         return poolsInRange(0, tokenCount());
     }
     function poolsInRange(uint start, uint count) public view returns (address[] memory somePools){
+        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = getPool(iSROUTER(SDAO.ROUTER()).getToken(i));
+            result[i] = getPool(iSROUTER(sdao.ROUTER()).getToken(i));
         }
         return result;
     }

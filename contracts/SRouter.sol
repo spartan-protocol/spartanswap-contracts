@@ -17,6 +17,7 @@ interface iERC20 {
 }
 interface iSPARTA {
     function secondsPerEra() external view returns (uint);
+    function DAO() external view returns (address);
 }
 interface iUTILS {
     function calcPart(uint bp, uint total) external pure returns (uint part);
@@ -74,7 +75,7 @@ contract SPool is iERC20 {
     using SafeMath for uint;
 
     address public SPARTA;
-    iSDAO public SDAO;
+    // iSDAO public SDAO;
     iUTILS public UTILS;
     address public TOKEN;
     // address public SDAO.ROUTER();
@@ -102,17 +103,21 @@ contract SPool is iERC20 {
    
     // Only Router can execute
     modifier onlyRouter() {
-        require(msg.sender == SDAO.ROUTER(), "RouterErr");
+        _isRouter();
         _;
     }
 
-    constructor (address _sparta, iSDAO _sDao, iUTILS _utils, address _token) public payable {
-        //local
+    function _isRouter() internal view {
+        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
+        require(msg.sender == sdao.ROUTER(), "RouterErr");
+    }
+
+    constructor (address _sparta, iUTILS _utils, address _token) public payable {
+
         SPARTA = _sparta;
-        SDAO = _sDao;
-        TOKEN = _token;
-        // SDAO.ROUTER() = msg.sender;
         UTILS = _utils;
+        TOKEN = _token;
+        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
 
         if(_token == address(0)){
             _name = "SpartanPoolV1-BinanceCoin";
@@ -122,13 +127,13 @@ contract SPool is iERC20 {
             _name = string(abi.encodePacked("SpartanPoolV1-", tokenName));
             string memory tokenSymbol = iERC20(_token).symbol();
             _symbol = string(abi.encodePacked("SPT1-", tokenSymbol));
-            iERC20(_token).approve(SDAO.ROUTER(), (2**256)-1);
+            iERC20(_token).approve(sdao.ROUTER(), (2**256)-1);
         }
-
+        
         decimals = 18;
         genesis = now;
-        _allowances[address(this)][SDAO.ROUTER()] = (2**256)-1;
-        iERC20(SPARTA).approve(SDAO.ROUTER(), (2**256)-1);
+        _allowances[address(this)][sdao.ROUTER()] = (2**256)-1;
+        iERC20(SPARTA).approve(sdao.ROUTER(), (2**256)-1);
     }
 
     receive() external payable {}
@@ -179,10 +184,11 @@ contract SPool is iERC20 {
     }
 
     // Router can mint
-    function _mint(address account, uint256 amount) public onlyRouter {
+    function _mint(address account, uint256 amount) external onlyRouter {
         totalSupply = totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
-        _allowances[account][SDAO.ROUTER()] += amount;
+        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
+        _allowances[account][sdao.ROUTER()] += amount;
         emit Transfer(address(0), account, amount);
     }
     // Burn supply
@@ -221,54 +227,6 @@ contract SPool is iERC20 {
     }
 
     //==================================================================================//
-    // Staking functions
-
-    // function _handleStake(uint _baseAmt, uint _tokenAmt, address _member) external onlyRouter returns (uint _units) {
-    //     uint _S = baseAmt.add(_baseAmt);
-    //     uint _A = tokenAmt.add(_tokenAmt);
-    //     _incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
-    //     _addDataForMember(_member, _baseAmt, _tokenAmt);
-    //     _units = UTILS.calcStakeUnits(_tokenAmt, _A, _baseAmt, _S);  
-    //     _mint(_member, _units);
-    //     return _units;
-    // }
-
-    //==================================================================================//
-    // Unstaking functions
-
-    // function _handleUnstake(uint _units, uint _outputBase, uint _outputToken, address _member) public onlyRouter returns (bool success) {
-    //     _decrementPoolBalances(_outputBase, _outputToken);
-    //     _removeDataForMember(_member, _units);
-    //     _burn(_member, _units);
-    //     return true;
-    // } 
-
-    //==================================================================================//
-    // Swapping functions
-
-    // function _swapBaseToToken(uint _x) external onlyRouter returns (uint _y, uint _fee){
-    //     uint _X = baseAmt;
-    //     uint _Y = tokenAmt;
-    //     _y =  UTILS.calcSwapOutput(_x, _X, _Y);
-    //     _fee = UTILS.calcSwapFee(_x, _X, _Y);
-    //     baseAmt = baseAmt.add(_x);
-    //     tokenAmt = tokenAmt.sub(_y);
-    //     _updatePoolMetrics(_y+_fee, _fee, false);
-    //     return (_y, _fee);
-    // }
-
-    // function _swapTokenToBase(uint _x) external onlyRouter returns (uint _y, uint _fee){
-    //     uint _X = tokenAmt;
-    //     uint _Y = baseAmt;
-    //     _y =  UTILS.calcSwapOutput(_x, _X, _Y);
-    //     _fee = UTILS.calcSwapFee(_x, _X, _Y);
-    //     tokenAmt = tokenAmt.add(_x);
-    //     baseAmt = baseAmt.sub(_y);
-    //     _updatePoolMetrics(_y+_fee, _fee, true);
-    //     return (_y, _fee);
-    // }
-
-    //==================================================================================//
     // Dividend functions
 
     function add(address token, uint amount) public returns (bool success) {
@@ -305,12 +263,6 @@ contract SPool is iERC20 {
         baseAmt = _baseAmt;
         tokenAmt = _tokenAmt; 
     }
-    // function _incrementBaseAmt(uint _baseAmt)  external onlyRouter  {
-    //     baseAmt = baseAmt.add(_baseAmt); 
-    // }
-    // function _incrementTokenAmt(uint _tokenAmt)  external onlyRouter  {
-    //     tokenAmt = tokenAmt.add(_tokenAmt); 
-    // }
 
     function _decrementPoolBalances(uint _baseAmt, uint _tokenAmt)  external onlyRouter  {
         uint _unstakedBase = UTILS.calcShare(_baseAmt, baseAmt, baseAmtStaked);
@@ -319,28 +271,16 @@ contract SPool is iERC20 {
         tokenAmtStaked = tokenAmtStaked.sub(_unstakedToken); 
         __decrementPool(_baseAmt, _tokenAmt); 
     }
-    // function _decrementPoolAmounts(uint _baseAmt, uint _tokenAmt)  external onlyRouter  {
-    //     __decrementPool(_baseAmt, _tokenAmt); 
-    // }
+ 
     function __decrementPool(uint _baseAmt, uint _tokenAmt) internal  {
         baseAmt = baseAmt.sub(_baseAmt);
         tokenAmt = tokenAmt.sub(_tokenAmt); 
     }
-    // function _decrementBaseAmt(uint _baseAmt)  external onlyRouter  {
-    //     baseAmt = baseAmt.sub(_baseAmt); 
-    // }
-    // function _decrementTokenAmt(uint _tokenAmt)  external onlyRouter  {
-    //     tokenAmt = tokenAmt.sub(_tokenAmt); 
-    // }
 
     function _addMemberData(address _member, uint _baseAmtStaked, uint _tokenAmtStaked)  external onlyRouter  {
         member_baseAmtStaked[_member] += _baseAmtStaked;
         member_tokenAmtStaked[_member] += _tokenAmtStaked;
     }
-    // function _setMemberData(address _member, uint _baseAmtStaked, uint _tokenAmtStaked)  external onlyRouter  {
-    //     member_baseAmtStaked[_member] = _baseAmtStaked;
-    //     member_tokenAmtStaked[_member] = _tokenAmtStaked;
-    // }
 
     function _removeDataForMember(address _member, uint _units)  external onlyRouter {
         uint stakeUnits = balanceOf(_member);
@@ -388,7 +328,7 @@ contract SRouter {
     using SafeMath for uint;
 
     address public SPARTA;
-    iSDAO public SDAO;
+    // iSDAO public SDAO;
     iUTILS public UTILS;
 
     uint256 public currentEra;
@@ -412,9 +352,9 @@ contract SRouter {
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
     event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 reserve);
 
-    constructor (address _sparta, iSDAO _sDao, iUTILS _utils) public payable {
+    constructor (address _sparta, iUTILS _utils) public payable {
         SPARTA = _sparta; //0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D;
-        SDAO = _sDao;
+        // SDAO = _sDao;
         UTILS = _utils; //0x17218e58Fdf07c989faCca25De4c6FdB06502186;
     }
 
@@ -422,7 +362,7 @@ contract SRouter {
         require(getPool(token) == address(0), "CreateErr");
         require(token != SPARTA, "Must not be Sparta");
         require((inputToken > 0 && inputBase > 0), "Must get tokens for both");
-        SPool newPool = new SPool(SPARTA, SDAO, UTILS, token);
+        SPool newPool = new SPool(SPARTA, UTILS, token);
         pool = payable(address(newPool));
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
         uint _actualInputBase = _handleTransferIn(SPARTA, inputBase, pool);
@@ -512,18 +452,8 @@ contract SRouter {
     }
 
     function _handleUnstake(address payable pool, uint _units, uint _outputBase, uint _outputToken, address _member) internal returns (bool success) {
-        // uint _unstakedBase = UTILS.calcShare(_outputBase, SPool(pool).baseAmt(), SPool(pool).baseAmtStaked());
-        // uint _unstakedToken = UTILS.calcShare(_outputToken, SPool(pool).tokenAmt(), SPool(pool).tokenAmtStaked());
-        // uint _baseAmtStaked = SPool(pool).baseAmtStaked().sub(_unstakedBase);
-        // uint _tokenAmtStaked = SPool(pool).tokenAmtStaked().sub(_unstakedToken);
         SPool(pool)._decrementPoolBalances(_outputBase, _outputToken);
         SPool(pool)._removeDataForMember(_member, _units);
-        // uint stakeUnits = SPool(pool).balanceOf(_member);
-        // uint _unstakedBaseAmt = UTILS.calcShare(_units, stakeUnits, SPool(pool).getBaseAmtStaked(_member));
-        // uint _unstakedTokenAmt = UTILS.calcShare(_units, stakeUnits, SPool(pool).getTokenAmtStaked(_member));
-        // uint _baseAmtUnstaked = SPool(pool).baseAmtStaked().sub(_unstakedBaseAmt);
-        // uint _tokenAmtUnstaked = SPool(pool).tokenAmtStaked().sub(_unstakedTokenAmt);
-        // SPool(pool)._setMemberData(_member, _baseAmtUnstaked, _tokenAmtUnstaked);
         SPool(pool).burnFrom(_member, _units);
         return true;
     } 
@@ -713,25 +643,3 @@ contract SRouter {
     }
 
 }
-
-
-    //==================================================================================//
-    // Upgrade functions
-
-    // // Upgrade from this contract to a new one - opt in
-    // function upgrade(address payable newContract, address token) public {
-    //     address payable pool = getPool(token);
-    //     address payable member = msg.sender;
-    //     uint _units = iERC20(getPool(token)).balanceOf(member);
-    //     (uint _outputBase, uint _outputToken) = SPool(pool).getMemberShare(member, _units);
-    //     SPool(pool)._handleUnstake(_units, _outputBase, _outputToken, member);
-    //     emit Unstaked(member, _outputBase, _outputToken, _units);
-    //     iERC20(SPARTA).transferFrom(pool, address(this), _outputBase); 
-    //     iERC20(SPARTA).approve(newContract, _outputBase);
-    //     if(token == address(0)){
-    //         iSSDAO.ROUTER()(newContract).stakeForMember{value:_outputToken}(_outputBase, _outputToken, token, member);
-    //     } else {
-    //         iERC20(token).approve(newContract, _outputToken);
-    //         iSSDAO.ROUTER()(newContract).stakeForMember(_outputBase, _outputToken, token, member);
-    //     }
-    // }

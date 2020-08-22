@@ -104,7 +104,7 @@ contract Sparta is iERC20 {
         totalSupply = 0;
         totalCap = 300 * 10**6 * one;
         emissionCurve = 2048;
-        emitting = false;
+        emitting = true;
         currentEra = 1;
         secondsPerEra = 1; //86400;
         nextEraTime = now + secondsPerEra;
@@ -191,7 +191,7 @@ contract Sparta is iERC20 {
 
     //=========================================DAO=========================================//
     // Can list
-    function listAssetWithClaim(address asset, uint256 maxClaim, uint256 claimRate) public onlyDAO {
+    function listAssetWithClaim(address asset, uint256 maxClaim, uint256 claimRate) public onlyDAO returns(bool){
         if(!isListed[asset]){
             isListed[asset] = true;
             assetArray.push(asset);
@@ -199,46 +199,55 @@ contract Sparta is iERC20 {
         mapAsset_maxClaim[asset] = maxClaim;
         mapAsset_claimRate[asset] = claimRate;
         emit ListedAsset(msg.sender, asset, maxClaim, claimRate);
+        return true;
     }
     // Can delist
-    function delistAsset(address asset) public onlyDAO {
+    function delistAsset(address asset) public onlyDAO returns(bool){
         isListed[asset] = false;
         mapAsset_maxClaim[asset] = 0;
         mapAsset_claimRate[asset] = 0;
+        return true;
     }
     // Can start
-    function startEmissions() public onlyDAO {
+    function startEmissions() public onlyDAO returns(bool){
         emitting = true;
+        return true;
     }
     // Can stop
-    function stopEmissions() public onlyDAO {
+    function stopEmissions() public onlyDAO returns(bool){
         emitting = false;
+        return true;
     }
     // Can change emissionCurve
-    function changeEmissionCurve(uint256 newCurve) public onlyDAO {
+    function changeEmissionCurve(uint256 newCurve) public onlyDAO returns(bool){
         emissionCurve = newCurve;
         emit NewCurve(msg.sender, newCurve);
+        return true;
     }
     // Can change daily time
-    function changeEraDuration(uint256 newDuration) public onlyDAO {
+    function changeEraDuration(uint256 newDuration) public onlyDAO returns(bool) {
         secondsPerEra = newDuration;
         emit NewDuration(msg.sender, newDuration);
+        return true;
     }
     // Can change Incentive Address
-    function changeIncentiveAddress(address newIncentiveAddress) public onlyDAO {
+    function changeIncentiveAddress(address newIncentiveAddress) public onlyDAO returns(bool) {
         incentiveAddress = newIncentiveAddress;
         emit NewIncentiveAddress(msg.sender, newIncentiveAddress);
+        return true;
     }
     // Can change DAO
-    function changeDAO(address newDAO) public onlyDAO {
+    function changeDAO(address newDAO) public onlyDAO returns(bool){
         require(newDAO != address(0), "Must not be zero address");
         DAO = newDAO;
         emit NewDAO(msg.sender, newDAO);
+        return true;
     }
     // Can purge DAO
-    function purgeDAO() public onlyDAO {
+    function purgeDAO() public onlyDAO returns(bool){
         DAO = address(0);
         emit NewDAO(msg.sender, address(0));
+        return true;
     }
 
    //======================================EMISSION========================================//

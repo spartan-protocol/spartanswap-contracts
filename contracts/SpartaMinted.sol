@@ -72,17 +72,17 @@ contract SpartaMinted is iERC20 {
     address public DAO;
     address public burnAddress;
 
-    address[] public tokenArray;
+    address[] public assetArray;
     mapping(address => bool) public isListed;
-    mapping(address => uint256) public mapToken_maxClaim;
-    mapping(address => uint256) public mapToken_claimRate;
-    mapping(address => mapping(address => bool)) public mapMemberToken_hasClaimed;
+    mapping(address => uint256) public mapAsset_maxClaim;
+    mapping(address => uint256) public mapAsset_claimRate;
+    mapping(address => mapping(address => bool)) public mapMemberAsset_hasClaimed;
 
     // Events
-    event ListedToken(address indexed DAO, address indexed token, uint256 maxClaim, uint256 claimRate);
+    event ListedAsset(address indexed DAO, address indexed asset, uint256 maxClaim, uint256 claimRate);
     event NewCurve(address indexed DAO, uint256 newCurve);
     event NewIncentiveAddress(address indexed DAO, address newIncentiveAddress);
-    event NewToken(address indexed DAO, string newName, string newSymbol);
+    event NewAsset(address indexed DAO, string newName, string newSymbol);
     event NewDuration(address indexed DAO, uint256 newDuration);
     event NewDAO(address indexed DAO, address newOwner);
     event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 emission);
@@ -193,54 +193,63 @@ contract SpartaMinted is iERC20 {
 
     //=========================================DAO=========================================//
     // Can list
-    function listTokenWithClaim(address token, uint256 maxClaim, uint256 claimRate) public onlyDAO {
-        if(!isListed[token]){
-            isListed[token] = true;
-            tokenArray.push(token);
+    function listAssetWithClaim(address asset, uint256 maxClaim, uint256 claimRate) public onlyDAO returns(bool){
+        if(!isListed[asset]){
+            isListed[asset] = true;
+            assetArray.push(asset);
         }
-        mapToken_maxClaim[token] = maxClaim;
-        mapToken_claimRate[token] = claimRate;
-        emit ListedToken(msg.sender, token, maxClaim, claimRate);
+        mapAsset_maxClaim[asset] = maxClaim;
+        mapAsset_claimRate[asset] = claimRate;
+        emit ListedAsset(msg.sender, asset, maxClaim, claimRate);
+        return true;
     }
     // Can delist
-    function delistToken(address token) public onlyDAO {
-        isListed[token] = false;
-        mapToken_maxClaim[token] = 0;
-        mapToken_claimRate[token] = 0;
+    function delistAsset(address asset) public onlyDAO returns(bool){
+        isListed[asset] = false;
+        mapAsset_maxClaim[asset] = 0;
+        mapAsset_claimRate[asset] = 0;
+        return true;
     }
     // Can start
-    function startEmissions() public onlyDAO {
+    function startEmissions() public onlyDAO returns(bool){
         emitting = true;
+        return true;
     }
     // Can stop
-    function stopEmissions() public onlyDAO {
+    function stopEmissions() public onlyDAO returns(bool){
         emitting = false;
+        return true;
     }
     // Can change emissionCurve
-    function changeEmissionCurve(uint256 newCurve) public onlyDAO {
+    function changeEmissionCurve(uint256 newCurve) public onlyDAO returns(bool){
         emissionCurve = newCurve;
         emit NewCurve(msg.sender, newCurve);
+        return true;
     }
     // Can change daily time
-    function changeEraDuration(uint256 newDuration) public onlyDAO {
+    function changeEraDuration(uint256 newDuration) public onlyDAO returns(bool) {
         secondsPerEra = newDuration;
         emit NewDuration(msg.sender, newDuration);
+        return true;
     }
     // Can change Incentive Address
-    function changeIncentiveAddress(address newIncentiveAddress) public onlyDAO {
+    function changeIncentiveAddress(address newIncentiveAddress) public onlyDAO returns(bool) {
         incentiveAddress = newIncentiveAddress;
         emit NewIncentiveAddress(msg.sender, newIncentiveAddress);
+        return true;
     }
     // Can change DAO
-    function changeDAO(address newDAO) public onlyDAO {
+    function changeDAO(address newDAO) public onlyDAO returns(bool){
         require(newDAO != address(0), "Must not be zero address");
         DAO = newDAO;
         emit NewDAO(msg.sender, newDAO);
+        return true;
     }
     // Can purge DAO
-    function purgeDAO() public onlyDAO {
+    function purgeDAO() public onlyDAO returns(bool){
         DAO = address(0);
         emit NewDAO(msg.sender, address(0));
+        return true;
     }
 
    //======================================EMISSION========================================//
@@ -263,23 +272,23 @@ contract SpartaMinted is iERC20 {
     }
     //======================================UPGRADE========================================//
     // Old Owners to Upgrade
-    function upgrade(address token) public {
-        require(mapMemberToken_hasClaimed[msg.sender][token] == false, "Must not have already claimed");
-        uint256 balance = iERC20(token).balanceOf(msg.sender);
+    function upgrade(address asset) public {
+        require(mapMemberAsset_hasClaimed[msg.sender][asset] == false, "Must not have already claimed");
+        uint256 balance = iERC20(asset).balanceOf(msg.sender);
         uint256 claim = balance;                           // Start at balance
-        if(balance > mapToken_maxClaim[token]){
-            claim = mapToken_maxClaim[token];           // Reduce to the maximum
+        if(balance > mapAsset_maxClaim[asset]){
+            claim = mapAsset_maxClaim[asset];           // Reduce to the maximum
         }
-        mapMemberToken_hasClaimed[msg.sender][token] = true;
-        require(iERC20(token).transferFrom(msg.sender, burnAddress, claim));
-        uint256 adjustedClaimRate = getAdjustedClaimRate(token);
+        mapMemberAsset_hasClaimed[msg.sender][asset] = true;
+        require(iERC20(asset).transferFrom(msg.sender, burnAddress, claim));
+        uint256 adjustedClaimRate = getAdjustedClaimRate(asset);
         // sparta = rate * claim / 1e8
         uint256 sparta = (adjustedClaimRate.mul(claim)).div(one);
         _mint(msg.sender, sparta);
     }
      // Calculate Adjusted Claim Rate
-    function getAdjustedClaimRate(address token) public view returns (uint256 adjustedClaimRate) {
-        uint256 claimRate = mapToken_claimRate[token];                           // Get Claim Rate
+    function getAdjustedClaimRate(address asset) public view returns (uint256 adjustedClaimRate) {
+        uint256 claimRate = mapAsset_claimRate[asset];                           // Get Claim Rate
         if(totalSupply <= baseline){
             // return 100%
             return claimRate;
@@ -292,17 +301,17 @@ contract SpartaMinted is iERC20 {
     //======================================HELPERS========================================//
     // Helper Functions
 
-    function tokenCount() public view returns (uint256 count){
-        return tokenArray.length;
+    function assetCount() public view returns (uint256 count){
+        return assetArray.length;
     }
-    function allTokens() public view returns (address[] memory allTokens){
-        return tokenArray;
+    function allAssets() public view returns (address[] memory allAssets){
+        return assetArray;
     }
-    function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
-        if(count > tokenCount()){count = tokenCount();}
+    function assetsInRange(uint start, uint count) public view returns (address[] memory someAssets){
+        if(count > assetCount()){count = assetCount();}
         address[] memory result = new address[](count);
         for (uint i = start; i<start.add(count); i++){
-            result[i] = tokenArray[i];
+            result[i] = assetArray[i];
         }
         return result;
     }
