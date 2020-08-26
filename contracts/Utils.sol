@@ -10,12 +10,12 @@ interface iERC20 {
     function balanceOf(address account) external view returns (uint);
 }
 
-interface iSPARTA {
+interface iBASE {
     function mapAddressHasClaimed() external view returns (bool);
     function DAO() external view returns (address);
 }
 
-interface iSROUTER {
+interface iROUTER {
     function totalStaked() external view returns (uint);
     function totalVolume() external view returns (uint);
     function totalFees() external view returns (uint);
@@ -28,7 +28,7 @@ interface iSROUTER {
     function stakeForMember(uint inputBase, uint inputToken, address token, address member) external payable returns (uint units);
 }
 
-interface iSPOOL {
+interface iPOOL {
     function genesis() external view returns(uint);
     function baseAmt() external view returns(uint);
     function tokenAmt() external view returns(uint);
@@ -45,7 +45,7 @@ interface iSPOOL {
     function calcBasePPinToken(uint) external view returns (uint);
 }
 
-interface iSDAO {
+interface iDAO {
     function ROUTER() external view returns(address);
 }
 
@@ -90,7 +90,8 @@ contract Utils {
 
     using SafeMath for uint;
 
-    address public SPARTA;
+    address public BASE;
+    address public DEPLOYER;
 
     struct TokenDetails {
         string name;
@@ -133,17 +134,25 @@ contract Utils {
         uint txCount;
         uint poolUnits;
     }
-    struct MemberDataStruct {
-        uint baseAmtStaked;
-        uint tokenAmtStaked;
-        uint stakerUnits;
+
+    // Only Deployer can execute
+    modifier onlyDeployer() {
+        require(msg.sender == DEPLOYER, "DeployerErr");
+        _;
     }
 
-    constructor (address _sparta) public payable {
-        SPARTA = _sparta;
+    constructor (address _base) public payable {
+        BASE = _base;
+        DEPLOYER = msg.sender;
     }
+
+    //====================================DATA-HELPERS====================================//
 
     function getTokenDetails(address token) public view returns (TokenDetails memory tokenDetails){
+        return getTokenDetailsWithMember(token, msg.sender);
+    }
+
+    function getTokenDetailsWithMember(address token, address member) public view returns (TokenDetails memory tokenDetails){
         if(token == address(0)){
             tokenDetails.name = 'Binance Chain Token';
             tokenDetails.symbol = 'BNB';
@@ -155,7 +164,7 @@ contract Utils {
             tokenDetails.symbol = iERC20(token).symbol();
             tokenDetails.decimals = iERC20(token).decimals();
             tokenDetails.totalSupply = iERC20(token).totalSupply();
-            tokenDetails.balance = iERC20(token).balanceOf(msg.sender);
+            tokenDetails.balance = iERC20(token).balanceOf(member);
         }
         tokenDetails.tokenAddress = token;
         return tokenDetails;
@@ -168,41 +177,41 @@ contract Utils {
         listedAssetDetails.totalSupply = iERC20(token).totalSupply();
         listedAssetDetails.balance = iERC20(token).balanceOf(member);
         listedAssetDetails.tokenAddress = token;
-        listedAssetDetails.hasClaimed = iSPARTA(member).mapAddressHasClaimed();
+        listedAssetDetails.hasClaimed = iBASE(member).mapAddressHasClaimed();
         return listedAssetDetails;
     }
 
     function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
-        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
-        globalDetails.totalStaked = iSROUTER(sdao.ROUTER()).totalStaked();
-        globalDetails.totalVolume = iSROUTER(sdao.ROUTER()).totalVolume();
-        globalDetails.totalFees = iSROUTER(sdao.ROUTER()).totalFees();
-        globalDetails.unstakeTx = iSROUTER(sdao.ROUTER()).unstakeTx();
-        globalDetails.stakeTx = iSROUTER(sdao.ROUTER()).stakeTx();
-        globalDetails.swapTx = iSROUTER(sdao.ROUTER()).swapTx();
+        iDAO dao = iDAO(iBASE(BASE).DAO());
+        globalDetails.totalStaked = iROUTER(dao.ROUTER()).totalStaked();
+        globalDetails.totalVolume = iROUTER(dao.ROUTER()).totalVolume();
+        globalDetails.totalFees = iROUTER(dao.ROUTER()).totalFees();
+        globalDetails.unstakeTx = iROUTER(dao.ROUTER()).unstakeTx();
+        globalDetails.stakeTx = iROUTER(dao.ROUTER()).stakeTx();
+        globalDetails.swapTx = iROUTER(dao.ROUTER()).swapTx();
         return globalDetails;
     }
 
     function getPool(address token) public view returns(address payable pool){
-        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
-        return iSROUTER(sdao.ROUTER()).getPool(token);
+        iDAO dao = iDAO(iBASE(BASE).DAO());
+        return iROUTER(dao.ROUTER()).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
-        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
-        return iSROUTER(sdao.ROUTER()).tokenCount();
+        iDAO dao = iDAO(iBASE(BASE).DAO());
+        return iROUTER(dao.ROUTER()).tokenCount();
     }
     function allTokens() public view returns (address[] memory _allTokens){
-        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
-        return tokensInRange(0, iSROUTER(sdao.ROUTER()).tokenCount()) ;
+        iDAO dao = iDAO(iBASE(BASE).DAO());
+        return tokensInRange(0, iROUTER(dao.ROUTER()).tokenCount()) ;
     }
     function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
-        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
+        iDAO dao = iDAO(iBASE(BASE).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i < count; i++){
-            result[i] = iSROUTER(sdao.ROUTER()).getToken(i);
+            result[i] = iROUTER(dao.ROUTER()).getToken(i);
         }
         return result;
     }
@@ -210,13 +219,13 @@ contract Utils {
         return poolsInRange(0, tokenCount());
     }
     function poolsInRange(uint start, uint count) public view returns (address[] memory somePools){
-        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
+        iDAO dao = iDAO(iBASE(BASE).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = getPool(iSROUTER(sdao.ROUTER()).getToken(i));
+            result[i] = getPool(iROUTER(dao.ROUTER()).getToken(i));
         }
         return result;
     }
@@ -225,14 +234,14 @@ contract Utils {
         address payable pool = getPool(token);
         poolData.poolAddress = pool;
         poolData.tokenAddress = token;
-        poolData.genesis = iSPOOL(pool).genesis();
-        poolData.baseAmt = iSPOOL(pool).baseAmt();
-        poolData.tokenAmt = iSPOOL(pool).tokenAmt();
-        poolData.baseAmtStaked = iSPOOL(pool).baseAmtStaked();
-        poolData.tokenAmtStaked = iSPOOL(pool).tokenAmtStaked();
-        poolData.fees = iSPOOL(pool).fees();
-        poolData.volume = iSPOOL(pool).volume();
-        poolData.txCount = iSPOOL(pool).txCount();
+        poolData.genesis = iPOOL(pool).genesis();
+        poolData.baseAmt = iPOOL(pool).baseAmt();
+        poolData.tokenAmt = iPOOL(pool).tokenAmt();
+        poolData.baseAmtStaked = iPOOL(pool).baseAmtStaked();
+        poolData.tokenAmtStaked = iPOOL(pool).tokenAmtStaked();
+        poolData.fees = iPOOL(pool).fees();
+        poolData.volume = iPOOL(pool).volume();
+        poolData.txCount = iPOOL(pool).txCount();
         poolData.poolUnits = iERC20(pool).totalSupply();
         return poolData;
     }
@@ -245,36 +254,39 @@ contract Utils {
 
     function getPoolShare(address token, uint units) public view returns(uint baseAmt, uint tokenAmt){
         address payable pool = getPool(token);
-        baseAmt = calcShare(units, iERC20(pool).totalSupply(), iSPOOL(pool).baseAmt());
-        tokenAmt = calcShare(units, iERC20(pool).totalSupply(), iSPOOL(pool).tokenAmt());
+        baseAmt = calcShare(units, iERC20(pool).totalSupply(), iPOOL(pool).baseAmt());
+        tokenAmt = calcShare(units, iERC20(pool).totalSupply(), iPOOL(pool).tokenAmt());
         return (baseAmt, tokenAmt);
+    }
+
+    function getShareOfBaseAmount(address token, address member) public view returns(uint baseAmt){
+        address payable pool = getPool(token);
+        uint units = iERC20(pool).balanceOf(member);
+        return calcShare(units, iERC20(pool).totalSupply(), iPOOL(pool).baseAmt());
+    }
+    function getShareOfTokenAmount(address token, address member) public view returns(uint baseAmt){
+        address payable pool = getPool(token);
+        uint units = iERC20(pool).balanceOf(member);
+        return calcShare(units, iERC20(pool).totalSupply(), iPOOL(pool).tokenAmt());
     }
 
     function getPoolShareAssym(address token, uint units, bool toBase) public view returns(uint baseAmt, uint tokenAmt, uint outputAmt){
         address payable pool = getPool(token);
         if(toBase){
-            baseAmt = calcAsymmetricShare(units, iERC20(pool).totalSupply(), iSPOOL(pool).baseAmt());
+            baseAmt = calcAsymmetricShare(units, iERC20(pool).totalSupply(), iPOOL(pool).baseAmt());
             tokenAmt = 0;
             outputAmt = baseAmt;
         } else {
             baseAmt = 0;
-            tokenAmt = calcAsymmetricShare(units, iERC20(pool).totalSupply(), iSPOOL(pool).tokenAmt());
+            tokenAmt = calcAsymmetricShare(units, iERC20(pool).totalSupply(), iPOOL(pool).tokenAmt());
             outputAmt = tokenAmt;
         }
         return (baseAmt, tokenAmt, outputAmt);
     }
 
-    function getMemberData(address token, address member) public view returns(MemberDataStruct memory memberData){
-        address payable pool = getPool(token);
-        memberData.baseAmtStaked = iSPOOL(pool).getBaseAmtStaked(member);
-        memberData.tokenAmtStaked = iSPOOL(pool).getTokenAmtStaked(member);
-        memberData.stakerUnits = iERC20(pool).balanceOf(member);
-        return memberData;
-    }
-
     function getPoolAge(address token) public view returns (uint daysSinceGenesis){
         address payable pool = getPool(token);
-        uint genesis = iSPOOL(pool).genesis();
+        uint genesis = iPOOL(pool).genesis();
         if(now < genesis.add(86400)){
             return 1;
         } else {
@@ -284,11 +296,11 @@ contract Utils {
 
     function getPoolROI(address token) public view returns (uint roi){
         address payable pool = getPool(token);
-        uint _baseStart = iSPOOL(pool).baseAmtStaked().mul(2);
-        uint _baseEnd = iSPOOL(pool).baseAmt().mul(2);
+        uint _baseStart = iPOOL(pool).baseAmtStaked().mul(2);
+        uint _baseEnd = iPOOL(pool).baseAmt().mul(2);
         uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
-        uint _tokenStart = iSPOOL(pool).tokenAmtStaked().mul(2);
-        uint _tokenEnd = iSPOOL(pool).tokenAmt().mul(2);
+        uint _tokenStart = iPOOL(pool).tokenAmtStaked().mul(2);
+        uint _tokenEnd = iPOOL(pool).tokenAmt().mul(2);
         uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
         return (_ROIS + _ROIA).div(2);
    }
@@ -299,27 +311,6 @@ contract Utils {
         return (avgROI.mul(365)).div(poolAge);
    }
 
-    function getMemberROI(address token, address member) public view returns (uint roi){
-        MemberDataStruct memory memberData = getMemberData(token, member);
-        uint _baseStart = memberData.baseAmtStaked.mul(2);
-        if(isMember(token, member)){
-            (uint _baseShare, uint _tokenShare) = getMemberShare(token, member);
-            uint _baseEnd = _baseShare.mul(2);
-            uint _ROIS = 0; uint _ROIA = 0;
-            if(_baseStart > 0){
-                _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
-            }
-            uint _tokenStart = memberData.tokenAmtStaked.mul(2);
-            uint _tokenEnd = _tokenShare.mul(2);
-            if(_tokenStart > 0){
-                _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
-            }
-            return (_ROIS + _ROIA).div(2);
-        } else {
-            return 0;
-        }
-    }
-
     function isMember(address token, address member) public view returns(bool){
         address payable pool = getPool(token);
         if (iERC20(pool).balanceOf(member) > 0){
@@ -329,29 +320,29 @@ contract Utils {
         }
     }
 
+    //====================================PRICING====================================//
+
     function calcValueInBase(address token, uint amount) public view returns (uint value){
        address payable pool = getPool(token);
-       return iSPOOL(pool).calcValueInBase(amount);
+       return iPOOL(pool).calcValueInBase(amount);
     }
 
     function calcValueInToken(address token, uint amount) public view returns (uint value){
         address payable pool = getPool(token);
-        return iSPOOL(pool).calcValueInToken(amount);
+        return iPOOL(pool).calcValueInToken(amount);
     }
 
     function calcTokenPPinBase(address token, uint amount) public view returns (uint _output){
         address payable pool = getPool(token);
-        return  iSPOOL(pool).calcTokenPPinBase(amount);
+        return  iPOOL(pool).calcTokenPPinBase(amount);
    }
 
     function calcBasePPinToken(address token, uint amount) public view returns (uint _output){
         address payable pool = getPool(token);
-        return  iSPOOL(pool).calcBasePPinToken(amount);
+        return  iPOOL(pool).calcBasePPinToken(amount);
     }
 
-
-
-
+    //====================================CORE-MATH====================================//
 
     function calcPart(uint bp, uint total) public pure returns (uint part){
         // 10,000 basis points = 100.00%

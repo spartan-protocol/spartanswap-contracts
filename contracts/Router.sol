@@ -15,7 +15,7 @@ interface iERC20 {
     event Transfer(address indexed from, address indexed to, uint value);
     event Approval(address indexed owner, address indexed spender, uint value);
 }
-interface iSPARTA {
+interface iBASE {
     function secondsPerEra() external view returns (uint);
     function DAO() external view returns (address);
 }
@@ -30,7 +30,7 @@ interface iUTILS {
     function getPoolShare(address token, uint units) external view returns(uint baseAmt, uint tokenAmt);
     function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmt, uint tokenAmt, uint outputAmt);
 }
-interface iSDAO {
+interface iDAO {
     function ROUTER() external view returns(address);
 }
 
@@ -71,14 +71,12 @@ library SafeMath {
     }
 }
 
-contract SPool is iERC20 {
+contract Pool is iERC20 {
     using SafeMath for uint;
 
-    address public SPARTA;
-    // iSDAO public SDAO;
+    address public BASE;
     iUTILS public UTILS;
     address public TOKEN;
-    // address public SDAO.ROUTER();
 
     uint public one = 10**18;
 
@@ -108,32 +106,39 @@ contract SPool is iERC20 {
     }
 
     function _isRouter() internal view {
-        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
-        require(msg.sender == sdao.ROUTER(), "RouterErr");
+        iDAO dao = iDAO(iBASE(BASE).DAO());
+        require(msg.sender == dao.ROUTER(), "RouterErr");
     }
 
-    constructor (address _sparta, iUTILS _utils, address _token) public payable {
+    constructor (address _base, iUTILS _utils, address _token) public payable {
 
-        SPARTA = _sparta;
+        BASE = _base;
         UTILS = _utils;
         TOKEN = _token;
-        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
+
+        string memory poolName = "SpartanPoolV1-";
+        string memory poolSymbol = "SPT1-";
 
         if(_token == address(0)){
-            _name = "SpartanPoolV1-BinanceCoin";
-            _symbol = "SPT1-BNB";
+            _name = string(abi.encodePacked(poolName, "BinanceCoin"));
+            _symbol = string(abi.encodePacked(poolSymbol, "BNB"));
         } else {
-            string memory tokenName = iERC20(_token).name();
-            _name = string(abi.encodePacked("SpartanPoolV1-", tokenName));
-            string memory tokenSymbol = iERC20(_token).symbol();
-            _symbol = string(abi.encodePacked("SPT1-", tokenSymbol));
-            iERC20(_token).approve(sdao.ROUTER(), (2**256)-1);
+            _name = string(abi.encodePacked(poolName, iERC20(_token).name()));
+            _symbol = string(abi.encodePacked(poolSymbol, iERC20(_token).symbol()));
         }
         
         decimals = 18;
         genesis = now;
-        _allowances[address(this)][sdao.ROUTER()] = (2**256)-1;
-        iERC20(SPARTA).approve(sdao.ROUTER(), (2**256)-1);
+    }
+
+    function _checkApprovals() external onlyRouter{
+        iDAO dao = iDAO(iBASE(BASE).DAO());
+        if(iERC20(BASE).allowance(address(this), dao.ROUTER()) == 0){
+            if(TOKEN != address(0)){
+                iERC20(TOKEN).approve(dao.ROUTER(), (2**256)-1);
+            }
+        iERC20(BASE).approve(dao.ROUTER(), (2**256)-1);
+        }
     }
 
     receive() external payable {}
@@ -187,8 +192,8 @@ contract SPool is iERC20 {
     function _mint(address account, uint256 amount) external onlyRouter {
         totalSupply = totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
-        iSDAO sdao = iSDAO(iSPARTA(SPARTA).DAO());
-        _allowances[account][sdao.ROUTER()] += amount;
+        iDAO dao = iDAO(iBASE(BASE).DAO());
+        _allowances[account][dao.ROUTER()] += amount;
         emit Transfer(address(0), account, amount);
     }
     // Burn supply
@@ -230,8 +235,8 @@ contract SPool is iERC20 {
     // Dividend functions
 
     function add(address token, uint amount) public returns (bool success) {
-        if(token == SPARTA){
-            iERC20(SPARTA).transferFrom(msg.sender, address(this), amount);
+        if(token == BASE){
+            iERC20(BASE).transferFrom(msg.sender, address(this), amount);
             baseAmt = baseAmt.add(amount);
             return true;
         } else if (token == TOKEN){
@@ -323,17 +328,18 @@ contract SPool is iERC20 {
     }
 }
 
-contract SRouter {
+contract Router {
 
     using SafeMath for uint;
 
-    address public SPARTA;
-    // iSDAO public SDAO;
+    address public BASE;
+    // iDAO public DAO;
     iUTILS public UTILS;
+    address public DEPLOYER;
 
-    uint256 public currentEra;
-    uint256 public nextEraTime;
-    uint256 public reserve;
+    // uint256 public currentEra;
+    // uint256 public nextEraTime;
+    // uint256 public reserve;
 
     uint public totalStaked; 
     uint public totalVolume;
@@ -350,29 +356,61 @@ contract SRouter {
     event Staked(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event Unstaked(address member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
-    event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 reserve);
+    // event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 reserve);
 
-    constructor (address _sparta, iUTILS _utils) public payable {
-        SPARTA = _sparta; //0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D;
-        // SDAO = _sDao;
-        UTILS = _utils; //0x17218e58Fdf07c989faCca25De4c6FdB06502186;
+// Only Deployer can execute
+    modifier onlyDeployer() {
+        require(msg.sender == DEPLOYER, "DeployerErr");
+        _;
+    }
+
+    constructor (address _base, address _utils) public payable {
+        BASE = _base;
+        // DAO = _Dao;
+        UTILS = iUTILS(_utils);
+        DEPLOYER = msg.sender;
+    }
+
+    function migrateRouterData(address oldRouter) public onlyDeployer {
+        totalStaked = Router(oldRouter).totalStaked();
+        totalVolume = Router(oldRouter).totalVolume();
+        totalFees = Router(oldRouter).totalFees();
+        unstakeTx = Router(oldRouter).unstakeTx();
+        stakeTx = Router(oldRouter).stakeTx();
+        swapTx = Router(oldRouter).swapTx();
+    }
+
+    function migrateTokenData(address oldRouter) public onlyDeployer {
+        uint tokenCount = Router(oldRouter).tokenCount();
+        for(uint i = 0; i<tokenCount; i++){
+            address token = Router(oldRouter).getToken(i);
+            address payable pool = Router(oldRouter).getPool(token);
+            isPool[pool] = true;
+            arrayTokens.push(token);
+            mapToken_Pool[token] = pool;
+        }
+    }
+
+    function purgeDeployer() public onlyDeployer {
+        DEPLOYER = address(0);
     }
 
     function createPool(uint inputBase, uint inputToken, address token) public payable returns(address payable pool){
         require(getPool(token) == address(0), "CreateErr");
-        require(token != SPARTA, "Must not be Sparta");
+        require(token != BASE, "Must not be Base");
         require((inputToken > 0 && inputBase > 0), "Must get tokens for both");
-        SPool newPool = new SPool(SPARTA, UTILS, token);
+        Pool newPool = new Pool(BASE, UTILS, token);
         pool = payable(address(newPool));
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
-        uint _actualInputBase = _handleTransferIn(SPARTA, inputBase, pool);
+        uint _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         mapToken_Pool[token] = pool;
         arrayTokens.push(token);
         isPool[pool] = true;
         totalStaked += _actualInputBase;
         stakeTx += 1;
-        _handleStake(pool, _actualInputBase, _actualInputToken, msg.sender);
+        uint units = _handleStake(pool, _actualInputBase, _actualInputToken, msg.sender);
         emit NewPool(token, pool, now);
+        emit Staked(msg.sender, _actualInputBase, _actualInputToken, units);
         return pool;
     }
 
@@ -387,7 +425,7 @@ contract SRouter {
     function stakeForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
         address payable pool = getPool(token);
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
-        uint _actualInputBase = _handleTransferIn(SPARTA, inputBase, pool);
+        uint _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         units = _handleStake(pool, _actualInputBase, _actualInputToken, member);
         emit Staked(member, _actualInputBase, _actualInputToken, units);
         totalStaked += _actualInputBase;
@@ -397,12 +435,13 @@ contract SRouter {
 
 
     function _handleStake(address payable pool, uint _baseAmt, uint _tokenAmt, address _member) internal returns (uint _units) {
-        uint _S = SPool(pool).baseAmt().add(_baseAmt);
-        uint _A = SPool(pool).tokenAmt().add(_tokenAmt);
-        SPool(pool)._incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
-        SPool(pool)._addMemberData(_member, _baseAmt, _tokenAmt);
+        Pool(pool)._checkApprovals();
+        uint _S = Pool(pool).baseAmt().add(_baseAmt);
+        uint _A = Pool(pool).tokenAmt().add(_tokenAmt);
+        Pool(pool)._incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
+        Pool(pool)._addMemberData(_member, _baseAmt, _tokenAmt);
         _units = UTILS.calcStakeUnits(_tokenAmt, _A, _baseAmt, _S);  
-        SPool(pool)._mint(_member, _units);
+        Pool(pool)._mint(_member, _units);
         return _units;
     }
 
@@ -427,7 +466,7 @@ contract SRouter {
         totalStaked = totalStaked.sub(_outputBase);
         unstakeTx += 1;
         _handleTransferOut(token, _outputToken, pool, member);
-        _handleTransferOut(SPARTA, _outputBase, pool, member);
+        _handleTransferOut(BASE, _outputBase, pool, member);
         return true;
     }
 
@@ -447,14 +486,15 @@ contract SRouter {
         totalStaked = totalStaked.sub(_outputBase);
         unstakeTx += 1;
         _handleTransferOut(token, _outputToken, pool, msg.sender);
-        _handleTransferOut(SPARTA, _outputBase, pool, msg.sender);
+        _handleTransferOut(BASE, _outputBase, pool, msg.sender);
         return _outputAmount;
     }
 
     function _handleUnstake(address payable pool, uint _units, uint _outputBase, uint _outputToken, address _member) internal returns (bool success) {
-        SPool(pool)._decrementPoolBalances(_outputBase, _outputToken);
-        SPool(pool)._removeDataForMember(_member, _units);
-        SPool(pool).burnFrom(_member, _units);
+        Pool(pool)._checkApprovals();
+        Pool(pool)._decrementPoolBalances(_outputBase, _outputToken);
+        Pool(pool)._removeDataForMember(_member, _units);
+        Pool(pool).burnFrom(_member, _units);
         return true;
     } 
 
@@ -467,15 +507,16 @@ contract SRouter {
     }
     function buyTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
-        uint _actualAmount = _handleTransferIn(SPARTA, amount, pool);
-        (outputAmount, fee) = _swapBaseToToken(pool, amount);
+        Pool(pool)._checkApprovals();
+        uint _actualAmount = _handleTransferIn(BASE, amount, pool);
+        (outputAmount, fee) = _swapBaseToToken(pool, _actualAmount);
         // addDividend(pool, outputAmount, fee);
         totalStaked += _actualAmount;
         totalVolume += _actualAmount;
-        totalFees += SPool(pool).calcValueInBase(fee);
+        totalFees += Pool(pool).calcValueInBase(fee);
         swapTx += 1;
         _handleTransferOut(token, outputAmount, pool, member);
-        emit Swapped(SPARTA, token, _actualAmount, 0, outputAmount, fee, member);
+        emit Swapped(BASE, token, _actualAmount, 0, outputAmount, fee, member);
         return (outputAmount, fee);
     }
 
@@ -485,43 +526,46 @@ contract SRouter {
     }
     function sellTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
+        Pool(pool)._checkApprovals();
         uint _actualAmount = _handleTransferIn(token, amount, pool);
-        (outputAmount, fee) = _swapTokenToBase(pool, amount);
+        (outputAmount, fee) = _swapTokenToBase(pool, _actualAmount);
         // addDividend(pool, outputAmount, fee);
         totalStaked = totalStaked.sub(outputAmount);
         totalVolume += outputAmount;
         totalFees += fee;
         swapTx += 1;
-        _handleTransferOut(SPARTA, outputAmount, pool, member);
-        emit Swapped(token, SPARTA, _actualAmount, 0, outputAmount, fee, member);
+        _handleTransferOut(BASE, outputAmount, pool, member);
+        emit Swapped(token, BASE, _actualAmount, 0, outputAmount, fee, member);
         return (outputAmount, fee);
     }
 
     function swap(uint inputAmount, address fromToken, address toToken) public payable returns (uint outputAmount, uint fee) {
         require(fromToken != toToken, "InputErr");
         address payable poolFrom = getPool(fromToken); address payable poolTo = getPool(toToken);
+        Pool(poolFrom)._checkApprovals();
+        Pool(poolTo)._checkApprovals();
         uint _actualAmount = _handleTransferIn(fromToken, inputAmount, poolFrom);
         uint _transferAmount = 0;
-        if(fromToken == SPARTA){
+        if(fromToken == BASE){
             (outputAmount, fee) = _swapBaseToToken(poolFrom, _actualAmount);      // Buy to token
             totalStaked += _actualAmount;
             totalVolume += _actualAmount;
             // addDividend(poolFrom, outputAmount, fee);
-        } else if(toToken == SPARTA) {
+        } else if(toToken == BASE) {
             (outputAmount, fee) = _swapTokenToBase(poolFrom,_actualAmount);   // Sell to token
             totalStaked = totalStaked.sub(outputAmount);
             totalVolume += outputAmount;
             // addDividend(poolFrom, outputAmount, fee);
         } else {
-            (uint _yy, uint _feey) = _swapTokenToBase(poolFrom, _actualAmount);             // Sell to SPARTA
+            (uint _yy, uint _feey) = _swapTokenToBase(poolFrom, _actualAmount);             // Sell to BASE
             totalVolume += _yy; totalFees += _feey;
             // addDividend(poolFrom, _yy, _feey);
-            iERC20(SPARTA).transferFrom(poolFrom, poolTo, _yy); 
+            iERC20(BASE).transferFrom(poolFrom, poolTo, _yy); 
             (uint _zz, uint _feez) = _swapBaseToToken(poolTo, _yy);              // Buy to token
-            totalFees += SPool(poolTo).calcValueInBase(_feez);
+            totalFees += Pool(poolTo).calcValueInBase(_feez);
             // addDividend(poolTo, _zz, _feez);
             _transferAmount = _yy; outputAmount = _zz; 
-            fee = _feez + SPool(poolTo).calcValueInToken(_feey);
+            fee = _feez + Pool(poolTo).calcValueInToken(_feey);
         }
         swapTx += 1;
         _handleTransferOut(toToken, outputAmount, poolTo, msg.sender);
@@ -530,32 +574,32 @@ contract SRouter {
     }
 
     function _swapBaseToToken(address payable pool, uint _x) internal returns (uint _y, uint _fee){
-        uint _X = SPool(pool).baseAmt();
-        uint _Y = SPool(pool).tokenAmt();
+        uint _X = Pool(pool).baseAmt();
+        uint _Y = Pool(pool).tokenAmt();
         _y =  UTILS.calcSwapOutput(_x, _X, _Y);
         _fee = UTILS.calcSwapFee(_x, _X, _Y);
-        SPool(pool)._setPoolAmounts(_X.add(_x), _Y.sub(_y));
+        Pool(pool)._setPoolAmounts(_X.add(_x), _Y.sub(_y));
         _updatePoolMetrics(pool, _y+_fee, _fee, false);
         return (_y, _fee);
     }
 
     function _swapTokenToBase(address payable pool, uint _x) internal returns (uint _y, uint _fee){
-        uint _X = SPool(pool).tokenAmt();
-        uint _Y = SPool(pool).baseAmt();
+        uint _X = Pool(pool).tokenAmt();
+        uint _Y = Pool(pool).baseAmt();
         _y =  UTILS.calcSwapOutput(_x, _X, _Y);
         _fee = UTILS.calcSwapFee(_x, _X, _Y);
-        SPool(pool)._setPoolAmounts(_Y.sub(_y), _X.add(_x));
+        Pool(pool)._setPoolAmounts(_Y.sub(_y), _X.add(_x));
         _updatePoolMetrics(pool, _y+_fee, _fee, true);
         return (_y, _fee);
     }
 
     function _updatePoolMetrics(address payable pool, uint _txSize, uint _fee, bool _toBase) internal {
         if(_toBase){
-            SPool(pool)._addPoolMetrics(_txSize, _fee);
+            Pool(pool)._addPoolMetrics(_txSize, _fee);
         } else {
-            uint _txBase = SPool(pool).calcValueInBase(_txSize);
-            uint _feeBase = SPool(pool).calcValueInBase(_fee);
-            SPool(pool)._addPoolMetrics(_txBase, _feeBase);
+            uint _txBase = Pool(pool).calcValueInBase(_txSize);
+            uint _feeBase = Pool(pool).calcValueInBase(_fee);
+            Pool(pool)._addPoolMetrics(_txBase, _feeBase);
         }
     }
 
@@ -570,21 +614,21 @@ contract SRouter {
     // function _checkEmission() private {
     //     if (now >= nextEraTime) {                                                           // If new Era and allowed to emit
     //         currentEra += 1;                                                               // Increment Era
-    //         nextEraTime = now + iSPARTA(SPARTA).secondsPerEra() + 100;                     // Set next Era time
+    //         nextEraTime = now + iBASE(BASE).secondsPerEra() + 100;                     // Set next Era time
     //         syncReserve();
     //         emit NewEra(currentEra, nextEraTime, reserve);                               // Emit Event
     //     }
     // }
 
     // function syncReserves() public {
-    //     reserve = iERC20(SPARTA).balanceOf(address(this));
+    //     reserve = iERC20(BASE).balanceOf(address(this));
     //     // burn income
     // }
 
     // function payDividends(address token) public {
     //     uint dividend = getDividend(token);
     //     reserve = reserve.sub(dividend);
-    //     SPool(pool).add(SPARTA, dividend);
+    //     Pool(pool).add(BASE, dividend);
     // }
 
     // function getSwapShare(uint amount, uint fee) public view returns(uint share) {
@@ -597,7 +641,7 @@ contract SRouter {
     // function addDividend(address payable pool, uint outputAmount, uint fee) private {
     //     uint dividend = getSwapShare(outputAmount, fee);
     //     reserve = reserve.sub(dividend);
-    //     SPool(pool).add(SPARTA, dividend);
+    //     Pool(pool).add(BASE, dividend);
     // }
 
     //==================================================================================//
@@ -620,7 +664,7 @@ contract SRouter {
     function _handleTransferOut(address _token, uint _amount, address _pool, address payable _recipient) internal {
         if(_amount > 0) {
             if (_token == address(0)) {
-                SPool(payable(_pool)).transferETH(_recipient, _amount);
+                Pool(payable(_pool)).transferETH(_recipient, _amount);
             } else {
                 iERC20(_token).transferFrom(_pool, _recipient, _amount);
             }

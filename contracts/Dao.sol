@@ -7,17 +7,18 @@ interface iERC20 {
     function transfer(address, uint) external returns (bool);
     function transferFrom(address, address, uint) external returns (bool);
 }
-interface iSROUTER {
+interface iROUTER {
     function isPool(address) external view returns(bool);
 }
-interface iSPOOL {
-    function getBaseAmtStaked(address) external view returns(uint);
+interface iPOOL {
+    function TOKEN() external view returns(address);
     function transferTo(address, uint) external returns (bool);
 }
 interface iUTILS {
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
+    function getPoolShare(address token, uint units) external view returns(uint baseAmt);
 }
-interface iSPARTA {
+interface iBASE {
     function changeIncentiveAddress(address) external returns(bool);
     function changeDAO(address) external returns(bool);
 }
@@ -60,7 +61,7 @@ library SafeMath {
 }
 
 
-contract SDao {
+contract Dao {
 
     using SafeMath for uint;
     uint256 private constant _NOT_ENTERED = 1;
@@ -69,12 +70,13 @@ contract SDao {
     address public DEPLOYER;
 
     iUTILS public UTILS;
-    address public SPARTA;
+    address public BASE;
 
     uint256 public totalWeight;
     uint public one = 10**18;
     uint public coolOffPeriod = 1 * 2;
     uint public blocksPerDay = 5760;
+    uint public daysToEarnFactor = 10;
 
     address public proposedRouter;
     bool public proposedRouterChange;
@@ -86,12 +88,13 @@ contract SDao {
     bool public proposedDaoChange;
     uint public daoChangeStart;
     bool public daoHasMoved;
-    address public SDAO;
+    address public DAO;
 
     address[] public arrayMembers;
     mapping(address => bool) public isMember; // Is Member
     mapping(address => mapping(address => uint256)) public mapMemberPool_Balance; // Member's balance in pool
     mapping(address => uint256) public mapMember_Weight; // Value of weight
+    mapping(address => mapping(address => uint256)) public mapMemberPool_Weight; // Value of weight for pool
     mapping(address => uint256) public mapMember_Block;
 
     mapping(address => uint256) public mapAddress_Votes; // Value of weight
@@ -112,31 +115,34 @@ contract SDao {
     }
     // Only Deployer can execute
     modifier onlyDeployer() {
-        require(msg.sender == DEPLOYER, "AdminErr");
+        require(msg.sender == DEPLOYER, "DeployerErr");
         _;
     }
 
-    constructor (address _sparta, iUTILS _utils) public payable {
-        SPARTA = _sparta;
-        UTILS = _utils;
+    constructor (address _base, address _utils) public payable {
+        BASE = _base;
+        UTILS = iUTILS(_utils);
         DEPLOYER = msg.sender;
         _status = _NOT_ENTERED;
     }
     function setGenesisRouter(address genesisRouter) public onlyDeployer {
         _router = genesisRouter;
+    }
+    function purgeDeployer() public onlyDeployer {
         DEPLOYER = address(0);
     }
 
     //============================== USER - LOCK/UNLOCK ================================//
     // Member locks some LP tokens
     function lock(address pool, uint256 amount) public nonReentrant {
-        require(iSROUTER(_router).isPool(pool) == true, "Must be listed");
+        require(iROUTER(_router).isPool(pool) == true, "Must be listed");
         require(amount > 0, "Must get some");
         if (!isMember[msg.sender]) {
+            mapMember_Block[msg.sender] = block.number;
             arrayMembers.push(msg.sender);
             isMember[msg.sender] = true;
         }
-        require(iSPOOL(pool).transferTo(address(this), amount),"Must transfer"); // Uni/Bal LP tokens return bool
+        require(iPOOL(pool).transferTo(address(this), amount),"Must transfer"); // Uni/Bal LP tokens return bool
         mapMemberPool_Balance[msg.sender][pool] = mapMemberPool_Balance[msg.sender][pool].add(amount); // Record total pool balance for member
         registerWeight(msg.sender, pool); // Register weight
         emit MemberLocks(msg.sender, pool, amount);
@@ -146,7 +152,10 @@ contract SDao {
     function unlock(address pool) public nonReentrant {
         uint256 balance = mapMemberPool_Balance[msg.sender][pool];
         require(balance > 0, "Must have a balance to weight");
-        zeroWeight(pool, msg.sender);
+        reduceWeight(pool, msg.sender);
+        if(mapMember_Weight[msg.sender] == 0 && iERC20(BASE).balanceOf(address(this)) > 0){
+            harvest();
+        }
         require(iERC20(pool).transfer(msg.sender, balance), "Must transfer"); // Then transfer
         emit MemberUnlocks(msg.sender, pool, balance);
     }
@@ -158,16 +167,23 @@ contract SDao {
     }
 
     function updateWeight(address pool, address member) public returns(uint){
-        totalWeight = totalWeight.sub(mapMember_Weight[member]); // Remove previous weights
-        uint weight = iSPOOL(pool).getBaseAmtStaked(member);
-        mapMember_Weight[member] = weight;
+        if(mapMemberPool_Weight[member][pool] > 0){
+            totalWeight = totalWeight.sub(mapMemberPool_Weight[member][pool]); // Remove previous weights
+            mapMember_Weight[member] = mapMember_Weight[member].sub(mapMemberPool_Weight[member][pool]);
+            mapMemberPool_Weight[member][pool] = 0;
+        }
+        uint weight = UTILS.getPoolShare(iPOOL(pool).TOKEN(), mapMemberPool_Balance[msg.sender][pool] );
+        mapMemberPool_Weight[member][pool] = weight;
+        mapMember_Weight[member] += weight;
         totalWeight += weight;
         return weight;
     }
-    function zeroWeight(address pool, address member) internal {
+    function reduceWeight(address pool, address member) internal {
+        uint weight = mapMemberPool_Weight[member][pool];
         mapMemberPool_Balance[member][pool] = 0; // Zero out balance
-        totalWeight = totalWeight.sub(mapMember_Weight[member]); // Remove that weight
-        mapMember_Weight[member] = 0; // Zero out balance
+        mapMemberPool_Weight[member][pool] = 0; // Zero out weight
+        totalWeight = totalWeight.sub(weight); // Remove that weight
+        mapMember_Weight[member] = mapMember_Weight[member].sub(weight); // Reduce weight
     }
 
     //============================== GOVERNANCE ================================//
@@ -190,17 +206,16 @@ contract SDao {
     }
 
     function moveRouter() public nonReentrant {
-        require(proposedRouter != address(0));
+        require(proposedRouter != address(0), "No router proposed");
+        require((now - routerChangeStart) > coolOffPeriod, "Must be pass cool off");
         checkRouterChange(proposedRouter);
         if(proposedRouterChange){
-            if((now - routerChangeStart) > coolOffPeriod){
-                _router = proposedRouter;
-                routerHasMoved = true;
-                emit NewAddress(msg.sender, proposedRouter, mapAddress_Votes[proposedRouter], totalWeight, 'ROUTER');
-                mapAddress_Votes[proposedRouter] = 0;
-                proposedRouter = address(0);
-                proposedRouterChange = false;
-            }
+            _router = proposedRouter;
+            routerHasMoved = true;
+            emit NewAddress(msg.sender, proposedRouter, mapAddress_Votes[proposedRouter], totalWeight, 'ROUTER');
+            mapAddress_Votes[proposedRouter] = 0;
+            proposedRouter = address(0);
+            proposedRouterChange = false;
         }
     }
     function checkRouterChange(address _newRouter) internal {
@@ -224,21 +239,20 @@ contract SDao {
         }
     }
     function moveDao() public nonReentrant{
-        require(proposedDao != address(0));
+        require(proposedDao != address(0), "No DAO proposed");
+        require((now - daoChangeStart) > coolOffPeriod, "Must be pass cool off");
         checkDaoChange(proposedDao);
         if(proposedDaoChange){
-            if((now - daoChangeStart) > coolOffPeriod){
-                iSPARTA(SPARTA).changeIncentiveAddress(proposedDao);
-                iSPARTA(SPARTA).changeDAO(proposedDao);
-                uint reserve = iERC20(SPARTA).balanceOf(address(this));
-                iERC20(SPARTA).transfer(proposedDao, reserve);
-                daoHasMoved = true;
-                SDAO = proposedDao;
-                emit NewAddress(msg.sender, proposedDao, mapAddress_Votes[proposedDao], totalWeight, 'DAO');
-                mapAddress_Votes[proposedDao] = 0;
-                proposedDao = address(0);
-                proposedDaoChange = false;
-            }
+            iBASE(BASE).changeIncentiveAddress(proposedDao);
+            iBASE(BASE).changeDAO(proposedDao);
+            uint reserve = iERC20(BASE).balanceOf(address(this));
+            iERC20(BASE).transfer(proposedDao, reserve);
+            daoHasMoved = true;
+            DAO = proposedDao;
+            emit NewAddress(msg.sender, proposedDao, mapAddress_Votes[proposedDao], totalWeight, 'DAO');
+            mapAddress_Votes[proposedDao] = 0;
+            proposedDao = address(0);
+            proposedDaoChange = false;
         }
     }
     function checkDaoChange(address _newDao) internal {
@@ -269,7 +283,7 @@ contract SDao {
 
     function ROUTER() public view returns(address){
         if(daoHasMoved){
-            return SDao(SDAO).ROUTER();
+            return Dao(DAO).ROUTER();
         } else {
             return _router;
         }
@@ -280,29 +294,24 @@ contract SDao {
     function harvest() public nonReentrant {
         uint reward = calcCurrentReward(msg.sender);
         mapMember_Block[msg.sender] = block.number;
-        iERC20(SPARTA).transfer(msg.sender, reward);
+        iERC20(BASE).transfer(msg.sender, reward);
     }
 
     function calcCurrentReward(address member) public view returns(uint){
         uint blocksSinceClaim = block.number.sub(mapMember_Block[member]);
         uint share = calcDailyReward(member);
-        return share.mul(blocksSinceClaim).div(blocksPerDay);
+        uint reward = share.mul(blocksSinceClaim).div(blocksPerDay);
+        uint reserve = iERC20(BASE).balanceOf(address(this));
+        if(reward >= reserve) {
+            reward = reserve;
+        }
+        return reward;
     }
 
     function calcDailyReward(address member) public view returns(uint){
         uint weight = mapMember_Weight[member];
-        uint reserve = iERC20(SPARTA).balanceOf(address(this));
+        uint reserve = iERC20(BASE).balanceOf(address(this)).div(daysToEarnFactor);
         return UTILS.calcShare(weight, totalWeight, reserve);
-    }
-
-    //============================== HELPERS ================================//
-    // Sync a member
-    function syncMemberPool(address member, address pool) public returns(uint){
-        totalWeight = totalWeight.sub(mapMember_Weight[member]);
-        uint weight = iSPOOL(pool).getBaseAmtStaked(member);
-        mapMember_Weight[member] = weight;
-        totalWeight += weight;
-        return weight;
     }
 
 }

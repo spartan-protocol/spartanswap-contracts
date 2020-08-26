@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 var Token1 = artifacts.require('./Token1')
-var Sparta = artifacts.require('./Sparta')
+var Sparta = artifacts.require('./Base')
 const BigNumber = require('bignumber.js')
 const truffleAssert = require('truffle-assertions')
 
@@ -179,9 +179,14 @@ describe("DAO Functions", function() {
     await sparta.startEmissions({from:acc2})
     expect(await sparta.emitting()).to.equal(true);
   });
+
+  it("DAO changeDAO", async function() {
+    await sparta.changeDAO(acc3, {from:acc2})
+    expect(await sparta.DAO()).to.equal(acc3);
+  });
   
   it("Old DAO fails", async function() {
-    await truffleAssert.reverts(sparta.startEmissions())
+    await truffleAssert.reverts(sparta.startEmissions({from:acc2}))
   });
 });
 
@@ -203,7 +208,7 @@ describe("Emissions", function() {
   });
 
   it("DAO changeEraDuration", async function() {
-    await sparta.changeEraDuration('200',{from:acc2})
+    await sparta.changeEraDuration('200',{from:acc3})
     expect(BN2Str(await sparta.secondsPerEra())).to.equal('200');
   });
 });

@@ -47,7 +47,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract SpartaMinted is iERC20 {
+contract BaseMinted is iERC20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters

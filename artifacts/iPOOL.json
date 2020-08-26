@@ -1,39 +1,27 @@
 {
-  "contractName": "iSROUTER",
+  "contractName": "iPOOL",
   "abi": [
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "getPool",
+      "inputs": [],
+      "name": "baseAmt",
       "outputs": [
-        {
-          "internalType": "address payable",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
         {
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
         }
       ],
-      "name": "getToken",
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "baseAmtStaked",
       "outputs": [
         {
-          "internalType": "address",
+          "internalType": "uint256",
           "name": "",
-          "type": "address"
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -43,39 +31,132 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "inputBase",
+          "name": "",
           "type": "uint256"
-        },
+        }
+      ],
+      "name": "calcBasePPinToken",
+      "outputs": [
         {
           "internalType": "uint256",
-          "name": "inputToken",
+          "name": "",
           "type": "uint256"
-        },
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "calcTokenPPinBase",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "calcValueInBase",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "calcValueInToken",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "fees",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "genesis",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
         {
           "internalType": "address",
-          "name": "token",
+          "name": "",
           "type": "address"
-        },
+        }
+      ],
+      "name": "getBaseAmtStaked",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
         {
           "internalType": "address",
-          "name": "member",
+          "name": "",
           "type": "address"
         }
       ],
-      "name": "stakeForMember",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "units",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "stakeTx",
+      "name": "getTokenAmtStaked",
       "outputs": [
         {
           "internalType": "uint256",
@@ -88,7 +169,7 @@
     },
     {
       "inputs": [],
-      "name": "swapTx",
+      "name": "tokenAmt",
       "outputs": [
         {
           "internalType": "uint256",
@@ -101,7 +182,7 @@
     },
     {
       "inputs": [],
-      "name": "tokenCount",
+      "name": "tokenAmtStaked",
       "outputs": [
         {
           "internalType": "uint256",
@@ -114,7 +195,7 @@
     },
     {
       "inputs": [],
-      "name": "totalFees",
+      "name": "txCount",
       "outputs": [
         {
           "internalType": "uint256",
@@ -127,33 +208,7 @@
     },
     {
       "inputs": [],
-      "name": "totalStaked",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "totalVolume",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "unstakeTx",
+      "name": "volume",
       "outputs": [
         {
           "internalType": "uint256",

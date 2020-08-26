@@ -47,7 +47,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract Sparta is iERC20 {
+contract Base is iERC20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -71,6 +71,7 @@ contract Sparta is iERC20 {
     address public incentiveAddress;
     address public DAO;
     address public burnAddress;
+    address public DEPLOYER;
 
     address[] public assetArray;
     mapping(address => bool) public isListed;
@@ -89,7 +90,7 @@ contract Sparta is iERC20 {
 
     // Only DAO can execute
     modifier onlyDAO() {
-        require(msg.sender == DAO, "Must be DAO");
+        require(msg.sender == DAO || msg.sender == DEPLOYER, "Must be DAO");
         _;
     }
 
@@ -104,11 +105,12 @@ contract Sparta is iERC20 {
         totalSupply = 0;
         totalCap = 300 * 10**6 * one;
         emissionCurve = 2048;
-        emitting = true;
+        emitting = false;
         currentEra = 1;
         secondsPerEra = 1; //86400;
         nextEraTime = now + secondsPerEra;
         DAO = msg.sender;
+        DEPLOYER = msg.sender;
         burnAddress = 0x0000000000000000000000000000000000000001;
     }
 
@@ -162,8 +164,8 @@ contract Sparta is iERC20 {
         require(sender != address(0), "iERC20: transfer from the zero address");
         _balances[sender] = _balances[sender].sub(amount, "iERC20: transfer amount exceeds balance");
         _balances[recipient] = _balances[recipient].add(amount);
-        _checkEmission();
         emit Transfer(sender, recipient, amount);
+        _checkEmission();
     }
     // Internal mint (upgrading and daily emissions)
     function _mint(address account, uint256 amount) internal virtual {
@@ -247,6 +249,11 @@ contract Sparta is iERC20 {
     function purgeDAO() public onlyDAO returns(bool){
         DAO = address(0);
         emit NewDAO(msg.sender, address(0));
+        return true;
+    }
+    // Can purge DEPLOYER
+    function purgeDeployer() public onlyDAO returns(bool){
+        DEPLOYER = address(0);
         return true;
     }
 
