@@ -6,9 +6,9 @@ Spartan Swap is a liquidity pool protocol that allows token-agnostic provision o
 1) Deploy SPARTA
 2) Deploy UTILS(SPARTA)
 3) Deploy DAO(SPARTA, UTILS)
-4) Set DAO in SPARTA
 4) Deploy Router(SPARTA, UTILS)
-5) Set Router in DAO
+5) Set DAO in SPARTA
+6) Set Router in DAO
 
 Sparta is the base currency.
 Utils needs to know Router (to calculate state) and DAO (to ask for router)
@@ -62,6 +62,12 @@ Pools needs to know DAO to ask for Router
 0xAfCe5dA566377D293a8e681cf2824f7Dc0C733C6 utils
 0x862138A5c5b85E34D599cF60B99f67ABeFaaA99f Dao
 0x4D419c4c8d65788523373523615271115A6B815B Router
+
+// BSC - 3
+
+0x0D4d2c33480B5fe9360f581e43832b1F550Ff020 utils
+0xC241D694D51dB9E934b147130CFEfE8385813B86 Dao
+0xd92cf95aBaE1c681fD3d563e6Cd1A4946041d97e Router
 
 
 

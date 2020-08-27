@@ -324,22 +324,46 @@ contract Utils {
 
     function calcValueInBase(address token, uint amount) public view returns (uint value){
        address payable pool = getPool(token);
-       return iPOOL(pool).calcValueInBase(amount);
+       return calcValueInBaseWithPool(pool, amount);
     }
 
     function calcValueInToken(address token, uint amount) public view returns (uint value){
         address payable pool = getPool(token);
-        return iPOOL(pool).calcValueInToken(amount);
+        return calcValueInTokenWithPool(pool, amount);
     }
 
     function calcTokenPPinBase(address token, uint amount) public view returns (uint _output){
         address payable pool = getPool(token);
-        return  iPOOL(pool).calcTokenPPinBase(amount);
+        return  calcTokenPPinBaseWithPool(pool, amount);
    }
 
     function calcBasePPinToken(address token, uint amount) public view returns (uint _output){
         address payable pool = getPool(token);
-        return  iPOOL(pool).calcBasePPinToken(amount);
+        return  calcValueInBaseWithPool(pool, amount);
+    }
+
+    function calcValueInBaseWithPool(address payable pool, uint amount) public view returns (uint value){
+       uint _baseAmt = iPOOL(pool).baseAmt();
+       uint _tokenAmt = iPOOL(pool).tokenAmt();
+       return (amount.mul(_baseAmt)).div(_tokenAmt);
+    }
+
+    function calcValueInTokenWithPool(address payable pool, uint amount) public view returns (uint value){
+        uint _baseAmt = iPOOL(pool).baseAmt();
+        uint _tokenAmt = iPOOL(pool).tokenAmt();
+        return (amount.mul(_tokenAmt)).div(_baseAmt);
+    }
+
+    function calcTokenPPinBaseWithPool(address payable pool, uint amount) public view returns (uint _output){
+        uint _baseAmt = iPOOL(pool).baseAmt();
+        uint _tokenAmt = iPOOL(pool).tokenAmt();
+        return  calcSwapOutput(amount, _tokenAmt, _baseAmt);
+   }
+
+    function calcBasePPinTokenWithPool(address payable pool, uint amount) public view returns (uint _output){
+        uint _baseAmt = iPOOL(pool).baseAmt();
+        uint _tokenAmt = iPOOL(pool).tokenAmt();
+        return  calcSwapOutput(amount, _baseAmt, _tokenAmt);
     }
 
     //====================================CORE-MATH====================================//

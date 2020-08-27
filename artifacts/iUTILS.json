@@ -5,35 +5,6 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "s",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "T",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "A",
-          "type": "uint256"
-        }
-      ],
-      "name": "calcAsymmetricShare",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "share",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
           "name": "bp",
           "type": "uint256"
         },
@@ -181,13 +152,66 @@
           "internalType": "address",
           "name": "token",
           "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
         }
       ],
-      "name": "getPoolAge",
+      "name": "calcValueInBase",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "age",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address payable",
+          "name": "pool",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "calcValueInBaseWithPool",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "calcValueInToken",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "value",
           "type": "uint256"
         }
       ],
