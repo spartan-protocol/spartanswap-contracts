@@ -90,6 +90,12 @@ contract Dao {
     bool public daoHasMoved;
     address public DAO;
 
+    // address public proposedUtil;
+    // bool public proposedUtilChange;
+    // uint public utilChangeStart;
+    // bool public utilHasMoved;
+    // address public UTIL;
+
     address[] public arrayMembers;
     mapping(address => bool) public isMember; // Is Member
     mapping(address => mapping(address => uint256)) public mapMemberPool_Balance; // Member's balance in pool
@@ -299,7 +305,7 @@ contract Dao {
 
     function calcCurrentReward(address member) public view returns(uint){
         uint blocksSinceClaim = block.number.sub(mapMember_Block[member]);
-        uint share = calcDailyReward(member);
+        uint share = calcReward(member);
         uint reward = share.mul(blocksSinceClaim).div(blocksPerDay);
         uint reserve = iERC20(BASE).balanceOf(address(this));
         if(reward >= reserve) {
@@ -308,7 +314,7 @@ contract Dao {
         return reward;
     }
 
-    function calcDailyReward(address member) public view returns(uint){
+    function calcReward(address member) public view returns(uint){
         uint weight = mapMember_Weight[member];
         uint reserve = iERC20(BASE).balanceOf(address(this)).div(daysToEarnFactor);
         return UTILS.calcShare(weight, totalWeight, reserve);
