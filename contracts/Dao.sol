@@ -69,7 +69,7 @@ contract Dao {
     uint256 private _status;
     address public DEPLOYER;
 
-    iUTILS public UTILS;
+    // iUTILS public UTILS;
     address public BASE;
 
     uint256 public totalWeight;
@@ -82,7 +82,7 @@ contract Dao {
     bool public proposedRouterChange;
     uint public routerChangeStart;
     bool public routerHasMoved;
-    address private _router;
+    iROUTER public ROUTER;
 
     address public proposedDao;
     bool public proposedDaoChange;
@@ -90,11 +90,11 @@ contract Dao {
     bool public daoHasMoved;
     address public DAO;
 
-    // address public proposedUtil;
-    // bool public proposedUtilChange;
-    // uint public utilChangeStart;
-    // bool public utilHasMoved;
-    // address public UTIL;
+    address public proposedUtils;
+    bool public proposedUtilsChange;
+    uint public utilsChangeStart;
+    bool public utilsHasMoved;
+    iUTILS public UTILS;
 
     address[] public arrayMembers;
     mapping(address => bool) public isMember; // Is Member
@@ -125,15 +125,21 @@ contract Dao {
         _;
     }
 
-    constructor (address _base, address _utils) public payable {
+    constructor (address _base) public payable {
         BASE = _base;
-        UTILS = iUTILS(_utils);
         DEPLOYER = msg.sender;
         _status = _NOT_ENTERED;
     }
-    function setGenesisRouter(address genesisRouter) public onlyDeployer {
-        _router = genesisRouter;
+    function setGenesisAddresses(address _router, address _utils) public onlyDeployer {
+        ROUTER = iROUTER(_router);
+        UTILS = iUTILS(_utils);
     }
+    function setGenesisFactors(uint _coolOff, uint _blocksPerDay, uint _daysToEarn) public onlyDeployer {
+        coolOffPeriod = _coolOff;
+        blocksPerDay = _blocksPerDay;
+        daysToEarnFactor = _daysToEarn;
+    }
+
     function purgeDeployer() public onlyDeployer {
         DEPLOYER = address(0);
     }
@@ -141,7 +147,7 @@ contract Dao {
     //============================== USER - LOCK/UNLOCK ================================//
     // Member locks some LP tokens
     function lock(address pool, uint256 amount) public nonReentrant {
-        require(iROUTER(_router).isPool(pool) == true, "Must be listed");
+        require(ROUTER.isPool(pool) == true, "Must be listed");
         require(amount > 0, "Must get some");
         if (!isMember[msg.sender]) {
             mapMember_Block[msg.sender] = block.number;
@@ -194,60 +200,51 @@ contract Dao {
 
     //============================== GOVERNANCE ================================//
 
+
     // Member votes new Router
-    function voteRouterChange(address router) public nonReentrant returns (uint voteWeight) {
-        voteWeight = countVotes(router);
-        updateRouterChange(router);
-        emit NewVote(msg.sender, router, voteWeight, mapAddress_Votes[router], 'ROUTER');
+    function voteAddressChange(address newAddress, string memory typeStr) public nonReentrant returns (uint voteWeight) {
+        bytes memory _type = bytes(typeStr);
+        require(sha256(_type) == sha256('DAO') || sha256(_type) == sha256('ROUTER') || sha256(_type) == sha256('UTILS'));
+        voteWeight = countVotes(newAddress);
+        updateAddressChange(newAddress, _type);
+        emit NewVote(msg.sender, newAddress, voteWeight, mapAddress_Votes[newAddress], string(_type));
     }
 
-    function updateRouterChange(address _newRouter) internal {
-        if(hasQuorum(_newRouter)){
-            proposedRouter = _newRouter;
-            proposedRouterChange = true;
-            routerChangeStart = now;
-            routerHasMoved = false;
-            emit ProposalFinalising(msg.sender, _newRouter, now+coolOffPeriod, 'ROUTER');
-        }
-    }
-
-    function moveRouter() public nonReentrant {
-        require(proposedRouter != address(0), "No router proposed");
-        require((now - routerChangeStart) > coolOffPeriod, "Must be pass cool off");
-        checkRouterChange(proposedRouter);
-        if(proposedRouterChange){
-            _router = proposedRouter;
-            routerHasMoved = true;
-            emit NewAddress(msg.sender, proposedRouter, mapAddress_Votes[proposedRouter], totalWeight, 'ROUTER');
-            mapAddress_Votes[proposedRouter] = 0;
-            proposedRouter = address(0);
-            proposedRouterChange = false;
-        }
-    }
-    function checkRouterChange(address _newRouter) internal {
-        if(!hasQuorum(_newRouter)){
-            proposedRouterChange = false;
+    function updateAddressChange(address _newAddress, bytes memory _type) internal {
+        if(hasQuorum(_newAddress)){
+            if(sha256(_type) == sha256('DAO')){
+                updateDao(_newAddress);
+            } else if (sha256(_type) == sha256('ROUTER')) {
+                updateRouter(_newAddress);
+            } else if (sha256(_type) == sha256('UTILS')){
+                updateUtils(_newAddress);
+            }
+            emit ProposalFinalising(msg.sender, _newAddress, now+coolOffPeriod, string(_type));
         }
     }
 
-    // Member votes new DAO
-    function voteDaoChange(address newDao) public nonReentrant returns (uint voteWeight) {
-        voteWeight = countVotes(newDao);
-        updateDaoChange(newDao);
-        emit NewVote(msg.sender, newDao, voteWeight, mapAddress_Votes[newDao], 'DAO');
-    }
-    function updateDaoChange(address _newDao) internal {
-        if(hasQuorum(_newDao)){
-            proposedDao = _newDao;
-            proposedDaoChange = true;
-            daoChangeStart = now;
-            emit ProposalFinalising(msg.sender, _newDao, now+coolOffPeriod, 'DAO');
+    function moveAddress(string memory _typeStr) public nonReentrant {
+        bytes memory _type = bytes(_typeStr);
+        if(sha256(_type) == sha256('DAO')){
+            moveDao();
+        } else if (sha256(_type) == sha256('ROUTER')) {
+            moveRouter();
+        } else if (sha256(_type) == sha256('UTILS')){
+            moveUtils();
         }
     }
-    function moveDao() public nonReentrant{
+
+    function updateDao(address _address) internal {
+        proposedDao = _address;
+        proposedDaoChange = true;
+        daoChangeStart = now;
+    }
+    function moveDao() internal {
         require(proposedDao != address(0), "No DAO proposed");
         require((now - daoChangeStart) > coolOffPeriod, "Must be pass cool off");
-        checkDaoChange(proposedDao);
+        if(!hasQuorum(proposedDao)){
+            proposedDaoChange = false;
+        }
         if(proposedDaoChange){
             iBASE(BASE).changeIncentiveAddress(proposedDao);
             iBASE(BASE).changeDAO(proposedDao);
@@ -261,11 +258,52 @@ contract Dao {
             proposedDaoChange = false;
         }
     }
-    function checkDaoChange(address _newDao) internal {
-        if(!hasQuorum(_newDao)){
-            proposedDaoChange = false;
+
+    function updateRouter(address _address) internal {
+        proposedRouter = _address;
+        proposedRouterChange = true;
+        routerChangeStart = now;
+        routerHasMoved = false;
+    }
+    function moveRouter() internal {
+        require(proposedRouter != address(0), "No router proposed");
+        require((now - routerChangeStart) > coolOffPeriod, "Must be pass cool off");
+        if(!hasQuorum(proposedRouter)){
+            proposedRouterChange = false;
+        }
+        if(proposedRouterChange){
+            ROUTER = iROUTER(proposedRouter);
+            routerHasMoved = true;
+            emit NewAddress(msg.sender, proposedRouter, mapAddress_Votes[proposedRouter], totalWeight, 'ROUTER');
+            mapAddress_Votes[proposedRouter] = 0;
+            proposedRouter = address(0);
+            proposedRouterChange = false;
         }
     }
+
+    function updateUtils(address _address) internal {
+        proposedUtils = _address;
+        proposedUtilsChange = true;
+        utilsChangeStart = now;
+        utilsHasMoved = false;
+    }
+    function moveUtils() internal {
+        require(proposedUtils != address(0), "No utils proposed");
+        require((now - routerChangeStart) > coolOffPeriod, "Must be pass cool off");
+        if(!hasQuorum(proposedUtils)){
+            proposedUtilsChange = false;
+        }
+        if(proposedUtilsChange){
+            UTILS = iUTILS(proposedUtils);
+            utilsHasMoved = true;
+            emit NewAddress(msg.sender, proposedUtils, mapAddress_Votes[proposedUtils], totalWeight, 'UTILS');
+            mapAddress_Votes[proposedUtils] = 0;
+            proposedUtils = address(0);
+            proposedUtilsChange = false;
+        }
+    }
+
+    //============================== CONSENSUS ================================//
 
     function countVotes(address _address) internal returns (uint voteWeight){
         mapAddress_Votes[_address] = mapAddress_Votes[_address].sub(mapAddressMember_Votes[_address][msg.sender]);
@@ -285,15 +323,15 @@ contract Dao {
         }
     }
 
-    //============================== ROUTER ================================//
+    // //============================== ROUTER ================================//
 
-    function ROUTER() public view returns(address){
-        if(daoHasMoved){
-            return Dao(DAO).ROUTER();
-        } else {
-            return _router;
-        }
-    }
+    // function ROUTER() public view returns(address){
+    //     if(daoHasMoved){
+    //         return Dao(DAO).ROUTER();
+    //     } else {
+    //         return _router;
+    //     }
+    // }
 
     //============================== REWARDS ================================//
     // Rewards
