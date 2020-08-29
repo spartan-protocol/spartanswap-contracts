@@ -6,7 +6,7 @@
       "name": "DAO",
       "outputs": [
         {
-          "internalType": "address",
+          "internalType": "contract iDAO",
           "name": "",
           "type": "address"
         }

@@ -12,7 +12,7 @@ interface iERC20 {
 
 interface iBASE {
     function mapAddressHasClaimed() external view returns (bool);
-    function DAO() external view returns (address);
+    function DAO() external view returns (iDAO);
 }
 
 interface iROUTER {
@@ -146,6 +146,10 @@ contract Utils {
         DEPLOYER = msg.sender;
     }
 
+    function _DAO() internal view returns(iDAO) {
+        return iBASE(BASE).DAO();
+    }
+
     //====================================DATA-HELPERS====================================//
 
     function getTokenDetails(address token) public view returns (TokenDetails memory tokenDetails){
@@ -193,25 +197,21 @@ contract Utils {
     }
 
     function getPool(address token) public view returns(address payable pool){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
-        return iROUTER(dao.ROUTER()).getPool(token);
+        return iROUTER(_DAO().ROUTER()).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
-        return iROUTER(dao.ROUTER()).tokenCount();
+        return iROUTER(_DAO().ROUTER()).tokenCount();
     }
     function allTokens() public view returns (address[] memory _allTokens){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
-        return tokensInRange(0, iROUTER(dao.ROUTER()).tokenCount()) ;
+        return tokensInRange(0, iROUTER(_DAO().ROUTER()).tokenCount()) ;
     }
     function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i < count; i++){
-            result[i] = iROUTER(dao.ROUTER()).getToken(i);
+            result[i] = iROUTER(_DAO().ROUTER()).getToken(i);
         }
         return result;
     }
@@ -219,13 +219,12 @@ contract Utils {
         return poolsInRange(0, tokenCount());
     }
     function poolsInRange(uint start, uint count) public view returns (address[] memory somePools){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = getPool(iROUTER(dao.ROUTER()).getToken(i));
+            result[i] = getPool(iROUTER(_DAO().ROUTER()).getToken(i));
         }
         return result;
     }
