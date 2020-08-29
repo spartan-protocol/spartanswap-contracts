@@ -186,7 +186,7 @@ contract Utils {
     }
 
     function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
+        iDAO dao = _DAO();
         globalDetails.totalStaked = iROUTER(dao.ROUTER()).totalStaked();
         globalDetails.totalVolume = iROUTER(dao.ROUTER()).totalVolume();
         globalDetails.totalFees = iROUTER(dao.ROUTER()).totalFees();
