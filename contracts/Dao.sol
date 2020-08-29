@@ -69,7 +69,6 @@ contract Dao {
     uint256 private _status;
     address public DEPLOYER;
 
-    // iUTILS public UTILS;
     address public BASE;
 
     uint256 public totalWeight;
@@ -78,23 +77,23 @@ contract Dao {
     uint public blocksPerDay = 5760;
     uint public daysToEarnFactor = 10;
 
-    address public proposedRouter;
-    bool public proposedRouterChange;
-    uint public routerChangeStart;
-    bool public routerHasMoved;
-    iROUTER public ROUTER;
-
     address public proposedDao;
     bool public proposedDaoChange;
     uint public daoChangeStart;
     bool public daoHasMoved;
     address public DAO;
 
+    address public proposedRouter;
+    bool public proposedRouterChange;
+    uint public routerChangeStart;
+    bool public routerHasMoved;
+    iROUTER private _ROUTER;
+
     address public proposedUtils;
     bool public proposedUtilsChange;
     uint public utilsChangeStart;
     bool public utilsHasMoved;
-    iUTILS public UTILS;
+    iUTILS private _UTILS;
 
     address[] public arrayMembers;
     mapping(address => bool) public isMember; // Is Member
@@ -131,8 +130,8 @@ contract Dao {
         _status = _NOT_ENTERED;
     }
     function setGenesisAddresses(address _router, address _utils) public onlyDeployer {
-        ROUTER = iROUTER(_router);
-        UTILS = iUTILS(_utils);
+        _ROUTER = iROUTER(_router);
+        _UTILS = iUTILS(_utils);
     }
     function setGenesisFactors(uint _coolOff, uint _blocksPerDay, uint _daysToEarn) public onlyDeployer {
         coolOffPeriod = _coolOff;
@@ -147,7 +146,7 @@ contract Dao {
     //============================== USER - LOCK/UNLOCK ================================//
     // Member locks some LP tokens
     function lock(address pool, uint256 amount) public nonReentrant {
-        require(ROUTER.isPool(pool) == true, "Must be listed");
+        require(_ROUTER.isPool(pool) == true, "Must be listed");
         require(amount > 0, "Must get some");
         if (!isMember[msg.sender]) {
             mapMember_Block[msg.sender] = block.number;
@@ -184,7 +183,7 @@ contract Dao {
             mapMember_Weight[member] = mapMember_Weight[member].sub(mapMemberPool_Weight[member][pool]);
             mapMemberPool_Weight[member][pool] = 0;
         }
-        uint weight = UTILS.getPoolShare(iPOOL(pool).TOKEN(), mapMemberPool_Balance[msg.sender][pool] );
+        uint weight = _UTILS.getPoolShare(iPOOL(pool).TOKEN(), mapMemberPool_Balance[msg.sender][pool] );
         mapMemberPool_Weight[member][pool] = weight;
         mapMember_Weight[member] += weight;
         totalWeight += weight;
@@ -272,7 +271,7 @@ contract Dao {
             proposedRouterChange = false;
         }
         if(proposedRouterChange){
-            ROUTER = iROUTER(proposedRouter);
+            _ROUTER = iROUTER(proposedRouter);
             routerHasMoved = true;
             emit NewAddress(msg.sender, proposedRouter, mapAddress_Votes[proposedRouter], totalWeight, 'ROUTER');
             mapAddress_Votes[proposedRouter] = 0;
@@ -294,9 +293,9 @@ contract Dao {
             proposedUtilsChange = false;
         }
         if(proposedUtilsChange){
-            UTILS = iUTILS(proposedUtils);
+            _UTILS = iUTILS(proposedUtils);
             utilsHasMoved = true;
-            emit NewAddress(msg.sender, proposedUtils, mapAddress_Votes[proposedUtils], totalWeight, 'UTILS');
+            emit NewAddress(msg.sender, proposedUtils, mapAddress_Votes[proposedUtils], totalWeight, '_UTILS');
             mapAddress_Votes[proposedUtils] = 0;
             proposedUtils = address(0);
             proposedUtilsChange = false;
@@ -323,15 +322,23 @@ contract Dao {
         }
     }
 
-    // //============================== ROUTER ================================//
+    // //============================== _ROUTER ================================//
 
-    // function ROUTER() public view returns(address){
-    //     if(daoHasMoved){
-    //         return Dao(DAO).ROUTER();
-    //     } else {
-    //         return _router;
-    //     }
-    // }
+    function ROUTER() public view returns(iROUTER){
+        if(daoHasMoved){
+            return Dao(DAO).ROUTER();
+        } else {
+            return _ROUTER;
+        }
+    }
+
+    function UTILS() public view returns(iUTILS){
+        if(daoHasMoved){
+            return Dao(DAO).UTILS();
+        } else {
+            return _UTILS;
+        }
+    }
 
     //============================== REWARDS ================================//
     // Rewards
@@ -355,7 +362,7 @@ contract Dao {
     function calcReward(address member) public view returns(uint){
         uint weight = mapMember_Weight[member];
         uint reserve = iERC20(BASE).balanceOf(address(this)).div(daysToEarnFactor);
-        return UTILS.calcShare(weight, totalWeight, reserve);
+        return _UTILS.calcShare(weight, totalWeight, reserve);
     }
 
 }
