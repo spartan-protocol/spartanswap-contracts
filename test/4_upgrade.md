@@ -105,8 +105,8 @@ async function upgrade() {
 
 async function createPool1() {
     it("It should deploy Eth Pool", async () => {
-        var POOL = await sRouter.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
-        await sRouter.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
+        var POOL = await sRouter.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
+        await sRouter.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
         sPool1ETH = await SPOOL.at(POOL)
         console.log(`Pools: ${sPool1ETH.address}`)
         const spartanAddr = await sPool1ETH.SPARTA()
@@ -138,8 +138,8 @@ async function createPool1() {
 
 async function createPool2() {
     it("It should deploy Eth Pool", async () => {
-        var POOL = await sRouter2.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
-        await sRouter2.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
+        var POOL = await sRouter2.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
+        await sRouter2.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
         sPool2ETH = await SPOOL.at(POOL)
         console.log(`Pools: ${sPool2ETH.address}`)
         const spartanAddr = await sPool2ETH.SPARTA()
@@ -172,7 +172,7 @@ async function createPool2() {
 
 async function stakeETH(acc, v, a) {
 
-    it(`It should stake ETH from ${acc}`, async () => {
+    it(`It should stake BNB from ${acc}`, async () => {
 
         var S = _.getBN((await sPool1ETH.poolData()).baseAmt)
         var A = _.getBN((await sPool1ETH.poolData()).tokenAmt)
@@ -182,7 +182,7 @@ async function stakeETH(acc, v, a) {
         let units = math.calcStakeUnits(a, A.plus(a), v, S.plus(v))
         console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(S.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
         
-        let tx = await sRouter.stake(v, a, _.ETH, { from: acc, value: a })
+        let tx = await sRouter.stake(v, a, _.BNB, { from: acc, value: a })
 
         // assert.equal(_.BN2Str((await sPool1ETH.poolData()).baseAmt), _.BN2Str(S.plus(v)))
         // assert.equal(_.BN2Str((await sPool1ETH.poolData()).tokenAmt), _.BN2Str(A.plus(a)))
@@ -201,7 +201,7 @@ async function stakeETH(acc, v, a) {
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(sPool1ETH.address));
         const spartanBal = _.BN2Token(await sparta.balanceOf(sPool1ETH.address));
-        console.log(`BALANCES: [ ${tokenBal} ETH | ${spartanBal} SPT ]`)
+        console.log(`BALANCES: [ ${tokenBal} BNB | ${spartanBal} SPT ]`)
     })
 }
 
@@ -240,10 +240,10 @@ async function _stakeTKN(acc, a, v, token, pools) {
 
 async function stakeSendETH2(acc, a, v, first) {
 
-    it(`It should stake ETH from ${acc}`, async () => {
+    it(`It should stake BNB from ${acc}`, async () => {
         // console.log(`testing for ${acc}, ${v}, ${a}, ${first}`)
 
-        const addr = _.ETH
+        const addr = _.BNB
         var V; var A;
         if(first){
             V = _.getBN(0); 
@@ -281,7 +281,7 @@ async function stakeSendETH2(acc, a, v, first) {
 
 async function upgradeETH(acc) {
 
-    it(`It should upgrade ETH`, async () => {
+    it(`It should upgrade BNB`, async () => {
 
         V = _.getBN((await sPool2ETH.poolData()).baseAmt)
         A = _.getBN((await sPool2ETH.poolData()).tokenAmt)
@@ -292,7 +292,7 @@ async function upgradeETH(acc) {
 
         let units = math.calcStakeUnits(a, A.plus(a), v, V.plus(v))
 
-        let tx = await sRouter.upgrade(sRouter2.address, _.ETH, {from:acc})
+        let tx = await sRouter.upgrade(sRouter2.address, _.BNB, {from:acc})
         // console.log(tx.receipt.logs)
 
         assert.equal(_.BN2Str((await sPool2ETH.poolData()).baseAmt), V.plus(v))
@@ -335,8 +335,8 @@ async function upgradeTKN(acc) {
 
 async function unstakeETH(bp, acc) {
 
-    it(`It should unstake ETH for ${acc}`, async () => {
-        const addr = _.ETH
+    it(`It should unstake BNB for ${acc}`, async () => {
+        const addr = _.BNB
         let sPool1ETH = sPool1ETH2
         var V = _.getBN((await sPool1ETH.poolData(addr)).baseAmt)
         var A = _.getBN((await sPool1ETH.poolData(addr)).tokenAmt)
@@ -434,12 +434,12 @@ async function _unstakeTKN(bp, acc, addr) {
 
 function logETH() {
     it("logs", async () => {
-        await help.logPool(sPool1ETH, _.ETH, 'ETH')
+        await help.logPool(sPool1ETH, _.BNB, 'BNB')
     })
 }
 function logETH2() {
     it("logs", async () => {
-        await help.logPool(sPool1ETH2, _.ETH, 'ETH')
+        await help.logPool(sPool1ETH2, _.BNB, 'BNB')
     })
 }
 

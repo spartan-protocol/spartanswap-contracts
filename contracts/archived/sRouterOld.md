@@ -291,7 +291,7 @@ contract SPool is iERC20 {
         return true;
     }
 
-    // ETH Transfer function
+    // BNB Transfer function
     function transferETH(address payable to, uint value) public payable onlyRouter returns (bool success) {
         to.call{value:value}(""); 
         return true;

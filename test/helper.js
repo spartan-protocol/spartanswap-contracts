@@ -85,16 +85,16 @@ async function logStaker(instance, acc, token) {
   let stakerUnits = (await instance.balanceOf(acc))
   console.log("\n-------------------Staker Details -------------------")
   console.log(`ADDRESS: ${acc} | POOL: ${token}`)
-  // console.log(`StakeData: [ ${_.BN2Token(stakeData.baseAmtStaked)} BASE | ${_.BN2Token(stakeData.tokenAmtStaked)} ETH ]`)
+  // console.log(`StakeData: [ ${_.BN2Token(stakeData.baseAmtStaked)} BASE | ${_.BN2Token(stakeData.tokenAmtStaked)} BNB ]`)
   console.log(`StakeData: [ ${_.BN2Token(stakerUnits)} UNITS ]`)
   console.log("-----------------------------------------------------------\n")
 }
-async function logETHBalances(acc0, acc1, ETH) {
+async function logETHBalances(acc0, acc1, BNB) {
   const acc0TokenBal = await web3.eth.getBalance(acc0)
   const acc1TokenBal = await web3.eth.getBalance(acc1)
-  const addressETHBalance = await web3.eth.getBalance(ETH)
+  const addressETHBalance = await web3.eth.getBalance(BNB)
   console.log(" ")
-  console.log("----------------------ETH BALANCES---------------------")
+  console.log("----------------------BNB BALANCES---------------------")
   console.log('acc0:       ', acc0TokenBal / (_.one))
   console.log('acc1:       ', acc1TokenBal / (_.one))
   console.log('_.addressETH: ', _.addressETHBalance / (_.one))

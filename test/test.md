@@ -4,10 +4,10 @@ Test Routine.
 2. Deploy Sparta Pools, with SPARTA set.
 3. Add ETh, 2 token pools
 4. Swap 
-- ETH->SPARTA, 
-- ETH->T1, 
-- SPARTA->ETH, 
-- T1->ETH
+- BNB->SPARTA, 
+- BNB->T1, 
+- SPARTA->BNB, 
+- T1->BNB
 - T1 -> SPARTA
 - SPARTA -> T1
 - T1 -> T2

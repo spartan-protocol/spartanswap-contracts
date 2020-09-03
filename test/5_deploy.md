@@ -47,8 +47,8 @@ function constructor(accounts) {
         let supply = await spartan.totalSupply()
         await spartan.approve(vFactory.address, supply, { from: acc0 })
         
-        POOL = await vFactory.deployPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
-        await vFactory.deployPool(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
+        POOL = await vFactory.deployPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
+        await vFactory.deployPool(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
         vPool = await VPOOL.at(POOL)
         
         console.log(`vPool: ${vPool.address}`)

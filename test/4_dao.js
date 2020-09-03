@@ -90,8 +90,8 @@ function constructor(accounts) {
 
 async function createPool() {
     it("It should deploy Eth Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
-        await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
+        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
+        await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
         poolETH = await POOL.at(_pool)
         console.log(`Pools: ${poolETH.address}`)
         const baseAddr = await poolETH.BASE()
@@ -161,7 +161,7 @@ async function lockETH(acc) {
         // await poolETH.approve(Dao.address, balance, { from: acc })
         await Dao.lock(poolETH.address, balance, { from: acc })
         console.log(`isMember: ${await Dao.isMember(acc)}`)
-        console.log(`mapMemberPool_Balance: ${await Dao.mapMemberPool_Balance(acc, _.ETH)}`)
+        console.log(`mapMemberPool_Balance: ${await Dao.mapMemberPool_Balance(acc, _.BNB)}`)
         console.log(`totalWeight: ${await Dao.totalWeight()}`)
         console.log(`mapMember_Weight: ${await Dao.mapMember_Weight(acc)}`)
     })
@@ -174,7 +174,7 @@ async function lockTKN(acc) {
         // await poolTKN1.approve(Dao.address, balance, { from: acc })
         await Dao.lock(poolTKN1.address, balance, { from: acc })
         console.log(`isMember: ${await Dao.isMember(acc)}`)
-        console.log(`mapMemberPool_Balance: ${await Dao.mapMemberPool_Balance(acc, _.ETH)}`)
+        console.log(`mapMemberPool_Balance: ${await Dao.mapMemberPool_Balance(acc, _.BNB)}`)
         console.log(`totalWeight: ${await Dao.totalWeight()}`)
         console.log(`mapMember_Weight: ${await Dao.mapMember_Weight(acc)}`)
     })
@@ -282,32 +282,32 @@ async function tryToMoveUtils() {
 
 async function swapPassR1(acc, b) {
 
-    it(`It should buy ETH with BASE from ${acc}`, async () => {
+    it(`It should buy BNB with BASE from ${acc}`, async () => {
         console.log(`base: ${await utils.BASE()}`)
         console.log(`DAO: ${await base.DAO()}`)
         console.log(`ROUTER: ${await Dao.ROUTER()}`)
         await _passSwap(acc, b, router)
-        await help.logPool(utils, _.ETH, 'ETH')
+        await help.logPool(utils, _.BNB, 'BNB')
         
     })
 }
 
 async function swapPassR2(acc, b) {
 
-    it(`It should buy ETH with BASE from ${acc}`, async () => {
+    it(`It should buy BNB with BASE from ${acc}`, async () => {
         console.log(`base: ${await utils.BASE()}`)
         console.log(`DAO: ${await base.DAO()}`)
         console.log(`ROUTER: ${await Dao.ROUTER()}`)
         await _passSwap(acc, b, router2)
-        await help.logPool(utils, _.ETH, 'ETH')
+        await help.logPool(utils, _.BNB, 'BNB')
 
     })
 }
 
 async function _passSwap(acc, b, router) {
 
-    it(`It should buy ETH with BASE from ${acc}`, async () => {
-        let token = _.ETH
+    it(`It should buy BNB with BASE from ${acc}`, async () => {
+        let token = _.BNB
         let poolData = await utils.getPoolData(token);
         const B = _.getBN(poolData.baseAmt)
         const T = _.getBN(poolData.tokenAmt)
@@ -317,7 +317,7 @@ async function _passSwap(acc, b, router) {
         let fee = math.calcSwapFee(b, B, T)
         console.log(_.BN2Str(t), _.BN2Str(T), _.BN2Str(B), _.BN2Str(b), _.BN2Str(fee))
         
-        let tx = await router.buy(b, _.ETH)
+        let tx = await router.buy(b, _.BNB)
         poolData = await utils.getPoolData(token);
 
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(b))
@@ -337,7 +337,7 @@ async function _passSwap(acc, b, router) {
 
 async function swapFail(acc, b) {
     it("It should revert for old router", async () => {
-        await truffleAssert.reverts(router.buy(b, _.ETH));
+        await truffleAssert.reverts(router.buy(b, _.BNB));
     })
 }
 

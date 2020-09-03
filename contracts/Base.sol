@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
-//iERC20 Interface
-interface iERC20 {
+//iBEP20 Interface
+interface iBEP20 {
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
     function decimals() external view returns (uint);
@@ -47,7 +47,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract Base is iERC20 {
+contract Base is iBEP20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -77,7 +77,8 @@ contract Base is iERC20 {
     mapping(address => bool) public isListed;
     mapping(address => uint256) public mapAsset_maxClaim;
     mapping(address => uint256) public mapAsset_claimRate;
-    mapping(address => mapping(address => bool)) public mapMemberAsset_hasClaimed;
+    mapping(address => uint256) public mapAsset_totalClaimed;
+    mapping(address => uint256) public mapAsset_maxTotalClaim;
 
     // Events
     event ListedAsset(address indexed DAO, address indexed asset, uint256 maxClaim, uint256 claimRate);
@@ -111,22 +112,26 @@ contract Base is iERC20 {
         nextEraTime = now + secondsPerEra;
         DAO = msg.sender;
         DEPLOYER = msg.sender;
-        burnAddress = 0x0000000000000000000000000000000000000001;
+        burnAddress = 0x000000000000000000000000000000000000dEaD;
     }
 
-    //========================================iERC20=========================================//
+    receive() external payable {
+        burn(address(0), msg.value);
+    }
+
+    //========================================iBEP20=========================================//
     function balanceOf(address account) public view override returns (uint256) {
         return _balances[account];
     }
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
         return _allowances[owner][spender];
     }
-    // iERC20 Transfer function
+    // iBEP20 Transfer function
     function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(msg.sender, recipient, amount);
         return true;
     }
-    // iERC20 Approve, change allowance functions
+    // iBEP20 Approve, change allowance functions
     function approve(address spender, uint256 amount) public virtual override returns (bool) {
         _approve(msg.sender, spender, amount);
         return true;
@@ -136,20 +141,20 @@ contract Base is iERC20 {
         return true;
     }
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, "iERC20: decreased allowance below zero"));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, "iBEP20: decreased allowance below zero"));
         return true;
     }
     function _approve(address owner, address spender, uint256 amount) internal virtual {
-        require(owner != address(0), "iERC20: approve from the zero address");
-        require(spender != address(0), "iERC20: approve to the zero address");
+        require(owner != address(0), "iBEP20: approve from the zero address");
+        require(spender != address(0), "iBEP20: approve to the zero address");
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
     
-    // iERC20 TransferFrom function
+    // iBEP20 TransferFrom function
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "iERC20: transfer amount exceeds allowance"));
+        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "iBEP20: transfer amount exceeds allowance"));
         return true;
     }
 
@@ -161,15 +166,15 @@ contract Base is iERC20 {
 
     // Internal transfer function
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
-        require(sender != address(0), "iERC20: transfer from the zero address");
-        _balances[sender] = _balances[sender].sub(amount, "iERC20: transfer amount exceeds balance");
+        require(sender != address(0), "iBEP20: transfer from the zero address");
+        _balances[sender] = _balances[sender].sub(amount, "iBEP20: transfer amount exceeds balance");
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
         _checkEmission();
     }
     // Internal mint (upgrading and daily emissions)
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "iERC20: mint to the zero address");
+        require(account != address(0), "iBEP20: mint to the zero address");
         totalSupply = totalSupply.add(amount);
         require(totalSupply <= totalCap, "Must not mint more than the cap");
         _balances[account] = _balances[account].add(amount);
@@ -180,27 +185,28 @@ contract Base is iERC20 {
         _burn(msg.sender, amount);
     }
     function burnFrom(address account, uint256 amount) public virtual {
-        uint256 decreasedAllowance = allowance(account, msg.sender).sub(amount, "iERC20: burn amount exceeds allowance");
+        uint256 decreasedAllowance = allowance(account, msg.sender).sub(amount, "iBEP20: burn amount exceeds allowance");
         _approve(account, msg.sender, decreasedAllowance);
         _burn(account, amount);
     }
     function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "iERC20: burn from the zero address");
-        _balances[account] = _balances[account].sub(amount, "iERC20: burn amount exceeds balance");
+        require(account != address(0), "iBEP20: burn from the zero address");
+        _balances[account] = _balances[account].sub(amount, "iBEP20: burn amount exceeds balance");
         totalSupply = totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
 
     //=========================================DAO=========================================//
     // Can list
-    function listAssetWithClaim(address asset, uint256 maxClaim, uint256 claimRate) public onlyDAO returns(bool){
+    function listAssetWithClaim(address asset, uint256 maxClaim, uint256 claimRate, uint256 maxTotalClaim) public onlyDAO returns(bool){
         if(!isListed[asset]){
             isListed[asset] = true;
             assetArray.push(asset);
         }
         mapAsset_maxClaim[asset] = maxClaim;
         mapAsset_claimRate[asset] = claimRate;
-        emit ListedAsset(msg.sender, asset, maxClaim, claimRate);
+        mapAsset_maxTotalClaim[asset] = maxTotalClaim;
+        emit ListedAsset(msg.sender, asset, maxTotalClaim, claimRate);
         return true;
     }
     // Can delist
@@ -208,6 +214,7 @@ contract Base is iERC20 {
         isListed[asset] = false;
         mapAsset_maxClaim[asset] = 0;
         mapAsset_claimRate[asset] = 0;
+        mapAsset_maxTotalClaim[asset] = 0;
         return true;
     }
     // Can start
@@ -270,22 +277,32 @@ contract Base is iERC20 {
     }
     // Calculate Daily Emission
     function getDailyEmission() public view returns (uint256) {
-        // emission = (adjustedCap - totalSupply) / emissionCurve
-        // adjustedCap = totalCap * (totalSupply / 1bn)
-        uint adjustedCap = (totalCap.mul(totalSupply)).div(baseline);
+        uint adjustedCap;
+        if(totalSupply <= baseline){
+            adjustedCap = (totalCap.mul(totalSupply)).div(baseline);
+        } else {
+            adjustedCap = totalCap;
+        }
         return (adjustedCap.sub(totalSupply)).div(emissionCurve);
     }
-    //======================================UPGRADE========================================//
-    // Old Owners to Upgrade
-    function upgrade(address asset) public {
-        require(mapMemberAsset_hasClaimed[msg.sender][asset] == false, "Must not have already claimed");
-        uint256 balance = iERC20(asset).balanceOf(msg.sender);
-        uint256 claim = balance;                           // Start at balance
-        if(balance > mapAsset_maxClaim[asset]){
-            claim = mapAsset_maxClaim[asset];           // Reduce to the maximum
+    //======================================BURN========================================//
+    // Old Owners to Burn
+    function burn(address asset, uint amount) public payable {
+        
+        uint claim = amount;
+        if((mapAsset_totalClaimed[asset] + amount) > mapAsset_maxTotalClaim[asset]){
+            claim = mapAsset_maxTotalClaim[asset].sub(mapAsset_totalClaimed[asset]);
         }
-        mapMemberAsset_hasClaimed[msg.sender][asset] = true;
-        require(iERC20(asset).transferFrom(msg.sender, burnAddress, claim));
+
+        if(asset == address(0)){
+            require(amount == msg.value, "Must get BNB");
+            payable(burnAddress).call{value:claim}("");
+            payable(msg.sender).call{value:amount.sub(claim)}("");
+        } else {
+            iBEP20(asset).transferFrom(msg.sender, burnAddress, claim);
+        }
+        
+        mapAsset_totalClaimed[asset] += claim;
         uint256 adjustedClaimRate = getAdjustedClaimRate(asset);
         // sparta = rate * claim / 1e8
         uint256 sparta = (adjustedClaimRate.mul(claim)).div(one);

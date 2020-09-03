@@ -120,7 +120,7 @@ contract SPool is ERC20 {
 
         if(_token == address(0)){
             _name = "SPool-S3-Ethereum";
-            _symbol = "SLT-S3-ETH";
+            _symbol = "SLT-S3-BNB";
         } else {
             string memory tokenName = ERC20(_token).name();
             _name = string(abi.encodePacked("SPool-S1-", tokenName));

@@ -114,8 +114,8 @@ before(async function() {
 
 async function createPool() {
     it("It should deploy Eth Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
-        await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
+        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
+        await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
         poolETH = await POOL.at(_pool)
         console.log(`Pools: ${poolETH.address}`)
         const baseAddr = await poolETH.BASE()
@@ -162,8 +162,8 @@ async function createPool() {
 
 async function stake(acc, b, t) {
 
-    it(`It should stake ETH from ${acc}`, async () => {
-        let token = _.ETH
+    it(`It should stake BNB from ${acc}`, async () => {
+        let token = _.BNB
         let pool = poolETH
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
@@ -191,7 +191,7 @@ async function stake(acc, b, t) {
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(pool.address));
         const baseBal = _.BN2Token(await base.balanceOf(pool.address));
-        console.log(`BALANCES: [ ${tokenBal} ETH | ${baseBal} SPT ]`)
+        console.log(`BALANCES: [ ${tokenBal} BNB | ${baseBal} SPT ]`)
     })
 }
 
@@ -235,14 +235,14 @@ async function _stakeTKN(acc, t, b, token, pool) {
 
     const tokenBal = _.BN2Token(await web3.eth.getBalance(pool.address));
     const baseBal = _.BN2Token(await base.balanceOf(pool.address));
-    console.log(`BALANCES: [ ${tokenBal} ETH | ${baseBal} SPT ]`)
+    console.log(`BALANCES: [ ${tokenBal} BNB | ${baseBal} SPT ]`)
 }
 
 
 async function swapBASEToETH(acc, b) {
 
-    it(`It should buy ETH with BASE from ${acc}`, async () => {
-        let token = _.ETH
+    it(`It should buy BNB with BASE from ${acc}`, async () => {
+        let token = _.BNB
         let poolData = await utils.getPoolData(token);
         const B = _.getBN(poolData.baseAmt)
         const T = _.getBN(poolData.tokenAmt)
@@ -252,7 +252,7 @@ async function swapBASEToETH(acc, b) {
         let fee = math.calcSwapFee(b, B, T)
         console.log(_.BN2Str(t), _.BN2Str(T), _.BN2Str(B), _.BN2Str(b), _.BN2Str(fee))
         
-        let tx = await router.buy(b, _.ETH)
+        let tx = await router.buy(b, _.BNB)
         poolData = await utils.getPoolData(token);
 
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(b))
@@ -265,15 +265,15 @@ async function swapBASEToETH(acc, b) {
         assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
         assert.equal(_.BN2Str(await base.balanceOf(poolETH.address)), _.BN2Str(B.plus(b)), 'base balance')
 
-        await help.logPool(utils, _.ETH, 'ETH')
+        await help.logPool(utils, _.BNB, 'BNB')
     })
 }
 
 async function swapETHToBASE(acc, t) {
 
-    it(`It should sell ETH to BASE from ${acc}`, async () => {
-        let token = _.ETH
-        await help.logPool(utils, token, 'ETH')
+    it(`It should sell BNB to BASE from ${acc}`, async () => {
+        let token = _.BNB
+        await help.logPool(utils, token, 'BNB')
         let poolData = await utils.getPoolData(token);
         const B = _.getBN(poolData.baseAmt)
         const T = _.getBN(poolData.tokenAmt)
@@ -298,19 +298,19 @@ async function swapETHToBASE(acc, t) {
         assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(T.plus(t)), 'ether balance')
         assert.equal(_.BN2Str(await base.balanceOf(poolETH.address)), _.BN2Str(B.minus(b)), 'base balance')
 
-        await help.logPool(utils, token, 'ETH')
+        await help.logPool(utils, token, 'BNB')
     })
 }
 
 async function swapTKN1ToETH(acc, x) {
-    it(`It should swap TKN1 to ETH from ${acc}`, async () => {
+    it(`It should swap TKN1 to BNB from ${acc}`, async () => {
         await _swapTKNToETH(acc, x, token1, poolTKN1)
         await help.logPool(utils, token1.address, 'TKN1')
     })
 }
 
 async function swapTKN2ToETH(acc, x) {
-    it(`It should swap TKN2 to ETH from ${acc}`, async () => {
+    it(`It should swap TKN2 to BNB from ${acc}`, async () => {
         await _swapTKNToETH(acc, x, token2, poolTKN2)
         await help.logPool(utils, token2.address, 'TKN2')
 
@@ -318,7 +318,7 @@ async function swapTKN2ToETH(acc, x) {
 }
 
 async function _swapTKNToETH(acc, x, token, pool) {
-    const toToken = _.ETH
+    const toToken = _.BNB
     let poolData1 = await utils.getPoolData(token.address);
     let poolData2 = await utils.getPoolData(toToken);
     const X = _.getBN(poolData1.tokenAmt)
@@ -358,18 +358,18 @@ async function _swapTKNToETH(acc, x, token, pool) {
     assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(Z.minus(z)), 'ether balance')
 
     await help.logPool(utils, token.address, 'TKN1')
-    await help.logPool(utils, _.ETH, 'ETH')
+    await help.logPool(utils, _.BNB, 'BNB')
 }
 
 async function swapETHToTKN1(acc, x) {
-    it(`It should sell ETH with TKN1 from ${acc}`, async () => {
+    it(`It should sell BNB with TKN1 from ${acc}`, async () => {
         await _swapETHToTKN(acc, x, token1, poolTKN1)
         await help.logPool(utils, token1.address, 'TKN1')
     })
 }
 
 async function swapETHToTKN2(acc, x) {
-    it(`It should sell ETH to TKN2 from ${acc}`, async () => {
+    it(`It should sell BNB to TKN2 from ${acc}`, async () => {
         await _swapETHToTKN(acc, x, token2, poolTKN2)
         await help.logPool(utils, token2.address, 'TKN2')
 
@@ -377,7 +377,7 @@ async function swapETHToTKN2(acc, x) {
 }
 
 async function _swapETHToTKN(acc, x, token, pool) {
-    let poolData1 = await utils.getPoolData(_.ETH);
+    let poolData1 = await utils.getPoolData(_.BNB);
     let poolData2 = await utils.getPoolData(token.address);
     const X = _.getBN(poolData1.tokenAmt)
     const Y = _.getBN(poolData1.baseAmt)
@@ -392,8 +392,8 @@ async function _swapETHToTKN(acc, x, token, pool) {
     let fee = math.calcValueIn(feey, B.plus(y), Z.minus(z)).plus(feez)
     // console.log(_.BN2Str(t), _.BN2Str(T), _.BN2Str(B), _.BN2Str(b), _.BN2Str(fee))
     
-    let tx = await router.swap(x, _.ETH, token.address, {from:acc, value: x})
-    poolData1 = await utils.getPoolData(_.ETH);
+    let tx = await router.swap(x, _.BNB, token.address, {from:acc, value: x})
+    poolData1 = await utils.getPoolData(_.BNB);
     poolData2 = await utils.getPoolData(token.address);
 
     assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(x))
@@ -412,26 +412,26 @@ async function _swapETHToTKN(acc, x, token, pool) {
     assert.equal(_.BN2Str(await token.balanceOf(pool.address)), _.BN2Str(Z.minus(z)), 'ether balance')
 
     await help.logPool(utils, token.address, 'TKN1')
-    await help.logPool(utils, _.ETH, 'ETH')
+    await help.logPool(utils, _.BNB, 'BNB')
 }
 
 
 
 async function unstakeETH(bp, acc) {
 
-    it(`It should unstake ETH for ${acc}`, async () => {
-        let poolROI = await utils.getPoolROI(_.ETH)
-        console.log('poolROI-ETH', _.BN2Str(poolROI))
-        let poolAge = await utils.getPoolAge(_.ETH)
-        console.log('poolAge-ETH', _.BN2Str(poolAge))
-        let poolAPY = await utils.getPoolAPY(_.ETH)
-        console.log('poolAPY-ETH', _.BN2Str(poolAPY))
-        // let memberROI0 = await utils.getMemberROI(_.ETH, acc0)
+    it(`It should unstake BNB for ${acc}`, async () => {
+        let poolROI = await utils.getPoolROI(_.BNB)
+        console.log('poolROI-BNB', _.BN2Str(poolROI))
+        let poolAge = await utils.getPoolAge(_.BNB)
+        console.log('poolAge-BNB', _.BN2Str(poolAge))
+        let poolAPY = await utils.getPoolAPY(_.BNB)
+        console.log('poolAPY-BNB', _.BN2Str(poolAPY))
+        // let memberROI0 = await utils.getMemberROI(_.BNB, acc0)
         // console.log('memberROI0', _.BN2Str(memberROI0))
-        // let memberROI1 = await utils.getMemberROI(_.ETH, acc1)
+        // let memberROI1 = await utils.getMemberROI(_.BNB, acc1)
         // console.log('memberROI1', _.BN2Str(memberROI1))
 
-        let poolData = await utils.getPoolData(_.ETH);
+        let poolData = await utils.getPoolData(_.BNB);
         var B = _.getBN(poolData.baseAmt)
         var T = _.getBN(poolData.tokenAmt)
 
@@ -446,8 +446,8 @@ async function unstakeETH(bp, acc) {
         // let asShare = _.floorBN((T.times(share)).div(totalUnits))
         console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(b), _.BN2Str(t))
         
-        let tx = await router.unstake(bp, _.ETH, { from: acc})
-        poolData = await utils.getPoolData(_.ETH);
+        let tx = await router.unstake(bp, _.BNB, { from: acc})
+        poolData = await utils.getPoolData(_.BNB);
 
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(b), 'outputBase')
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(t), 'outputToken')
@@ -544,7 +544,7 @@ async function _unstakeTKN(bp, acc, pools, token) {
 
 async function logETH() {
     it("logs", async () => {
-        // await help.logPool(utils, _.ETH, 'ETH')
+        // await help.logPool(utils, _.BNB, 'BNB')
     })
 }
 function logTKN1() {
@@ -571,11 +571,11 @@ function checkDetails() {
         console.log('poolsInRange', (await utils.poolsInRange(0, 1)))
         console.log('poolsInRange', (await utils.poolsInRange(1, 2)))
         console.log('poolsInRange', (await utils.poolsInRange(1, 8)))
-        console.log('getGlobalDetails', (await utils.getTokenDetails(_.ETH)))
+        console.log('getGlobalDetails', (await utils.getTokenDetails(_.BNB)))
         console.log('getTokenDetails', (await utils.getTokenDetails(token1.address)))
         console.log('getTokenDetails', (await utils.getTokenDetails(token2.address)))
         console.log('getGlobalDetails', (await utils.getGlobalDetails()))
-        console.log('getPoolData ETH', (await utils.getPoolData(_.ETH)))
+        console.log('getPoolData BNB', (await utils.getPoolData(_.BNB)))
         console.log('getPoolData TKN1', (await utils.getPoolData(token1.address)))
         console.log('getTokenDetails TKN2', (await utils.getPoolData(token2.address)))
     })

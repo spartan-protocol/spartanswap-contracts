@@ -14,7 +14,7 @@ const one = 1 * 10 ** 18;
 const oneBN = new BigNumber(1 * 10 ** 18)
 const dot1BN = new BigNumber(1 * 10 ** 17)
 const dot01BN = new BigNumber(1 * 10 ** 16)
-const ETH = "0x0000000000000000000000000000000000000000"
+const BNB = "0x0000000000000000000000000000000000000000"
 
 function getBN(BN) { return (new BigNumber(BN))}
 
@@ -61,7 +61,7 @@ module.exports = {
   ,
   logType
   ,
-  ETH: ETH,
+  BNB: BNB,
   one:one,
   oneBN:oneBN, dot1BN:dot1BN, dot01BN:dot01BN
 

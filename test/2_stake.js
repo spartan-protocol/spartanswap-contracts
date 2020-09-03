@@ -1,6 +1,6 @@
 /*
 ################################################
-Stakes and unstakes ETH
+Stakes and unstakes BNB
 ################################################
 */
 
@@ -110,8 +110,8 @@ function constructor(accounts) {
 
 async function createPool() {
     it("It should deploy Eth Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
-        await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
+        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
+        await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
         basePools = await POOL.at(_pool)
         console.log(`Pools: ${basePools.address}`)
         const baseAddr = await basePools.BASE()
@@ -127,15 +127,15 @@ async function createPool() {
 
 
 async function stakeFail() {
-    it("It should revert with no ETH value", async () => {
-        var tx1 = await truffleAssert.reverts(router.stake(_.BN2Str(_.one * 100), _.BN2Str(_.one), _.ETH));
+    it("It should revert with no BNB value", async () => {
+        var tx1 = await truffleAssert.reverts(router.stake(_.BN2Str(_.one * 100), _.BN2Str(_.one), _.BNB));
     })
 }
 
 async function stakeETH(acc, v, a) {
 
-    it(`It should stake ETH from ${acc}`, async () => {
-        let token = _.ETH
+    it(`It should stake BNB from ${acc}`, async () => {
+        let token = _.BNB
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var A = _.getBN(poolData.tokenAmt)
@@ -162,7 +162,7 @@ async function stakeETH(acc, v, a) {
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(basePools.address));
         const baseBal = _.BN2Token(await base.balanceOf(basePools.address));
-        console.log(`BALANCES: [ ${tokenBal} ETH | ${baseBal} SPT ]`)
+        console.log(`BALANCES: [ ${tokenBal} BNB | ${baseBal} SPT ]`)
     })
 }
 
@@ -170,8 +170,8 @@ async function stakeETH(acc, v, a) {
 
 async function unstakeETH(bp, acc) {
 
-    it(`It should unstake ETH for ${acc}`, async () => {
-        let token = _.ETH
+    it(`It should unstake BNB for ${acc}`, async () => {
+        let token = _.BNB
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var A = _.getBN(poolData.tokenAmt)
@@ -214,7 +214,7 @@ async function unstakeETH(bp, acc) {
 async function unstakeAsym(bp, acc, toBase) {
 
     it(`It should assym unstake from ${acc}`, async () => {
-        let token = _.ETH
+        let token = _.BNB
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var A = _.getBN(poolData.tokenAmt)
@@ -234,7 +234,7 @@ async function unstakeAsym(bp, acc, toBase) {
             a = math.calcAsymmetricShare(share, totalUnits, A)
         }
 
-        let tx = await router.unstakeAsymmetric(bp, toBase, _.ETH, { from: acc})
+        let tx = await router.unstakeAsymmetric(bp, toBase, _.BNB, { from: acc})
         poolData = await utils.getPoolData(token);
         // console.log(poolData)
         // console.log(tx.receipt.logs)
@@ -259,7 +259,7 @@ async function unstakeAsym(bp, acc, toBase) {
 async function unstakeExactAsym(bp, acc, toBase) {
 
     it(`It should assym unstake from ${acc}`, async () => {
-        let token = _.ETH
+        let token = _.BNB
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var A = _.getBN(poolData.tokenAmt)
@@ -277,7 +277,7 @@ async function unstakeExactAsym(bp, acc, toBase) {
             v = 0
         }
 
-        let tx = await router.unstakeExactAsymmetric(share, toBase, _.ETH, { from: acc})
+        let tx = await router.unstakeExactAsymmetric(share, toBase, _.BNB, { from: acc})
         poolData = await utils.getPoolData(token);
 
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(v), 'outputBase')
@@ -304,40 +304,40 @@ async function unstakeFailExactAsym(bp, acc, toBase) {
         let stakerUnits = _.getBN(await basePools.balanceOf(acc))
         let share = (stakerUnits.times(bp)).div(10000)
 
-        await truffleAssert.reverts(router.unstakeExactAsymmetric(share, toBase, _.ETH, { from: acc}))
+        await truffleAssert.reverts(router.unstakeExactAsymmetric(share, toBase, _.BNB, { from: acc}))
     })
 }
 
 async function unstakeFailStart() {
 
     it("It should revert if unstaking 0 BP", async () => {
-        await truffleAssert.reverts(router.unstake(0, _.ETH));
+        await truffleAssert.reverts(router.unstake(0, _.BNB));
     })
 
     it("It should revert if unstaking 10001 BP", async () => {
-        await truffleAssert.reverts(router.unstake('10001', _.ETH));
+        await truffleAssert.reverts(router.unstake('10001', _.BNB));
     })
 
     it("It should revert if unstaking higher units", async () => {
         let units = _.getBN(await basePools.balanceOf(acc0))
         let unitsMore = units.plus(1)
-        await truffleAssert.reverts(router.unstakeExact(_.BN2Str(unitsMore), _.ETH));
+        await truffleAssert.reverts(router.unstakeExact(_.BN2Str(unitsMore), _.BNB));
     })
 }
 
 async function unstakeFailEnd(acc) {
 
     it("It should revert if unstaking unstaked member", async () => {
-        await truffleAssert.reverts(router.unstake(0, _.ETH, {from: acc}));
+        await truffleAssert.reverts(router.unstake(0, _.BNB, {from: acc}));
     })
     it("It should revert if unstaking assym", async () => {
-        await truffleAssert.reverts(router.unstake(0, _.ETH, {from: acc}));
+        await truffleAssert.reverts(router.unstake(0, _.BNB, {from: acc}));
     })
 }
 
 function logETH() {
     it("logs", async () => {
-        await help.logPool(utils, _.ETH ,"ETH")
+        await help.logPool(utils, _.BNB ,"BNB")
     })
 }
 
@@ -353,14 +353,14 @@ function logTKN1() {
 
 function logStaker(acc) {
     it("logs", async () => {
-        await help.logStaker(basePools, acc, _.ETH)
+        await help.logStaker(basePools, acc, _.BNB)
     })
 }
 
 function checkDetails() {
     it("checks details", async () => {
-        console.log('getTokenDetails', (await utils.getTokenDetails(_.ETH)))
+        console.log('getTokenDetails', (await utils.getTokenDetails(_.BNB)))
         console.log('getGlobalDetails', (await utils.getGlobalDetails()))
-        console.log('getPoolData', (await utils.getPoolData(_.ETH)))
+        console.log('getPoolData', (await utils.getPoolData(_.BNB)))
     })
 }
