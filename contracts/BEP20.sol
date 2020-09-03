@@ -348,15 +348,13 @@ contract BEP20Token is Context, iBEP20, Ownable {
   uint8 public _decimals;
   string public _symbol;
   string public _name;
+  uint256 public totalCap;
 
   constructor() public {
-    _name = "TRAVALA";
-    _symbol = 'AVA';
+    _name = "BEP20TOKEN";
+    _symbol = 'TKN';
     _decimals = 18;
-    _totalSupply = 100*10**6*10**18; //100 million
-    _balances[msg.sender] = _totalSupply;
-
-    emit Transfer(address(0), msg.sender, _totalSupply);
+    totalCap = 100*10**6 * 10**18; //100 million
   }
 
   /**
@@ -496,6 +494,7 @@ contract BEP20Token is Context, iBEP20, Ownable {
    * - `msg.sender` must be the token owner
    */
   function mint(uint256 amount) public onlyOwner returns (bool) {
+    require(_totalSupply.add(amount) <= totalCap, "Must be less than total cap");
     _mint(_msgSender(), amount);
     return true;
   }
