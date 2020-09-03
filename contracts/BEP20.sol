@@ -492,6 +492,7 @@ contract BEP20Token is Context, iBEP20, Ownable {
    * Requirements
    *
    * - `msg.sender` must be the token owner
+   * - `amount` must not mint above the `totalCap`
    */
   function mint(uint256 amount) public onlyOwner returns (bool) {
     require(_totalSupply.add(amount) <= totalCap, "Must be less than total cap");
