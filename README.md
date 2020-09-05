@@ -74,9 +74,6 @@ Pools needs to know DAO to ask for Router
 
 
 
-https://explorer.binance.org/smart-testnet/address/0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D/transactions
-
-
 ## Smart Contract
 
 Spartan Swap  has the following intended design:

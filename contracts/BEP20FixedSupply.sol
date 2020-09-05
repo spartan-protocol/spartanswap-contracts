@@ -337,7 +337,7 @@ contract Ownable is Context {
   }
 }
 
-contract BEP20Token is Context, iBEP20, Ownable {
+contract BEP20FixedSupply is Context, iBEP20, Ownable {
   using SafeMath for uint256;
 
   mapping (address => uint256) private _balances;
@@ -348,13 +348,15 @@ contract BEP20Token is Context, iBEP20, Ownable {
   uint8 public _decimals;
   string public _symbol;
   string public _name;
-  uint256 public totalCap;
 
   constructor() public {
-    _name = "BEP20TOKEN";
+    _name = 'Token Name';
     _symbol = 'TKN';
     _decimals = 18;
-    totalCap = 100*10**6 * 10**18; //100 million
+    _totalSupply = 1*10**8 * 10**18; //100m
+    _balances[msg.sender] = _totalSupply;
+
+    emit Transfer(address(0), msg.sender, _totalSupply);
   }
 
   /**
@@ -485,20 +487,6 @@ contract BEP20Token is Context, iBEP20, Ownable {
     return true;
   }
 
-  /**
-   * @dev Creates `amount` tokens and assigns them to `msg.sender`, increasing
-   * the total supply.
-   *
-   * Requirements
-   *
-   * - `msg.sender` must be the token owner
-   * - `amount` must not mint above the `totalCap`
-   */
-  function mint(uint256 amount) public onlyOwner returns (bool) {
-    require(_totalSupply.add(amount) <= totalCap, "Must be less than total cap");
-    _mint(_msgSender(), amount);
-    return true;
-  }
 
   /**
    * @dev Moves tokens `amount` from `sender` to `recipient`.
@@ -523,22 +511,6 @@ contract BEP20Token is Context, iBEP20, Ownable {
     emit Transfer(sender, recipient, amount);
   }
 
-  /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-   * the total supply.
-   *
-   * Emits a {Transfer} event with `from` set to the zero address.
-   *
-   * Requirements
-   *
-   * - `to` cannot be the zero address.
-   */
-  function _mint(address account, uint256 amount) internal {
-    require(account != address(0), "BEP20: mint to the zero address");
-
-    _totalSupply = _totalSupply.add(amount);
-    _balances[account] = _balances[account].add(amount);
-    emit Transfer(address(0), account, amount);
-  }
 
   /**
    * @dev Destroys `amount` tokens from `account`, reducing the
