@@ -45,7 +45,7 @@ describe("Deploy", function() {
     expect(BN2Str(await sparta.currentEra())).to.equal('1');
     expect(BN2Str(await sparta.secondsPerEra())).to.equal('1');
     // console.log(BN2Str(await sparta.nextEraTime()));
-    expect(await sparta.DAO()).to.equal(acc0);
+    // expect(await sparta.DAO()).to.equal(acc0);
     expect(await sparta.burnAddress()).to.equal("0x000000000000000000000000000000000000dEaD");
     expect(BN2Str(await sparta.getDailyEmission())).to.equal(BN2Str('0'));
   });
@@ -55,7 +55,7 @@ describe("Upgrade", function() {
     it("DAO list token", async function() {
         // console.log(await sparta.assetCount())
         expect(await sparta.isListed(token1.address)).to.equal(false);
-        await sparta.listAssetWithClaim(token1.address, BN2Str(50000000 * one), BN2Str(one), BN2Str(500000000 * one));
+        await sparta.listAsset(token1.address, BN2Str(one), BN2Str(500000000 * one));
         expect(BN2Str(await sparta.getAdjustedClaimRate(token1.address))).to.equal(BN2Str(1000000000000000000));
         expect(BN2Str(await sparta.assetCount())).to.equal(BN2Str(1));
         expect(await sparta.isListed(token1.address)).to.equal(true);
@@ -64,69 +64,69 @@ describe("Upgrade", function() {
       });
 
       it("DAO list token", async function() {
-        await sparta.listAssetWithClaim(acc1, BN2Str(50000000 * one), BN2Str(one), BN2Str(500000000 * one));
-        await sparta.listAssetWithClaim(acc2, BN2Str(50000000 * one), BN2Str(one), BN2Str(500000000 * one));
-        await sparta.listAssetWithClaim(acc3, BN2Str(50000000 * one), BN2Str(one), BN2Str(500000000 * one));
-        await sparta.listAssetWithClaim(acc4, BN2Str(50000000 * one), BN2Str(one), BN2Str(500000000 * one));
+        await sparta.listAsset(acc1, BN2Str(one), BN2Str(500000000 * one));
+        await sparta.listAsset(acc2, BN2Str(one), BN2Str(500000000 * one));
+        await sparta.listAsset(acc3, BN2Str(one), BN2Str(500000000 * one));
+        await sparta.listAsset(acc4, BN2Str(one), BN2Str(500000000 * one));
         console.log(BN2Str(await sparta.assetCount()))
         console.log(await sparta.allAssets())
         console.log(await sparta.assetsInRange('0', '3'))
         console.log(await sparta.assetsInRange('0', '9'))
       });
 
-  it("Should upgrade acc1", async function() {
-      // first, upgrade 50m
+  it("Should burn acc1", async function() {
+      // first, burn 50m
     let balance = await token1.balanceOf(acc1)
     await token1.approve(sparta.address, balance, {from:acc1})
     expect(BN2Str(await token1.allowance(acc1, sparta.address))).to.equal(BN2Str(balance));
-    await sparta.upgrade(token1.address, BN2Str(50000000 * one), {from:acc1})
+    await sparta.claim(token1.address, BN2Str(50000000 * one), {from:acc1})
     expect(BN2Str(await sparta.totalSupply())).to.equal(BN2Str(50000000 * one));
     expect(BN2Str(await token1.balanceOf(acc1))).to.equal(BN2Str(50000000 * one));
     expect(BN2Str(await sparta.balanceOf(acc1))).to.equal(BN2Str(50000000 * one));
     expect(BN2Str(await sparta.getDailyEmission())).to.equal(BN2Str('48828125000000000000000'));
   });
 
-  it("Should upgrade acc2", async function() {
+  it("Should burn acc2", async function() {
     // then 100m
     let balance = await token1.balanceOf(acc2)
     await token1.approve(sparta.address, balance, {from:acc2})
-    await sparta.upgrade(token1.address, BN2Str(50000000 * one), {from:acc2})
+    await sparta.claim(token1.address, BN2Str(50000000 * one), {from:acc2})
     expect(BN2Str(await sparta.totalSupply())).to.equal(BN2Str(100000000 * one));
     expect(BN2Str(await token1.balanceOf(acc2))).to.equal(BN2Str(50000000 * one));
     expect(BN2Str(await sparta.balanceOf(acc2))).to.equal(BN2Str(50000000 * one));
     expect(BN2Str(await sparta.getDailyEmission())).to.equal(BN2Str('97656250000000000000000'));
     });
-    it("Should upgrade acc3", async function() {
+    it("Should burn acc3", async function() {
     // then 150m
     let balance = await token1.balanceOf(acc3)
     await token1.approve(sparta.address, balance, {from:acc3})
-    await sparta.upgrade(token1.address, BN2Str(50000000 * one), {from:acc3})
+    await sparta.claim(token1.address, BN2Str(50000000 * one), {from:acc3})
     expect(BN2Str(await sparta.totalSupply())).to.equal(BN2Str(150000000 * one));
     expect(BN2Str(await token1.balanceOf(acc3))).to.equal(BN2Str(50000000 * one));
     expect(BN2Str(await sparta.balanceOf(acc3))).to.equal(BN2Str(50000000 * one));
     expect(BN2Str(await sparta.getDailyEmission())).to.equal(BN2Str('73242187500000000000000'));
     });
-    it("Should upgrade acc4", async function() {
+    it("Should burn acc4", async function() {
     // 200m
     let balance = await token1.balanceOf(acc4)
     await token1.approve(sparta.address, balance, {from:acc4})
-    await sparta.upgrade(token1.address, BN2Str(50000000 * one),  {from:acc4})
+    await sparta.claim(token1.address, BN2Str(50000000 * one),  {from:acc4})
     expect(BN2Str(await sparta.totalSupply())).to.equal('187500000000000000000000000');
     expect(BN2Str(await token1.balanceOf(acc4))).to.equal('50000000000000000000000000');
     expect(BN2Str(await sparta.balanceOf(acc4))).to.equal('37500000000000000000000000');
     expect(BN2Str(await sparta.getDailyEmission())).to.equal(BN2Str('54931640625000000000000'));
     });
-    it("Should upgrade acc5", async function() {
+    it("Should burn acc5", async function() {
     // 250m
     let balance = await token1.balanceOf(acc5)
     await token1.approve(sparta.address, balance, {from:acc5})
-    await sparta.upgrade(token1.address, BN2Str(50000000 * one), {from:acc5})
+    await sparta.claim(token1.address, BN2Str(50000000 * one), {from:acc5})
     expect(BN2Str(await sparta.totalSupply())).to.equal('215625000000000000000000000');
     expect(BN2Str(await token1.balanceOf(acc5))).to.equal('50000000000000000000000000');
     expect(BN2Str(await sparta.balanceOf(acc5))).to.equal('28125000000000000000000000');
     expect(BN2Str(await sparta.getDailyEmission())).to.equal(BN2Str('41198730468750000000000'));
     });
-    it("Should upgrade with BNB", async function() {
+    it("Should burn with BNB", async function() {
       // 250m
       await web3.eth.sendTransaction({ from: acc0, to: sparta.address, value:BN2Str(one)})
       expect(BN2Str(await sparta.totalSupply())).to.equal('215625000000000000000000000');
