@@ -3,10 +3,10 @@
 Spartan Swap is a liquidity pool protocol that allows token-agnostic provision of liquidity. Traders can swap between tokens at arbitrarily low fees, but a liquidity-sensitive fee maximises revenue for stakers during periods of high demand. 
 
 ## Deploy
-1) Deploy SPARTA
+1) Deploy SPARTA && WrappedBNB
 2) Deploy UTILS(SPARTA)
-3) Deploy DAO(SPARTA, UTILS)
-4) Deploy Router(SPARTA, UTILS)
+3) Deploy DAO(SPARTA)
+4) Deploy Router(SPARTA)
 5) Set DAO in SPARTA
 6) Set Router in DAO
 
@@ -45,6 +45,7 @@ Pools needs to know DAO to ask for Router
 
 0x4c70e3Fb5D828f5f992B6aF9a49D13716F717cac Sparta
 0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D Sparta-Minted
+0x601eDC4F056Df230C747Be4f9C20F955bADB5Ae7 WBNB
 0x89C8da7569085D406800C473619d0c6B7AC0CE8E USD Coin
 0x42E7A6e8e266d50d390c916c4715a5Fa01fd9522 BUsd
 
@@ -68,6 +69,14 @@ Pools needs to know DAO to ask for Router
 0x0D4d2c33480B5fe9360f581e43832b1F550Ff020 utils
 0xC241D694D51dB9E934b147130CFEfE8385813B86 Dao
 0xd92cf95aBaE1c681fD3d563e6Cd1A4946041d97e Router
+
+// BSC - 4
+0x96C1C2D1bBEE1760a72FDe1C4c60ECE5Cd855233 sparta
+0x16422486135FB0cA7A95D6732c49Ff765Bc767bc utils
+0xb6E6489a2FC3fD9851E43c7aAA432768A94B9AaA dao
+0x1498001A1813E5506E1dCf7C2d107DAa640d3467 router
+
+
 
 
 

@@ -18,6 +18,7 @@ var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
+var WBNB = artifacts.require("./WBNB");
 
 var base; var token1;  var token2; var addr1; var addr2;
 var utils; var router; var Dao;
@@ -78,9 +79,10 @@ before(async function() {
     acc3 = await accounts[3].getAddress()
 
     base = await BASE.new()
+    wbnb = await WBNB.new()
     utils = await UTILS.new(base.address)
     Dao = await DAO.new(base.address)
-    router = await ROUTER.new(base.address)
+    router = await ROUTER.new(base.address, wbnb.address)
     await base.changeDAO(Dao.address)
     await Dao.setGenesisAddresses(router.address, utils.address)
     // assert.equal(await Dao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
@@ -120,8 +122,9 @@ async function createPool() {
         console.log(`Pools: ${poolETH.address}`)
         const baseAddr = await poolETH.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolETH.address)), _.BN2Str(_.one * 10), 'base balance')
-        assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(_.dot1BN), 'ether balance')
+        assert.equal(_.BN2Str(await base.balanceOf(basePools.address)), _.BN2Str(_.one * 9), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(basePools.address)), _.BN2Str(_.dot1BN), 'base balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(wbnb.address)), _.BN2Str(_.dot1BN), 'ether balance')
 
         let supply = await base.totalSupply()
         await base.approve(poolETH.address, supply, { from: acc0 })
@@ -168,6 +171,7 @@ async function stake(acc, b, t) {
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var T = _.getBN(poolData.tokenAmt)
+        b = (_.getBN(b)).minus(_.one)
         poolUnits = _.getBN((await pool.totalSupply()))
         console.log('start data', _.BN2Str(S), _.BN2Str(T), _.BN2Str(poolUnits))
 
@@ -212,6 +216,7 @@ async function _stakeTKN(acc, t, b, token, pool) {
     let poolData = await utils.getPoolData(token.address);
     var S = _.getBN(poolData.baseAmt)
     var T = _.getBN(poolData.tokenAmt)
+    b = (_.getBN(b)).minus(_.one)
     poolUnits = _.getBN((await pool.totalSupply()))
     console.log('start data', _.BN2Str(S), _.BN2Str(T), _.BN2Str(poolUnits))
 

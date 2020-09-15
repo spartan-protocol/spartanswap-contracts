@@ -2,7 +2,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
-interface iERC20 {
+interface iBEP20 {
     function balanceOf(address account) external view returns (uint);
     function transfer(address, uint) external returns (bool);
     function transferFrom(address, address, uint) external returns (bool);
@@ -164,10 +164,10 @@ contract Dao {
         uint256 balance = mapMemberPool_Balance[msg.sender][pool];
         require(balance > 0, "Must have a balance to weight");
         reduceWeight(pool, msg.sender);
-        if(mapMember_Weight[msg.sender] == 0 && iERC20(BASE).balanceOf(address(this)) > 0){
+        if(mapMember_Weight[msg.sender] == 0 && iBEP20(BASE).balanceOf(address(this)) > 0){
             harvest();
         }
-        require(iERC20(pool).transfer(msg.sender, balance), "Must transfer"); // Then transfer
+        require(iBEP20(pool).transfer(msg.sender, balance), "Must transfer"); // Then transfer
         emit MemberUnlocks(msg.sender, pool, balance);
     }
 
@@ -247,8 +247,8 @@ contract Dao {
         if(proposedDaoChange){
             iBASE(BASE).changeIncentiveAddress(proposedDao);
             iBASE(BASE).changeDAO(proposedDao);
-            uint reserve = iERC20(BASE).balanceOf(address(this));
-            iERC20(BASE).transfer(proposedDao, reserve);
+            uint reserve = iBEP20(BASE).balanceOf(address(this));
+            iBEP20(BASE).transfer(proposedDao, reserve);
             daoHasMoved = true;
             DAO = proposedDao;
             emit NewAddress(msg.sender, proposedDao, mapAddress_Votes[proposedDao], totalWeight, 'DAO');
@@ -322,7 +322,7 @@ contract Dao {
         }
     }
 
-    // //============================== _ROUTER ================================//
+    //============================== ROUTER ================================//
 
     function ROUTER() public view returns(iROUTER){
         if(daoHasMoved){
@@ -345,14 +345,14 @@ contract Dao {
     function harvest() public nonReentrant {
         uint reward = calcCurrentReward(msg.sender);
         mapMember_Block[msg.sender] = block.number;
-        iERC20(BASE).transfer(msg.sender, reward);
+        iBEP20(BASE).transfer(msg.sender, reward);
     }
 
     function calcCurrentReward(address member) public view returns(uint){
         uint blocksSinceClaim = block.number.sub(mapMember_Block[member]);
         uint share = calcReward(member);
         uint reward = share.mul(blocksSinceClaim).div(blocksPerDay);
-        uint reserve = iERC20(BASE).balanceOf(address(this));
+        uint reserve = iBEP20(BASE).balanceOf(address(this));
         if(reward >= reserve) {
             reward = reserve;
         }
@@ -361,7 +361,7 @@ contract Dao {
 
     function calcReward(address member) public view returns(uint){
         uint weight = mapMember_Weight[member];
-        uint reserve = iERC20(BASE).balanceOf(address(this)).div(daysToEarnFactor);
+        uint reserve = iBEP20(BASE).balanceOf(address(this)).div(daysToEarnFactor);
         return _UTILS.calcShare(weight, totalWeight, reserve);
     }
 

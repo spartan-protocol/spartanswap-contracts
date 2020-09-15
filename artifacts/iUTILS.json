@@ -173,7 +173,7 @@
     {
       "inputs": [
         {
-          "internalType": "address payable",
+          "internalType": "address",
           "name": "pool",
           "type": "address"
         },
