@@ -73,9 +73,9 @@ contract Dao {
 
     uint256 public totalWeight;
     uint public one = 10**18;
-    uint public coolOffPeriod = 1 * 2;
-    uint public blocksPerDay = 5760;
-    uint public daysToEarnFactor = 10;
+    uint public coolOffPeriod;
+    uint public blocksPerDay;
+    uint public daysToEarnFactor;
 
     address public proposedDao;
     bool public proposedDaoChange;
@@ -127,6 +127,9 @@ contract Dao {
     constructor (address _base) public payable {
         BASE = _base;
         DEPLOYER = msg.sender;
+        coolOffPeriod = 1 * 2;
+        blocksPerDay = 5760;
+        daysToEarnFactor = 30;
         _status = _NOT_ENTERED;
     }
     function setGenesisAddresses(address _router, address _utils) public onlyDeployer {
@@ -342,7 +345,7 @@ contract Dao {
 
     //============================== REWARDS ================================//
     // Rewards
-    function harvest() public nonReentrant {
+    function harvest() public {
         uint reward = calcCurrentReward(msg.sender);
         mapMember_Block[msg.sender] = block.number;
         iERC20(BASE).transfer(msg.sender, reward);

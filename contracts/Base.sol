@@ -115,7 +115,7 @@ contract Base is iBEP20 {
         emissionCurve = 2048;
         emitting = false;
         currentEra = 1;
-        secondsPerEra = 86400;
+        secondsPerEra = 1;//86400;
         nextEraTime = now + secondsPerEra;
         DEPLOYER = msg.sender;
         burnAddress = 0x000000000000000000000000000000000000dEaD;
