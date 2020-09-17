@@ -67,8 +67,8 @@ contract Dao {
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;
     uint256 private _status;
-    address public DEPLOYER;
 
+    address public DEPLOYER;
     address public BASE;
 
     uint256 public totalWeight;
@@ -203,7 +203,7 @@ contract Dao {
     //============================== GOVERNANCE ================================//
 
 
-    // Member votes new Router
+    // Member votes new address
     function voteAddressChange(address newAddress, string memory typeStr) public nonReentrant returns (uint voteWeight) {
         bytes memory _type = bytes(typeStr);
         require(sha256(_type) == sha256('DAO') || sha256(_type) == sha256('ROUTER') || sha256(_type) == sha256('UTILS'));
@@ -305,6 +305,44 @@ contract Dao {
         }
     }
 
+    function createParamProposal(uint param, string memory typeStr) public {
+        paramID += 1;
+        mapParamID_param[paramID] = param;
+        mapParamID_type[paramID] = bytes(typeStr);
+    }
+
+    // Member votes new address
+    function voteParamChange(uint ID) public returns (uint voteWeight) {
+        bytes memory _type = mapParamID_type[ID];
+        voteWeight = countVotes(ID);
+        updateIDChange(ID, _type);
+        emit NewVote(msg.sender, mapParamID_param[ID], voteWeight, mapParamID_Votes[ID], string(_type));
+    }
+
+    function updateIDChange(uint _ID, bytes memory _type) internal {
+        if(hasQuorum(_ID)){
+            if(sha256(_type) == sha256('CURVE')){
+                updateDao(_ID);
+            } else if (sha256(_type) == sha256('ROUTER')) {
+                updateRouter(_ID);
+            } else if (sha256(_type) == sha256('UTILS')){
+                updateUtils(_ID);
+            }
+            emit ProposalFinalising(msg.sender, _ID, now+coolOffPeriod, string(_type));
+        }
+    }
+
+    function moveAddress(string memory _typeStr) public nonReentrant {
+        bytes memory _type = bytes(_typeStr);
+        if(sha256(_type) == sha256('DAO')){
+            moveDao();
+        } else if (sha256(_type) == sha256('ROUTER')) {
+            moveRouter();
+        } else if (sha256(_type) == sha256('UTILS')){
+            moveUtils();
+        }
+    }
+
     //============================== CONSENSUS ================================//
 
     function countVotes(address _address) internal returns (uint voteWeight){
@@ -345,6 +383,7 @@ contract Dao {
 
     //============================== REWARDS ================================//
     // Rewards
+
     function harvest() public {
         uint reward = calcCurrentReward(msg.sender);
         mapMember_Block[msg.sender] = block.number;
