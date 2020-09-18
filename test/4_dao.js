@@ -38,13 +38,13 @@ contract('SPT', function (accounts) {
     swapPassR2(acc0, _.BN2Str(_.one * 10))
 
     voteUtils(acc0)
-    tryToMoveUtils()
+    tryToMove()
     swapFail(acc0, _.BN2Str(_.one * 10))
     swapPassR2(acc0, _.BN2Str(_.one * 10))
 
-    voteDao(acc0)
-    tryToMoveDao()
-    swapPassR2(acc0, _.BN2Str(_.one * 10))
+    // voteDao(acc0)
+    // tryToMoveDao()
+    // swapPassR2(acc0, _.BN2Str(_.one * 10))
 
 })
 
@@ -137,7 +137,7 @@ async function createPool() {
 }
 
 async function stakeTKN1(acc) {
-    it("It should lock", async () => {
+    it("It should deposit", async () => {
         await router.stake(_.BN2Str(_.one * 10), _.BN2Str(_.one * 100), token1.address, { from: acc})
     })
 }
@@ -146,37 +146,37 @@ async function lockFail() {
     it("It should revert for not pool", async () => {
         let balance = await token1.balanceOf(acc0)
         await token1.approve(Dao.address, balance)
-        await truffleAssert.reverts(Dao.lock(token1.address, balance, { from: acc0 }));
+        await truffleAssert.reverts(Dao.deposit(token1.address, balance, { from: acc0 }));
     })
     it("It should revert for no balance", async () => {
         let balance = await token1.balanceOf(acc1)
         await token1.approve(Dao.address, balance)
-        await truffleAssert.reverts(Dao.lock(token1.address, balance, { from: acc1 }));
+        await truffleAssert.reverts(Dao.deposit(token1.address, balance, { from: acc1 }));
     })
 }
 
 async function lockETH(acc) {
-    it("It should lock", async () => {
+    it("It should deposit", async () => {
         let balance = await poolETH.balanceOf(acc)
         // await poolETH.approve(Dao.address, balance, { from: acc })
-        await Dao.lock(poolETH.address, balance, { from: acc })
+        await Dao.deposit(poolETH.address, balance, { from: acc })
         console.log(`isMember: ${await Dao.isMember(acc)}`)
-        console.log(`mapMemberPool_Balance: ${await Dao.mapMemberPool_Balance(acc, _.BNB)}`)
+        console.log(`mapMemberPool_balance: ${await Dao.mapMemberPool_balance(acc, poolETH.address)}`)
         console.log(`totalWeight: ${await Dao.totalWeight()}`)
-        console.log(`mapMember_Weight: ${await Dao.mapMember_Weight(acc)}`)
+        console.log(`mapMember_weight: ${await Dao.mapMember_weight(acc)}`)
     })
 }
 
 async function lockTKN(acc) {
-    it("It should lock", async () => {
+    it("It should deposit", async () => {
         let balance = await poolTKN1.balanceOf(acc)
         // console.log(`balance: ${balance}`)
         // await poolTKN1.approve(Dao.address, balance, { from: acc })
-        await Dao.lock(poolTKN1.address, balance, { from: acc })
+        await Dao.deposit(poolTKN1.address, balance, { from: acc })
         console.log(`isMember: ${await Dao.isMember(acc)}`)
-        console.log(`mapMemberPool_Balance: ${await Dao.mapMemberPool_Balance(acc, _.BNB)}`)
+        console.log(`mapMemberPool_balance: ${await Dao.mapMemberPool_balance(acc, poolETH.address)}`)
         console.log(`totalWeight: ${await Dao.totalWeight()}`)
-        console.log(`mapMember_Weight: ${await Dao.mapMember_Weight(acc)}`)
+        console.log(`mapMember_weight: ${await Dao.mapMember_weight(acc)}`)
     })
 }
 
@@ -186,47 +186,53 @@ async function voteRouter() {
         await router2.migrateRouterData(router.address);
         await router2.migrateTokenData(router.address);
         console.log(`router2: ${router2.address}`)
-        await Dao.voteAddressChange(router2.address, 'ROUTER', { from: acc0 })
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(router2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(router2.address, acc0)}`)
-        console.log(`hasQuorum: ${await Dao.hasQuorum(router2.address)}`)
-        console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
-        console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
-        console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
+        await Dao.newAddressProposal(router2.address, 'ROUTER', { from: acc0 })
+        let proposalID = _.BN2Str(await Dao.proposalID())
+        await Dao.voteProposal(proposalID, { from: acc0 })
+        console.log(`mapPID_type: ${await Dao.mapPID_type(proposalID)}`)
+        console.log(`mapAddress_votes: ${await Dao.mapPID_votes(proposalID)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapPIDMember_votes(proposalID, acc0)}`)
+        console.log(`hasQuorum: ${await Dao.hasQuorum(proposalID)}`)
+        console.log(`proposedAddress: ${await Dao.mapPID_address(proposalID)}`)
+        console.log(`mapPID_finalising: ${await Dao.mapPID_finalising(proposalID)}`)
+        console.log(`mapPID_timeStart: ${await Dao.mapPID_timeStart(proposalID)}`)
     })
     it("It should vote again", async () => {
-        await Dao.voteAddressChange(router2.address, 'ROUTER', { from: acc1 })
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(router2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(router2.address, acc1)}`)
-        console.log(`hasQuorum: ${await Dao.hasQuorum(router2.address)}`)
-        console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
-        console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
-        console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
+        let proposalID = _.BN2Str(await Dao.proposalID())
+        await Dao.voteProposal(proposalID, { from: acc1 })
+        console.log(`mapAddress_votes: ${await Dao.mapPID_votes(proposalID)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapPIDMember_votes(proposalID, acc0)}`)
+        console.log(`hasQuorum: ${await Dao.hasQuorum(proposalID)}`)
+        console.log(`proposedRouter: ${await Dao.mapPID_address(proposalID)}`)
+        console.log(`mapPID_finalising: ${await Dao.mapPID_finalising(proposalID)}`)
+        console.log(`mapPID_timeStart: ${await Dao.mapPID_timeStart(proposalID)}`)
     })
 }
 
 async function tryToMove() {
-    it("It should move again", async () => {
-        await truffleAssert.reverts(Dao.moveAddress('ROUTER'));
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(router2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(router2.address, acc1)}`)
-        console.log(`hasQuorum: ${await Dao.hasQuorum(router2.address)}`)
-        console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
-        console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
-        console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
-        console.log(`routerHasMoved: ${await Dao.routerHasMoved()}`)
+    it("It should move", async () => {
+        let proposalID = _.BN2Str(await Dao.proposalID())
+        await truffleAssert.reverts(Dao.finaliseProposal(proposalID));
+        console.log(`mapAddress_votes: ${await Dao.mapPID_votes(proposalID)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapPIDMember_votes(proposalID, acc0)}`)
+        console.log(`hasQuorum: ${await Dao.hasQuorum(proposalID)}`)
+        console.log(`proposedRouter: ${await Dao.mapPID_address(proposalID)}`)
+        console.log(`mapPID_finalising: ${await Dao.mapPID_finalising(proposalID)}`)
+        console.log(`mapPID_timeStart: ${await Dao.mapPID_timeStart(proposalID)}`)
+        console.log(`mapPID_finalised: ${await Dao.mapPID_finalised(proposalID)}`)
         console.log(`ROUTER: ${await Dao.ROUTER()}`)
     })
     it("It should try to move again", async () => {
         await sleep(2000)
-        await Dao.moveAddress('ROUTER')
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(router2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(router2.address, acc1)}`)
-        console.log(`hasQuorum: ${await Dao.hasQuorum(router2.address)}`)
-        console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
-        console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
-        console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
-        console.log(`routerHasMoved: ${await Dao.routerHasMoved()}`)
+        let proposalID = _.BN2Str(await Dao.proposalID())
+        await Dao.finaliseProposal(proposalID);
+        console.log(`mapAddress_votes: ${await Dao.mapPID_votes(proposalID)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapPIDMember_votes(proposalID, acc0)}`)
+        console.log(`hasQuorum: ${await Dao.hasQuorum(proposalID)}`)
+        console.log(`proposedRouter: ${await Dao.mapPID_address(proposalID)}`)
+        console.log(`mapPID_finalising: ${await Dao.mapPID_finalising(proposalID)}`)
+        console.log(`mapPID_timeStart: ${await Dao.mapPID_timeStart(proposalID)}`)
+        console.log(`mapPID_finalised: ${await Dao.mapPID_finalised(proposalID)}`)
         console.log(`ROUTER: ${await Dao.ROUTER()}`)
     })
 }
@@ -235,50 +241,55 @@ async function voteUtils() {
     it("It should vote", async () => {
         utils2 = await UTILS.new(base.address)
         console.log(`utils2: ${utils2.address}`)
-        await Dao.voteAddressChange(utils2.address, 'UTILS', { from: acc0 })
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(utils2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(utils2.address, acc0)}`)
-        console.log(`hasQuorum: ${await Dao.hasQuorum(utils2.address)}`)
-        console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
-        console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
-        console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
+        await Dao.newAddressProposal(utils2.address, 'UTILS', { from: acc0 })
+        let proposalID = _.BN2Str(await Dao.proposalID())
+        await Dao.voteProposal(proposalID, { from: acc0 })
+        console.log(`mapPID_type: ${await Dao.mapPID_type(proposalID)}`)
+        console.log(`mapAddress_votes: ${await Dao.mapPID_votes(proposalID)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapPIDMember_votes(proposalID, acc0)}`)
+        console.log(`hasQuorum: ${await Dao.hasQuorum(proposalID)}`)
+        console.log(`proposedAddress: ${await Dao.mapPID_address(proposalID)}`)
+        console.log(`mapPID_finalising: ${await Dao.mapPID_finalising(proposalID)}`)
+        console.log(`mapPID_timeStart: ${await Dao.mapPID_timeStart(proposalID)}`)
     })
     it("It should vote again", async () => {
-        await Dao.voteAddressChange(utils2.address, 'UTILS', { from: acc1 })
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(utils2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(utils2.address, acc1)}`)
-        console.log(`hasQuorum: ${await Dao.hasQuorum(utils2.address)}`)
-        console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
-        console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
-        console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
+        let proposalID = _.BN2Str(await Dao.proposalID())
+        await Dao.voteProposal(proposalID, { from: acc1 })
+        console.log(`mapPID_type: ${await Dao.mapPID_type(proposalID)}`)
+        console.log(`mapAddress_votes: ${await Dao.mapPID_votes(proposalID)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapPIDMember_votes(proposalID, acc0)}`)
+        console.log(`hasQuorum: ${await Dao.hasQuorum(proposalID)}`)
+        console.log(`proposedAddress: ${await Dao.mapPID_address(proposalID)}`)
+        console.log(`mapPID_finalising: ${await Dao.mapPID_finalising(proposalID)}`)
+        console.log(`mapPID_timeStart: ${await Dao.mapPID_timeStart(proposalID)}`)
     })
 }
 
-async function tryToMoveUtils() {
-    // it("It should move again", async () => {
-    //     await truffleAssert.reverts(Dao.moveAddress('UTILS'));
-    //     console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(utils2.address)}`)
-    //     console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(utils2.address, acc1)}`)
-    //     console.log(`hasQuorum: ${await Dao.hasQuorum(utils2.address)}`)
-    //     console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
-    //     console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
-    //     console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
-    //     console.log(`routerHasMoved: ${await Dao.routerHasMoved()}`)
-    //     console.log(`UTILS: ${await Dao.UTILS()}`)
-    // })
-    it("It should try to move again", async () => {
-        await sleep(2000)
-        await Dao.moveAddress('UTILS')
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(utils2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(utils2.address, acc1)}`)
-        console.log(`hasQuorum: ${await Dao.hasQuorum(utils2.address)}`)
-        console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
-        console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
-        console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
-        console.log(`routerHasMoved: ${await Dao.routerHasMoved()}`)
-        console.log(`UTILS: ${await Dao.UTILS()}`)
-    })
-}
+// async function tryToMoveUtils() {
+//     // it("It should move again", async () => {
+//     //     await truffleAssert.reverts(Dao.moveAddress('UTILS'));
+//     //     console.log(`mapAddress_votes: ${await Dao.mapAddress_votes(utils2.address)}`)
+//     //     console.log(`mapAddressMember_votes: ${await Dao.mapAddressMember_votes(utils2.address, acc1)}`)
+//     //     console.log(`hasQuorum: ${await Dao.hasQuorum(utils2.address)}`)
+//     //     console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
+//     //     console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
+//     //     console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
+//     //     console.log(`routerHasMoved: ${await Dao.routerHasMoved()}`)
+//     //     console.log(`UTILS: ${await Dao.UTILS()}`)
+//     // })
+//     it("It should try to move again", async () => {
+//         await sleep(2000)
+//         await Dao.moveAddress('UTILS')
+//         console.log(`mapAddress_votes: ${await Dao.mapAddress_votes(utils2.address)}`)
+//         console.log(`mapAddressMember_votes: ${await Dao.mapAddressMember_votes(utils2.address, acc1)}`)
+//         console.log(`hasQuorum: ${await Dao.hasQuorum(utils2.address)}`)
+//         console.log(`proposedRouter: ${await Dao.proposedRouter()}`)
+//         console.log(`proposedRouterChange: ${await Dao.proposedRouterChange()}`)
+//         console.log(`routerChangeStart: ${await Dao.routerChangeStart()}`)
+//         console.log(`routerHasMoved: ${await Dao.routerHasMoved()}`)
+//         console.log(`UTILS: ${await Dao.UTILS()}`)
+//     })
+// }
 
 async function swapPassR1(acc, b) {
 
@@ -347,8 +358,8 @@ async function voteDao() {
         await Dao2.setGenesisAddresses(router2.address, utils.address)
         console.log(`Dao2: ${Dao2.address}`)
         await Dao.voteAddressChange(Dao2.address, 'DAO', { from: acc0 })
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(Dao2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(Dao2.address, acc0)}`)
+        console.log(`mapAddress_votes: ${await Dao.mapAddress_votes(Dao2.address)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapAddressMember_votes(Dao2.address, acc0)}`)
         console.log(`hasQuorum: ${await Dao.hasQuorum(Dao2.address)}`)
         console.log(`proposedDao: ${await Dao.proposedDao()}`)
         console.log(`proposedDaoChange: ${await Dao.proposedDaoChange()}`)
@@ -356,8 +367,8 @@ async function voteDao() {
     })
     it("It should vote again", async () => {
         await Dao.voteAddressChange(Dao2.address, 'DAO', { from: acc1 })
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(Dao2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(Dao2.address, acc1)}`)
+        console.log(`mapAddress_votes: ${await Dao.mapAddress_votes(Dao2.address)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapAddressMember_votes(Dao2.address, acc1)}`)
         console.log(`hasQuorum: ${await Dao.hasQuorum(Dao2.address)}`)
         console.log(`proposedDao: ${await Dao.proposedDao()}`)
         console.log(`proposedDaoChange: ${await Dao.proposedDaoChange()}`)
@@ -371,8 +382,8 @@ async function tryToMoveDao() {
     })
     it("It should move again", async () => {
         await truffleAssert.reverts(Dao.moveAddress('DAO'));
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(Dao2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(Dao2.address, acc1)}`)
+        console.log(`mapAddress_votes: ${await Dao.mapAddress_votes(Dao2.address)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapAddressMember_votes(Dao2.address, acc1)}`)
         console.log(`hasQuorum: ${await Dao.hasQuorum(Dao2.address)}`)
         console.log(`proposedDao: ${await Dao.proposedDao()}`)
         console.log(`proposedDaoChange: ${await Dao.proposedDaoChange()}`)
@@ -383,8 +394,8 @@ async function tryToMoveDao() {
     it("It should try to move again", async () => {
         await sleep(2000)
         await Dao.moveAddress('DAO')
-        console.log(`mapAddress_Votes: ${await Dao.mapAddress_Votes(Dao2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await Dao.mapAddressMember_Votes(Dao2.address, acc1)}`)
+        console.log(`mapAddress_votes: ${await Dao.mapAddress_votes(Dao2.address)}`)
+        console.log(`mapAddressMember_votes: ${await Dao.mapAddressMember_votes(Dao2.address, acc1)}`)
         console.log(`hasQuorum: ${await Dao.hasQuorum(Dao2.address)}`)
         console.log(`proposedDao: ${await Dao.proposedDao()}`)
         console.log(`proposedDaoChange: ${await Dao.proposedDaoChange()}`)

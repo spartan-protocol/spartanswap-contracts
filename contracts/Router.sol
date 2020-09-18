@@ -2,7 +2,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
-interface iERC20 {
+interface iBEP20 {
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
     function decimals() external view returns (uint);
@@ -24,7 +24,7 @@ interface iUTILS {
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
-    function calcStakeUnits(uint a, uint A, uint v, uint S) external pure returns (uint units);
+    function calcStakeUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units);
     function getPoolShare(address token, uint units) external view returns(uint baseAmt, uint tokenAmt);
     function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmt, uint tokenAmt, uint outputAmt);
     function calcValueInBase(address token, uint amount) external view returns (uint value);
@@ -73,7 +73,7 @@ library SafeMath {
     }
 }
 
-contract Pool is iERC20 {
+contract Pool is iBEP20 {
     using SafeMath for uint;
 
     address public BASE;
@@ -123,8 +123,8 @@ contract Pool is iERC20 {
             _name = string(abi.encodePacked(poolName, "Binance Coin"));
             _symbol = string(abi.encodePacked(poolSymbol, "BNB"));
         } else {
-            _name = string(abi.encodePacked(poolName, iERC20(_token).name()));
-            _symbol = string(abi.encodePacked(poolSymbol, iERC20(_token).symbol()));
+            _name = string(abi.encodePacked(poolName, iBEP20(_token).name()));
+            _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
         }
         
         decimals = 18;
@@ -132,17 +132,17 @@ contract Pool is iERC20 {
     }
 
     function _checkApprovals() external onlyRouter{
-        if(iERC20(BASE).allowance(address(this), _DAO().ROUTER()) == 0){
+        if(iBEP20(BASE).allowance(address(this), _DAO().ROUTER()) == 0){
             if(TOKEN != address(0)){
-                iERC20(TOKEN).approve(_DAO().ROUTER(), uint(-1));
+                iBEP20(TOKEN).approve(_DAO().ROUTER(), uint(-1));
             }
-            iERC20(BASE).approve(_DAO().ROUTER(), uint(-1));
+            iBEP20(BASE).approve(_DAO().ROUTER(), uint(-1));
         }
     }
 
     receive() external payable {}
 
-    //========================================iERC20=========================================//
+    //========================================iBEP20=========================================//
     function name() public view override returns (string memory) {
         return _name;
     }
@@ -156,12 +156,12 @@ contract Pool is iERC20 {
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
         return _allowances[owner][spender];
     }
-    // iERC20 Transfer function
+    // iBEP20 Transfer function
     function transfer(address to, uint value) public override returns (bool success) {
         __transfer(msg.sender, to, value);
         return true;
     }
-    // iERC20 Approve function
+    // iBEP20 Approve function
     function approve(address spender, uint256 amount) public virtual override returns (bool) {
         __approve(msg.sender, spender, amount);
         return true;
@@ -170,7 +170,7 @@ contract Pool is iERC20 {
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
-    // iERC20 TransferFrom function
+    // iBEP20 TransferFrom function
     function transferFrom(address from, address to, uint value) public override returns (bool success) {
         require(value <= _allowances[from][msg.sender], 'AllowanceErr');
         _allowances[from][msg.sender] = _allowances[from][msg.sender].sub(value);
@@ -231,19 +231,19 @@ contract Pool is iERC20 {
         if (TOKEN == address(0)) {
             tokenAmt = address(this).balance;
         } else {
-            tokenAmt = iERC20(TOKEN).balanceOf(address(this));
+            tokenAmt = iBEP20(TOKEN).balanceOf(address(this));
         }
-        baseAmt = iERC20(BASE).balanceOf(address(this));
+        baseAmt = iBEP20(BASE).balanceOf(address(this));
     }
 
     // Allow anyone to add a dividend into the pool
     function add(address token, uint amount) public payable returns (bool success) {
         if(token == BASE){
-            iERC20(BASE).transferFrom(msg.sender, address(this), amount);
+            iBEP20(BASE).transferFrom(msg.sender, address(this), amount);
             baseAmt = baseAmt.add(amount);
             return true;
         } else if (token == TOKEN){
-            iERC20(TOKEN).transferFrom(msg.sender, address(this), amount);
+            iBEP20(TOKEN).transferFrom(msg.sender, address(this), amount);
             tokenAmt = tokenAmt.add(amount); 
             return true;
         } else if (token == address(0)){
@@ -410,10 +410,11 @@ contract Router {
 
     function _handleStake(address payable pool, uint _baseAmt, uint _tokenAmt, address _member) internal returns (uint _units) {
         Pool(pool)._checkApprovals();
-        uint _S = Pool(pool).baseAmt().add(_baseAmt);
-        uint _A = Pool(pool).tokenAmt().add(_tokenAmt);
+        uint _B = Pool(pool).baseAmt();
+        uint _T = Pool(pool).tokenAmt();
+        uint _P = iBEP20(pool).totalSupply();
         Pool(pool)._incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
-        _units = _DAO().UTILS().calcStakeUnits(_tokenAmt, _A, _baseAmt, _S);  
+        _units = _DAO().UTILS().calcStakeUnits(_baseAmt, _B, _tokenAmt, _T, _P);  
         Pool(pool)._mint(_member, _units);
         return _units;
     }
@@ -424,7 +425,7 @@ contract Router {
     // Unstake % for self
     function unstake(uint basisPoints, address token) public returns (bool success) {
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
-        uint _units = _DAO().UTILS().calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
+        uint _units = _DAO().UTILS().calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
         unstakeExact(_units, token);
         return true;
     }
@@ -445,14 +446,14 @@ contract Router {
 
     // // Unstake % Asymmetrically
     function unstakeAsymmetric(uint basisPoints, bool toBase, address token) public returns (uint outputAmount){
-        uint _units = _DAO().UTILS().calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
+        uint _units = _DAO().UTILS().calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
         outputAmount = unstakeExactAsymmetric(_units, toBase, token);
         return outputAmount;
     }
     // Unstake Exact Asymmetrically
     function unstakeExactAsymmetric(uint units, bool toBase, address token) public returns (uint outputAmount){
         address payable pool = getPool(token);
-        require(units < iERC20(pool).totalSupply(), "InputErr");
+        require(units < iBEP20(pool).totalSupply(), "InputErr");
         (uint _outputBase, uint _outputToken, uint _outputAmount) = _DAO().UTILS().getPoolShareAssym(token, units, toBase);
         totalStaked = totalStaked.sub(_outputBase);
         unstakeTx += 1;
@@ -527,7 +528,7 @@ contract Router {
         } else {
             (uint _yy, uint _feey) = _swapTokenToBase(poolFrom, _actualAmount);             // Sell to BASE
             totalVolume += _yy; totalFees += _feey;
-            iERC20(BASE).transferFrom(poolFrom, poolTo, _yy); 
+            iBEP20(BASE).transferFrom(poolFrom, poolTo, _yy); 
             (uint _zz, uint _feez) = _swapBaseToToken(poolTo, _yy);              // Buy to token
             totalFees += _DAO().UTILS().calcValueInBase(toToken, _feez);
             _transferAmount = _yy; outputAmount = _zz; 
@@ -579,9 +580,9 @@ contract Router {
                 payable(_pool).call{value:_amount}(""); 
                 actual = _amount;
             } else {
-                uint startBal = iERC20(_token).balanceOf(_pool); 
-                iERC20(_token).transferFrom(msg.sender, _pool, _amount); 
-                actual = iERC20(_token).balanceOf(_pool).sub(startBal);
+                uint startBal = iBEP20(_token).balanceOf(_pool); 
+                iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
+                actual = iBEP20(_token).balanceOf(_pool).sub(startBal);
             }
         }
     }
@@ -591,7 +592,7 @@ contract Router {
             if (_token == address(0)) {
                 Pool(payable(_pool)).transferETH(_recipient, _amount);
             } else {
-                iERC20(_token).transferFrom(_pool, _recipient, _amount);
+                iBEP20(_token).transferFrom(_pool, _recipient, _amount);
             }
         }
     }

@@ -395,14 +395,18 @@ contract Utils {
     }
 
     function calcStakeUnits(uint b, uint B, uint t, uint T, uint P) public view returns (uint units){
-        // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
-        // P * (part1 + part2) / (part3) * slipAdjustment
-        uint slipAdjustment = getSlipAdustment(b, B, t, T);
-        uint part1 = t.mul(B);
-        uint part2 = T.mul(b);
-        uint part3 = T.mul(B).mul(2);
-        uint units = (P.mul(part1.add(part2))).div(part3);
-        return units.mul(slipAdjustment).div(one);  // Divide by 10**18
+        if(P == 0){
+            return b;
+        } else {
+            // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
+            // P * (part1 + part2) / (part3) * slipAdjustment
+            uint slipAdjustment = getSlipAdustment(b, B, t, T);
+            uint part1 = t.mul(B);
+            uint part2 = T.mul(b);
+            uint part3 = T.mul(B).mul(2);
+            uint units = (P.mul(part1.add(part2))).div(part3);
+            return units.mul(slipAdjustment).div(one);  // Divide by 10**18
+        }
     }
 
     function getSlipAdustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
