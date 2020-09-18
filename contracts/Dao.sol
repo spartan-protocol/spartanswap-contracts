@@ -138,6 +138,7 @@ contract Dao {
     event NewProposal(address indexed member, uint indexed proposalID, string proposalType);
     event NewVote(address indexed member, uint indexed proposalID, uint voteWeight, uint totalVotes, string proposalType);
     event ProposalFinalising(address indexed member,uint indexed proposalID, uint timeFinalised, string proposalType);
+    event CancelProposal(address indexed member, uint indexed oldProposalID, uint oldVotes, uint newVotes, uint totalWeight);
     event FinalisedProposal(address indexed member,uint indexed proposalID, uint votesCast, uint totalWeight, string proposalType);
 
     // Only Deployer can execute
@@ -315,16 +316,17 @@ contract Dao {
         if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
             if(isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'INCENTIVE')){
                 if(hasMajority(proposalID)){
-                    _finalise(_proposalID);
+                    _finalise(proposalID);
                 }
             } else {
-                _finalise(_proposalID);
+                _finalise(proposalID);
             }
         }
         emit NewVote(msg.sender, proposalID, voteWeight, mapPID_votes[proposalID], string(_type));
     }
 
     function _finalise(uint _proposalID) internal {
+        bytes memory _type = bytes(mapPID_type[proposalID]);
         mapPID_finalising[_proposalID] = true;
         mapPID_timeStart[_proposalID] = now;
         emit ProposalFinalising(msg.sender, _proposalID, now+coolOffPeriod, string(_type));
