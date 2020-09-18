@@ -308,17 +308,38 @@ contract Dao {
 
 //============================== VOTE && FINALISE ================================//
 
+    // Vote for a proposal
     function voteProposal(uint proposalID) public returns (uint voteWeight) {
         bytes memory _type = bytes(mapPID_type[proposalID]);
         voteWeight = countVotes(proposalID);
         if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
-            mapPID_finalising[proposalID] = true;
-            mapPID_timeStart[proposalID] = now;
-            emit ProposalFinalising(msg.sender, proposalID, now+coolOffPeriod, string(_type));
+            if(isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'INCENTIVE')){
+                if(hasMajority(proposalID)){
+                    _finalise(_proposalID);
+                }
+            } else {
+                _finalise(_proposalID);
+            }
         }
         emit NewVote(msg.sender, proposalID, voteWeight, mapPID_votes[proposalID], string(_type));
     }
 
+    function _finalise(uint _proposalID) internal {
+        mapPID_finalising[_proposalID] = true;
+        mapPID_timeStart[_proposalID] = now;
+        emit ProposalFinalising(msg.sender, _proposalID, now+coolOffPeriod, string(_type));
+    }
+
+    // If an existing proposal, allow a minority to cancel
+    function cancelProposal(uint oldProposalID, uint newProposalID) public {
+        require(mapPID_finalising[oldProposalID] == true, "Must be finalising");
+        if(hasMinority(newProposalID)){
+            mapPID_votes[oldProposalID] = 0;
+        }
+        emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], totalWeight);
+    }
+
+    // Proposal with quorum can finalise after cool off period
     function finaliseProposal(uint proposalID) public  {
         require((now - mapPID_timeStart[proposalID]) > coolOffPeriod, "Must be after cool off");
         require(mapPID_finalising[proposalID] == true, "Must be finalising");
@@ -326,31 +347,31 @@ contract Dao {
             mapPID_finalising[proposalID] = false;
         }
         bytes memory _type = bytes(mapPID_type[proposalID]);
-        if(sha256(_type) == sha256('DAO')){
+        if(isEqual(_type, 'DAO')){
             moveDao(proposalID);
-        } else if (sha256(_type) == sha256('ROUTER')) {
+        } else if (isEqual(_type, 'ROUTER')) {
             moveRouter(proposalID);
-        } else if (sha256(_type) == sha256('UTILS')){
+        } else if (isEqual(_type, 'UTILS')){
             moveUtils(proposalID);
-        } else if (sha256(_type) == sha256('LIST')){
+        } else if (isEqual(_type, 'LIST')){
             listAsset(proposalID);
-        } else if (sha256(_type) == sha256('DELIST')){
+        } else if (isEqual(_type, 'DELIST')){
             delistAsset(proposalID);
-        } else if (sha256(_type) == sha256('INCENTIVE')){
+        } else if (isEqual(_type, 'INCENTIVE')){
             moveIncentiveAddress(proposalID);
-        } else if (sha256(_type) == sha256('CURVE')){
+        } else if (isEqual(_type, 'CURVE')){
             changeCurve(proposalID);
-        } else if (sha256(_type) == sha256('DURATION')){
+        } else if (isEqual(_type, 'DURATION')){
             changeDuration(proposalID);
-        } else if (sha256(_type) == sha256('START_EMISSIONS')){
+        } else if (isEqual(_type, 'START_EMISSIONS')){
             startEmissions(proposalID);
-        } else if (sha256(_type) == sha256('STOP_EMISSIONS')){
+        } else if (isEqual(_type, 'STOP_EMISSIONS')){
             stopEmissions(proposalID);
-        } else if (sha256(_type) == sha256('COOL_OFF')){
+        } else if (isEqual(_type, 'COOL_OFF')){
             changeCooloff(proposalID);
-        } else if (sha256(_type) == sha256('DAYS_TO_EARN')){
+        } else if (isEqual(_type, 'DAYS_TO_EARN')){
             changeDays(proposalID);
-        } else if (sha256(_type) == sha256('BLOCKS_PER_DAY')){
+        } else if (isEqual(_type, 'BLOCKS_PER_DAY')){
             changeBlocks(proposalID);
         }
     }
@@ -457,9 +478,27 @@ contract Dao {
         return voteWeight;
     }
 
+    function hasMajority(uint _proposalID) public view returns(bool){
+        uint votes = mapPID_votes[_proposalID];
+        uint consensus = totalWeight.div(2); // >50%
+        if(votes > consensus){
+            return true;
+        } else {
+            return false;
+        }
+    }
     function hasQuorum(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-        uint consensus = totalWeight.div(2);
+        uint consensus = totalWeight.div(3); // >33%
+        if(votes > consensus){
+            return true;
+        } else {
+            return false;
+        }
+    }
+    function hasMinority(uint _proposalID) public view returns(bool){
+        uint votes = mapPID_votes[_proposalID];
+        uint consensus = totalWeight.div(6); // >16%
         if(votes > consensus){
             return true;
         } else {
@@ -509,6 +548,14 @@ contract Dao {
         proposalDetails.proposedAddress = mapPID_address[proposalID];
         proposalDetails.list = mapPID_list[proposalID];
         return proposalDetails;
+    }
+
+    function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
+        if(sha256(part1) == sha256(part2)){
+            return true;
+        } else {
+            return false;
+        }
     }
 
 }
