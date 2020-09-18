@@ -17,6 +17,17 @@ Router needs to know Sparta, Utils, DAO (to tell Pools)
 Pools needs to know DAO to ask for Router
 
 
+## Features
+
+Router
+* 1 SPARTA fee - not implemented
+* Fee-based dividend - not implemented
+* Synths - not implemented
+* WrappedBNB - not implemented
+
+
+
+
 0x4d523C380B76386c9e41D7F92456CcE6c712Db87 jp
 
 1000000000000000000 // 10**18

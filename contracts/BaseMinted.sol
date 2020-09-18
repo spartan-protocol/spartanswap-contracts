@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
+pragma experimental ABIEncoderV2;
 //iERC20 Interface
-interface iERC20 {
+interface iBEP20 {
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
     function decimals() external view returns (uint);
@@ -47,7 +48,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract BaseMinted is iERC20 {
+contract BaseMinted is iBEP20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -62,7 +63,7 @@ contract BaseMinted is iERC20 {
     uint256 one;
     bool public emitting;
     uint256 public emissionCurve;
-    uint256 baseline;
+    uint256 public _100m;
     uint256 public totalCap;
     uint256 public secondsPerEra;
     uint256 public currentEra;
@@ -71,18 +72,26 @@ contract BaseMinted is iERC20 {
     address public incentiveAddress;
     address public DAO;
     address public burnAddress;
+    address public DEPLOYER;
 
     address[] public assetArray;
     mapping(address => bool) public isListed;
-    mapping(address => uint256) public mapAsset_maxClaim;
     mapping(address => uint256) public mapAsset_claimRate;
-    mapping(address => mapping(address => bool)) public mapMemberAsset_hasClaimed;
+    mapping(address => uint256) public mapAsset_claimed;
+    mapping(address => uint256) public mapAsset_allocation;
+
+    struct AssetDetailsStruct {
+        bool listed;
+        uint256 claimRate;
+        uint256 claimed;
+        uint256 allocation;
+    }
 
     // Events
-    event ListedAsset(address indexed DAO, address indexed asset, uint256 maxClaim, uint256 claimRate);
+    event ListedAsset(address indexed DAO, address indexed asset, uint256 claimRate, uint256 allocation);
+    event DelistedAsset(address indexed DAO, address indexed asset);
     event NewCurve(address indexed DAO, uint256 newCurve);
     event NewIncentiveAddress(address indexed DAO, address newIncentiveAddress);
-    event NewAsset(address indexed DAO, string newName, string newSymbol);
     event NewDuration(address indexed DAO, uint256 newDuration);
     event NewDAO(address indexed DAO, address newOwner);
     event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 emission);
@@ -100,8 +109,8 @@ contract BaseMinted is iERC20 {
         symbol = 'SPARTA';
         decimals = 18;
         one = 10 ** decimals;
-        baseline = 100 * 10**6 * one;
-        totalSupply = baseline;
+        _100m = 100 * 10**6 * one;
+        totalSupply = _100m/2;
         totalCap = 300 * 10**6 * one;
         emissionCurve = 2048;
         emitting = false;
@@ -193,21 +202,22 @@ contract BaseMinted is iERC20 {
 
     //=========================================DAO=========================================//
     // Can list
-    function listAssetWithClaim(address asset, uint256 maxClaim, uint256 claimRate) public onlyDAO returns(bool){
+    function listAsset(address asset, uint256 claimRate, uint256 allocation) public onlyDAO returns(bool){
         if(!isListed[asset]){
             isListed[asset] = true;
             assetArray.push(asset);
         }
-        mapAsset_maxClaim[asset] = maxClaim;
         mapAsset_claimRate[asset] = claimRate;
-        emit ListedAsset(msg.sender, asset, maxClaim, claimRate);
+        mapAsset_allocation[asset] = allocation;
+        emit ListedAsset(msg.sender, asset, claimRate, allocation);
         return true;
     }
     // Can delist
     function delistAsset(address asset) public onlyDAO returns(bool){
         isListed[asset] = false;
-        mapAsset_maxClaim[asset] = 0;
         mapAsset_claimRate[asset] = 0;
+        mapAsset_allocation[asset] = 0;
+        emit DelistedAsset(msg.sender, asset);
         return true;
     }
     // Can start
@@ -251,6 +261,11 @@ contract BaseMinted is iERC20 {
         emit NewDAO(msg.sender, address(0));
         return true;
     }
+    // Can purge DEPLOYER
+    function purgeDeployer() public onlyDAO returns(bool){
+        DEPLOYER = address(0);
+        return true;
+    }
 
    //======================================EMISSION========================================//
     // Internal - Update emission function
@@ -265,37 +280,47 @@ contract BaseMinted is iERC20 {
     }
     // Calculate Daily Emission
     function getDailyEmission() public view returns (uint256) {
-        // emission = (adjustedCap - totalSupply) / emissionCurve
-        // adjustedCap = totalCap * (totalSupply / 1bn)
-        uint adjustedCap = (totalCap.mul(totalSupply)).div(baseline);
-        return (adjustedCap.sub(totalSupply)).div(emissionCurve);
-    }
-    //======================================UPGRADE========================================//
-    // Old Owners to Upgrade
-    function upgrade(address asset) public {
-        require(mapMemberAsset_hasClaimed[msg.sender][asset] == false, "Must not have already claimed");
-        uint256 balance = iERC20(asset).balanceOf(msg.sender);
-        uint256 claim = balance;                           // Start at balance
-        if(balance > mapAsset_maxClaim[asset]){
-            claim = mapAsset_maxClaim[asset];           // Reduce to the maximum
+        uint _adjustedCap;
+        if(totalSupply <= _100m){ // If less than 100m, then adjust cap down
+            _adjustedCap = (totalCap.mul(totalSupply)).div(_100m); // 300m * 50m / 100m = 300m * 50% = 150m
+        } else {
+            _adjustedCap = totalCap;  // 300m
         }
-        mapMemberAsset_hasClaimed[msg.sender][asset] = true;
-        require(iERC20(asset).transferFrom(msg.sender, burnAddress, claim));
-        uint256 adjustedClaimRate = getAdjustedClaimRate(asset);
+        return (_adjustedCap.sub(totalSupply)).div(emissionCurve); // outstanding / 2048 
+    }
+    //======================================CLAIM========================================//
+    // Anyone to Claim
+    function claim(address asset, uint amount) public payable {
+        
+        uint _claim = amount;
+        if(mapAsset_claimed[asset].add(amount) > mapAsset_allocation[asset]){
+            _claim = mapAsset_allocation[asset].sub(mapAsset_claimed[asset]);
+        }
+
+        if(asset == address(0)){
+            require(amount == msg.value, "Must get BNB");
+            payable(burnAddress).call{value:_claim}("");
+            payable(msg.sender).call{value:amount.sub(_claim)}("");
+        } else {
+            iBEP20(asset).transferFrom(msg.sender, burnAddress, _claim);
+        }
+        
+        mapAsset_claimed[asset] = mapAsset_claimed[asset].add(amount);
+        uint256 _adjustedClaimRate = getAdjustedClaimRate(asset);
         // sparta = rate * claim / 1e8
-        uint256 sparta = (adjustedClaimRate.mul(claim)).div(one);
-        _mint(msg.sender, sparta);
+        uint256 _sparta = (_adjustedClaimRate.mul(_claim)).div(one);
+        _mint(msg.sender, _sparta);
     }
      // Calculate Adjusted Claim Rate
     function getAdjustedClaimRate(address asset) public view returns (uint256 adjustedClaimRate) {
-        uint256 claimRate = mapAsset_claimRate[asset];                           // Get Claim Rate
-        if(totalSupply <= baseline){
+        uint256 _claimRate = mapAsset_claimRate[asset];                           // Get Claim Rate
+        if(totalSupply <= _100m){
             // return 100%
-            return claimRate;
+            return _claimRate;
         } else {
-            // (claim*(200-(totalSupply-baseline)))/200 -> starts 100% then goes to 0 at 300m. 
-            uint256 _200m = totalCap.sub(baseline);
-            return claimRate.mul(_200m.sub((totalSupply.sub(baseline)))).div(_200m);
+            // (claim*(200-(totalSupply-_100m)))/200 -> starts 100% then goes to 0 at 300m. 
+            uint256 _200m = totalCap.sub(_100m);
+            return _claimRate.mul(_200m.sub((totalSupply.sub(_100m)))).div(_200m);
         }
     }
     //======================================HELPERS========================================//
@@ -304,7 +329,7 @@ contract BaseMinted is iERC20 {
     function assetCount() public view returns (uint256 count){
         return assetArray.length;
     }
-    function allAssets() public view returns (address[] memory allAssets){
+    function allAssets() public view returns (address[] memory _allAssets){
         return assetArray;
     }
     function assetsInRange(uint start, uint count) public view returns (address[] memory someAssets){
@@ -314,5 +339,12 @@ contract BaseMinted is iERC20 {
             result[i] = assetArray[i];
         }
         return result;
+    }
+
+    function getAssetDetails(address asset) public view returns (AssetDetailsStruct memory assetDetails){
+        assetDetails.listed = isListed[asset];
+        assetDetails.claimRate = mapAsset_claimRate[asset];
+        assetDetails.claimed = mapAsset_claimed[asset];
+        assetDetails.allocation = mapAsset_allocation[asset];
     }
 }
