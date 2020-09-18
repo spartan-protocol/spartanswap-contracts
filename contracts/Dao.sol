@@ -89,6 +89,10 @@ contract Dao {
         uint claimRate;
         uint allocation;
     }
+    struct GrantDetails{
+        address recipient;
+        uint amount;
+    }
     struct MemberDetails {
         bool isMember;
         uint weight;
@@ -124,6 +128,7 @@ contract Dao {
     mapping(uint256 => uint256) public mapPID_param;
     mapping(uint256 => address) public mapPID_address;
     mapping(uint256 => ListDetails) public mapPID_list;
+    mapping(uint256 => GrantDetails) public mapPID_grant;
     mapping(uint256 => string) public mapPID_type;
     mapping(uint256 => uint256) public mapPID_votes;
     mapping(uint256 => uint256) public mapPID_timeStart;
@@ -150,7 +155,7 @@ contract Dao {
     constructor (address _base) public payable {
         BASE = _base;
         DEPLOYER = msg.sender;
-        coolOffPeriod = 1 * 2;
+        coolOffPeriod = 1;
         blocksPerDay = 5760;
         daysToEarnFactor = 30;
     }
@@ -238,20 +243,20 @@ contract Dao {
     }
 
     function calcCurrentReward(address member) public view returns(uint){
-        uint blocksSinceClaim = block.number.sub(mapMember_lastBlock[member]);
-        uint share = calcReward(member);
-        uint reward = share.mul(blocksSinceClaim).div(blocksPerDay);
+        uint blocksSinceClaim = block.number.sub(mapMember_lastBlock[member]); // Get blocks since last claim
+        uint share = calcReward(member);    // get share of rewards for member
+        uint reward = share.mul(blocksSinceClaim).div(blocksPerDay);    // Get owed amount, based on per-day rates
         uint reserve = iBEP20(BASE).balanceOf(address(this));
         if(reward >= reserve) {
-            reward = reserve;
+            reward = reserve; // Send full reserve if the last person
         }
         return reward;
     }
 
     function calcReward(address member) public view returns(uint){
         uint weight = mapMember_weight[member];
-        uint reserve = iBEP20(BASE).balanceOf(address(this)).div(daysToEarnFactor);
-        return _UTILS.calcShare(weight, totalWeight, reserve);
+        uint reserve = iBEP20(BASE).balanceOf(address(this)).div(daysToEarnFactor); // Aim to deplete reserve over a number of days
+        return _UTILS.calcShare(weight, totalWeight, reserve); // Get member's share of that
     }
 
     //============================== CREATE PROPOSALS ================================//
@@ -297,12 +302,15 @@ contract Dao {
         emit NewProposal(msg.sender, proposalID, typeStr);
         return proposalID;
     }
-    // Action with delist
-    function newDelistProposal(address proposedAsset) public returns(uint) {
-        string memory typeStr = "DELIST";
+    // Action with funding
+    function newGrantProposal(address recipient, uint amount) public returns(uint) {
+        string memory typeStr = "GRANT";
         proposalID += 1;
-        mapPID_address[proposalID] = proposedAsset;
         mapPID_type[proposalID] = typeStr;
+        GrantDetails memory grant;
+        grant.recipient = recipient;
+        grant.amount = amount;
+        mapPID_grant[proposalID] = grant;
         emit NewProposal(msg.sender, proposalID, typeStr);
         return proposalID;
     }
@@ -334,10 +342,10 @@ contract Dao {
 
     // If an existing proposal, allow a minority to cancel
     function cancelProposal(uint oldProposalID, uint newProposalID) public {
-        require(mapPID_finalising[oldProposalID] == true, "Must be finalising");
-        if(hasMinority(newProposalID)){
-            mapPID_votes[oldProposalID] = 0;
-        }
+        require(mapPID_finalising[oldProposalID], "Must be finalising");
+        require(hasMinority(newProposalID), "Must have minority");
+        require(isEqual(bytes(mapPID_type[oldProposalID]), bytes(mapPID_type[newProposalID])), "Must be same");
+        mapPID_votes[oldProposalID] = 0;
         emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], totalWeight);
     }
 
@@ -355,12 +363,12 @@ contract Dao {
             moveRouter(proposalID);
         } else if (isEqual(_type, 'UTILS')){
             moveUtils(proposalID);
+        } else if (isEqual(_type, 'INCENTIVE')){
+            moveIncentiveAddress(proposalID);
         } else if (isEqual(_type, 'LIST')){
             listAsset(proposalID);
         } else if (isEqual(_type, 'DELIST')){
             delistAsset(proposalID);
-        } else if (isEqual(_type, 'INCENTIVE')){
-            moveIncentiveAddress(proposalID);
         } else if (isEqual(_type, 'CURVE')){
             changeCurve(proposalID);
         } else if (isEqual(_type, 'DURATION')){
@@ -375,6 +383,8 @@ contract Dao {
             changeDays(proposalID);
         } else if (isEqual(_type, 'BLOCKS_PER_DAY')){
             changeBlocks(proposalID);
+        } else if (isEqual(_type, 'GRANT')){
+            grantFunds(proposalID);
         }
     }
 
@@ -402,6 +412,13 @@ contract Dao {
         _UTILS = iUTILS(_proposedAddress);
         completeProposal(_proposalID);
     }
+    function moveIncentiveAddress(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID];
+        require(_proposedAddress != address(0), "No address proposed");
+        iBASE(BASE).changeIncentiveAddress(_proposedAddress);
+        completeProposal(_proposalID);
+    }
+
     function listAsset(uint _proposalID) internal {
         ListDetails memory _list = mapPID_list[proposalID];
         require(iBEP20(BASE).totalSupply() <= 100 * 10**6 * one, "Must not list over 100m");
@@ -413,12 +430,6 @@ contract Dao {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
         iBASE(BASE).delistAsset(_proposedAddress);
-        completeProposal(_proposalID);
-    }
-    function moveIncentiveAddress(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        iBASE(BASE).changeIncentiveAddress(_proposedAddress);
         completeProposal(_proposalID);
     }
     function changeCurve(uint _proposalID) internal {
@@ -459,6 +470,12 @@ contract Dao {
         require(_proposedParam != 0, "No param proposed");
         daysToEarnFactor = _proposedParam;
         completeProposal(_proposalID);
+    }
+    function grantFunds(uint _proposalID) internal {
+        GrantDetails memory _grant = mapPID_grant[proposalID];
+        require(_grant.amount <= iBEP20(BASE).balanceOf(address(this)), "Not more than balance");
+        completeProposal(_proposalID);
+        iBEP20(BASE).transfer(_grant.recipient, _grant.amount);
     }
 
     function completeProposal(uint _proposalID) internal {
