@@ -79,8 +79,8 @@ contract Dao {
     uint public one = 10**18;
 
     uint public coolOffPeriod;
-    uint public blocksPerDay;
-    uint public daysToEarnFactor;
+    uint public secondsPerEra;
+    uint public erasToEarn;
 
     uint public proposalID;
 
@@ -122,7 +122,7 @@ contract Dao {
     mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's balance in pool
     mapping(address => uint256) public mapMember_weight; // Value of weight
     mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of weight for pool
-    mapping(address => uint256) public mapMember_lastBlock;
+    mapping(address => uint256) public mapMember_lastTime;
     mapping(address => address[]) public mapMember_poolArray;
 
     mapping(uint256 => uint256) public mapPID_param;
@@ -156,17 +156,16 @@ contract Dao {
         BASE = _base;
         DEPLOYER = msg.sender;
         coolOffPeriod = 1;
-        blocksPerDay = 5760;
-        daysToEarnFactor = 30;
+        erasToEarn = 30;
+        secondsPerEra = iBASE(BASE).secondsPerEra();
     }
     function setGenesisAddresses(address _router, address _utils) public onlyDeployer {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
     }
-    function setGenesisFactors(uint _coolOff, uint _blocksPerDay, uint _daysToEarn) public onlyDeployer {
+    function setGenesisFactors(uint _coolOff, uint _daysToEarn) public onlyDeployer {
         coolOffPeriod = _coolOff;
-        blocksPerDay = _blocksPerDay;
-        daysToEarnFactor = _daysToEarn;
+        erasToEarn = _daysToEarn;
     }
 
     function purgeDeployer() public onlyDeployer {
@@ -184,7 +183,7 @@ contract Dao {
         require(_ROUTER.isPool(pool) == true, "Must be listed");
         require(amount > 0, "Must get some");
         if (!isMember[member]) {
-            mapMember_lastBlock[member] = block.number;
+            mapMember_lastTime[member] = block.number;
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
@@ -238,14 +237,14 @@ contract Dao {
 
     function harvest() public {
         uint reward = calcCurrentReward(msg.sender);
-        mapMember_lastBlock[msg.sender] = block.number;
+        mapMember_lastTime[msg.sender] = now;
         iBEP20(BASE).transfer(msg.sender, reward);
     }
 
     function calcCurrentReward(address member) public view returns(uint){
-        uint blocksSinceClaim = block.number.sub(mapMember_lastBlock[member]); // Get blocks since last claim
+        uint secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
-        uint reward = share.mul(blocksSinceClaim).div(blocksPerDay);    // Get owed amount, based on per-day rates
+        uint reward = share.mul(secondsSinceClaim).div(secondsPerEra);    // Get owed amount, based on per-day rates
         uint reserve = iBEP20(BASE).balanceOf(address(this));
         if(reward >= reserve) {
             reward = reserve; // Send full reserve if the last person
@@ -255,7 +254,7 @@ contract Dao {
 
     function calcReward(address member) public view returns(uint){
         uint weight = mapMember_weight[member];
-        uint reserve = iBEP20(BASE).balanceOf(address(this)).div(daysToEarnFactor); // Aim to deplete reserve over a number of days
+        uint reserve = iBEP20(BASE).balanceOf(address(this)).div(erasToEarn); // Aim to deplete reserve over a number of days
         return _UTILS.calcShare(weight, totalWeight, reserve); // Get member's share of that
     }
 
@@ -379,10 +378,8 @@ contract Dao {
             stopEmissions(proposalID);
         } else if (isEqual(_type, 'COOL_OFF')){
             changeCooloff(proposalID);
-        } else if (isEqual(_type, 'DAYS_TO_EARN')){
-            changeDays(proposalID);
-        } else if (isEqual(_type, 'BLOCKS_PER_DAY')){
-            changeBlocks(proposalID);
+        } else if (isEqual(_type, 'ERAS_TO_EARN')){
+            changeEras(proposalID);
         } else if (isEqual(_type, 'GRANT')){
             grantFunds(proposalID);
         }
@@ -442,6 +439,7 @@ contract Dao {
         uint _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
         iBASE(BASE).changeEraDuration(_proposedParam);
+        secondsPerEra = iBASE(BASE).secondsPerEra();
         completeProposal(_proposalID);
     }
     function startEmissions(uint _proposalID) internal {
@@ -459,16 +457,10 @@ contract Dao {
         coolOffPeriod = _proposedParam;
         completeProposal(_proposalID);
     }
-    function changeBlocks(uint _proposalID) internal {
+    function changeEras(uint _proposalID) internal {
         uint _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
-        blocksPerDay = _proposedParam;
-        completeProposal(_proposalID);
-    }
-    function changeDays(uint _proposalID) internal {
-        uint _proposedParam = mapPID_param[_proposalID];
-        require(_proposedParam != 0, "No param proposed");
-        daysToEarnFactor = _proposedParam;
+        erasToEarn = _proposedParam;
         completeProposal(_proposalID);
     }
     function grantFunds(uint _proposalID) internal {
@@ -552,7 +544,7 @@ contract Dao {
     function getMemberDetails(address member) public view returns (MemberDetails memory memberDetails){
         memberDetails.isMember = isMember[member];
         memberDetails.weight = mapMember_weight[member];
-        memberDetails.lastBlock = mapMember_lastBlock[member];
+        memberDetails.lastBlock = mapMember_lastTime[member];
         memberDetails.poolCount = mapMember_poolArray[member].length;
         return memberDetails;
     }
