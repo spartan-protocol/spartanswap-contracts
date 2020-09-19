@@ -1,6 +1,6 @@
 /*
 ################################################
-Creates 3 tokens and stakes them
+Creates 3 tokens and addLiquiditys them
 ################################################
 */
 

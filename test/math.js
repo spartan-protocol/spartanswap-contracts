@@ -45,7 +45,7 @@ function calcSwapOutput(x, X, Y) {
     return y;
   }
 
-  function calcStakeUnits(b, B, t, T, P) {
+  function calcLiquidityUnits(b, B, t, T, P) {
     if(P == 0){
       return b
     } else {
@@ -124,8 +124,8 @@ calcSwapFee: function(x, X, Y) {
 calcLiquidation: function(x, X, Y) {
   return calcLiquidation(x, X, Y)
 },
-calcStakeUnits: function(a, A, v, V, P) {
-  return calcStakeUnits(a, A, v, V, P)
+calcLiquidityUnits: function(a, A, v, V, P) {
+  return calcLiquidityUnits(a, A, v, V, P)
 },
 getSlipAdustment: function(a, A, v, V) {
   return getSlipAdustment(a, A, v, V)
