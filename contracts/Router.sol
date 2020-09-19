@@ -391,12 +391,12 @@ contract Router {
         return pool;
     }
 
-    function add(uint inputBase, uint inputToken, address token) public payable returns (uint units) {
-        units = addForMember(inputBase, inputToken, token, msg.sender);
+    function addLiquidity(uint inputBase, uint inputToken, address token) public payable returns (uint units) {
+        units = addLiquidityForMember(inputBase, inputToken, token, msg.sender);
         return units;
     }
 
-    function addForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
+    function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
         address payable pool = getPool(token);
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
         uint _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
@@ -423,15 +423,15 @@ contract Router {
     // Unstaking functions
 
     // Remove % for self
-    function remove(uint basisPoints, address token) public returns (bool success) {
+    function removeLiquidity(uint basisPoints, address token) public returns (bool success) {
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
         uint _units = _DAO().UTILS().calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
-        removeExact(_units, token);
+        removeLiquidityExact(_units, token);
         return true;
     }
 
     // Remove an exact qty of units
-    function removeExact(uint units, address token) public returns (bool success) {
+    function removeLiquidityExact(uint units, address token) public returns (bool success) {
         address payable pool = getPool(token);
         address payable member = msg.sender;
         (uint _outputBase, uint _outputToken) = _DAO().UTILS().getPoolShare(token, units);
@@ -445,13 +445,13 @@ contract Router {
     }
 
     // // Remove % Asymmetrically
-    function removeAsymmetric(uint basisPoints, bool toBase, address token) public returns (uint outputAmount){
+    function removeLiquidityAsymmetric(uint basisPoints, bool toBase, address token) public returns (uint outputAmount){
         uint _units = _DAO().UTILS().calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
-        outputAmount = removeExactAsymmetric(_units, toBase, token);
+        outputAmount = removeLiquidityExactAsymmetric(_units, toBase, token);
         return outputAmount;
     }
     // Remove Exact Asymmetrically
-    function removeExactAsymmetric(uint units, bool toBase, address token) public returns (uint outputAmount){
+    function removeLiquidityExactAsymmetric(uint units, bool toBase, address token) public returns (uint outputAmount){
         address payable pool = getPool(token);
         require(units < iBEP20(pool).totalSupply(), "InputErr");
         (uint _outputBase, uint _outputToken, uint _outputAmount) = _DAO().UTILS().getPoolShareAssym(token, units, toBase);

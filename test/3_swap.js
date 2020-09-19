@@ -21,7 +21,7 @@ var TOKEN1 = artifacts.require("./Token1.sol");
 
 var base; var token1;  var token2; var addr1; var addr2;
 var utils; var router; var Dao;
-var poolETH; var poolTKN1; var poolTKN2;
+var poolBNB; var poolTKN1; var poolTKN2;
 var acc0; var acc1; var acc2; var acc3;
 
 contract('SWAP', function (accounts) {
@@ -32,38 +32,38 @@ contract('SWAP', function (accounts) {
     // checkDetails()
 
     // Single swap
-    swapBASEToETH(acc0, _.BN2Str(_.one * 10))
+    swapBASEToBNB(acc0, _.BN2Str(_.one * 10))
     // checkDetails()
-    swapETHToBASE(acc0, _.BN2Str(_.one * 1))
+    swapBNBToBASE(acc0, _.BN2Str(_.one * 1))
     // checkDetails()
 
     addLiquidityTKN1(acc1, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100))
     // checkDetails()
 
     // // Double swap
-    swapTKN1ToETH(acc0, _.BN2Str(_.one * 10))
+    swapTKN1ToBNB(acc0, _.BN2Str(_.one * 10))
     // checkDetails()
-    swapETHToTKN1(acc0, _.BN2Str(_.one * 1))
+    swapBNBToTKN1(acc0, _.BN2Str(_.one * 1))
     // checkDetails()
 
     addLiquidityTKN2(acc1, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100))
     // checkDetails()
 
     // // // // // Double swap back
-    swapTKN2ToETH(acc0, _.BN2Str(_.one * 10))
+    swapTKN2ToBNB(acc0, _.BN2Str(_.one * 10))
     // checkDetails()
-    swapETHToTKN2(acc0, _.BN2Str(_.one * 1))
+    swapBNBToTKN2(acc0, _.BN2Str(_.one * 1))
     // checkDetails()
 
-    removeETH(10000, acc1)
+    removeLiquidityBNB(10000, acc1)
     // checkDetails()
-    removeTKN1(10000, acc1)
+    removeLiquidityTKN1(10000, acc1)
     // checkDetails()
-    removeTKN2(10000, acc1)
+    removeLiquidityTKN2(10000, acc1)
     // checkDetails()
-    removeETH(10000, acc0)
+    removeLiquidityBNB(10000, acc0)
     // checkDetails()
-    removeTKN1(10000, acc0)
+    removeLiquidityTKN1(10000, acc0)
     // checkDetails()
     removeLiquidityTKN2(10000, acc0)
     // checkDetails()
@@ -116,16 +116,16 @@ async function createPool() {
     it("It should deploy Eth Pool", async () => {
         var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
         await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
-        poolETH = await POOL.at(_pool)
-        //console.log(`Pools: ${poolETH.address}`)
-        const baseAddr = await poolETH.BASE()
+        poolBNB = await POOL.at(_pool)
+        //console.log(`Pools: ${poolBNB.address}`)
+        const baseAddr = await poolBNB.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolETH.address)), _.BN2Str(_.one * 10), 'base balance')
-        assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(_.dot1BN), 'ether balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(_.one * 10), 'base balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(poolBNB.address)), _.BN2Str(_.dot1BN), 'ether balance')
 
         let supply = await base.totalSupply()
-        await base.approve(poolETH.address, supply, { from: acc0 })
-        await base.approve(poolETH.address, supply, { from: acc1 })
+        await base.approve(poolBNB.address, supply, { from: acc0 })
+        await base.approve(poolBNB.address, supply, { from: acc1 })
     })
 
     it("It should deploy TKN1 Pools", async () => {
@@ -164,7 +164,7 @@ async function addLiquidity(acc, b, t) {
 
     it(`It should addLiquidity BNB from ${acc}`, async () => {
         let token = _.BNB
-        let pool = poolETH
+        let pool = poolBNB
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var T = _.getBN(poolData.tokenAmt)
@@ -239,7 +239,7 @@ async function _addLiquidityTKN(acc, t, b, token, pool) {
 }
 
 
-async function swapBASEToETH(acc, b) {
+async function swapBASEToBNB(acc, b) {
 
     it(`It should buy BNB with BASE from ${acc}`, async () => {
         let token = _.BNB
@@ -262,14 +262,14 @@ async function swapBASEToETH(acc, b) {
         assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
         assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.plus(b)))
 
-        assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
-        assert.equal(_.BN2Str(await base.balanceOf(poolETH.address)), _.BN2Str(B.plus(b)), 'base balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(poolBNB.address)), _.BN2Str(T.minus(t)), 'ether balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(B.plus(b)), 'base balance')
 
         //await help.logPool(utils, _.BNB, 'BNB')
     })
 }
 
-async function swapETHToBASE(acc, t) {
+async function swapBNBToBASE(acc, t) {
 
     it(`It should sell BNB to BASE from ${acc}`, async () => {
         let token = _.BNB
@@ -295,29 +295,29 @@ async function swapETHToBASE(acc, t) {
         
 
 
-        assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(T.plus(t)), 'ether balance')
-        assert.equal(_.BN2Str(await base.balanceOf(poolETH.address)), _.BN2Str(B.minus(b)), 'base balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(poolBNB.address)), _.BN2Str(T.plus(t)), 'ether balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(B.minus(b)), 'base balance')
 
         //await help.logPool(utils, token, 'BNB')
     })
 }
 
-async function swapTKN1ToETH(acc, x) {
+async function swapTKN1ToBNB(acc, x) {
     it(`It should swap TKN1 to BNB from ${acc}`, async () => {
-        await _swapTKNToETH(acc, x, token1, poolTKN1)
+        await _swapTKNToBNB(acc, x, token1, poolTKN1)
         //await help.logPool(utils, token1.address, 'TKN1')
     })
 }
 
-async function swapTKN2ToETH(acc, x) {
+async function swapTKN2ToBNB(acc, x) {
     it(`It should swap TKN2 to BNB from ${acc}`, async () => {
-        await _swapTKNToETH(acc, x, token2, poolTKN2)
+        await _swapTKNToBNB(acc, x, token2, poolTKN2)
         //await help.logPool(utils, token2.address, 'TKN2')
 
     })
 }
 
-async function _swapTKNToETH(acc, x, token, pool) {
+async function _swapTKNToBNB(acc, x, token, pool) {
     const toToken = _.BNB
     let poolData1 = await utils.getPoolData(token.address);
     let poolData2 = await utils.getPoolData(toToken);
@@ -354,29 +354,29 @@ async function _swapTKNToETH(acc, x, token, pool) {
 
     assert.equal(_.BN2Str(await token.balanceOf(pool.address)), _.BN2Str(X.plus(x)), 'token1 balance')
     assert.equal(_.BN2Str(await base.balanceOf(pool.address)), _.BN2Str(Y.minus(y)), 'base balance')
-    assert.equal(_.BN2Str(await base.balanceOf(poolETH.address)), _.BN2Str(B.plus(y)), 'base balance eth')
-    assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(Z.minus(z)), 'ether balance')
+    assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(B.plus(y)), 'base balance eth')
+    assert.equal(_.BN2Str(await web3.eth.getBalance(poolBNB.address)), _.BN2Str(Z.minus(z)), 'ether balance')
 
     //await help.logPool(utils, token.address, 'TKN1')
     //await help.logPool(utils, _.BNB, 'BNB')
 }
 
-async function swapETHToTKN1(acc, x) {
+async function swapBNBToTKN1(acc, x) {
     it(`It should sell BNB with TKN1 from ${acc}`, async () => {
-        await _swapETHToTKN(acc, x, token1, poolTKN1)
+        await _swapBNBToTKN(acc, x, token1, poolTKN1)
         //await help.logPool(utils, token1.address, 'TKN1')
     })
 }
 
-async function swapETHToTKN2(acc, x) {
+async function swapBNBToTKN2(acc, x) {
     it(`It should sell BNB to TKN2 from ${acc}`, async () => {
-        await _swapETHToTKN(acc, x, token2, poolTKN2)
+        await _swapBNBToTKN(acc, x, token2, poolTKN2)
         //await help.logPool(utils, token2.address, 'TKN2')
 
     })
 }
 
-async function _swapETHToTKN(acc, x, token, pool) {
+async function _swapBNBToTKN(acc, x, token, pool) {
     let poolData1 = await utils.getPoolData(_.BNB);
     let poolData2 = await utils.getPoolData(token.address);
     const X = _.getBN(poolData1.tokenAmt)
@@ -406,8 +406,8 @@ async function _swapETHToTKN(acc, x, token, pool) {
     assert.equal(_.BN2Str(poolData2.baseAmt), _.BN2Str(B.plus(y)))
     assert.equal(_.BN2Str(poolData2.tokenAmt), _.BN2Str(Z.minus(z)))
 
-    assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(X.plus(x)), 'token1 balance')
-    assert.equal(_.BN2Str(await base.balanceOf(poolETH.address)), _.BN2Str(Y.minus(y)), 'base balance')
+    assert.equal(_.BN2Str(await web3.eth.getBalance(poolBNB.address)), _.BN2Str(X.plus(x)), 'token1 balance')
+    assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(Y.minus(y)), 'base balance')
     assert.equal(_.BN2Str(await base.balanceOf(pool.address)), _.BN2Str(B.plus(y)), 'base balance eth')
     assert.equal(_.BN2Str(await token.balanceOf(pool.address)), _.BN2Str(Z.minus(z)), 'ether balance')
 
@@ -417,7 +417,7 @@ async function _swapETHToTKN(acc, x, token, pool) {
 
 
 
-async function removeETH(bp, acc) {
+async function removeLiquidityBNB(bp, acc) {
 
     it(`It should removeLiquidity BNB for ${acc}`, async () => {
         let poolROI = await utils.getPoolROI(_.BNB)
@@ -435,8 +435,8 @@ async function removeETH(bp, acc) {
         var B = _.getBN(poolData.baseAmt)
         var T = _.getBN(poolData.tokenAmt)
 
-        let totalUnits = _.getBN((await poolETH.totalSupply()))
-        let liquidityUnitss = _.getBN(await poolETH.balanceOf(acc))
+        let totalUnits = _.getBN((await poolBNB.totalSupply()))
+        let liquidityUnits = _.getBN(await poolBNB.balanceOf(acc))
         let share = (liquidityUnits.times(bp)).div(10000)
         let b = _.floorBN((B.times(share)).div(totalUnits))
         let t = _.floorBN((T.times(share)).div(totalUnits))
@@ -453,21 +453,21 @@ async function removeETH(bp, acc) {
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(t), 'outputToken')
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
 
-        assert.equal(_.BN2Str((await poolETH.totalSupply())), totalUnits.minus(share), 'poolUnits')
+        assert.equal(_.BN2Str((await poolBNB.totalSupply())), totalUnits.minus(share), 'poolUnits')
 
         assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.minus(b)))
         assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
         // assert.equal(_.BN2Str(poolData.basePooled), _.BN2Str(B.minus(b)))
         // assert.equal(_.BN2Str(poolData.tokenPooled), _.BN2Str(T.minus(t)))
-        assert.equal(_.BN2Str(await base.balanceOf(poolETH.address)), _.BN2Str(B.minus(b)), 'base balance')
-        assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(B.minus(b)), 'base balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(poolBNB.address)), _.BN2Str(T.minus(t)), 'ether balance')
 
-        let liquidityUnits2 = _.getBN(await poolETH.balanceOf(acc))
+        let liquidityUnits2 = _.getBN(await poolBNB.balanceOf(acc))
         assert.equal(_.BN2Str(liquidityUnits2), _.BN2Str(liquidityUnits.minus(share)), 'liquidityUnits')
     })
 }
 
-async function removeTKN1(bp, acc) {
+async function removeLiquidityTKN1(bp, acc) {
 
     it(`It should removeLiquidity TKN1 for ${acc}`, async () => {
 
@@ -488,7 +488,7 @@ async function removeTKN1(bp, acc) {
     })
 }
 
-async function removeTKN2(bp, acc) {
+async function removeLiquidityTKN2(bp, acc) {
 
     it(`It should removeLiquidity TKN2 for ${acc}`, async () => {
         let poolROI = await utils.getPoolROI(token2.address)
@@ -509,7 +509,7 @@ async function removeTKN2(bp, acc) {
     })
 }
 
-async function _removeTKN(bp, acc, pools, token) {
+async function _removeLiquidityTKN(bp, acc, pools, token) {
     let poolData = await utils.getPoolData(token.address);
     var B = _.getBN(poolData.baseAmt)
     var T = _.getBN(poolData.tokenAmt)
@@ -542,7 +542,7 @@ async function _removeTKN(bp, acc, pools, token) {
 }
 
 
-async function logETH() {
+async function logBNB() {
     it("logs", async () => {
         // //await help.logPool(utils, _.BNB, 'BNB')
     })
