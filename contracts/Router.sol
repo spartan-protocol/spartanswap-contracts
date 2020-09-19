@@ -24,7 +24,7 @@ interface iUTILS {
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
-    function calcStakeUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units);
+    function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units);
     function getPoolShare(address token, uint units) external view returns(uint baseAmt, uint tokenAmt);
     function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmt, uint tokenAmt, uint outputAmt);
     function calcValueInBase(address token, uint amount) external view returns (uint value);
@@ -91,8 +91,8 @@ contract Pool is iBEP20 {
     uint public genesis;
     uint public baseAmt;
     uint public tokenAmt;
-    uint public baseAmtStaked;
-    uint public tokenAmtStaked;
+    uint public baseAmtPooled;
+    uint public tokenAmtPooled;
     uint public fees;
     uint public volume;
     uint public txCount;
@@ -258,9 +258,9 @@ contract Pool is iBEP20 {
     // Data Model
 
     // Set internal balances
-    function _setPoolBalances(uint _baseAmt, uint _tokenAmt, uint _baseAmtStaked, uint _tokenAmtStaked)  external onlyRouter  {
-        baseAmtStaked = _baseAmtStaked;
-        tokenAmtStaked = _tokenAmtStaked; 
+    function _setPoolBalances(uint _baseAmt, uint _tokenAmt, uint _baseAmtPooled, uint _tokenAmtPooled)  external onlyRouter  {
+        baseAmtPooled = _baseAmtPooled;
+        tokenAmtPooled = _tokenAmtPooled; 
         __setPool(_baseAmt, _tokenAmt);
     }
 
@@ -268,8 +268,8 @@ contract Pool is iBEP20 {
     function _incrementPoolBalances(uint _baseAmt, uint _tokenAmt)  external onlyRouter  {
         baseAmt += _baseAmt;
         tokenAmt += _tokenAmt;
-        baseAmtStaked += _baseAmt;
-        tokenAmtStaked += _tokenAmt; 
+        baseAmtPooled += _baseAmt;
+        tokenAmtPooled += _tokenAmt; 
     }
     function _setPoolAmounts(uint _baseAmt, uint _tokenAmt)  external onlyRouter  {
         __setPool(_baseAmt, _tokenAmt); 
@@ -281,10 +281,10 @@ contract Pool is iBEP20 {
 
     // Decrement internal balances
     function _decrementPoolBalances(uint _baseAmt, uint _tokenAmt)  external onlyRouter  {
-        uint _unstakedBase = _DAO().UTILS().calcShare(_baseAmt, baseAmt, baseAmtStaked);
-        uint _unstakedToken = _DAO().UTILS().calcShare(_tokenAmt, tokenAmt, tokenAmtStaked);
-        baseAmtStaked = baseAmtStaked.sub(_unstakedBase);
-        tokenAmtStaked = tokenAmtStaked.sub(_unstakedToken); 
+        uint _removedBase = _DAO().UTILS().calcShare(_baseAmt, baseAmt, baseAmtPooled);
+        uint _removedToken = _DAO().UTILS().calcShare(_tokenAmt, tokenAmt, tokenAmtPooled);
+        baseAmtPooled = baseAmtPooled.sub(_removedBase);
+        tokenAmtPooled = tokenAmtPooled.sub(_removedToken); 
         __decrementPool(_baseAmt, _tokenAmt); 
     }
     function __decrementPool(uint _baseAmt, uint _tokenAmt) internal  {
@@ -308,11 +308,11 @@ contract Router {
     address public BASE;
     address public DEPLOYER;
 
-    uint public totalStaked; 
+    uint public totalPooled; 
     uint public totalVolume;
     uint public totalFees;
-    uint public unstakeTx;
-    uint public stakeTx;
+    uint public removeTx;
+    uint public addTx;
     uint public swapTx;
 
     address[] public arrayTokens;
@@ -320,8 +320,8 @@ contract Router {
     mapping(address=>bool) public isPool;
 
     event NewPool(address token, address pool, uint genesis);
-    event Staked(address member, uint inputBase, uint inputToken, uint unitsIssued);
-    event Unstaked(address member, uint outputBase, uint outputToken, uint unitsClaimed);
+    event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
+    event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
 
     // Only Deployer can execute
@@ -345,11 +345,11 @@ contract Router {
 
     // In case of new router can migrate metrics
     function migrateRouterData(address payable oldRouter) public onlyDeployer {
-        totalStaked = Router(oldRouter).totalStaked();
+        totalPooled = Router(oldRouter).totalPooled();
         totalVolume = Router(oldRouter).totalVolume();
         totalFees = Router(oldRouter).totalFees();
-        unstakeTx = Router(oldRouter).unstakeTx();
-        stakeTx = Router(oldRouter).stakeTx();
+        removeTx = Router(oldRouter).removeTx();
+        addTx = Router(oldRouter).addTx();
         swapTx = Router(oldRouter).swapTx();
     }
     // Can migrate registry
@@ -383,38 +383,38 @@ contract Router {
         mapToken_Pool[token] = pool;
         arrayTokens.push(token);
         isPool[pool] = true;
-        totalStaked += _actualInputBase;
-        stakeTx += 1;
-        uint units = _handleStake(pool, _actualInputBase, _actualInputToken, msg.sender);
+        totalPooled += _actualInputBase;
+        addTx += 1;
+        uint units = _handleAddLiquidity(pool, _actualInputBase, _actualInputToken, msg.sender);
         emit NewPool(token, pool, now);
-        emit Staked(msg.sender, _actualInputBase, _actualInputToken, units);
+        emit AddLiquidity(msg.sender, _actualInputBase, _actualInputToken, units);
         return pool;
     }
 
-    function stake(uint inputBase, uint inputToken, address token) public payable returns (uint units) {
-        units = stakeForMember(inputBase, inputToken, token, msg.sender);
+    function add(uint inputBase, uint inputToken, address token) public payable returns (uint units) {
+        units = addForMember(inputBase, inputToken, token, msg.sender);
         return units;
     }
 
-    function stakeForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
+    function addForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
         address payable pool = getPool(token);
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
         uint _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
-        totalStaked += _actualInputBase;
-        stakeTx += 1;
-        units = _handleStake(pool, _actualInputBase, _actualInputToken, member);
-        emit Staked(member, _actualInputBase, _actualInputToken, units);
+        totalPooled += _actualInputBase;
+        addTx += 1;
+        units = _handleAddLiquidity(pool, _actualInputBase, _actualInputToken, member);
+        emit AddLiquidity(member, _actualInputBase, _actualInputToken, units);
         return units;
     }
 
 
-    function _handleStake(address payable pool, uint _baseAmt, uint _tokenAmt, address _member) internal returns (uint _units) {
+    function _handleAddLiquidity(address payable pool, uint _baseAmt, uint _tokenAmt, address _member) internal returns (uint _units) {
         Pool(pool)._checkApprovals();
         uint _B = Pool(pool).baseAmt();
         uint _T = Pool(pool).tokenAmt();
         uint _P = iBEP20(pool).totalSupply();
         Pool(pool)._incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
-        _units = _DAO().UTILS().calcStakeUnits(_baseAmt, _B, _tokenAmt, _T, _P);  
+        _units = _DAO().UTILS().calcLiquidityUnits(_baseAmt, _B, _tokenAmt, _T, _P);  
         Pool(pool)._mint(_member, _units);
         return _units;
     }
@@ -422,49 +422,49 @@ contract Router {
     //==================================================================================//
     // Unstaking functions
 
-    // Unstake % for self
-    function unstake(uint basisPoints, address token) public returns (bool success) {
+    // Remove % for self
+    function remove(uint basisPoints, address token) public returns (bool success) {
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
         uint _units = _DAO().UTILS().calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
-        unstakeExact(_units, token);
+        removeExact(_units, token);
         return true;
     }
 
-    // Unstake an exact qty of units
-    function unstakeExact(uint units, address token) public returns (bool success) {
+    // Remove an exact qty of units
+    function removeExact(uint units, address token) public returns (bool success) {
         address payable pool = getPool(token);
         address payable member = msg.sender;
         (uint _outputBase, uint _outputToken) = _DAO().UTILS().getPoolShare(token, units);
-        totalStaked = totalStaked.sub(_outputBase);
-        unstakeTx += 1;
-        _handleUnstake(pool, units, _outputBase, _outputToken, member);
-        emit Unstaked(member, _outputBase, _outputToken, units);
+        totalPooled = totalPooled.sub(_outputBase);
+        removeTx += 1;
+        _handleRemoveLiquidity(pool, units, _outputBase, _outputToken, member);
+        emit RemoveLiquidity(member, _outputBase, _outputToken, units);
         _handleTransferOut(token, _outputToken, pool, member);
         _handleTransferOut(BASE, _outputBase, pool, member);
         return true;
     }
 
-    // // Unstake % Asymmetrically
-    function unstakeAsymmetric(uint basisPoints, bool toBase, address token) public returns (uint outputAmount){
+    // // Remove % Asymmetrically
+    function removeAsymmetric(uint basisPoints, bool toBase, address token) public returns (uint outputAmount){
         uint _units = _DAO().UTILS().calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
-        outputAmount = unstakeExactAsymmetric(_units, toBase, token);
+        outputAmount = removeExactAsymmetric(_units, toBase, token);
         return outputAmount;
     }
-    // Unstake Exact Asymmetrically
-    function unstakeExactAsymmetric(uint units, bool toBase, address token) public returns (uint outputAmount){
+    // Remove Exact Asymmetrically
+    function removeExactAsymmetric(uint units, bool toBase, address token) public returns (uint outputAmount){
         address payable pool = getPool(token);
         require(units < iBEP20(pool).totalSupply(), "InputErr");
         (uint _outputBase, uint _outputToken, uint _outputAmount) = _DAO().UTILS().getPoolShareAssym(token, units, toBase);
-        totalStaked = totalStaked.sub(_outputBase);
-        unstakeTx += 1;
-        _handleUnstake(pool, units, _outputBase, _outputToken, msg.sender);
-        emit Unstaked(msg.sender, _outputBase, _outputToken, units);
+        totalPooled = totalPooled.sub(_outputBase);
+        removeTx += 1;
+        _handleRemoveLiquidity(pool, units, _outputBase, _outputToken, msg.sender);
+        emit RemoveLiquidity(msg.sender, _outputBase, _outputToken, units);
         _handleTransferOut(token, _outputToken, pool, msg.sender);
         _handleTransferOut(BASE, _outputBase, pool, msg.sender);
         return _outputAmount;
     }
 
-    function _handleUnstake(address payable pool, uint _units, uint _outputBase, uint _outputToken, address _member) internal returns (bool success) {
+    function _handleRemoveLiquidity(address payable pool, uint _units, uint _outputBase, uint _outputToken, address _member) internal returns (bool success) {
         Pool(pool)._checkApprovals();
         Pool(pool)._decrementPoolBalances(_outputBase, _outputToken);
         Pool(pool).burnFrom(_member, _units);
@@ -483,7 +483,7 @@ contract Router {
         Pool(pool)._checkApprovals();
         uint _actualAmount = _handleTransferIn(BASE, amount, pool);
         (outputAmount, fee) = _swapBaseToToken(pool, _actualAmount);
-        totalStaked += _actualAmount;
+        totalPooled += _actualAmount;
         totalVolume += _actualAmount;
         totalFees += _DAO().UTILS().calcValueInBase(token, fee);
         swapTx += 1;
@@ -501,7 +501,7 @@ contract Router {
         Pool(pool)._checkApprovals();
         uint _actualAmount = _handleTransferIn(token, amount, pool);
         (outputAmount, fee) = _swapTokenToBase(pool, _actualAmount);
-        totalStaked = totalStaked.sub(outputAmount);
+        totalPooled = totalPooled.sub(outputAmount);
         totalVolume += outputAmount;
         totalFees += fee;
         swapTx += 1;
@@ -519,11 +519,11 @@ contract Router {
         uint _transferAmount = 0;
         if(fromToken == BASE){
             (outputAmount, fee) = _swapBaseToToken(poolFrom, _actualAmount);      // Buy to token
-            totalStaked += _actualAmount;
+            totalPooled += _actualAmount;
             totalVolume += _actualAmount;
         } else if(toToken == BASE) {
             (outputAmount, fee) = _swapTokenToBase(poolFrom,_actualAmount);   // Sell to token
-            totalStaked = totalStaked.sub(outputAmount);
+            totalPooled = totalPooled.sub(outputAmount);
             totalVolume += outputAmount;
         } else {
             (uint _yy, uint _feey) = _swapTokenToBase(poolFrom, _actualAmount);             // Sell to BASE

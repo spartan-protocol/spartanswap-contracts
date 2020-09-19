@@ -20,6 +20,7 @@ interface iUTILS {
     function getPoolShare(address, uint) external view returns(uint);
 }
 interface iBASE {
+    function secondsPerEra() external view returns (uint);
     function changeIncentiveAddress(address) external returns(bool);
     function changeDAO(address) external returns(bool);
     function changeEmissionCurve(uint256) external returns(bool);

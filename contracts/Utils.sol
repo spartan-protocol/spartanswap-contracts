@@ -394,7 +394,7 @@ contract Utils {
         return numerator.div(denominator);
     }
 
-    function calcStakeUnits(uint b, uint B, uint t, uint T, uint P) public view returns (uint units){
+    function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) public view returns (uint units){
         if(P == 0){
             return b;
         } else {

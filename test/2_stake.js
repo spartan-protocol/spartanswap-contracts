@@ -1,6 +1,6 @@
 /*
 ################################################
-Stakes and unstakes BNB
+Stakes and removeLiquiditys BNB
 ################################################
 */
 
@@ -28,46 +28,46 @@ contract('SPT', function (accounts) {
 
     constructor(accounts)
     createPool()
-    logStaker(acc0)
-    stakeFail()
+    logMember(acc0)
+    addLiquidityFail()
 
-    stakeETH(acc1, _.BN2Str(_.one * 10), _.dot1BN)
+    addLiquidityETH(acc1, _.BN2Str(_.one * 10), _.dot1BN)
     logETH()
-    logStaker(acc1)
-    checkDetails()
-
-    unstakeETH(10000, acc1)
-    logETH()
-    logStaker(acc1)
-    checkDetails()
-    unstakeETH(10000, acc0)
-    logETH()
-    logStaker(acc0)
+    logMember(acc1)
     checkDetails()
 
-    stakeETH(acc0, _.BN2Str(_.one * 10), _.dot1BN)
-    stakeETH(acc1, _.BN2Str(_.one * 10), _.dot1BN)
+    removeLiquidityETH(10000, acc1)
     logETH()
+    logMember(acc1)
     checkDetails()
-    unstakeFailStart()
-
-    unstakeAsym(5000, acc1, false)
+    removeLiquidityETH(10000, acc0)
     logETH()
-    checkDetails()
-    unstakeExactAsym(10000, acc1, true)
-    logETH()
+    logMember(acc0)
     checkDetails()
 
-
-    unstakeFailExactAsym(10000, acc0, true)
-    unstakeETH(5000, acc0)
+    addLiquidityETH(acc0, _.BN2Str(_.one * 10), _.dot1BN)
+    addLiquidityETH(acc1, _.BN2Str(_.one * 10), _.dot1BN)
     logETH()
     checkDetails()
-    unstakeETH(10000, acc0)
+    removeLiquidityFailStart()
+
+    removeLiquidityAsym(5000, acc1, false)
+    logETH()
+    checkDetails()
+    removeLiquidityExactAsym(10000, acc1, true)
     logETH()
     checkDetails()
 
-    unstakeFailEnd(acc0)
+
+    removeLiquidityFailExactAsym(10000, acc0, true)
+    removeLiquidityETH(5000, acc0)
+    logETH()
+    checkDetails()
+    removeLiquidityETH(10000, acc0)
+    logETH()
+    checkDetails()
+
+    removeLiquidityFailEnd(acc0)
 
 })
 
@@ -126,15 +126,15 @@ async function createPool() {
 }
 
 
-async function stakeFail() {
+async function addLiquidityFail() {
     it("It should revert with no BNB value", async () => {
-        var tx1 = await truffleAssert.reverts(router.stake(_.BN2Str(_.one * 100), _.BN2Str(_.one), _.BNB));
+        var tx1 = await truffleAssert.reverts(router.addLiquidity(_.BN2Str(_.one * 100), _.BN2Str(_.one), _.BNB));
     })
 }
 
-async function stakeETH(acc, v, a) {
+async function addLiquidityETH(acc, v, a) {
 
-    it(`It should stake BNB from ${acc}`, async () => {
+    it(`It should addLiquidity BNB from ${acc}`, async () => {
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
@@ -145,7 +145,7 @@ async function stakeETH(acc, v, a) {
         let units = math.calcStakeUnits(a, A.plus(a), v, S.plus(v))
         console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(S.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
         
-        let tx = await router.stake(v, a, token, { from: acc, value: a })
+        let tx = await router.addLiquidity(v, a, token, { from: acc, value: a })
         poolData = await utils.getPoolData(token);
         assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(v)))
         assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(A.plus(a)))
@@ -168,17 +168,17 @@ async function stakeETH(acc, v, a) {
 
 
 
-async function unstakeETH(bp, acc) {
+async function removeLiquidityETH(bp, acc) {
 
-    it(`It should unstake BNB for ${acc}`, async () => {
+    it(`It should removeLiquidity BNB for ${acc}`, async () => {
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var A = _.getBN(poolData.tokenAmt)
 
         let totalUnits = _.getBN((await basePools.totalSupply()))
-        let stakerUnits = _.getBN(await basePools.balanceOf(acc))
-        let share = (stakerUnits.times(bp)).div(10000)
+        let addLiquidityrUnits = _.getBN(await basePools.balanceOf(acc))
+        let share = (addLiquidityrUnits.times(bp)).div(10000)
         let v = _.floorBN((S.times(share)).div(totalUnits))
         let a = _.floorBN((A.times(share)).div(totalUnits))
         // let memberData = (await utils.getMemberData(token, acc))
@@ -186,9 +186,9 @@ async function unstakeETH(bp, acc) {
         // let tokenAmt = _.getBN(memberData.tokenAmtStaked)
         // let vs = _.floorBN((baseAmt.times(bp)).div(10000))
         // let aa = _.floorBN((tokenAmt.times(bp)).div(10000))
-        console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(v), _.BN2Str(a))
+        console.log(_.BN2Str(totalUnits), _.BN2Str(addLiquidityrUnits), _.BN2Str(share), _.BN2Str(v), _.BN2Str(a))
         
-        let tx = await router.unstake(bp, token, { from: acc})
+        let tx = await router.removeLiquidity(bp, token, { from: acc})
         poolData = await utils.getPoolData(token);
         // console.log(tx.receipt.logs)
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(_.floorBN(v)), 'outputBase')
@@ -207,21 +207,21 @@ async function unstakeETH(bp, acc) {
         // let memberData2 = (await utils.getMemberData(token, acc))
         // assert.equal(_.BN2Str((memberData2.baseAmtStaked)), _.BN2Str(baseAmt.minus(vs)), '0')
         // assert.equal(_.BN2Str((memberData2.tokenAmtStaked)), _.BN2Str(tokenAmt.minus(aa)), '0')
-        assert.equal(_.BN2Str(await basePools.balanceOf(acc)), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
+        assert.equal(_.BN2Str(await basePools.balanceOf(acc)), _.BN2Str(addLiquidityrUnits.minus(share)), 'addLiquidityrUnits')
     })
 }
 
-async function unstakeAsym(bp, acc, toBase) {
+async function removeLiquidityAsym(bp, acc, toBase) {
 
-    it(`It should assym unstake from ${acc}`, async () => {
+    it(`It should assym removeLiquidity from ${acc}`, async () => {
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var A = _.getBN(poolData.tokenAmt)
         // console.log(poolData)
         let totalUnits = _.getBN((await basePools.totalSupply()))
-        let stakerUnits = _.getBN(await basePools.balanceOf(acc))
-        let share = (stakerUnits.times(bp)).div(10000)
+        let addLiquidityrUnits = _.getBN(await basePools.balanceOf(acc))
+        let share = (addLiquidityrUnits.times(bp)).div(10000)
 
         // console.log(_.BN2Str(share), _.BN2Str(totalUnits), _.BN2Str(S), bp, toBase)
 
@@ -234,7 +234,7 @@ async function unstakeAsym(bp, acc, toBase) {
             a = math.calcAsymmetricShare(share, totalUnits, A)
         }
 
-        let tx = await router.unstakeAsymmetric(bp, toBase, _.BNB, { from: acc})
+        let tx = await router.removeLiquidityAsymmetric(bp, toBase, _.BNB, { from: acc})
         poolData = await utils.getPoolData(token);
         // console.log(poolData)
         // console.log(tx.receipt.logs)
@@ -251,22 +251,22 @@ async function unstakeAsym(bp, acc, toBase) {
         assert.equal(_.BN2Str(await base.balanceOf(basePools.address)), _.BN2Str(S.minus(s)), 'base balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(basePools.address)), _.BN2Str(A.minus(a)), 'ether balance')
 
-        let stakerUnits2 = _.getBN(await basePools.balanceOf(acc))
-        assert.equal(_.BN2Str(stakerUnits2), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
+        let addLiquidityrUnits2 = _.getBN(await basePools.balanceOf(acc))
+        assert.equal(_.BN2Str(addLiquidityrUnits2), _.BN2Str(addLiquidityrUnits.minus(share)), 'addLiquidityrUnits')
     })
 }
 
-async function unstakeExactAsym(bp, acc, toBase) {
+async function removeLiquidityExactAsym(bp, acc, toBase) {
 
-    it(`It should assym unstake from ${acc}`, async () => {
+    it(`It should assym removeLiquidity from ${acc}`, async () => {
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var A = _.getBN(poolData.tokenAmt)
 
         let totalUnits = _.getBN((await basePools.totalSupply()))
-        let stakerUnits = _.getBN(await basePools.balanceOf(acc))
-        let share = (stakerUnits.times(bp)).div(10000)
+        let addLiquidityrUnits = _.getBN(await basePools.balanceOf(acc))
+        let share = (addLiquidityrUnits.times(bp)).div(10000)
 
         let a; let v;
         if(toBase){
@@ -277,7 +277,7 @@ async function unstakeExactAsym(bp, acc, toBase) {
             v = 0
         }
 
-        let tx = await router.unstakeExactAsymmetric(share, toBase, _.BNB, { from: acc})
+        let tx = await router.removeLiquidityExactAsymmetric(share, toBase, _.BNB, { from: acc})
         poolData = await utils.getPoolData(token);
 
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(v), 'outputBase')
@@ -293,45 +293,45 @@ async function unstakeExactAsym(bp, acc, toBase) {
         assert.equal(_.BN2Str(await base.balanceOf(basePools.address)), _.BN2Str(S.minus(v)), 'base balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(basePools.address)), _.BN2Str(A.minus(a)), 'ether balance')
 
-        let stakerUnits2 = _.getBN(await basePools.balanceOf(acc))
-        assert.equal(_.BN2Str(stakerUnits2), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
+        let addLiquidityrUnits2 = _.getBN(await basePools.balanceOf(acc))
+        assert.equal(_.BN2Str(addLiquidityrUnits2), _.BN2Str(addLiquidityrUnits.minus(share)), 'addLiquidityrUnits')
     })
 }
 
-async function unstakeFailExactAsym(bp, acc, toBase) {
+async function removeLiquidityFailExactAsym(bp, acc, toBase) {
 
-    it(`It should assym unstake from ${acc}`, async () => {
-        let stakerUnits = _.getBN(await basePools.balanceOf(acc))
-        let share = (stakerUnits.times(bp)).div(10000)
+    it(`It should assym removeLiquidity from ${acc}`, async () => {
+        let addLiquidityrUnits = _.getBN(await basePools.balanceOf(acc))
+        let share = (addLiquidityrUnits.times(bp)).div(10000)
 
-        await truffleAssert.reverts(router.unstakeExactAsymmetric(share, toBase, _.BNB, { from: acc}))
+        await truffleAssert.reverts(router.removeLiquidityExactAsymmetric(share, toBase, _.BNB, { from: acc}))
     })
 }
 
-async function unstakeFailStart() {
+async function removeLiquidityFailStart() {
 
     it("It should revert if unstaking 0 BP", async () => {
-        await truffleAssert.reverts(router.unstake(0, _.BNB));
+        await truffleAssert.reverts(router.removeLiquidity(0, _.BNB));
     })
 
     it("It should revert if unstaking 10001 BP", async () => {
-        await truffleAssert.reverts(router.unstake('10001', _.BNB));
+        await truffleAssert.reverts(router.removeLiquidity('10001', _.BNB));
     })
 
     it("It should revert if unstaking higher units", async () => {
         let units = _.getBN(await basePools.balanceOf(acc0))
         let unitsMore = units.plus(1)
-        await truffleAssert.reverts(router.unstakeExact(_.BN2Str(unitsMore), _.BNB));
+        await truffleAssert.reverts(router.removeLiquidityExact(_.BN2Str(unitsMore), _.BNB));
     })
 }
 
-async function unstakeFailEnd(acc) {
+async function removeLiquidityFailEnd(acc) {
 
-    it("It should revert if unstaking unstaked member", async () => {
-        await truffleAssert.reverts(router.unstake(0, _.BNB, {from: acc}));
+    it("It should revert if unstaking removeLiquidityd member", async () => {
+        await truffleAssert.reverts(router.removeLiquidity(0, _.BNB, {from: acc}));
     })
     it("It should revert if unstaking assym", async () => {
-        await truffleAssert.reverts(router.unstake(0, _.BNB, {from: acc}));
+        await truffleAssert.reverts(router.removeLiquidity(0, _.BNB, {from: acc}));
     })
 }
 
@@ -351,9 +351,9 @@ function logTKN1() {
     })
 }
 
-function logStaker(acc) {
+function logMember(acc) {
     it("logs", async () => {
-        await help.logStaker(basePools, acc, _.BNB)
+        await help.logMember(basePools, acc, _.BNB)
     })
 }
 
