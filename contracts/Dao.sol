@@ -20,6 +20,7 @@ interface iUTILS {
     function getPoolShare(address, uint) external view returns(uint);
 }
 interface iBASE {
+    function secondsPerEra() external view returns (uint);
     function changeIncentiveAddress(address) external returns(bool);
     function changeDAO(address) external returns(bool);
     function changeEmissionCurve(uint256) external returns(bool);
@@ -183,7 +184,7 @@ contract Dao {
         require(_ROUTER.isPool(pool) == true, "Must be listed");
         require(amount > 0, "Must get some");
         if (!isMember[member]) {
-            mapMember_lastTime[member] = block.number;
+            mapMember_lastTime[member] = now;
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }

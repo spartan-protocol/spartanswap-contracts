@@ -59,7 +59,7 @@ describe("Upgrade", function() {
         expect(BN2Str(await sparta.getAdjustedClaimRate(token1.address))).to.equal(BN2Str(1000000000000000000));
         expect(BN2Str(await sparta.assetCount())).to.equal(BN2Str(1));
         expect(await sparta.isListed(token1.address)).to.equal(true);
-        console.log(await sparta.allAssets())
+        // console.log(await sparta.allAssets())
         // expect(await sparta.allAssets()).to.deeplyEqual([ '0x7c2C195CD6D34B8F845992d380aADB2730bB9C6F' ]);
       });
 
@@ -68,10 +68,10 @@ describe("Upgrade", function() {
         await sparta.listAsset(acc2, BN2Str(one), BN2Str(500000000 * one));
         await sparta.listAsset(acc3, BN2Str(one), BN2Str(500000000 * one));
         await sparta.listAsset(acc4, BN2Str(one), BN2Str(500000000 * one));
-        console.log(BN2Str(await sparta.assetCount()))
-        console.log(await sparta.allAssets())
-        console.log(await sparta.assetsInRange('0', '3'))
-        console.log(await sparta.assetsInRange('0', '9'))
+        // console.log(BN2Str(await sparta.assetCount()))
+        // console.log(await sparta.allAssets())
+        // console.log(await sparta.assetsInRange('0', '3'))
+        // console.log(await sparta.assetsInRange('0', '9'))
       });
 
   it("Should burn acc1", async function() {

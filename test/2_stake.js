@@ -24,48 +24,48 @@ var base; var basePools;  var utils; var token1; var token2;
 var pool; var router; var Dao;
 var acc0; var acc1; var acc2; var acc3;
 
-contract('SPT', function (accounts) {
+contract('STAKE', function (accounts) {
 
     constructor(accounts)
     createPool()
-    logStaker(acc0)
+    // logStaker(acc0)
     stakeFail()
 
-    stakeETH(acc1, _.BN2Str(_.one * 10), _.dot1BN)
-    logETH()
-    logStaker(acc1)
-    checkDetails()
+    stakeBNB(acc1, _.BN2Str(_.one * 10), _.dot1BN)
+    // logBNB()
+    // logStaker(acc1)
+    // checkDetails()
 
-    unstakeETH(10000, acc1)
-    logETH()
-    logStaker(acc1)
-    checkDetails()
-    unstakeETH(10000, acc0)
-    logETH()
-    logStaker(acc0)
-    checkDetails()
+    unstakeBNB(10000, acc1)
+    // logBNB()
+    // logStaker(acc1)
+    // checkDetails()
+    unstakeBNB(10000, acc0)
+    // logBNB()
+    // logStaker(acc0)
+    // checkDetails()
 
-    stakeETH(acc0, _.BN2Str(_.one * 10), _.dot1BN)
-    stakeETH(acc1, _.BN2Str(_.one * 10), _.dot1BN)
-    logETH()
-    checkDetails()
+    stakeBNB(acc0, _.BN2Str(_.one * 10), _.dot1BN)
+    stakeBNB(acc1, _.BN2Str(_.one * 10), _.dot1BN)
+    // logBNB()
+    // checkDetails()
     unstakeFailStart()
 
     unstakeAsym(5000, acc1, false)
-    logETH()
-    checkDetails()
+    // logBNB()
+    // checkDetails()
     unstakeExactAsym(10000, acc1, true)
-    logETH()
-    checkDetails()
+    // logBNB()
+    // checkDetails()
 
 
     unstakeFailExactAsym(10000, acc0, true)
-    unstakeETH(5000, acc0)
-    logETH()
-    checkDetails()
-    unstakeETH(10000, acc0)
-    logETH()
-    checkDetails()
+    unstakeBNB(5000, acc0)
+    // logBNB()
+    // checkDetails()
+    unstakeBNB(10000, acc0)
+    // logBNB()
+    // checkDetails()
 
     unstakeFailEnd(acc0)
 
@@ -84,18 +84,18 @@ function constructor(accounts) {
         await base.changeDAO(Dao.address)
         await Dao.setGenesisAddresses(router.address, utils.address)
         // assert.equal(await Dao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
-        console.log(await utils.BASE())
-        console.log(await Dao.ROUTER())
+        // //console.log(await utils.BASE())
+        // //console.log(await Dao.ROUTER())
 
         token1 = await TOKEN1.new();
         token2 = await TOKEN1.new();
 
-        console.log(`Acc0: ${acc0}`)
-        console.log(`base: ${base.address}`)
-        console.log(`dao: ${Dao.address}`)
-        console.log(`utils: ${utils.address}`)
-        console.log(`router: ${router.address}`)
-        console.log(`token1: ${token1.address}`)
+        //console.log(`Acc0: ${acc0}`)
+        //console.log(`base: ${base.address}`)
+        //console.log(`dao: ${Dao.address}`)
+        //console.log(`utils: ${utils.address}`)
+        //console.log(`router: ${router.address}`)
+        //console.log(`token1: ${token1.address}`)
 
         let supply = await token1.totalSupply()
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -113,7 +113,7 @@ async function createPool() {
         var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
         await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.BNB, { value: _.dot1BN })
         basePools = await POOL.at(_pool)
-        console.log(`Pools: ${basePools.address}`)
+        //console.log(`Pools: ${basePools.address}`)
         const baseAddr = await basePools.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
         assert.equal(_.BN2Str(await base.balanceOf(basePools.address)), _.BN2Str(_.one * 10), 'base balance')
@@ -132,7 +132,7 @@ async function stakeFail() {
     })
 }
 
-async function stakeETH(acc, v, a) {
+async function stakeBNB(acc, v, a) {
 
     it(`It should stake BNB from ${acc}`, async () => {
         let token = _.BNB
@@ -140,10 +140,10 @@ async function stakeETH(acc, v, a) {
         var S = _.getBN(poolData.baseAmt)
         var A = _.getBN(poolData.tokenAmt)
         poolUnits = _.getBN((await basePools.totalSupply()))
-        console.log('start data', _.BN2Str(S), _.BN2Str(A), _.BN2Str(poolUnits))
+        //console.log('start data', _.BN2Str(S), _.BN2Str(A), _.BN2Str(poolUnits))
 
-        let units = math.calcStakeUnits(a, A.plus(a), v, S.plus(v))
-        console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(S.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
+        let units = math.calcStakeUnits(v, S, a, A, poolUnits)
+        // console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(S), _.BN2Str(a), _.BN2Str(A), _.BN2Str(poolUnits))
         
         let tx = await router.stake(v, a, token, { from: acc, value: a })
         poolData = await utils.getPoolData(token);
@@ -151,7 +151,7 @@ async function stakeETH(acc, v, a) {
         assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(A.plus(a)))
         assert.equal(_.BN2Str(poolData.baseAmtStaked), _.BN2Str(S.plus(v)))
         assert.equal(_.BN2Str(poolData.tokenAmtStaked), _.BN2Str(A.plus(a)))
-        assert.equal(_.BN2Str((await basePools.totalSupply())), _.BN2Str(units.plus(poolUnits)), 'poolUnits')
+        assert.equal(_.BN2Str((await basePools.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
         assert.equal(_.BN2Str(await basePools.balanceOf(acc)), _.BN2Str(units), 'units')
         assert.equal(_.BN2Str(await base.balanceOf(basePools.address)), _.BN2Str(S.plus(v)), 'base balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(basePools.address)), _.BN2Str(A.plus(a)), 'ether balance')
@@ -162,13 +162,13 @@ async function stakeETH(acc, v, a) {
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(basePools.address));
         const baseBal = _.BN2Token(await base.balanceOf(basePools.address));
-        console.log(`BALANCES: [ ${tokenBal} BNB | ${baseBal} SPT ]`)
+        //console.log(`BALANCES: [ ${tokenBal} BNB | ${baseBal} SPT ]`)
     })
 }
 
 
 
-async function unstakeETH(bp, acc) {
+async function unstakeBNB(bp, acc) {
 
     it(`It should unstake BNB for ${acc}`, async () => {
         let token = _.BNB
@@ -186,11 +186,11 @@ async function unstakeETH(bp, acc) {
         // let tokenAmt = _.getBN(memberData.tokenAmtStaked)
         // let vs = _.floorBN((baseAmt.times(bp)).div(10000))
         // let aa = _.floorBN((tokenAmt.times(bp)).div(10000))
-        console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(v), _.BN2Str(a))
+        //console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(v), _.BN2Str(a))
         
         let tx = await router.unstake(bp, token, { from: acc})
         poolData = await utils.getPoolData(token);
-        // console.log(tx.receipt.logs)
+        // //console.log(tx.receipt.logs)
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(_.floorBN(v)), 'outputBase')
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(_.floorBN(a)), 'outputToken')
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
@@ -218,12 +218,12 @@ async function unstakeAsym(bp, acc, toBase) {
         let poolData = await utils.getPoolData(token);
         var S = _.getBN(poolData.baseAmt)
         var A = _.getBN(poolData.tokenAmt)
-        // console.log(poolData)
+        // //console.log(poolData)
         let totalUnits = _.getBN((await basePools.totalSupply()))
         let stakerUnits = _.getBN(await basePools.balanceOf(acc))
         let share = (stakerUnits.times(bp)).div(10000)
 
-        // console.log(_.BN2Str(share), _.BN2Str(totalUnits), _.BN2Str(S), bp, toBase)
+        // //console.log(_.BN2Str(share), _.BN2Str(totalUnits), _.BN2Str(S), bp, toBase)
 
         let a; let s;
         if(toBase){
@@ -236,8 +236,8 @@ async function unstakeAsym(bp, acc, toBase) {
 
         let tx = await router.unstakeAsymmetric(bp, toBase, _.BNB, { from: acc})
         poolData = await utils.getPoolData(token);
-        // console.log(poolData)
-        // console.log(tx.receipt.logs)
+        // //console.log(poolData)
+        // //console.log(tx.receipt.logs)
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(s), 'outputBase')
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(a), 'outputToken')
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
@@ -335,7 +335,7 @@ async function unstakeFailEnd(acc) {
     })
 }
 
-function logETH() {
+function logBNB() {
     it("logs", async () => {
         await help.logPool(utils, _.BNB ,"BNB")
     })
@@ -359,8 +359,8 @@ function logStaker(acc) {
 
 function checkDetails() {
     it("checks details", async () => {
-        console.log('getTokenDetails', (await utils.getTokenDetails(_.BNB)))
-        console.log('getGlobalDetails', (await utils.getGlobalDetails()))
-        console.log('getPoolData', (await utils.getPoolData(_.BNB)))
+        //console.log('getTokenDetails', (await utils.getTokenDetails(_.BNB)))
+        //console.log('getGlobalDetails', (await utils.getGlobalDetails()))
+        //console.log('getPoolData', (await utils.getPoolData(_.BNB)))
     })
 }

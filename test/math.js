@@ -45,19 +45,24 @@ function calcSwapOutput(x, X, Y) {
     return y;
   }
 
-  function calcStakeUnits(b, B, t, T) {
-    // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
-    // P * (part1 + part2) / (part3) * slipAdjustment
-    const _b = new BigNumber(b);
-    const _t = new BigNumber(t);
-    const _B = new BigNumber(B);
-    const _T = new BigNumber(T);
-    const slipAdjustment = getSlipAdustment(b, B, t, T);
-    const part1 = t.times(B);
-    const part2 = T.times(b);
-    const part3 = T.times(B).times(2);
-    const units = (P.times(part1.plus(part2))).div(part3);
-    return units.times(slipAdjustment).div(one).integerValue(1);  // Divide by 10**18;
+  function calcStakeUnits(b, B, t, T, P) {
+    if(P == 0){
+      return b
+    } else {
+      // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
+      // P * (part1 + part2) / (part3) * slipAdjustment
+      const _b = new BigNumber(b);
+      const _t = new BigNumber(t);
+      const _B = new BigNumber(B);
+      const _T = new BigNumber(T);
+      const _P = new BigNumber(P);
+      const slipAdjustment = getSlipAdustment(b, B, t, T);
+      const part1 = _t.times(_B);
+      const part2 = _T.times(_b);
+      const part3 = _T.times(_B).times(2);
+      const units = (_P.times(part1.plus(part2))).div(part3);
+      return units.times(slipAdjustment).div(one).integerValue(1);  // Divide by 10**18;
+    }
   }
 
 function getSlipAdustment(b, B, t,  T){
