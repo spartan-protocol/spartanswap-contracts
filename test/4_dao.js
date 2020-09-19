@@ -38,21 +38,21 @@ contract('DAO', function (accounts) {
     // rate()
 
     voteParam()
-    // voteIncentive()
-    // voteAction()
-    // voteList()
-    // voteGrant()
+    voteIncentive()
+    voteAction()
+    voteList()
+    voteGrant()
 
-    // voteRouter(acc0)
-    // swapFail(acc0, _.BN2Str(_.one * 10))
-    // swapPassR2(acc0, _.BN2Str(_.one * 10))
+    voteRouter(acc0)
+    swapFail(acc0, _.BN2Str(_.one * 10))
+    swapPassR2(acc0, _.BN2Str(_.one * 10))
 
-    // voteUtils(acc0)
-    // swapFail(acc0, _.BN2Str(_.one * 10))
-    // swapPassR2(acc0, _.BN2Str(_.one * 10))
+    voteUtils(acc0)
+    swapFail(acc0, _.BN2Str(_.one * 10))
+    swapPassR2(acc0, _.BN2Str(_.one * 10))
 
-    // voteDao(acc0)
-    // swapPassR2(acc0, _.BN2Str(_.one * 10))
+    voteDao(acc0)
+    swapPassR2(acc0, _.BN2Str(_.one * 10))
 
     harvest()
     withdrawBNB(acc0)
