@@ -237,7 +237,7 @@ contract Pool is iBEP20 {
     }
 
     // Allow anyone to add a dividend into the pool
-    function add(address token, uint amount) public payable returns (bool success) {
+    function dividend(address token, uint amount) public payable returns (bool success) {
         if(token == BASE){
             iBEP20(BASE).transferFrom(msg.sender, address(this), amount);
             baseAmt = baseAmt.add(amount);

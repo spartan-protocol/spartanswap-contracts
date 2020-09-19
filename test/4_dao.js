@@ -278,7 +278,7 @@ async function voteParam() {
         await Dao.voteProposal(proposalID, { from: acc2 })
         await sleep(2100)
         await Dao.finaliseProposal(proposalID)
-        assert.equal(await Dao.daysToEarnFactor(), '30')
+        assert.equal(await Dao.erasToConsume(), '30')
     })
     it("It should vote, finalise blocksPerDay", async () => {
         await Dao.newParamProposal('3000', 'BLOCKS_PER_DAY', { from: acc1 })
