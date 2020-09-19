@@ -1,6 +1,6 @@
 /*
 ################################################
-Stake based help functions to test
+Liquidity based help functions to test
 Useful for tests that require state
 ################################################
 */
@@ -67,8 +67,8 @@ async function logPool(instance, addressToken, ticker) {
   const poolData = await instance.getPoolData(addressToken)
   const token = _.BN2Token(poolData.tokenAmt);
   const base = _.BN2Token(poolData.baseAmt);
-  const tokenAmtStaked = _.BN2Token(poolData.tokenAmtStaked);
-  const baseAmtStaked = _.BN2Token(poolData.baseAmtStaked);
+  const tokenAmtPooled = _.BN2Token(poolData.tokenAmtPooled);
+  const baseAmtPooled = _.BN2Token(poolData.baseAmtPooled);
   const fees = _.BN2Token(poolData.fees);
   const volume = _.BN2Token(poolData.volume);
   const txCount = _.getBN(poolData.txCount);
@@ -76,17 +76,17 @@ async function logPool(instance, addressToken, ticker) {
   console.log("\n-------------------Token-Base Details -------------------")
   console.log(`ADDRESS: ${addressToken}`)
   console.log(`MAPPINGS: [ ${token} ${ticker} | ${base} BASE ]`)
-  console.log(`STAKES: [ ${tokenAmtStaked}  ${ticker} | ${baseAmtStaked} BASE ]`)
+  console.log(`STAKES: [ ${tokenAmtPooled}  ${ticker} | ${baseAmtPooled} BASE ]`)
   console.log(`UNITS: [ ${poolUnits} units ]`)
   console.log(`AVE: [ ${fees} fees, ${volume} volume, ${txCount} txCount ]`)
   console.log("-----------------------------------------------------------\n")
 }
-async function logStaker(instance, acc, token) {
-  let stakerUnits = (await instance.balanceOf(acc))
-  console.log("\n-------------------Staker Details -------------------")
+async function logMember(instance, acc, token) {
+  let liquidityUnits = (await instance.balanceOf(acc))
+  console.log("\n------------------- Member Details -------------------")
   console.log(`ADDRESS: ${acc} | POOL: ${token}`)
-  // console.log(`StakeData: [ ${_.BN2Token(stakeData.baseAmtStaked)} BASE | ${_.BN2Token(stakeData.tokenAmtStaked)} BNB ]`)
-  console.log(`StakeData: [ ${_.BN2Token(stakerUnits)} UNITS ]`)
+  // console.log(`LiquidityData: [ ${_.BN2Token(liquidityData.baseAmtPooled)} BASE | ${_.BN2Token(liquidityData.tokenAmtPooled)} BNB ]`)
+  console.log(`LiquidityData: [ ${_.BN2Token(liquidityUnits)} UNITS ]`)
   console.log("-----------------------------------------------------------\n")
 }
 async function logETHBalances(acc0, acc1, BNB) {
@@ -134,7 +134,7 @@ module.exports = {
   ,
   logPool: logPool
   ,
-  logStaker: logStaker
+  logMember: logMember
   ,
   checkLiquidateCDP: checkLiquidateCDP
   ,

@@ -1,6 +1,6 @@
 /*
 ################################################
-Creates 3 tokens and stakes them
+Creates 3 tokens and addLiquiditys them
 ################################################
 */
 
@@ -56,8 +56,8 @@ async function mathCheck() {
     })
 
     it(`Checks staking`, async () => {
-        let base = await utils.calcStakeUnits(b, B, t, T, P)
-        let js = math.calcStakeUnits(b, B, t, T, P)
+        let base = await utils.calcLiquidityUnits(b, B, t, T, P)
+        let js = math.calcLiquidityUnits(b, B, t, T, P)
         assert.equal(_.BN2Str(base), _.BN2Str(js))
         assert.equal(_.BN2Str(base), _.getBN(1*10**18))
     })
@@ -74,8 +74,8 @@ async function mathCheck() {
     it(`Checks staking`, async () => {
         const b = _.getBN(10*10**18)
         const t = _.getBN(5*10**18)
-        let base = await utils.calcStakeUnits(b, B, t, T, P)
-        let js = math.calcStakeUnits(b, B, t, T, P)
+        let base = await utils.calcLiquidityUnits(b, B, t, T, P)
+        let js = math.calcLiquidityUnits(b, B, t, T, P)
         assert.equal(_.BN2Str(base), _.BN2Str(js))
         assert.equal(_.BN2Str(base), '2333333333333333334')
     })

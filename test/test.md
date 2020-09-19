@@ -12,7 +12,7 @@ Test Routine.
 - SPARTA -> T1
 - T1 -> T2
 
-5. Stake:
+5. Liquidity:
 - assymetric
 
 7. Transfer Units

@@ -26,9 +26,9 @@ contract('DAO', function (accounts) {
 
     constructor(accounts)
     createPool()
-    stakeTKN1(acc1)
-    stakeTKN1(acc2)
-    stakeTKN1(acc3)
+    addLiquidityTKN1(acc1)
+    addLiquidityTKN1(acc2)
+    addLiquidityTKN1(acc3)
     swapPassR1(acc0, _.BN2Str(_.one * 10))
     lockFail()
     lockETH(acc0, _.BN2Str(_.one * 5)) // 13% >16%
@@ -158,9 +158,9 @@ async function createPool() {
     })
 }
 
-async function stakeTKN1(acc) {
+async function addLiquidityTKN1(acc) {
     it("It should deposit", async () => {
-        await router.stake(_.BN2Str(_.one * 15), _.BN2Str(_.one * 200), token1.address, { from: acc})
+        await router.addLiquidity(_.BN2Str(_.one * 15), _.BN2Str(_.one * 200), token1.address, { from: acc})
     })
 }
 
