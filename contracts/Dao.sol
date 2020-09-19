@@ -184,7 +184,7 @@ contract Dao {
         require(_ROUTER.isPool(pool) == true, "Must be listed");
         require(amount > 0, "Must get some");
         if (!isMember[member]) {
-            mapMember_lastTime[member] = block.number;
+            mapMember_lastTime[member] = now;
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }

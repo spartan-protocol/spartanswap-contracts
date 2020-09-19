@@ -18,7 +18,7 @@ var UTILS = artifacts.require("./Utils.sol");
 var base; var utils;
 var acc0; var acc1; var acc2; var acc3;
 
-contract('BASE', function (accounts) {
+contract('UTILS', function (accounts) {
     constructor(accounts)
     mathCheck()
 })
@@ -33,8 +33,8 @@ function constructor(accounts) {
 
         base = await BASE.new()
         utils = await UTILS.new(base.address)
-        console.log(`Acc0: ${acc0}`)
-        console.log(`Acc1: ${acc1}`)
+        // console.log(`Acc0: ${acc0}`)
+        // console.log(`Acc1: ${acc1}`)
     });
 }
 
