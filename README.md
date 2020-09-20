@@ -25,7 +25,7 @@ DAO is the source-of-truth for the location of the `ROUTER` and `UTILS`, as well
 
 `ROUTER` contains state and business logic for moving funds, and can be upgraded by the DAO. Users interact with the `ROUTER`.
 
-POOL holds the funds for each pool, as well as state. It asks the ``DAO`` for the location of `ROUTER`, and will only let the `ROUTER` call into it. 
+`POOL` holds the funds for each pool, as well as state. It asks the `DAO` for the location of `UTILS` which has core math relating to how swaps and liquidity is provisioned, such as calculating fees.  
 
 
 ## Deploy Process
