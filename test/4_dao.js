@@ -48,11 +48,9 @@ contract('DAO', function (accounts) {
     voteGrant()
 
     voteRouter(acc0)
-    swapFail(acc0, _.BN2Str(_.one * 10))
     swapPassR2(acc0, _.BN2Str(_.one * 10))
 
     voteUtils(acc0)
-    swapFail(acc0, _.BN2Str(_.one * 10))
     swapPassR2(acc0, _.BN2Str(_.one * 10))
 
     voteDao(acc0)
@@ -452,12 +450,6 @@ async function _passSwap(acc, b, router) {
         assert.equal(_.BN2Str(await web3.eth.getBalance(poolWBNB.address)), _.BN2Str(T.minus(t)), 'ether balance')
         assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(B.plus(b)), 'base balance')
         
-    })
-}
-
-async function swapFail(acc, b) {
-    it("It should revert for old router", async () => {
-        await truffleAssert.reverts(router.buy(b, _.BNB));
     })
 }
 
