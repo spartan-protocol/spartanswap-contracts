@@ -29,7 +29,7 @@ contract('ADD LIQUIDITY', function (accounts) {
     constructor(accounts)
     wrapBNB()
     createPoolWBNB()
-
+    addLiquidity(acc1, _.BN2Str(_.one * 10), _.dot1BN)
     // Single swap
     swapBASEToBNB(acc0, _.BN2Str(_.one * 10))
 
@@ -115,6 +115,32 @@ async function createPoolWBNB() {
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
         await base.approve(poolWBNB.address, supply, { from: acc1 })
+    })
+}
+
+async function addLiquidity(acc, b, t) {
+
+    it(`It should addLiquidity BNB from ${acc}`, async () => {
+        let token = wbnb.address
+        let poolData = await utils.getPoolData(token);
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+        poolUnits = _.getBN((await poolWBNB.totalSupply()))
+        //console.log('start data', _.BN2Str(B), _.BN2Str(T), _.BN2Str(poolUnits))
+
+        let units = math.calcLiquidityUnits(b, B, t, T, poolUnits)
+        // console.log(_.BN2Str(units), _.BN2Str(b), _.BN2Str(B), _.BN2Str(t), _.BN2Str(T), _.BN2Str(poolUnits))
+        
+        let tx = await router.addLiquidity(b, t, token, { from: acc})
+        poolData = await utils.getPoolData(token);
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.plus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.plus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmountPooled), _.BN2Str(B.plus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmountPooled), _.BN2Str(T.plus(t)))
+        assert.equal(_.BN2Str((await poolWBNB.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
+        assert.equal(_.BN2Str(await poolWBNB.balanceOf(acc)), _.BN2Str(units), 'units')
+        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(B.plus(b)), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(T.plus(t)), 'wbnb balance')
     })
 }
 

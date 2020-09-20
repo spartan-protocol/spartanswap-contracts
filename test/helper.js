@@ -15,19 +15,19 @@ async function calcValueInVeth(instance, token) {
   var result;
   var tokenBal; var maiBal; 
   if (token == _.addressETH) {
-    tokenBal = new BigNumber((await instance.mapToken_ExchangeData(token)).tokenAmt);
-    maiBal = new BigNumber((await instance.mapToken_ExchangeData(token)).baseAmt);
+    tokenBal = new BigNumber((await instance.mapToken_ExchangeData(token)).tokenAmount);
+    maiBal = new BigNumber((await instance.mapToken_ExchangeData(token)).baseAmount);
     result = (_.oneBN.times(maiBal)).div(tokenBal)
   } else {
-    tokenBal = new BigNumber((await instance.mapToken_ExchangeData(token)).tokenAmt);
-    maiBal = new BigNumber((await instance.mapToken_ExchangeData(token)).baseAmt);
+    tokenBal = new BigNumber((await instance.mapToken_ExchangeData(token)).tokenAmount);
+    maiBal = new BigNumber((await instance.mapToken_ExchangeData(token)).baseAmount);
     result = (_.oneBN.times(maiBal)).div(tokenBal)
   }
   return result.toFixed()
 }
 
 async function calcValueInToken() {
-  var usdBal = new BigNumber(usdPool.tokenAmt)
+  var usdBal = new BigNumber(usdPool.tokenAmount)
   var maiBal = new BigNumber(usdPool.mai)
   return ((_.oneBN.times(usdBal)).div(maiBal)).toFixed()
 }
@@ -39,20 +39,20 @@ async function calcEtherPriceInUSD(instance, amount) {
   return ((_amount.times(ethPriceInUSD)).div(_.oneBN)).toFixed()
 }
 async function calcEtherPPinBASE(instance, amount) {
-  var tokenBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).tokenAmt);
-  var maiBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).baseAmt);
+  var tokenBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).tokenAmount);
+  var maiBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).baseAmount);
   const outputVeth = math.calcCLPSwap(amount, tokenBal, maiBal);
   return outputVeth;
 }
 async function calcBASEPPInUSD(amount) {
-  var usdBal = new BigNumber(usdPool.tokenAmt)
+  var usdBal = new BigNumber(usdPool.tokenAmount)
   var maiBal = new BigNumber(usdPool.mai)
   const outputUSD = math.calcCLPSwap(amount.toString(), maiBal, usdBal);
   return outputUSD;
 }
 async function checkLiquidateCDP(instance, _collateral, _debt) {
-  var tokenBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).tokenAmt);
-  var maiBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).baseAmt);
+  var tokenBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).tokenAmount);
+  var maiBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).baseAmount);
   const outputVeth = math.calcCLPLiquidation(_collateral, tokenBal, maiBal);
   var canLiquidate
   if (outputVeth < _debt) {
@@ -65,10 +65,10 @@ async function checkLiquidateCDP(instance, _collateral, _debt) {
 async function logPool(instance, addressToken, ticker) {
   console.log(instance.address)
   const poolData = await instance.getPoolData(addressToken)
-  const token = _.BN2Token(poolData.tokenAmt);
-  const base = _.BN2Token(poolData.baseAmt);
-  const tokenAmtPooled = _.BN2Token(poolData.tokenAmtPooled);
-  const baseAmtPooled = _.BN2Token(poolData.baseAmtPooled);
+  const token = _.BN2Token(poolData.tokenAmount);
+  const base = _.BN2Token(poolData.baseAmount);
+  const tokenAmountPooled = _.BN2Token(poolData.tokenAmountPooled);
+  const baseAmountPooled = _.BN2Token(poolData.baseAmountPooled);
   const fees = _.BN2Token(poolData.fees);
   const volume = _.BN2Token(poolData.volume);
   const txCount = _.getBN(poolData.txCount);
@@ -76,7 +76,7 @@ async function logPool(instance, addressToken, ticker) {
   console.log("\n-------------------Token-Base Details -------------------")
   console.log(`ADDRESS: ${addressToken}`)
   console.log(`MAPPINGS: [ ${token} ${ticker} | ${base} BASE ]`)
-  console.log(`STAKES: [ ${tokenAmtPooled}  ${ticker} | ${baseAmtPooled} BASE ]`)
+  console.log(`STAKES: [ ${tokenAmountPooled}  ${ticker} | ${baseAmountPooled} BASE ]`)
   console.log(`UNITS: [ ${poolUnits} units ]`)
   console.log(`AVE: [ ${fees} fees, ${volume} volume, ${txCount} txCount ]`)
   console.log("-----------------------------------------------------------\n")
@@ -85,7 +85,7 @@ async function logMember(instance, acc, token) {
   let liquidityUnits = (await instance.balanceOf(acc))
   console.log("\n------------------- Member Details -------------------")
   console.log(`ADDRESS: ${acc} | POOL: ${token}`)
-  // console.log(`LiquidityData: [ ${_.BN2Token(liquidityData.baseAmtPooled)} BASE | ${_.BN2Token(liquidityData.tokenAmtPooled)} BNB ]`)
+  // console.log(`LiquidityData: [ ${_.BN2Token(liquidityData.baseAmountPooled)} BASE | ${_.BN2Token(liquidityData.tokenAmountPooled)} BNB ]`)
   console.log(`LiquidityData: [ ${_.BN2Token(liquidityUnits)} UNITS ]`)
   console.log("-----------------------------------------------------------\n")
 }
