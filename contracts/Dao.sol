@@ -83,7 +83,7 @@ contract Dao {
     uint public secondsPerEra;
     uint public erasToEarn;
 
-    uint public proposalID;
+    uint public proposalCount;
 
     struct ListDetails{
         address asset;
@@ -268,51 +268,51 @@ contract Dao {
 
     // Simple Action Call
     function newActionProposal(string memory typeStr) public returns(uint) {
-        proposalID += 1;
-        mapPID_type[proposalID] = typeStr;
-        emit NewProposal(msg.sender, proposalID, typeStr);
-        return proposalID;
+        proposalCount += 1;
+        mapPID_type[proposalCount] = typeStr;
+        emit NewProposal(msg.sender, proposalCount, typeStr);
+        return proposalCount;
     }
     // Action with uint parameter
     function newParamProposal(uint param, string memory typeStr) public returns(uint) {
-        proposalID += 1;
-        mapPID_param[proposalID] = param;
-        mapPID_type[proposalID] = typeStr;
-        emit NewProposal(msg.sender, proposalID, typeStr);
-        return proposalID;
+        proposalCount += 1;
+        mapPID_param[proposalCount] = param;
+        mapPID_type[proposalCount] = typeStr;
+        emit NewProposal(msg.sender, proposalCount, typeStr);
+        return proposalCount;
     }
     // Action with address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
-        proposalID += 1;
-        mapPID_address[proposalID] = proposedAddress;
-        mapPID_type[proposalID] = typeStr;
-        emit NewProposal(msg.sender, proposalID, typeStr);
-        return proposalID;
+        proposalCount += 1;
+        mapPID_address[proposalCount] = proposedAddress;
+        mapPID_type[proposalCount] = typeStr;
+        emit NewProposal(msg.sender, proposalCount, typeStr);
+        return proposalCount;
     }
     // Action with list parameter
     function newListProposal(address asset, uint256 claimRate, uint256 allocation) public returns(uint) {
         string memory typeStr = "LIST";
-        proposalID += 1;
-        mapPID_type[proposalID] = typeStr;
+        proposalCount += 1;
+        mapPID_type[proposalCount] = typeStr;
         ListDetails memory list;
         list.asset = asset;
         list.claimRate = claimRate;
         list.allocation = allocation;
-        mapPID_list[proposalID] = list;
-        emit NewProposal(msg.sender, proposalID, typeStr);
-        return proposalID;
+        mapPID_list[proposalCount] = list;
+        emit NewProposal(msg.sender, proposalCount, typeStr);
+        return proposalCount;
     }
     // Action with funding
     function newGrantProposal(address recipient, uint amount) public returns(uint) {
         string memory typeStr = "GRANT";
-        proposalID += 1;
-        mapPID_type[proposalID] = typeStr;
+        proposalCount += 1;
+        mapPID_type[proposalCount] = typeStr;
         GrantDetails memory grant;
         grant.recipient = recipient;
         grant.amount = amount;
-        mapPID_grant[proposalID] = grant;
-        emit NewProposal(msg.sender, proposalID, typeStr);
-        return proposalID;
+        mapPID_grant[proposalCount] = grant;
+        emit NewProposal(msg.sender, proposalCount, typeStr);
+        return proposalCount;
     }
 
 //============================== VOTE && FINALISE ================================//
@@ -334,7 +334,7 @@ contract Dao {
     }
 
     function _finalise(uint _proposalID) internal {
-        bytes memory _type = bytes(mapPID_type[proposalID]);
+        bytes memory _type = bytes(mapPID_type[_proposalID]);
         mapPID_finalising[_proposalID] = true;
         mapPID_timeStart[_proposalID] = now;
         emit ProposalFinalising(msg.sender, _proposalID, now+coolOffPeriod, string(_type));
@@ -418,7 +418,7 @@ contract Dao {
     }
 
     function listAsset(uint _proposalID) internal {
-        ListDetails memory _list = mapPID_list[proposalID];
+        ListDetails memory _list = mapPID_list[_proposalID];
         require(iBEP20(BASE).totalSupply() <= 100 * 10**6 * one, "Must not list over 100m");
         require(_list.claimRate.mul(_list.allocation) <= 10 * 10**6 * one, "Must not list over 10m");
         iBASE(BASE).listAsset(_list.asset, _list.claimRate, _list.allocation);
@@ -465,7 +465,7 @@ contract Dao {
         completeProposal(_proposalID);
     }
     function grantFunds(uint _proposalID) internal {
-        GrantDetails memory _grant = mapPID_grant[proposalID];
+        GrantDetails memory _grant = mapPID_grant[_proposalID];
         require(_grant.amount <= iBEP20(BASE).balanceOf(address(this)), "Not more than balance");
         completeProposal(_proposalID);
         iBEP20(BASE).transfer(_grant.recipient, _grant.amount);

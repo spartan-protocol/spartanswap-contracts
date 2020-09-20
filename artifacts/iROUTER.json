@@ -27,9 +27,6 @@
       "name": "addLiquidityForMember",
       "outputs": [
         {
-<<<<<<< HEAD
-          "internalType": "address",
-=======
           "internalType": "uint256",
           "name": "units",
           "type": "uint256"
@@ -44,7 +41,6 @@
       "outputs": [
         {
           "internalType": "uint256",
->>>>>>> master
           "name": "",
           "type": "uint256"
         }

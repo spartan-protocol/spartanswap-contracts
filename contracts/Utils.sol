@@ -296,7 +296,7 @@ contract Utils {
     }
 
     function getPoolROI(address token) public view returns (uint roi){
-        address payable pool = getPool(token);
+        address pool = getPool(token);
         uint _baseStart = iPOOL(pool).baseAmtPooled().mul(2);
         uint _baseEnd = iPOOL(pool).baseAmt().mul(2);
         uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
@@ -404,8 +404,8 @@ contract Utils {
             uint part1 = t.mul(B);
             uint part2 = T.mul(b);
             uint part3 = T.mul(B).mul(2);
-            uint units = (P.mul(part1.add(part2))).div(part3);
-            return units.mul(slipAdjustment).div(one);  // Divide by 10**18
+            uint _units = (P.mul(part1.add(part2))).div(part3);
+            return _units.mul(slipAdjustment).div(one);  // Divide by 10**18
         }
     }
 
