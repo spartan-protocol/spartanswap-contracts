@@ -102,6 +102,7 @@ contract Pool is iBEP20 {
     uint public txCount;
 
     event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
+    event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
@@ -233,6 +234,27 @@ contract Pool is iBEP20 {
             _actual = 0;
         }
         return _actual;
+    }
+
+    // Remove Liquidity
+    function removeLiquidity() public returns (uint outputBase, uint outputToken) {
+        return removeLiquidityForMember(msg.sender);
+    } 
+
+    // Remove Liquidity
+    function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
+        uint units = balanceOf(address(this));
+        uint _baseAmount; uint _tokenAmount;
+        _baseAmount = iBEP20(BASE).balanceOf(address(this));
+        _tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
+        outputBase = _DAO().UTILS().calcShare(units, totalSupply, _baseAmount);
+        outputToken = _DAO().UTILS().calcShare(units, totalSupply, _tokenAmount);
+        _decrementPoolBalances(outputBase, outputToken);
+        __burn(address(this), units);
+        iBEP20(BASE).transfer(member, outputBase);
+        iBEP20(TOKEN).transfer(member, outputToken);
+        emit RemoveLiquidity(member, outputBase, outputToken, units);
+        return (outputBase, outputToken);
     }
 
     //==================================================================================//
@@ -389,25 +411,21 @@ contract Router {
     // Unstaking functions
 
     // Remove % for self
-    function removeLiquidity(uint basisPoints, address token) public returns (bool success) {
+    function removeLiquidity(uint basisPoints, address token) public returns (uint outputBase, uint outputToken) {
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
         uint _units = _DAO().UTILS().calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
-        removeLiquidityExact(_units, token);
-        return true;
+        return removeLiquidityExact(_units, token);
     }
 
     // Remove an exact qty of units
-    function removeLiquidityExact(uint units, address token) public returns (bool success) {
-        address pool = getPool(token);
-        address member = msg.sender;
-        (uint _outputBase, uint _outputToken) = _DAO().UTILS().getPoolShare(token, units);
-        totalPooled = totalPooled.sub(_outputBase);
+    function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
+        address _pool = getPool(token);
+        address _member = msg.sender;
+        Pool(_pool).transferTo(_pool, units);
+        (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
+        totalPooled = totalPooled.sub(outputBase);
         removeTx += 1;
-        _handleRemoveLiquidity(pool, units, _outputBase, _outputToken, member);
-        emit RemoveLiquidity(member, _outputBase, _outputToken, units);
-        _handleTransferOut(token, _outputToken, member);
-        _handleTransferOut(BASE, _outputBase, member);
-        return true;
+        return (outputBase, outputToken);
     }
 
     // // Remove % Asymmetrically
@@ -418,24 +436,25 @@ contract Router {
     }
     // Remove Exact Asymmetrically
     function removeLiquidityExactAsymmetric(uint units, bool toBase, address token) public returns (uint outputAmount){
-        address pool = getPool(token);
-        require(units < iBEP20(pool).totalSupply(), "InputErr");
-        (uint _outputBase, uint _outputToken, uint _outputAmount) = _DAO().UTILS().getPoolShareAssym(token, units, toBase);
+        address _pool = getPool(token);
+        require(units < iBEP20(_pool).totalSupply(), "InputErr");
+        Pool(_pool).transferTo(_pool, units);
+        (uint _outputBase, uint _outputToken) = Pool(_pool).removeLiquidity();
         totalPooled = totalPooled.sub(_outputBase);
         removeTx += 1;
-        _handleRemoveLiquidity(pool, units, _outputBase, _outputToken, msg.sender);
-        emit RemoveLiquidity(msg.sender, _outputBase, _outputToken, units);
-        _handleTransferOut(token, _outputToken, msg.sender);
-        _handleTransferOut(BASE, _outputBase, msg.sender);
-        return _outputAmount;
+        if(toBase){
+            // sell to BASE
+            (uint _baseBought, uint _fee) = sellTo(_outputToken, token, msg.sender);
+            outputAmount = _baseBought.add(_outputBase);
+            _handleTransferOut(BASE, _outputBase, msg.sender);
+        } else {
+            // buy to TOKEN
+            (uint _tokenBought, uint _fee) = buyTo(_outputBase, token, msg.sender);
+            outputAmount = _tokenBought.add(_outputToken);
+            _handleTransferOut(token, _outputToken, msg.sender);
+        }
+        return outputAmount;
     }
-
-    function _handleRemoveLiquidity(address pool, uint _units, uint _outputBase, uint _outputToken, address _member) internal returns (bool success) {
-        // Pool(pool)._checkApprovals();
-        // Pool(pool)._decrementPoolBalances(_outputBase, _outputToken);
-        Pool(pool).burnFrom(_member, _units);
-        return true;
-    } 
 
     //==================================================================================//
     // Swapping Functions
