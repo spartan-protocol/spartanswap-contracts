@@ -5,6 +5,45 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "b",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "B",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "t",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "T",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "P",
+          "type": "uint256"
+        }
+      ],
+      "name": "calcLiquidityUnits",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "units",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "bp",
           "type": "uint256"
         },
@@ -48,40 +87,6 @@
         {
           "internalType": "uint256",
           "name": "share",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "a",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "A",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "v",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "S",
-          "type": "uint256"
-        }
-      ],
-      "name": "calcStakeUnits",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "units",
           "type": "uint256"
         }
       ],

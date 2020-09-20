@@ -7,6 +7,8 @@ No state
 
 var BigNumber = require('bignumber.js');
 
+const one = new BigNumber(10**18);
+
 function calcSwapOutput(x, X, Y) {
     // y = (x * Y * X)/(x + X)^2
     const _x = new BigNumber(x)
@@ -42,21 +44,47 @@ function calcSwapOutput(x, X, Y) {
     const y = (new BigNumber(_y)).integerValue(1);
     return y;
   }
-  function calcStakeUnits(a, A, v, V) {
-     // ((V + A) * (v * A + V * a))/(4 * V * A)
-    const _v = new BigNumber(v);
-    const _a = new BigNumber(a);
-    const _V = new BigNumber(V);
-    const _A = new BigNumber(A);
-    const numerator1 = _V.plus(_A);
-    const numerator2 = _v.times(_A);
-    const numerator3 = _V.times(_a);
-    const numerator = numerator1.times((numerator2.plus(numerator3)));
-    const denominator = (_V.times(_A)).times(4);
-    const _units = numerator.div(denominator);
-    const poolUnits = (_units).integerValue(1);
-    return poolUnits;
+
+  function calcLiquidityUnits(b, B, t, T, P) {
+    if(P == 0){
+      return b
+    } else {
+      // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
+      // P * (part1 + part2) / (part3) * slipAdjustment
+      const _b = new BigNumber(b);
+      const _t = new BigNumber(t);
+      const _B = new BigNumber(B);
+      const _T = new BigNumber(T);
+      const _P = new BigNumber(P);
+      const slipAdjustment = getSlipAdustment(b, B, t, T);
+      const part1 = _t.times(_B);
+      const part2 = _T.times(_b);
+      const part3 = _T.times(_B).times(2);
+      const units = (_P.times(part1.plus(part2))).div(part3);
+      return units.times(slipAdjustment).div(one).integerValue(1);  // Divide by 10**18;
+    }
   }
+
+function getSlipAdustment(b, B, t,  T){
+    // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
+    // 1 - ABS(part1 - part2)/(part3 * part4))
+    const _b = new BigNumber(b);
+    const _t = new BigNumber(t);
+    const _B = new BigNumber(B);
+    const _T = new BigNumber(T);
+    const part1 = _B.times(_t);
+    const part2 = _b.times(_T);
+    const part3 = _b.times(2).plus(_B);
+    const part4 = _t.plus(_T);
+    let numerator;
+    if(part1 > part2){
+        numerator = part1.minus(part2);
+    } else {
+        numerator = part2.minus(part1);
+    }
+    const denominator = part3.times(part4);
+    return one.minus((numerator.times(one)).div(denominator)).integerValue(0); // Multiply by 10**18
+}
 
   function calcAsymmetricShare(s, T, A) {
     // share = (s * A * (2 * T^2 - 2 * T * s + s^2))/T^3
@@ -96,8 +124,11 @@ calcSwapFee: function(x, X, Y) {
 calcLiquidation: function(x, X, Y) {
   return calcLiquidation(x, X, Y)
 },
-calcStakeUnits: function(a, A, v, V) {
-  return calcStakeUnits(a, A, v, V)
+calcLiquidityUnits: function(a, A, v, V, P) {
+  return calcLiquidityUnits(a, A, v, V, P)
+},
+getSlipAdustment: function(a, A, v, V) {
+  return getSlipAdustment(a, A, v, V)
 },
 calcAsymmetricShare: function(s, T, A) {
   return calcAsymmetricShare(s, T, A)

@@ -16,29 +16,29 @@ interface iBASE {
 }
 
 interface iROUTER {
-    function totalStaked() external view returns (uint);
+    function totalPooled() external view returns (uint);
     function totalVolume() external view returns (uint);
     function totalFees() external view returns (uint);
-    function unstakeTx() external view returns (uint);
-    function stakeTx() external view returns (uint);
+    function removeLiquidityTx() external view returns (uint);
+    function addLiquidityTx() external view returns (uint);
     function swapTx() external view returns (uint);
     function tokenCount() external view returns(uint);
     function getToken(uint) external view returns(address);
-    function getPool(address) external view returns(address);
-    function stakeForMember(uint inputBase, uint inputToken, address token, address member) external payable returns (uint units);
+    function getPool(address) external view returns(address payable);
+    function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) external payable returns (uint units);
 }
 
 interface iPOOL {
     function genesis() external view returns(uint);
     function baseAmt() external view returns(uint);
     function tokenAmt() external view returns(uint);
-    function baseAmtStaked() external view returns(uint);
-    function tokenAmtStaked() external view returns(uint);
+    function baseAmtPooled() external view returns(uint);
+    function tokenAmtPooled() external view returns(uint);
     function fees() external view returns(uint);
     function volume() external view returns(uint);
     function txCount() external view returns(uint);
-    function getBaseAmtStaked(address) external view returns(uint);
-    function getTokenAmtStaked(address) external view returns(uint);
+    function getBaseAmtPooled(address) external view returns(uint);
+    function getTokenAmtPooled(address) external view returns(uint);
     function calcValueInBase(uint) external view returns (uint);
     function calcValueInToken(uint) external view returns (uint);
     function calcTokenPPinBase(uint) external view returns (uint);
@@ -93,6 +93,8 @@ contract Utils {
     address public BASE;
     address public DEPLOYER;
 
+    uint public one = 10**18;
+
     struct TokenDetails {
         string name;
         string symbol;
@@ -113,11 +115,11 @@ contract Utils {
     }
 
     struct GlobalDetails {
-        uint totalStaked;
+        uint totalPooled;
         uint totalVolume;
         uint totalFees;
-        uint unstakeTx;
-        uint stakeTx;
+        uint removeLiquidityTx;
+        uint addLiquidityTx;
         uint swapTx;
     }
 
@@ -127,8 +129,8 @@ contract Utils {
         uint genesis;
         uint baseAmt;
         uint tokenAmt;
-        uint baseAmtStaked;
-        uint tokenAmtStaked;
+        uint baseAmtPooled;
+        uint tokenAmtPooled;
         uint fees;
         uint volume;
         uint txCount;
@@ -161,7 +163,7 @@ contract Utils {
             tokenDetails.name = 'Binance Chain Token';
             tokenDetails.symbol = 'BNB';
             tokenDetails.decimals = 18;
-            tokenDetails.totalSupply = 100000000 * 10**18;
+            tokenDetails.totalSupply = 100000000 * one;
             tokenDetails.balance = msg.sender.balance;
         } else {
             tokenDetails.name = iBEP20(token).name();
@@ -187,11 +189,11 @@ contract Utils {
 
     function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
         iDAO dao = _DAO();
-        globalDetails.totalStaked = iROUTER(dao.ROUTER()).totalStaked();
+        globalDetails.totalPooled = iROUTER(dao.ROUTER()).totalPooled();
         globalDetails.totalVolume = iROUTER(dao.ROUTER()).totalVolume();
         globalDetails.totalFees = iROUTER(dao.ROUTER()).totalFees();
-        globalDetails.unstakeTx = iROUTER(dao.ROUTER()).unstakeTx();
-        globalDetails.stakeTx = iROUTER(dao.ROUTER()).stakeTx();
+        globalDetails.removeLiquidityTx = iROUTER(dao.ROUTER()).removeLiquidityTx();
+        globalDetails.addLiquidityTx = iROUTER(dao.ROUTER()).addLiquidityTx();
         globalDetails.swapTx = iROUTER(dao.ROUTER()).swapTx();
         return globalDetails;
     }
@@ -236,8 +238,8 @@ contract Utils {
         poolData.genesis = iPOOL(pool).genesis();
         poolData.baseAmt = iPOOL(pool).baseAmt();
         poolData.tokenAmt = iPOOL(pool).tokenAmt();
-        poolData.baseAmtStaked = iPOOL(pool).baseAmtStaked();
-        poolData.tokenAmtStaked = iPOOL(pool).tokenAmtStaked();
+        poolData.baseAmtPooled = iPOOL(pool).baseAmtPooled();
+        poolData.tokenAmtPooled = iPOOL(pool).tokenAmtPooled();
         poolData.fees = iPOOL(pool).fees();
         poolData.volume = iPOOL(pool).volume();
         poolData.txCount = iPOOL(pool).txCount();
@@ -294,11 +296,11 @@ contract Utils {
     }
 
     function getPoolROI(address token) public view returns (uint roi){
-        address pool = getPool(token);
-        uint _baseStart = iPOOL(pool).baseAmtStaked().mul(2);
+        address payable pool = getPool(token);
+        uint _baseStart = iPOOL(pool).baseAmtPooled().mul(2);
         uint _baseEnd = iPOOL(pool).baseAmt().mul(2);
         uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
-        uint _tokenStart = iPOOL(pool).tokenAmtStaked().mul(2);
+        uint _tokenStart = iPOOL(pool).tokenAmtPooled().mul(2);
         uint _tokenEnd = iPOOL(pool).tokenAmt().mul(2);
         uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
         return (_ROIS + _ROIA).div(2);
@@ -392,15 +394,36 @@ contract Utils {
         return numerator.div(denominator);
     }
 
-    function calcStakeUnits(uint b, uint B, uint t, uint T) public pure returns (uint units){
-        // units = ((T + B) * (t * B + T * b))/(4 * T * B)
-        // (part1 * (part2 + part3)) / part4
-        uint part1 = T.add(B);
-        uint part2 = t.mul(B);
-        uint part3 = T.mul(b);
-        uint numerator = part1.mul((part2.add(part3)));
-        uint part4 = 4 * (T.mul(B));
-        return numerator.div(part4);
+    function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) public view returns (uint units){
+        if(P == 0){
+            return b;
+        } else {
+            // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
+            // P * (part1 + part2) / (part3) * slipAdjustment
+            uint slipAdjustment = getSlipAdustment(b, B, t, T);
+            uint part1 = t.mul(B);
+            uint part2 = T.mul(b);
+            uint part3 = T.mul(B).mul(2);
+            uint units = (P.mul(part1.add(part2))).div(part3);
+            return units.mul(slipAdjustment).div(one);  // Divide by 10**18
+        }
+    }
+
+    function getSlipAdustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
+        // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
+        // 1 - ABS(part1 - part2)/(part3 * part4))
+        uint part1 = B.mul(t);
+        uint part2 = b.mul(T);
+        uint part3 = b.mul(2).add(B);
+        uint part4 = t.add(T);
+        uint numerator;
+        if(part1 > part2){
+            numerator = part1.sub(part2);
+        } else {
+            numerator = part2.sub(part1);
+        }
+        uint denominator = part3.mul(part4);
+        return one.sub((numerator.mul(one)).div(denominator)); // Multiply by 10**18
     }
 
     function calcAsymmetricShare(uint u, uint U, uint A) public pure returns (uint share){

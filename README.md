@@ -1,154 +1,171 @@
-# Spartan Swap - Incentivised Liquidity Powered By SPARTAN
+# Spartan Protocol - Incentivised Liquidity Powered By SPARTAN
 
-Spartan Swap is a liquidity pool protocol that allows token-agnostic provision of liquidity. Traders can swap between tokens at arbitrarily low fees, but a liquidity-sensitive fee maximises revenue for stakers during periods of high demand. 
+Spartan Protocol is a liquidity pool protocol that allows token-agnostic provision of liquidity. Traders can swap between tokens at arbitrarily low fees, but a liquidity-sensitive fee maximises revenue for liquidity providers during periods of high demand. 
 
-## Deploy
-1) Deploy SPARTA && WrappedBNB
-2) Deploy UTILS(SPARTA)
-3) Deploy DAO(SPARTA)
-4) Deploy Router(SPARTA)
-5) Set DAO in SPARTA
-6) Set Router in DAO
+The Spartan Protocol can also facilitate the following features:
+* Synthetic Token Generation using liquidity pool shares
+* Lending markets using a flexible peg-out of low-use pool capital
+* Derivatives by winding up synthetic token generation in multiple runs
 
-Sparta is the base currency.
-Utils needs to know Router (to calculate state) and DAO (to ask for router)
-DAO needs to know Utils (to calculate state)
-Router needs to know Sparta, Utils, DAO (to tell Pools)
-Pools needs to know DAO to ask for Router
+## Architecture
 
+The following contracts manage the protocol:
 
-0x4d523C380B76386c9e41D7F92456CcE6c712Db87 jp
+1) BASE Contract (Sparta Token Contract)
+2) DAO Contract (Manages Governance)
+3) UTILS Contract (Stateless contract that manages core math and helper functions)
+4) ROUTER Contract (Manages how liquidity is moved around the system)
+5) POOL Contract (Holds funds and state for each pool)
 
-1000000000000000000 // 10**18
-1000000000000000000000000 //1m
-0x0000000000000000000000000000000000000000
+BASE is the source-of-truth for the location of the DAO, as well as minting and distributing incentives. 
 
-// Kovan
-0x0C1d8c5911A1930ab68b3277D35f45eEd25e1F26 sparta
-0xE4Ae305ebE1AbE663f261Bc00534067C80ad677C USDT
-0x17218e58fdf07c989facca25de4c6fdb06502186 BUSD
-0x3e2e792587ceb6c1090a8a42f3efcfad818d266d DAI
+DAO is the source-of-truth for the location of the ROUTER and UTILS, as well as distributing rewards and managing how the system upgrades itself. It has goverance features that use a member's claim on BASE in each pool to attribute voting weight. The DAO can upgrade itself, as well as amending some features in the BASE contract.
 
-0x696a6B50d7FC6213a566fCC197acced4c4dDefa2 utils
-0x75BCFf5dA17EdE9111dB0c3aA138351260c75FF3 dao
-0x15967D09bc67A1aafFC43D88CcD4F6196df3B259 router
+UTILS contains utility and math functions, and can be upgraded by the DAO. 
+
+ROUTER contains state and business logic for moving funds, and can be upgraded by the DAO. Users interact with the ROUTER.
+
+POOL holds the funds for each pool, as well as state. It asks the DAO for the location of ROUTER, and will only let the ROUTER call into it. 
 
 
+## Deploy Process
 
-0x4d523C380B76386c9e41D7F92456CcE6c712Db87 jp
+The contracts are to be deployed and then connected together. The DEPLOYER (EOA) has initial DAO privileges in order to manage the process. DEPLOYER should be purged when the system is stable. 
 
-1000000000000000000 // 10**18
-1000000000000000000000000 //1m
-0x0000000000000000000000000000000000000000
+1) Deploy `SPARTA`
+2) Deploy `UTILS(sparta.address)`
+3) Deploy `DAO(sparta.address)`
+4) Deploy `ROUTER(sparta.address)`
+5) Set `dao.address` in SPARTA
+6) Set `router.address, utils.address` in DAO
 
-// BSC
+* SPARTA is the BASE currency.
+* UTILS needs to know SPARTA (to ask for DAO)
+* DAO needs to know SPARTA (to manage), ROUTER and UTILS
+* ROUTER needs to know SPARTA to ask for DAO, to ask for UTILS
+* POOL needs to know DAO to ask for ROUTER
 
-0x4c70e3Fb5D828f5f992B6aF9a49D13716F717cac Sparta
-0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D Sparta-Minted
-0x601eDC4F056Df230C747Be4f9C20F955bADB5Ae7 WBNB
-0x89C8da7569085D406800C473619d0c6B7AC0CE8E USD Coin
-0x42E7A6e8e266d50d390c916c4715a5Fa01fd9522 BUsd
+## Upgrade Process
 
-0x007EA5C0Ea75a8DF45D288a4debdD5bb633F9e56 utils
-0x9cC299b2AdC9FE6C0cab8949c48Ccd8d2ba59ada Dao
-0xCaF0366aF95E8A03E269E52DdB3DbB8a00295F91 Router
+Goverance should pass a proposal electing a new address. 
 
-// BSC - 2
+### UTILS
+Once passed, the DAO will know the new UTILS contract, and return it when queried (by the ROUTER).
 
-0xeD9E15523aA05Fa822dB42643682B9F8411310D3 Sparta
-0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D Sparta-Minted
-0x89C8da7569085D406800C473619d0c6B7AC0CE8E USD Coin
-0x42E7A6e8e266d50d390c916c4715a5Fa01fd9522 BUsd
+### ROUTER
+Once passed, the DAO will know the new ROUTER contract, and return it when queried (by the POOL). 
+Since the ROUTER holds state, the new ROUTER may or may not need state migrated in from the old ROUTER. The state includes:
+* array of tokens listed (registry - critical)
+* metrics for the protocol (read-only - not critical)
 
-0xAfCe5dA566377D293a8e681cf2824f7Dc0C733C6 utils
-0x862138A5c5b85E34D599cF60B99f67ABeFaaA99f Dao
-0x4D419c4c8d65788523373523615271115A6B815B Router
+The new Router may instead want to query the old router for the registry, in addition to managing its own. 
 
-// BSC - 3
+### DAO
+Once passed, the DAO will tell the BASE contract of the new DAO. POOLS will now know, because it asks BASE for the location. 
 
-0x0D4d2c33480B5fe9360f581e43832b1F550Ff020 utils
-0xC241D694D51dB9E934b147130CFEfE8385813B86 Dao
-0xd92cf95aBaE1c681fD3d563e6Cd1A4946041d97e Router
-
-// BSC - 4
-0x96C1C2D1bBEE1760a72FDe1C4c60ECE5Cd855233 sparta
-0x16422486135FB0cA7A95D6732c49Ff765Bc767bc utils
-0xb6E6489a2FC3fD9851E43c7aAA432768A94B9AaA dao
-0x1498001A1813E5506E1dCf7C2d107DAa640d3467 router
+### Incentive Address
+This address receives emissions from BASE. The DAO can set a new incentive address. 
 
 
+## Governance
 
+Members firstly lock SPARTAN liquidity tokens, which allow a claim on BASE in each pool to be detected and summed. Importantly, goverance is on-market and liquid - whilst locking another member can purchase BASE off existing members and lock. This reduces existing member weight. 
 
+Proposals are a 3-step process:
 
+1) Create a proposal with parameters
+2) Vote for that proposal, if passing quorum, then proceed into a cool-off period in "finalising" state
+3) Once finalising, and past cool-off, anyone can call and finalise in order to effect the proposal on the system.
 
+### Thresholds
 
+Majority: 50%
+Quorum: 33%
+Minority: 16.5%
 
-## Smart Contract
+### Safety
+
+Proposals that upgrade critical infrastructure require Majority, all others require Quorum:
+* Upgrade DAO
+* Upgrade Incentive Address
+* Upgrade ROUTER
+
+During the Cool-Off period, a competing proposal that has Minority vote-weight, can call in and veto a finalising Quorum proposal. A scenario is as follows:
+
+1) A questionable Proposal to grant a large holder some funds, gets past 33% vote and enters cool-off.
+2) Minority (16.5%) members are concerned it is not in the best interest of the system, so thus have 7 days to vote for a competing proposal that can be used to neutralise (1). 
+3) The competing proposal is not effected, it also needs to achieve Quorum first. 
+
+### DAO
+* Change DAO
+* Change ROUTER
+* Change UTILS
+* Change Incentive Address
+* List new asset (not past 100m emitted, less than 10m allocation)
+* Delist existing asset
+* Change Emission Curve
+* Change Era Duration
+* Start Emissions
+* Stop Emissions
+* Change Cool-off Period length
+* Change erasToEarn (how fast the incentives pay out)
+
+## Incentive Design
+
+The BASE contract mints a certain number of coins every era and sends them to the Incentive Address, which can also be the DAO. 
+
+The mint amount is set by `(300m-totalSupply)/emissionCurve` which will mint a slowly decreasing amount each day. In future, a burn feature can reduce total supply, thereby stabilising emissions. 
+
+Users lock LP tokens in the DAO and can call `harvest()` as often as they want, although since the reserve in the DAO depletes, it favours those who call it more frequently. If the `erasToEarn` is set to 30 days, then after the final drop, it will take 30 days for all rewards to be consumed. However, since new rewards are sent there every day, the velocity of emissions should be fairly constant. 
+
+## Router Design
+
+The ROUTER facilitates funds movement from users into pools, containing business logic for creating pools, adding/removing liquidity, and swapping. It calls the UTILS contract for arithmetic functions. 
+
+The ROUTER also tracks metrics, which can in future be used to distribute rewards in a more novel way, such as based on volume or average fees earned, per pool. 
+
+The ROUTER handles BNB, so each POOL is a payable contract. 
+
+The ROUTER deploys a new POOL contract each time a new POOL is created, and maintains a registry of listed tokens. 
+
+## Pool Design
+
+The pool itself does not contain any logic apart from being a BEP20 mintable/burnable contract and holds state. The ROUTER can update state and gives itself permission to spend any amount of funds from the POOL. 
+
+**Changing the ROUTER to a malicious one could cause the loss of all funds in the system.**
+
+The pool also has a function that can dividend funds without being associated with a swap/add/remove. These funds can be claimed by all LPs in the pool, and thus can be used for paying dividends of SPARTA in a future update. 
 
 Spartan Swap  has the following intended design:
 
-Staking
-* Stake any token into any pool
-* Move capital between pools (unstake and stake in a single transaction)
-* Withdraw partial or full capital from any pool to any token
+Liquidity Providers
+* Add liquidity in any amount from any pool
+* Move liquidity between pools (remove from one, add to another)
+* Withdraw partial or full capital from any pool, symmetrically or asymmetrically
 
 Swapping
 * Swap from any token to any token
+* Buy an asset
+* Sell an asset
+
+## Utils Design
+
+Utils works as both a web3 aggregrator (one call that makes several EVM calls, returning objects), as well as the core arithmetic of the system. 
+
+It is also used to retrieve state from the router, tokens and pools. DApps should read from Utils, write to Router. 
 
 
-### ERC-20
+## Future Features
 
-### SpartanSwap Public Get Methods
-**WIP**
+Factory
+* Use a separate Factory Contract that deploys synths and pools
 
-### SpartanSwap Public Transactions
-**WIP**
-
-### Core Math
-
-```solidity
-
-function  calcSwapOutput(uint x, uint X, uint Y) public pure returns (uint output){
-        // y = (x * Y * X)/(x + X)^2
-        uint numerator = x.mul(Y.mul(X));
-        uint denominator = (x.add(X)).mul(x.add(X));
-        return numerator.div(denominator);
-    }
-
-    function  calcSwapFee(uint x, uint X, uint Y) public pure returns (uint output){
-        // y = (x * Y * x) / (x + X)^2
-        uint numerator = x.mul(Y.mul(x));
-        uint denominator = (x.add(X)).mul(x.add(X));
-        return numerator.div(denominator);
-    }
-
-    function calcStakeUnits(uint a, uint A, uint v, uint V) public pure returns (uint units){
-        // units = ((V + A) * (v * A + V * a))/(4 * V * A)
-        // (part1 * (part2 + part3)) / part4
-        uint part1 = V.add(A);
-        uint part2 = v.mul(A);
-        uint part3 = V.mul(a);
-        uint numerator = part1.mul((part2.add(part3)));
-        uint part4 = 4 * (V.mul(A));
-        return numerator.div(part4);
-    }
-
-    function calcAsymmetricShare(uint s, uint T, uint A) public pure returns (uint share){
-        // share = (s * A * (2 * T^2 - 2 * T * s + s^2))/T^3
-        // (part1 * (part2 - part3 + part4)) / part5
-        uint part1 = s.mul(A);
-        uint part2 = T.mul(T).mul(2);
-        uint part3 = T.mul(s).mul(2);
-        uint part4 = s.mul(s);
-        uint numerator = part1.mul(part2.sub(part3).add(part4));
-        uint part5 = T.mul(T).mul(T);
-        return numerator.div(part5);
-    }
-```
-
-### Constructor
-**WIP**
-
+Router
+* 1 SPARTA fee - not implemented
+* Fee-based dividend - not implemented
+* Synths - not implemented
+* WrappedBNB - not implemented
+* Lending - not implemented
 
 ## Testing - Buidler
 

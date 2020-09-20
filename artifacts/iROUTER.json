@@ -4,6 +4,57 @@
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "inputBase",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "inputToken",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "member",
+          "type": "address"
+        }
+      ],
+      "name": "addLiquidityForMember",
+      "outputs": [
+        {
+<<<<<<< HEAD
+          "internalType": "address",
+=======
+          "internalType": "uint256",
+          "name": "units",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "addLiquidityTx",
+      "outputs": [
+        {
+          "internalType": "uint256",
+>>>>>>> master
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "",
           "type": "address"
@@ -12,7 +63,7 @@
       "name": "getPool",
       "outputs": [
         {
-          "internalType": "address",
+          "internalType": "address payable",
           "name": "",
           "type": "address"
         }
@@ -40,42 +91,8 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "inputBase",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "inputToken",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "member",
-          "type": "address"
-        }
-      ],
-      "name": "stakeForMember",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "units",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
       "inputs": [],
-      "name": "stakeTx",
+      "name": "removeLiquidityTx",
       "outputs": [
         {
           "internalType": "uint256",
@@ -127,7 +144,7 @@
     },
     {
       "inputs": [],
-      "name": "totalStaked",
+      "name": "totalPooled",
       "outputs": [
         {
           "internalType": "uint256",
@@ -141,19 +158,6 @@
     {
       "inputs": [],
       "name": "totalVolume",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "unstakeTx",
       "outputs": [
         {
           "internalType": "uint256",
