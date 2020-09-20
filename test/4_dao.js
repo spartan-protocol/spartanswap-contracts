@@ -434,8 +434,8 @@ async function _passSwap(acc, b, router) {
     it(`It should buy BNB with BASE from ${acc}`, async () => {
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
-        const B = _.getBN(poolData.baseAmt)
-        const T = _.getBN(poolData.tokenAmt)
+        const B = _.getBN(poolData.baseAmount)
+        const T = _.getBN(poolData.tokenAmount)
         //console.log('start data', _.BN2Str(B), _.BN2Str(T))
 
         let t = math.calcSwapOutput(b, B, T)
@@ -449,8 +449,8 @@ async function _passSwap(acc, b, router) {
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(t))
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
 
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.plus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.minus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.plus(b)))
 
         assert.equal(_.BN2Str(await web3.eth.getBalance(poolBNB.address)), _.BN2Str(T.minus(t)), 'ether balance')
         assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(B.plus(b)), 'base balance')

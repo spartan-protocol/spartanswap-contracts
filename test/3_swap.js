@@ -168,8 +168,8 @@ async function addLiquidity(acc, b, t) {
         let token = _.BNB
         let pool = poolBNB
         let poolData = await utils.getPoolData(token);
-        var S = _.getBN(poolData.baseAmt)
-        var T = _.getBN(poolData.tokenAmt)
+        var S = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
         b = (_.getBN(b)).minus(_.one)
         poolUnits = _.getBN((await pool.totalSupply()))
         //console.log('start data', _.BN2Str(S), _.BN2Str(T), _.BN2Str(poolUnits))
@@ -179,18 +179,18 @@ async function addLiquidity(acc, b, t) {
         
         let tx = await router.addLiquidity(b, t, token, { from: acc, value: t })
         poolData = await utils.getPoolData(token);
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(b)))
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.plus(t)))
-        assert.equal(_.BN2Str(poolData.baseAmtPooled), _.BN2Str(S.plus(b)))
-        assert.equal(_.BN2Str(poolData.tokenAmtPooled), _.BN2Str(T.plus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(S.plus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.plus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmountPooled), _.BN2Str(S.plus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmountPooled), _.BN2Str(T.plus(t)))
         assert.equal(_.BN2Str((await pool.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
         assert.equal(_.BN2Str(await pool.balanceOf(acc)), _.BN2Str(units), 'units')
         assert.equal(_.BN2Str(await base.balanceOf(pool.address)), _.BN2Str(S.plus(b)), 'base balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(pool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
         // let memberData = (await utils.getMemberData(token, acc))
-        // assert.equal(memberData.baseAmtPooled, b, 'baseAmt')
-        // assert.equal(memberData.tokenAmtPooled, t, 'tokenAmt')
+        // assert.equal(memberData.baseAmountPooled, b, 'baseAmount')
+        // assert.equal(memberData.tokenAmountPooled, t, 'tokenAmount')
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(pool.address));
         const baseBal = _.BN2Token(await base.balanceOf(pool.address));
@@ -213,8 +213,8 @@ async function addLiquidityTKN2(acc, t, b) {
 
 async function _addLiquidityTKN(acc, t, b, token, pool) {
     let poolData = await utils.getPoolData(token.address);
-    var S = _.getBN(poolData.baseAmt)
-    var T = _.getBN(poolData.tokenAmt)
+    var S = _.getBN(poolData.baseAmount)
+    var T = _.getBN(poolData.tokenAmount)
     b = (_.getBN(b)).minus(_.one)
     poolUnits = _.getBN((await pool.totalSupply()))
     //console.log('start data', _.BN2Str(S), _.BN2Str(T), _.BN2Str(poolUnits))
@@ -224,18 +224,18 @@ async function _addLiquidityTKN(acc, t, b, token, pool) {
     
     let tx = await router.addLiquidity(b, t, token.address, { from: acc})
     poolData = await utils.getPoolData(token.address);
-    assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(b)))
-    assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.plus(t)))
-    assert.equal(_.BN2Str(poolData.baseAmtPooled), _.BN2Str(S.plus(b)))
-    assert.equal(_.BN2Str(poolData.tokenAmtPooled), _.BN2Str(T.plus(t)))
+    assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(S.plus(b)))
+    assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.plus(t)))
+    assert.equal(_.BN2Str(poolData.baseAmountPooled), _.BN2Str(S.plus(b)))
+    assert.equal(_.BN2Str(poolData.tokenAmountPooled), _.BN2Str(T.plus(t)))
     assert.equal(_.BN2Str((await pool.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
     assert.equal(_.BN2Str(await pool.balanceOf(acc)), _.BN2Str(units), 'units')
     assert.equal(_.BN2Str(await base.balanceOf(pool.address)), _.BN2Str(S.plus(b)), 'base balance')
     assert.equal(_.BN2Str(await token.balanceOf(pool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
     // let memberData = (await utils.getMemberData(token.address, acc))
-    // assert.equal(memberData.baseAmtPooled, b, 'baseAmt')
-    // assert.equal(memberData.tokenAmtPooled, t, 'tokenAmt')
+    // assert.equal(memberData.baseAmountPooled, b, 'baseAmount')
+    // assert.equal(memberData.tokenAmountPooled, t, 'tokenAmount')
 
     const tokenBal = _.BN2Token(await web3.eth.getBalance(pool.address));
     const baseBal = _.BN2Token(await base.balanceOf(pool.address));
@@ -248,8 +248,8 @@ async function swapBASEToBNB(acc, b) {
     it(`It should buy BNB with BASE from ${acc}`, async () => {
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
-        const B = _.getBN(poolData.baseAmt)
-        const T = _.getBN(poolData.tokenAmt)
+        const B = _.getBN(poolData.baseAmount)
+        const T = _.getBN(poolData.tokenAmount)
         //console.log('start data', _.BN2Str(B), _.BN2Str(T))
 
         let t = math.calcSwapOutput(b, B, T)
@@ -263,8 +263,8 @@ async function swapBASEToBNB(acc, b) {
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(t))
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
 
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.plus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.minus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.plus(b)))
 
         assert.equal(_.BN2Str(await web3.eth.getBalance(poolBNB.address)), _.BN2Str(T.minus(t)), 'ether balance')
         assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(B.plus(b)), 'base balance')
@@ -279,8 +279,8 @@ async function swapBNBToBASE(acc, t) {
         let token = _.BNB
         //await help.logPool(utils, token, 'BNB')
         let poolData = await utils.getPoolData(token);
-        const B = _.getBN(poolData.baseAmt)
-        const T = _.getBN(poolData.tokenAmt)
+        const B = _.getBN(poolData.baseAmount)
+        const T = _.getBN(poolData.tokenAmount)
         // //console.log('start data', _.BN2Str(B), _.BN2Str(T), memberCount, _.BN2Str(poolUnits))
         //console.log(poolData)
 
@@ -294,8 +294,8 @@ async function swapBNBToBASE(acc, t) {
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(b))
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
         //console.log(poolData)
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.plus(t)))
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.minus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.plus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.minus(b)))
         
 
 
@@ -325,10 +325,10 @@ async function _swapTKNToBNB(acc, x, token, pool) {
     const toToken = _.BNB
     let poolData1 = await utils.getPoolData(token.address);
     let poolData2 = await utils.getPoolData(toToken);
-    const X = _.getBN(poolData1.tokenAmt)
-    const Y = _.getBN(poolData1.baseAmt)
-    const B = _.getBN(poolData2.baseAmt)
-    const Z = _.getBN(poolData2.tokenAmt)
+    const X = _.getBN(poolData1.tokenAmount)
+    const Y = _.getBN(poolData1.baseAmount)
+    const B = _.getBN(poolData2.baseAmount)
+    const Z = _.getBN(poolData2.tokenAmount)
     // //console.log('start data', _.BN2Str(B), _.BN2Str(T), memberCount, _.BN2Str(poolUnits))
 
     let y = math.calcSwapOutput(x, X, Y)
@@ -351,10 +351,10 @@ async function _swapTKNToBNB(acc, x, token, pool) {
     // assert.equal(_.BN2Str(tx.receipt.logs[4].args.outputAmount), _.BN2Str(z))
     // assert.equal(_.BN2Str(tx.receipt.logs[4].args.fee), _.BN2Str(feez))
 
-    assert.equal(_.BN2Str(poolData1.tokenAmt), _.BN2Str(X.plus(x)))
-    assert.equal(_.BN2Str(poolData1.baseAmt), _.BN2Str(Y.minus(y)))
-    assert.equal(_.BN2Str(poolData2.baseAmt), _.BN2Str(B.plus(y)))
-    assert.equal(_.BN2Str(poolData2.tokenAmt), _.BN2Str(Z.minus(z)))
+    assert.equal(_.BN2Str(poolData1.tokenAmount), _.BN2Str(X.plus(x)))
+    assert.equal(_.BN2Str(poolData1.baseAmount), _.BN2Str(Y.minus(y)))
+    assert.equal(_.BN2Str(poolData2.baseAmount), _.BN2Str(B.plus(y)))
+    assert.equal(_.BN2Str(poolData2.tokenAmount), _.BN2Str(Z.minus(z)))
 
     assert.equal(_.BN2Str(await token.balanceOf(pool.address)), _.BN2Str(X.plus(x)), 'token1 balance')
     assert.equal(_.BN2Str(await base.balanceOf(pool.address)), _.BN2Str(Y.minus(y)), 'base balance')
@@ -383,10 +383,10 @@ async function swapBNBToTKN2(acc, x) {
 async function _swapBNBToTKN(acc, x, token, pool) {
     let poolData1 = await utils.getPoolData(_.BNB);
     let poolData2 = await utils.getPoolData(token.address);
-    const X = _.getBN(poolData1.tokenAmt)
-    const Y = _.getBN(poolData1.baseAmt)
-    const B = _.getBN(poolData2.baseAmt)
-    const Z = _.getBN(poolData2.tokenAmt)
+    const X = _.getBN(poolData1.tokenAmount)
+    const Y = _.getBN(poolData1.baseAmount)
+    const B = _.getBN(poolData2.baseAmount)
+    const Z = _.getBN(poolData2.tokenAmount)
     // //console.log('start data', _.BN2Str(B), _.BN2Str(T), memberCount, _.BN2Str(poolUnits))
 
     let y = math.calcSwapOutput(x, X, Y)
@@ -405,10 +405,10 @@ async function _swapBNBToTKN(acc, x, token, pool) {
     assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(z))
     assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
 
-    assert.equal(_.BN2Str(poolData1.tokenAmt), _.BN2Str(X.plus(x)))
-    assert.equal(_.BN2Str(poolData1.baseAmt), _.BN2Str(Y.minus(y)))
-    assert.equal(_.BN2Str(poolData2.baseAmt), _.BN2Str(B.plus(y)))
-    assert.equal(_.BN2Str(poolData2.tokenAmt), _.BN2Str(Z.minus(z)))
+    assert.equal(_.BN2Str(poolData1.tokenAmount), _.BN2Str(X.plus(x)))
+    assert.equal(_.BN2Str(poolData1.baseAmount), _.BN2Str(Y.minus(y)))
+    assert.equal(_.BN2Str(poolData2.baseAmount), _.BN2Str(B.plus(y)))
+    assert.equal(_.BN2Str(poolData2.tokenAmount), _.BN2Str(Z.minus(z)))
 
     assert.equal(_.BN2Str(await web3.eth.getBalance(poolBNB.address)), _.BN2Str(X.plus(x)), 'token1 balance')
     assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(Y.minus(y)), 'base balance')
@@ -436,8 +436,8 @@ async function removeLiquidityBNB(bp, acc) {
         // //console.log('memberROI1', _.BN2Str(memberROI1))
 
         let poolData = await utils.getPoolData(_.BNB);
-        var B = _.getBN(poolData.baseAmt)
-        var T = _.getBN(poolData.tokenAmt)
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
 
         let totalUnits = _.getBN((await poolBNB.totalSupply()))
         let liquidityUnits = _.getBN(await poolBNB.balanceOf(acc))
@@ -459,8 +459,8 @@ async function removeLiquidityBNB(bp, acc) {
 
         assert.equal(_.BN2Str((await poolBNB.totalSupply())), totalUnits.minus(share), 'poolUnits')
 
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.minus(b)))
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.minus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.minus(t)))
         // assert.equal(_.BN2Str(poolData.basePooled), _.BN2Str(B.minus(b)))
         // assert.equal(_.BN2Str(poolData.tokenPooled), _.BN2Str(T.minus(t)))
         assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(B.minus(b)), 'base balance')
@@ -515,8 +515,8 @@ async function removeLiquidityTKN2(bp, acc) {
 
 async function _removeLiquidityTKN(bp, acc, pools, token) {
     let poolData = await utils.getPoolData(token.address);
-    var B = _.getBN(poolData.baseAmt)
-    var T = _.getBN(poolData.tokenAmt)
+    var B = _.getBN(poolData.baseAmount)
+    var T = _.getBN(poolData.tokenAmount)
 
     let totalUnits = _.getBN((await pools.totalSupply()))
     let liquidityUnits = _.getBN(await pools.balanceOf(acc))
@@ -534,8 +534,8 @@ async function _removeLiquidityTKN(bp, acc, pools, token) {
 
     assert.equal(_.BN2Str((await pools.totalSupply())), _.BN2Str(totalUnits.minus(share)), 'poolUnits')
 
-    assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.minus(b)))
-    assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
+    assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.minus(b)))
+    assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.minus(t)))
     // assert.equal(_.BN2Str(poolData.basePooled), _.BN2Str(B.minus(b)))
     // assert.equal(_.BN2Str(poolData.tokenPooled), _.BN2Str(T.minus(t)))
     assert.equal(_.BN2Str(await base.balanceOf(pools.address)), _.BN2Str(B.minus(b)), 'base balance')

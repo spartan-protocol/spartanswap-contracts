@@ -3,7 +3,7 @@
   "abi": [
     {
       "inputs": [],
-      "name": "baseAmt",
+      "name": "baseAmount",
       "outputs": [
         {
           "internalType": "uint256",
@@ -16,7 +16,7 @@
     },
     {
       "inputs": [],
-      "name": "baseAmtPooled",
+      "name": "baseAmountPooled",
       "outputs": [
         {
           "internalType": "uint256",
@@ -169,7 +169,7 @@
     },
     {
       "inputs": [],
-      "name": "tokenAmt",
+      "name": "tokenAmount",
       "outputs": [
         {
           "internalType": "uint256",
@@ -182,7 +182,7 @@
     },
     {
       "inputs": [],
-      "name": "tokenAmtPooled",
+      "name": "tokenAmountPooled",
       "outputs": [
         {
           "internalType": "uint256",
