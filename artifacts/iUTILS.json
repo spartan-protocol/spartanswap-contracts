@@ -178,7 +178,7 @@
     {
       "inputs": [
         {
-          "internalType": "address payable",
+          "internalType": "address",
           "name": "pool",
           "type": "address"
         },
@@ -240,12 +240,12 @@
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "baseAmt",
+          "name": "baseAmount",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "tokenAmt",
+          "name": "tokenAmount",
           "type": "uint256"
         }
       ],
@@ -274,12 +274,12 @@
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "baseAmt",
+          "name": "baseAmount",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "tokenAmt",
+          "name": "tokenAmount",
           "type": "uint256"
         },
         {
