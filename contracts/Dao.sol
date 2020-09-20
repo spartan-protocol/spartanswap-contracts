@@ -322,7 +322,7 @@ contract Dao {
         bytes memory _type = bytes(mapPID_type[proposalID]);
         voteWeight = countVotes(proposalID);
         if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
-            if(isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'INCENTIVE')){
+            if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'INCENTIVE')){
                 if(hasMajority(proposalID)){
                     _finalise(proposalID);
                 }
