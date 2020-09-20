@@ -358,30 +358,30 @@ async function voteGrant() {
     })
 }
 
-async function voteRouter() {
-    it("It should vote Router", async () => {
-        router2 = await ROUTER.new(base.address, wbnb.address)
-        await router2.migrateRouterData(router.address);
-        await router2.migrateTokenData(router.address);
-        await Dao.newAddressProposal(router2.address, 'ROUTER', { from: acc0 })
+async function voteUtils() {
+    it("It should vote UTILS", async () => {
+        utils2 = await UTILS.new(base.address)
+        await Dao.newAddressProposal(utils2.address, 'UTILS', { from: acc0 })
         let proposalCount = _.BN2Str(await Dao.proposalCount())
         await Dao.voteProposal(proposalCount, { from: acc2 })
         await Dao.voteProposal(proposalCount, { from: acc3 })
         await sleep(2100)
         await Dao.finaliseProposal(proposalCount);
-        assert.equal(await Dao.ROUTER(), router2.address)
+        assert.equal(await Dao.UTILS(), utils2.address)
     })
 }
 
-async function voteUtils() {
-    it("It should vote", async () => {
-        utils2 = await UTILS.new(base.address)
-        await Dao.newAddressProposal(utils2.address, 'UTILS', { from: acc0 })
+async function voteRouter() {
+    it("It should vote ROUTER", async () => {
+        router2 = await ROUTER.new(base.address, wbnb.address)
+        await router2.migrateRouterData(router.address);
+        await router2.migrateTokenData(router.address);
+        await Dao.newAddressProposal(router2.address, 'ROUTER', { from: acc0 })
         let proposalCount = _.BN2Str(await Dao.proposalCount())
         await Dao.voteProposal(proposalCount, { from: acc3 })
         await sleep(2100)
         await Dao.finaliseProposal(proposalCount);
-        assert.equal(await Dao.UTILS(), utils2.address)
+        assert.equal(await Dao.ROUTER(), router2.address)
     })
 }
 

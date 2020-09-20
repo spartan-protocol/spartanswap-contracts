@@ -25,7 +25,7 @@ DAO is the source-of-truth for the location of the `ROUTER` and `UTILS`, as well
 
 `ROUTER` contains state and business logic for moving funds, and can be upgraded by the DAO. Users interact with the `ROUTER`.
 
-POOL holds the funds for each pool, as well as state. It asks the ``DAO`` for the location of `ROUTER`, and will only let the `ROUTER` call into it. 
+`POOL` holds the funds for each pool, as well as state. It asks the `DAO` for the location of `UTILS` which has core math relating to how swaps and liquidity is provisioned, such as calculating fees.  
 
 
 ## Deploy Process
@@ -82,9 +82,9 @@ Proposals are a 3-step process:
 
 ### Thresholds
 
-Majority: 50%
-Quorum: 33%
-Minority: 16.5%
+* Majority: 50%
+* Quorum: 33%
+* Minority: 16.5%
 
 ### Safety
 
@@ -140,7 +140,7 @@ The pool contains logic and holds funds and state. The only way to get funds out
 * A Swap is executed by sending the `POOL` funds, then calling `swap(token)`. It finds all spare funds on its address, and calculates the swap output in the other token, then sending that out. 
 * A `sync()` function is added that re-syncs the recorded token amounts on the `POOL` address.
 
-** The pool asks the `UTILS` contract for logic relating to adding/removing liquidity, as well as swapping, so in future different logic could be added. However an upgrade to a malicous `UTILS` contract could compromise funds in the system.** 
+**The pool asks the `UTILS` contract for logic relating to adding/removing liquidity, as well as swapping, so in future different logic could be added. However an upgrade to a malicous `UTILS` contract could compromise funds in the system.** 
 
 ## Utils Design
 
@@ -157,7 +157,7 @@ The `UTILS` contract has the following:
 * Arithmetic relating to pools and members
 * Core math relating to calculating swaps and liquidity provisioning
 
-The `UTILS` contract can be upgraded, but upgrading it to a malicious contract can compromise funds in the system by changing logic to favour an attacker. 
+**The `UTILS` contract can be upgraded, but upgrading it to a malicious contract can compromise funds in the system by changing logic to favour an attacker.**
 
 
 ## Future Features
@@ -166,11 +166,10 @@ Factory
 * Use a separate Factory Contract that deploys synths and pools
 
 Router
-* 1 SPARTA fee - not implemented
-* Fee-based dividend - not implemented
-* Synths - not implemented
-* WrappedBNB - not implemented
-* Lending - not implemented
+* 1 SPARTA fee - not implemented yet
+* Fee-based dividend - not implemented yet
+* Synths - not implemented yet
+* Lending - not implemented yet
 
 ## Testing - Buidler
 
@@ -188,7 +187,7 @@ npx builder test
 
 Or execute individually:
 ```
-npx builder test/1_coin.js
+npx builder test/1_base.js
 ```
 
 
