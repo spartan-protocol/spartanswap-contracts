@@ -26,6 +26,7 @@ interface iBASE {
 interface iUTILS {
     function calcPart(uint bp, uint total) external pure returns (uint part);
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
+    function calcLiquidityShare(uint units, address token, address pool, address member) external pure returns (uint share);
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
     function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units);
@@ -138,15 +139,15 @@ contract Pool is iBEP20 {
     }
     // iBEP20 Transfer function
     function transfer(address to, uint256 value) public override returns (bool success) {
-        __transfer(msg.sender, to, value);
+        _transfer(msg.sender, to, value);
         return true;
     }
     // iBEP20 Approve function
     function approve(address spender, uint256 amount) public virtual override returns (bool) {
-        __approve(msg.sender, spender, amount);
+        _approve(msg.sender, spender, amount);
         return true;
     }
-    function __approve(address owner, address spender, uint256 amount) internal virtual {
+    function _approve(address owner, address spender, uint256 amount) internal virtual {
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
@@ -154,12 +155,12 @@ contract Pool is iBEP20 {
     function transferFrom(address from, address to, uint256 value) public override returns (bool success) {
         require(value <= _allowances[from][msg.sender], 'AllowanceErr');
         _allowances[from][msg.sender] = _allowances[from][msg.sender].sub(value);
-        __transfer(from, to, value);
+        _transfer(from, to, value);
         return true;
     }
 
     // Internal transfer function
-    function __transfer(address _from, address _to, uint256 _value) private {
+    function _transfer(address _from, address _to, uint256 _value) private {
         require(_balances[_from] >= _value, 'BalanceErr');
         require(_balances[_to] + _value >= _balances[_to], 'BalanceErr');
         _balances[_from] =_balances[_from].sub(_value);
@@ -175,14 +176,14 @@ contract Pool is iBEP20 {
     }
     // Burn supply
     function burn(uint256 amount) public virtual {
-        __burn(msg.sender, amount);
+        _burn(msg.sender, amount);
     }
     function burnFrom(address from, uint256 value) public virtual override {
         require(value <= _allowances[from][msg.sender], 'AllowanceErr');
         _allowances[from][msg.sender] = _allowances[from][msg.sender].sub(value);
-        __burn(from, value);
+        _burn(from, value);
     }
-    function __burn(address account, uint256 amount) internal virtual {
+    function _burn(address account, uint256 amount) internal virtual {
         _balances[account] = _balances[account].sub(amount, "BalanceErr");
         totalSupply = totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
@@ -190,24 +191,27 @@ contract Pool is iBEP20 {
 
 
     //==================================================================================//
-    // Extended Asset Functions
+    // Asset Movement Functions
 
     // TransferTo function
     function transferTo(address recipient, uint256 amount) public returns (bool) {
-        __transfer(tx.origin, recipient, amount);
+        _transfer(tx.origin, recipient, amount);
         return true;
     }
 
+    // Sync internal balances to actual
     function sync() public {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
     }
 
+    // Add liquidity for self
     function addLiquidity() public returns(uint liquidityUnits){
         liquidityUnits = addLiquidityForMember(msg.sender);
         return liquidityUnits;
     }
 
+    // Add liquidity for a member
     function addLiquidityForMember(address member) public returns(uint liquidityUnits){
         uint256 _actualInputBase = _getAddedBaseAmount();
         uint256 _actualInputToken = _getAddedTokenAmount();
@@ -223,16 +227,13 @@ contract Pool is iBEP20 {
         return removeLiquidityForMember(msg.sender);
     } 
 
-    // Remove Liquidity
+    // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
         uint units = balanceOf(address(this));
-        uint _baseAmount; uint _tokenAmount;
-        _baseAmount = iBEP20(BASE).balanceOf(address(this));
-        _tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
-        outputBase = _DAO().UTILS().calcShare(units, totalSupply, _baseAmount);
-        outputToken = _DAO().UTILS().calcShare(units, totalSupply, _tokenAmount);
+        outputBase = _DAO().UTILS().calcLiquidityShare(units, BASE, address(this), member);
+        outputToken = _DAO().UTILS().calcLiquidityShare(units, TOKEN, address(this), member);
         _decrementPoolBalances(outputBase, outputToken);
-        __burn(address(this), units);
+        _burn(address(this), units);
         iBEP20(BASE).transfer(member, outputBase);
         iBEP20(TOKEN).transfer(member, outputToken);
         emit RemoveLiquidity(member, outputBase, outputToken, units);
@@ -303,12 +304,6 @@ contract Pool is iBEP20 {
     //==================================================================================//
     // Data Model
 
-    // Set internal balances
-    function _setPoolBalances(uint _baseAmount, uint _tokenAmount, uint _baseAmountPooled, uint _tokenAmountPooled) internal {
-        baseAmountPooled = _baseAmountPooled;
-        tokenAmountPooled = _tokenAmountPooled; 
-        __setPool(_baseAmount, _tokenAmount);
-    }
 
     // Increment internal balances
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
@@ -318,9 +313,6 @@ contract Pool is iBEP20 {
         tokenAmountPooled += _tokenAmount; 
     }
     function _setPoolAmounts(uint256 _baseAmount, uint256 _tokenAmount) internal  {
-        __setPool(_baseAmount, _tokenAmount); 
-    }
-    function __setPool(uint256 _baseAmount, uint256 _tokenAmount) internal  {
         baseAmount = _baseAmount;
         tokenAmount = _tokenAmount; 
     }
@@ -331,9 +323,6 @@ contract Pool is iBEP20 {
         uint _removedToken = _DAO().UTILS().calcShare(_tokenAmount, tokenAmount, tokenAmountPooled);
         baseAmountPooled = baseAmountPooled.sub(_removedBase);
         tokenAmountPooled = tokenAmountPooled.sub(_removedToken); 
-        __decrementPool(_baseAmount, _tokenAmount); 
-    }
-    function __decrementPool(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount = baseAmount.sub(_baseAmount);
         tokenAmount = tokenAmount.sub(_tokenAmount); 
     }

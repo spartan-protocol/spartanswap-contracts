@@ -11,65 +11,68 @@ The Spartan Protocol can also facilitate the following features:
 
 The following contracts manage the protocol:
 
-1) BASE Contract (Sparta Token Contract)
-2) DAO Contract (Manages Governance)
-3) UTILS Contract (Stateless contract that manages core math and helper functions)
-4) ROUTER Contract (Manages how liquidity is moved around the system)
-5) POOL Contract (Holds funds and state for each pool)
+1) `BASE` Contract (Sparta Token Contract)
+2) `DAO` Contract (Manages Governance)
+3) `UTILS` Contract (Stateless contract that manages core math and helper functions)
+4) `ROUTER` Contract (Manages how liquidity is moved around the system)
+5) `POOL` Contract (Holds funds and state for each pool)
 
-BASE is the source-of-truth for the location of the DAO, as well as minting and distributing incentives. 
+`BASE` is the source-of-truth for the location of the `DAO`, as well as minting and distributing incentives. 
 
-DAO is the source-of-truth for the location of the ROUTER and UTILS, as well as distributing rewards and managing how the system upgrades itself. It has goverance features that use a member's claim on BASE in each pool to attribute voting weight. The DAO can upgrade itself, as well as amending some features in the BASE contract.
+DAO is the source-of-truth for the location of the `ROUTER` and `UTILS`, as well as distributing rewards and managing how the system upgrades itself. It has goverance features that use a member's claim on `BASE` in each pool to attribute voting weight. The `DAO` can upgrade itself, as well as amending some features in the `BASE` contract.
 
-UTILS contains utility and math functions, and can be upgraded by the DAO. 
+`UTILS` contains utility and math functions, and can be upgraded by the `DAO`. 
 
-ROUTER contains state and business logic for moving funds, and can be upgraded by the DAO. Users interact with the ROUTER.
+`ROUTER` contains state and business logic for moving funds, and can be upgraded by the DAO. Users interact with the `ROUTER`.
 
-POOL holds the funds for each pool, as well as state. It asks the DAO for the location of ROUTER, and will only let the ROUTER call into it. 
+POOL holds the funds for each pool, as well as state. It asks the ``DAO`` for the location of `ROUTER`, and will only let the `ROUTER` call into it. 
 
 
 ## Deploy Process
 
-The contracts are to be deployed and then connected together. The DEPLOYER (EOA) has initial DAO privileges in order to manage the process. DEPLOYER should be purged when the system is stable. 
+The contracts are to be deployed and then connected together. The DEPLOYER (EOA) has initial `DAO` privileges in order to manage the process. DEPLOYER should be purged when the system is stable. 
 
 1) Deploy `SPARTA`
 2) Deploy `UTILS(sparta.address)`
 3) Deploy `DAO(sparta.address)`
-4) Deploy `ROUTER(sparta.address)`
+4) Deploy `ROUTER(sparta.address, wbnb.address)`
 5) Set `dao.address` in SPARTA
-6) Set `router.address, utils.address` in DAO
+6) Set `router.address, utils.address` in `DAO`
 
-* SPARTA is the BASE currency.
-* UTILS needs to know SPARTA (to ask for DAO)
-* DAO needs to know SPARTA (to manage), ROUTER and UTILS
-* ROUTER needs to know SPARTA to ask for DAO, to ask for UTILS
-* POOL needs to know DAO to ask for ROUTER
+* SPARTA is the `BASE` currency.
+* `UTILS` needs to know SPARTA (to ask for `DAO`)
+* `DAO` needs to know SPARTA (to manage), `ROUTER` and `UTILS`
+* `ROUTER` needs to know SPARTA to ask for `DAO`, to ask for `UTILS`
+* `POOL` needs to know `DAO` to ask for `UTILS`
 
 ## Upgrade Process
 
 Goverance should pass a proposal electing a new address. 
 
 ### UTILS
-Once passed, the DAO will know the new UTILS contract, and return it when queried (by the ROUTER).
+Once passed, the `DAO` will know the new `UTILS` contract, and return it when queried (by the `ROUTER`).
+
+**Critical - the new `UTILS` contract must be inspected for malicious code before allowing an upgrade.**
 
 ### ROUTER
-Once passed, the DAO will know the new ROUTER contract, and return it when queried (by the POOL). 
-Since the ROUTER holds state, the new ROUTER may or may not need state migrated in from the old ROUTER. The state includes:
+Once passed, the `DAO` will know the new `ROUTER` contract, and return it when queried.
+
+Since the `ROUTER` holds state, the new `ROUTER` may or may not need state migrated in from the old `ROUTER`. The state includes:
 * array of tokens listed (registry - critical)
 * metrics for the protocol (read-only - not critical)
 
 The new Router may instead want to query the old router for the registry, in addition to managing its own. 
 
 ### DAO
-Once passed, the DAO will tell the BASE contract of the new DAO. POOLS will now know, because it asks BASE for the location. 
+Once passed, the `DAO` will tell the `BASE` contract of the new `DAO`. `POOL` will now know, because it asks `BASE` for the location. 
 
 ### Incentive Address
-This address receives emissions from BASE. The DAO can set a new incentive address. 
+This address receives emissions from `BASE`. The `DAO` can set a new incentive address. 
 
 
 ## Governance
 
-Members firstly lock SPARTAN liquidity tokens, which allow a claim on BASE in each pool to be detected and summed. Importantly, goverance is on-market and liquid - whilst locking another member can purchase BASE off existing members and lock. This reduces existing member weight. 
+Members firstly lock SPARTAN liquidity tokens, which allow a claim on `BASE` in each pool to be detected and summed. Importantly, goverance is on-market and liquid - whilst locking another member can purchase `BASE` off existing members and lock. This reduces existing member weight. 
 
 Proposals are a 3-step process:
 
@@ -85,10 +88,10 @@ Minority: 16.5%
 
 ### Safety
 
-Proposals that upgrade critical infrastructure require Majority, all others require Quorum:
-* Upgrade DAO
+Proposals that upgrade critical infrastructure require Majority, (all others require Quorum):
+* Upgrade `DAO`
+* Upgrade `UTILS`
 * Upgrade Incentive Address
-* Upgrade ROUTER
 
 During the Cool-Off period, a competing proposal that has Minority vote-weight, can call in and veto a finalising Quorum proposal. A scenario is as follows:
 
@@ -97,9 +100,9 @@ During the Cool-Off period, a competing proposal that has Minority vote-weight, 
 3) The competing proposal is not effected, it also needs to achieve Quorum first. 
 
 ### DAO
-* Change DAO
-* Change ROUTER
-* Change UTILS
+* Change `DAO`
+* Change `ROUTER`
+* Change `UTILS`
 * Change Incentive Address
 * List new asset (not past 100m emitted, less than 10m allocation)
 * Delist existing asset
@@ -112,47 +115,49 @@ During the Cool-Off period, a competing proposal that has Minority vote-weight, 
 
 ## Incentive Design
 
-The BASE contract mints a certain number of coins every era and sends them to the Incentive Address, which can also be the DAO. 
+The `BASE` contract mints a certain number of coins every era and sends them to the Incentive Address, which can also be the `DAO`. 
 
 The mint amount is set by `(300m-totalSupply)/emissionCurve` which will mint a slowly decreasing amount each day. In future, a burn feature can reduce total supply, thereby stabilising emissions. 
 
-Users lock LP tokens in the DAO and can call `harvest()` as often as they want, although since the reserve in the DAO depletes, it favours those who call it more frequently. If the `erasToEarn` is set to 30 days, then after the final drop, it will take 30 days for all rewards to be consumed. However, since new rewards are sent there every day, the velocity of emissions should be fairly constant. 
+Users lock LP tokens in the `DAO` and can call `harvest()` as often as they want, although since the reserve in the `DAO` depletes, it favours those who call it more frequently. If the `erasToEarn` is set to 30 days, then after the final drop, it will take 30 days for all rewards to be consumed. However, since new rewards are sent there every day, the velocity of emissions should be fairly constant. 
 
 ## Router Design
 
-The ROUTER facilitates funds movement from users into pools, containing business logic for creating pools, adding/removing liquidity, and swapping. It calls the UTILS contract for arithmetic functions. 
+The `ROUTER` facilitates funds movement from users into pools, containing business logic for creating pools, adding/removing liquidity, and swapping. It wraps the underlying `POOL` contract. Token to Token swaps can only be done via the Router. 
 
-The ROUTER also tracks metrics, which can in future be used to distribute rewards in a more novel way, such as based on volume or average fees earned, per pool. 
+The Router does not hold funds. 
 
-The ROUTER handles BNB, so each POOL is a payable contract. 
-
-The ROUTER deploys a new POOL contract each time a new POOL is created, and maintains a registry of listed tokens. 
+* The `ROUTER` also tracks metrics, which can in future be used to distribute rewards in a more novel way, such as based on volume or average fees earned, per pool. 
+* The `ROUTER` handles BNB by converting it into WrappedBNB first. 
+* The `ROUTER` deploys a new `POOL` contract each time a new `POOL` is created, and maintains a registry of listed tokens. 
 
 ## Pool Design
 
-The pool itself does not contain any logic apart from being a BEP20 mintable/burnable contract and holds state. The ROUTER can update state and gives itself permission to spend any amount of funds from the POOL. 
+The pool contains logic and holds funds and state. The only way to get funds out of the `POOL` is to send it funds first (assets or liquidity tokens).
 
-**Changing the ROUTER to a malicious one could cause the loss of all funds in the system.**
+* Liquidity is added by sending the `POOL` funds, then calling `addLiquidity()`. It will find all spare funds on its address and attribute that to the liquidity provider, calling `mint()`.
+* Liquidity is removed by sending liquidity tokens to the `POOL` then calling `removeLiquidity()`. It will find all spare tokens on its address, burn them, then send the liquidity provider their fair share of funds. 
+* A Swap is executed by sending the `POOL` funds, then calling `swap(token)`. It finds all spare funds on its address, and calculates the swap output in the other token, then sending that out. 
+* A `sync()` function is added that re-syncs the recorded token amounts on the `POOL` address.
 
-The pool also has a function that can dividend funds without being associated with a swap/add/remove. These funds can be claimed by all LPs in the pool, and thus can be used for paying dividends of SPARTA in a future update. 
-
-Spartan Swap  has the following intended design:
-
-Liquidity Providers
-* Add liquidity in any amount from any pool
-* Move liquidity between pools (remove from one, add to another)
-* Withdraw partial or full capital from any pool, symmetrically or asymmetrically
-
-Swapping
-* Swap from any token to any token
-* Buy an asset
-* Sell an asset
+** The pool asks the `UTILS` contract for logic relating to adding/removing liquidity, as well as swapping, so in future different logic could be added. However an upgrade to a malicous `UTILS` contract could compromise funds in the system.** 
 
 ## Utils Design
 
 Utils works as both a web3 aggregrator (one call that makes several EVM calls, returning objects), as well as the core arithmetic of the system. 
 
 It is also used to retrieve state from the router, tokens and pools. DApps should read from Utils, write to Router. 
+
+The `UTILS` contract has the following:
+
+* Aggregrating token details
+* Aggregrating sparta burn details
+* Getting all tokens and pools in the system
+* Getting pool data
+* Arithmetic relating to pools and members
+* Core math relating to calculating swaps and liquidity provisioning
+
+The `UTILS` contract can be upgraded, but upgrading it to a malicious contract can compromise funds in the system by changing logic to favour an attacker. 
 
 
 ## Future Features

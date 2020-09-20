@@ -375,6 +375,14 @@ contract Utils {
         return calcShare(bp, 10000, total);
     }
 
+    function calcLiquidityShare(uint units, address token, address pool, address member) public view returns (uint share){
+        // share = amount * part/total
+        // address pool = getPool(token);
+        uint amount = iBEP20(token).balanceOf(pool);
+        uint totalSupply = iBEP20(pool).totalSupply();
+        return(amount.mul(units)).div(totalSupply);
+    }
+
     function calcShare(uint part, uint total, uint amount) public pure returns (uint share){
         // share = amount * part/total
         return(amount.mul(part)).div(total);
