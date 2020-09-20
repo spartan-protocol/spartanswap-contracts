@@ -24,7 +24,7 @@ var base; var poolWBNB; var poolTKN1; var utils; var token1; var token2;
 var pool; var router; var Dao; var wbnb
 var acc0; var acc1; var acc2; var acc3;
 
-contract('ADD LIQUIDITY', function (accounts) {
+contract('SWAP', function (accounts) {
 
     constructor(accounts)
     wrapBNB()
