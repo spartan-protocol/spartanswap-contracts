@@ -163,7 +163,7 @@ contract Pool is iBEP20 {
     function _transfer(address _from, address _to, uint256 _value) private {
         require(_balances[_from] >= _value, 'BalanceErr');
         require(_balances[_to] + _value >= _balances[_to], 'BalanceErr');
-        _balances[_from] =_balances[_from].sub(_value);
+        _balances[_from] -= _value;
         _balances[_to] += _value;
         emit Transfer(_from, _to, _value);
     }
@@ -180,7 +180,7 @@ contract Pool is iBEP20 {
     }
     function burnFrom(address from, uint256 value) public virtual override {
         require(value <= _allowances[from][msg.sender], 'AllowanceErr');
-        _allowances[from][msg.sender] = _allowances[from][msg.sender].sub(value);
+        _allowances[from][msg.sender] -= value;
         _burn(from, value);
     }
     function _burn(address account, uint256 amount) internal virtual {
@@ -482,12 +482,14 @@ contract Router {
             // sell to BASE
             iBEP20(token).transfer(_pool, _outputToken);
             (uint _baseBought, uint _fee) = Pool(_pool).swap(token);
+            totalFees += _fee;
             outputAmount = _baseBought.add(_outputBase);
             _handleTransferOut(BASE, outputAmount, msg.sender);
         } else {
             // buy to TOKEN
             iBEP20(BASE).transfer(_pool, _outputToken);
             (uint _tokenBought, uint _fee) = Pool(_pool).swap(BASE);
+            totalFees += _DAO().UTILS().calcValueInBase(token, _fee);
             outputAmount = _tokenBought.add(_outputToken);
             _handleTransferOut(token, outputAmount, msg.sender);
         }
