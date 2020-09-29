@@ -504,10 +504,11 @@ contract Router {
     }
     function buyTo(uint amount, address token, address member) public returns (uint outputAmount, uint fee) {
         require(token != BASE, "TokenTypeErr");
-        if(token == address(0)){token = WBNB;} // Handle BNB
+        address _token = token;
+        if(token == address(0)){_token = WBNB;} // Handle BNB
         address _pool = getPool(token);
         uint _actualAmount = _handleTransferIn(BASE, amount, _pool);
-        (outputAmount, fee) = Pool(_pool).swap(token);
+        (outputAmount, fee) = Pool(_pool).swap(_token);
         _handleTransferOut(token, outputAmount, member);
         totalPooled += _actualAmount;
         totalVolume += _actualAmount;
@@ -546,8 +547,9 @@ contract Router {
             address _poolTo = getPool(toToken);
             (uint256 _yy, uint256 _feey) = sellTo(inputAmount, fromToken, _poolTo);
             totalVolume += _yy; totalFees += _feey;
-            if(toToken == address(0)){toToken = WBNB;} // Handle BNB
-            (uint _zz, uint _feez) = Pool(_poolTo).swap(toToken);
+            address _toToken = toToken;
+            if(toToken == address(0)){_toToken = WBNB;} // Handle BNB
+            (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
             _handleTransferOut(toToken, _zz, member);
             totalFees += _DAO().UTILS().calcValueInBase(toToken, _feez);
             _transferAmount = _yy; outputAmount = _zz; 

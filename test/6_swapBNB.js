@@ -176,6 +176,7 @@ async function buyBNB(acc, x) {
 
         let baseStart = _.getBN(await base.balanceOf(acc))
         let tokenStart = _.getBN(await wbnb.balanceOf(acc))
+        let bnbStart = _.getBN(await web3.eth.getBalance(acc))
 
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
@@ -203,7 +204,8 @@ async function buyBNB(acc, x) {
         assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(Y.minus(y)), 'wbnb balance')
         
         assert.equal(_.BN2Str(await base.balanceOf(acc)), _.BN2Str(baseStart.minus(x)), 'base balance')
-        assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(tokenStart.plus(y)), 'wbnb balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(0), 'wbnb balance')
+        assert.isAtLeast(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(bnbStart.plus(y).minus(3*10**15)), 'bnb balance')
         // await help.logPool(utils, token, 'WBNB')
     })
 }
@@ -292,6 +294,7 @@ async function swapBNB(acc, x) {
     it(`It should swap from BASE to BNB from ${acc}`, async () => {
         let baseStart = _.getBN(await base.balanceOf(acc))
         let tokenStart = _.getBN(await wbnb.balanceOf(acc))
+        let bnbStart = _.getBN(await web3.eth.getBalance(acc))
 
         let fromToken = base.address
         let toToken = _.BNB
@@ -319,7 +322,8 @@ async function swapBNB(acc, x) {
         assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(Y.minus(y)), 'wbnb balance')
         
         assert.equal(_.BN2Str(await base.balanceOf(acc)), _.BN2Str(baseStart.minus(x)), 'base balance')
-        assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(tokenStart.plus(y)), 'wbnb balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(0), 'wbnb balance')
+        assert.isAtLeast(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(bnbStart.plus(y).minus(3*10**15)), 'bnb balance')
         //await help.logPool(utils, _.BNB, 'BNB')
     })
 }
