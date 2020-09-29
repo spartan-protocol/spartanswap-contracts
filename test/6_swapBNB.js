@@ -40,6 +40,8 @@ contract('BNB LOGIC', function (accounts) {
     addLiquidityTKN1(acc1, _.BN2Str(_.one * 100), _.BN2Str(_.one * 100))
     swapBNBtoTKN1(acc0, _.BN2Str(_.one * 10))
 
+    removeLiquidityBNB(10000, acc0)
+
 })
 
 
@@ -373,6 +375,57 @@ async function swapBNBtoTKN1(acc, x) {
         // assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(wbnbStart.minus(x)), 'wbnb balance')
         assert.equal(_.BN2Str(await token1.balanceOf(acc)), _.BN2Str(tokenStart.plus(z)), 'token1 balance')
         //await help.logPool(utils, _.BNB, 'BNB')
+    })
+}
+
+async function removeLiquidityBNB(bp, acc) {
+
+    it(`It should removeLiquidity BNB for ${acc}`, async () => {
+        let token = _.BNB
+        let poolData = await utils.getPoolData(token);
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+
+        let baseStart = _.getBN(await base.balanceOf(acc))
+        let tokenStart = _.getBN(await wbnb.balanceOf(acc))
+        let bnbStart = _.getBN(await web3.eth.getBalance(acc))
+
+        let totalUnits = _.getBN((await poolWBNB.totalSupply()))
+        let addLiquidityUnits = _.getBN(await poolWBNB.balanceOf(acc))
+        let share = (addLiquidityUnits.times(bp)).div(10000)
+        let b = _.floorBN((B.times(share)).div(totalUnits))
+        let t = _.floorBN((T.times(share)).div(totalUnits))
+        // let memberData = (await utils.getMemberData(token, acc))
+        // let baseAmount = _.getBN(memberData.baseAmountPooled)
+        // let tokenAmount = _.getBN(memberData.tokenAmountPooled)
+        // let vs = _.floorBN((baseAmount.times(bp)).div(10000))
+        // let aa = _.floorBN((tokenAmount.times(bp)).div(10000))
+        //console.log(_.BN2Str(totalUnits), _.BN2Str(liquidityUnitss), _.BN2Str(share), _.BN2Str(b), _.BN2Str(t))
+        
+        let tx = await router.removeLiquidity(bp, token, { from: acc})
+        poolData = await utils.getPoolData(token);
+        // //console.log(tx.receipt.logs)
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(_.floorBN(b)), 'outputBase')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(_.floorBN(t)), 'outputToken')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
+
+        assert.equal(_.BN2Str((await poolWBNB.totalSupply())), totalUnits.minus(share), 'poolUnits')
+
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Int(B.minus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.minus(t)))
+        // assert.equal(_.BN2Str(poolData.baseAmountPooled), _.BN2Int(B.minus(b)))
+        // assert.equal(_.BN2Str(poolData.tokenAmountPooled), _.BN2Str(T.minus(t)))
+        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Int(B.minus(b)), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(T.minus(t)), 'wbnb balance')
+
+        // let memberData2 = (await utils.getMemberData(token, acc))
+        // assert.equal(_.BN2Str((memberData2.baseAmountPooled)), _.BN2Str(baseAmount.minus(vs)), '0')
+        // assert.equal(_.BN2Str((memberData2.tokenAmountPooled)), _.BN2Str(tokenAmount.minus(aa)), '0')
+        assert.equal(_.BN2Str(await poolWBNB.balanceOf(acc)), _.BN2Str(addLiquidityUnits.minus(share)), 'addLiquidityrUnits')
+
+        assert.equal(_.BN2Str(await base.balanceOf(acc)), _.BN2Str(baseStart.plus(b)), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(tokenStart), 'wbnb balance')
+        assert.isAtLeast(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(bnbStart.plus(t).minus(3*10**15)), 'bnb balance')
     })
 }
 
