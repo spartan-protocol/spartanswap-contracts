@@ -458,7 +458,9 @@ contract Router {
         address _pool = getPool(token);
         address _member = msg.sender;
         Pool(_pool).transferTo(_pool, units);
-        (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
+        (outputBase, outputToken) = Pool(_pool).removeLiquidity();
+        _handleTransferOut(token, outputToken, _member);
+        _handleTransferOut(BASE, outputBase, _member);
         totalPooled = totalPooled.sub(outputBase);
         removeLiquidityTx += 1;
         return (outputBase, outputToken);
