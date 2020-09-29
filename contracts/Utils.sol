@@ -164,7 +164,7 @@ contract Utils {
             tokenDetails.symbol = 'BNB';
             tokenDetails.decimals = 18;
             tokenDetails.totalSupply = 100000000 * one;
-            tokenDetails.balance = msg.sender.balance;
+            tokenDetails.balance = member.balance;
         } else {
             tokenDetails.name = iBEP20(token).name();
             tokenDetails.symbol = iBEP20(token).symbol();
