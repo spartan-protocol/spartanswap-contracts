@@ -350,8 +350,8 @@ contract Router {
     uint public totalPooled; 
     uint public totalVolume;
     uint public totalFees;
-    uint public removeTx;
-    uint public addTx;
+    uint public removeLiquidityTx;
+    uint public addLiquidityTx;
     uint public swapTx;
 
     address[] public arrayTokens;
@@ -386,8 +386,8 @@ contract Router {
         totalPooled = Router(oldRouter).totalPooled();
         totalVolume = Router(oldRouter).totalVolume();
         totalFees = Router(oldRouter).totalFees();
-        removeTx = Router(oldRouter).removeTx();
-        addTx = Router(oldRouter).addTx();
+        removeLiquidityTx = Router(oldRouter).removeLiquidityTx();
+        addLiquidityTx = Router(oldRouter).addLiquidityTx();
         swapTx = Router(oldRouter).swapTx();
     }
 
@@ -420,7 +420,7 @@ contract Router {
         arrayTokens.push(_token);
         isPool[pool] = true;
         totalPooled += _actualInputBase;
-        addTx += 1;
+        addLiquidityTx += 1;
         Pool(pool).addLiquidityForMember(msg.sender);
         emit NewPool(token, pool, now);
         return pool;
@@ -441,7 +441,7 @@ contract Router {
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         _handleTransferIn(token, inputToken, pool);
         totalPooled += _actualInputBase;
-        addTx += 1;
+        addLiquidityTx += 1;
         units = Pool(pool).addLiquidityForMember(member);
         return units;
     }
@@ -460,7 +460,7 @@ contract Router {
         Pool(_pool).transferTo(_pool, units);
         (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
         totalPooled = totalPooled.sub(outputBase);
-        removeTx += 1;
+        removeLiquidityTx += 1;
         return (outputBase, outputToken);
     }
 
@@ -477,7 +477,7 @@ contract Router {
         Pool(_pool).transferTo(_pool, units);
         (uint _outputBase, uint _outputToken) = Pool(_pool).removeLiquidity();
         totalPooled = totalPooled.sub(_outputBase);
-        removeTx += 1;
+        removeLiquidityTx += 1;
         if(toBase){
             // sell to BASE
             iBEP20(token).transfer(_pool, _outputToken);
@@ -507,7 +507,8 @@ contract Router {
         if(token == address(0)){token = WBNB;} // Handle BNB
         address _pool = getPool(token);
         uint _actualAmount = _handleTransferIn(BASE, amount, _pool);
-        (outputAmount, fee) = Pool(_pool).swapTo(token, member);
+        (outputAmount, fee) = Pool(_pool).swap(token);
+        _handleTransferOut(token, outputAmount, member);
         totalPooled += _actualAmount;
         totalVolume += _actualAmount;
         totalFees += _DAO().UTILS().calcValueInBase(token, fee);
@@ -546,7 +547,8 @@ contract Router {
             (uint256 _yy, uint256 _feey) = sellTo(inputAmount, fromToken, _poolTo);
             totalVolume += _yy; totalFees += _feey;
             if(toToken == address(0)){toToken = WBNB;} // Handle BNB
-            (uint _zz, uint _feez) = Pool(_poolTo).swapTo(toToken, member);
+            (uint _zz, uint _feez) = Pool(_poolTo).swap(toToken);
+            _handleTransferOut(toToken, _zz, member);
             totalFees += _DAO().UTILS().calcValueInBase(toToken, _feez);
             _transferAmount = _yy; outputAmount = _zz; 
             fee = _feez + _DAO().UTILS().calcValueInToken(toToken, _feey);
