@@ -160,7 +160,7 @@ contract Utils {
 
     function getTokenDetailsWithMember(address token, address member) public view returns (TokenDetails memory tokenDetails){
         if(token == address(0)){
-            tokenDetails.name = 'Binance Chain Token';
+            tokenDetails.name = 'Binance Coin';
             tokenDetails.symbol = 'BNB';
             tokenDetails.decimals = 18;
             tokenDetails.totalSupply = 100000000 * one;

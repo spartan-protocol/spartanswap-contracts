@@ -27,6 +27,14 @@ DAO is the source-of-truth for the location of the `ROUTER` and `UTILS`, as well
 
 `POOL` holds the funds for each pool, as well as state. It asks the `DAO` for the location of `UTILS` which has core math relating to how swaps and liquidity is provisioned, such as calculating fees.  
 
+## Addresses
+
+BASE - 0xE4Ae305ebE1AbE663f261Bc00534067C80ad677C
+UTILS - 0xCaF0366aF95E8A03E269E52DdB3DbB8a00295F91
+DAO - 0x04e283c9350Bab8A1243ccfc1dd9BF1Ab72dF4f0
+ROUTER - 0xAfCe5dA566377D293a8e681cf2824f7Dc0C733C6
+
+WBNB - 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
 
 ## Deploy Process
 
