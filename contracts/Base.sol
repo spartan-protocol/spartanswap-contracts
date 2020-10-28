@@ -293,7 +293,6 @@ contract Base is iBEP20 {
     //======================================CLAIM========================================//
     // Anyone to Claim
     function claim(address asset, uint amount) public payable {
-        
         uint _claim = amount;
         if(mapAsset_claimed[asset].add(amount) > mapAsset_allocation[asset]){
             _claim = mapAsset_allocation[asset].sub(mapAsset_claimed[asset]);
