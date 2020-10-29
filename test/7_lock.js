@@ -8,7 +8,7 @@ const math = require('./math.js');
 const help = require('./helper.js');
 const { expect } = require("chai");
 
-var BASE = artifacts.require("./BaseMinted.sol");
+var BASE = artifacts.require("./Base.sol");
 var DAO = artifacts.require("./Dao.sol");
 var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
@@ -34,10 +34,10 @@ contract('LOCK', function (accounts) {
     //claim lp tokens
     checkLockSupply()
     checkListed()
+    burnLock()
     createPoolTKN1()
-    addLiquidityTKN1(acc1, _.BN2Str(_.one * 100), _.BN2Str(_.one * 100))
-     burnLock()
-     depositTKN()
+    addLiquidityTKN1(acc1)
+    depositTKN()
 })
 
 //################################################################
@@ -50,27 +50,30 @@ function constructor(accounts) {
         utils = await UTILS.new(base.address)
         Dao = await DAO.new(base.address)
         router = await ROUTER.new(base.address, wbnb.address)
-        lock = await LOCK.new(base.address, router.address, wbnb.address)
-
-        await base.listAsset(lock.address, _.BN2Str(5000000 * _.one),_.BN2Str(_.one) )
-        
+        lock = await LOCK.new(base.address, router.address)
+        token1 = await TOKEN1.new();
+        await base.listAsset(lock.address, _.BN2Str(5000000 * _.one),_.BN2Str(_.one) ) // list lock
+        await base.listAsset(token1.address, _.BN2Str(500000 * _.one),_.BN2Str(_.one) ) //list token 1
+        console.log(lock.address)
         await base.changeDAO(Dao.address)
         await Dao.setGenesisAddresses(router.address, utils.address)
 
-        token1 = await TOKEN1.new();
         let supply = await token1.totalSupply()
-        await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
-        await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
-        await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await token1.transfer(acc1, _.getBN(_.BN2Int(supply)/4)) // give acc1 token1 to burn
+        await token1.approve(base.address, supply, {from:acc1})//approve base to burn token1 from acc1
+        await base.claim(token1.address, _.BN2Str(_.one), {from: acc1}) // burn 1 token1 to get sparta
+        //console.log(_.BN2Str(await base.balanceOf(acc1))/_.one)
 
-        await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
-        await token1.transfer(lock.address, _.getBN(_.BN2Str(100000 * _.one)))
-        await token1.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
-        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await token1.approve(router.address, supply, {from:acc1}) // approve router to add token1
+        await base.approve(router.address, supply, {from:acc1}) //approve router to add base
+
+        await token1.approve(lock.address, supply, {from:acc1}) // approve lock 
+        await base.approve(lock.address, supply, {from:acc1})
+        await base.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc1})
+        await token1.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc1})
+
+        
+        
     });
 }
 
@@ -107,13 +110,13 @@ async function burnLock(){
 
 async function createPoolTKN1() {
     it("It should deploy TKN1 Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.BN2Str(_.one), token1.address)
-        await router.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one), token1.address)
-        poolTKN1 = await POOL.at(_pool)
+        var _pool = await router.createPool.call(_.BN2Str(_.one * 100), _.BN2Str(_.one), token1.address, {from:acc1})
+        await router.createPool(_.BN2Str(_.one * 100), _.BN2Str(_.one), token1.address, {from:acc1})
+        poolTKN1 = await POOL.at(_pool,{from:acc1})
         //console.log(`Pools: ${poolTKN1.address}`)
         const baseAddr = await poolTKN1.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(_.one * 10), 'base balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(_.one * 100), 'base balance')
         assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(_.one), 'token1 balance')
 
         let supply = await base.totalSupply()
@@ -122,29 +125,9 @@ async function createPoolTKN1() {
     })
 }
 
-async function addLiquidityTKN1(acc, x, y) {
-
-    it(`It should addLiquidity BNB from ${acc}`, async () => {
-        let token = token1.address
-        let poolData = await utils.getPoolData(token);
-        var X = _.getBN(poolData.baseAmount)
-        var Y = _.getBN(poolData.tokenAmount)
-        poolUnits = _.getBN((await poolTKN1.totalSupply()))
-        //console.log('start data', _.BN2Str(X), _.BN2Str(Y), _.BN2Str(poolUnits))
-
-        let units = math.calcLiquidityUnits(x, X, y, Y, poolUnits)
-        // console.log(_.BN2Str(units), _.BN2Str(x), _.BN2Str(X), _.BN2Str(y), _.BN2Str(Y), _.BN2Str(poolUnits))
-        
-        let tx = await router.addLiquidity(x, y, token, { from: acc})
-        poolData = await utils.getPoolData(token);
-        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(X.plus(x)))
-        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(Y.plus(y)))
-        assert.equal(_.BN2Str(poolData.baseAmountPooled), _.BN2Str(X.plus(x)))
-        assert.equal(_.BN2Str(poolData.tokenAmountPooled), _.BN2Str(Y.plus(y)))
-        assert.equal(_.BN2Str((await poolTKN1.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
-        assert.equal(_.BN2Str(await poolTKN1.balanceOf(acc)), _.BN2Str(units), 'units')
-        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(X.plus(x)), 'base balance')
-        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(Y.plus(y)), 'wbnb balance')
+async function addLiquidityTKN1(acc) {
+    it("It should add liquidity", async () => {
+        await router.addLiquidity(_.BN2Str(_.one * 1500), _.BN2Str(_.one * 200), token1.address, { from: acc})
     })
 }
 
@@ -154,16 +137,37 @@ async function depositTKN(){
         let tnk = token1.address
         let amount = _.BN2Str(_.one)
         let spartaAllocation = await utils.calcValueInBase(tnk,amount)
-        console.log(_.BN2Str(spartaAllocation/_.one))
-        let spartaBal = await base.balanceOf(lock.address)
-        let tokenBal = await token1.balanceOf(lock.address)
-        console.log(_.BN2Str(spartaBal)/_.one)
-        console.log(_.BN2Str(tokenBal)/_.one)
-        let tx = await lock.deposit(tnk, amount, { from: acc1})
+        // console.log(`sparta deposit allocation ${_.BN2Str(spartaAllocation)/_.one}`)
+        // console.log(`Acc1 ${acc1}`)
+        // console.log(`base ${base.address}`)
+         console.log(`router ${router.address}`)
+         console.log(`lock ${lock.address}`)
+        //console.log(`pool ${pool.address}`)
+
+        let rSPARTAAllowenceB = await (base.allowance(lock.address,router.address))
+        console.log( "ROUTER SPARTA ALLOWENCE BEFORE " + _.BN2Str(rSPARTAAllowenceB)/_.one)
+        let rTKNAllowenceB = await (token1.allowance(lock.address,router.address))
+        console.log( "ROUTER TOKEN ALLOWENCE BEFORE " + _.BN2Str(rTKNAllowenceB)/_.one)
+       
+       // let tx = await lock.deposit(tnk, amount, { from: acc1}) 
+       let tx = await lock.getFunds(tnk,{from:acc1})
+       await lock.getApproval(tnk,{from:acc1})
+        await lock.depositLiquidity(tnk, {from:acc1})
+
+        console.log(`lock sparta bal ${await base.balanceOf(lock.address)/_.one}`)
+        console.log(`lock token bal ${await token1.balanceOf(lock.address)/_.one}`)
+        console.log(`acc sparta bal ${await base.balanceOf(acc1)/_.one}`)
+        console.log(`acc token bal ${await token1.balanceOf(acc1)/_.one}`)
+        console.log(`router sparta bal ${await base.balanceOf(router.address)/_.one}`)
+        console.log(`router token bal ${await token1.balanceOf(router.address)/_.one}`)
+        console.log(`base sparta bal ${await base.balanceOf(base.address)/_.one}`)
+        console.log(`base token bal ${await token1.balanceOf(base.address)/_.one}`)
         
-
-
-
+        let rSPARTAAllowenceA = await (base.allowance(lock.address,router.address))
+        console.log( "ROUTER SPARTA ALLOWENCE  " + _.BN2Str(rSPARTAAllowenceA)/_.one)
+        let rTKNAllowenceA = await (token1.allowance(lock.address,router.address))
+        console.log( `ROUTER TOKEN ALLOWENCE  ${ _.BN2Str(rTKNAllowenceA)/_.one}`)
+        
     })
 }
 

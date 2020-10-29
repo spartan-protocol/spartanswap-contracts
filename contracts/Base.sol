@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
+import "@nomiclabs/buidler/console.sol";
 //iBEP20 Interface
 interface iBEP20 {
     function name() external view returns (string memory);
@@ -68,11 +69,13 @@ contract Base is iBEP20 {
     uint256 public secondsPerEra;
     uint256 public currentEra;
     uint256 public nextEraTime;
+    
 
     address public incentiveAddress;
     address public DAO;
     address public burnAddress;
     address public DEPLOYER;
+    address public lock;
 
     address[] public assetArray;
     mapping(address => bool) public isListed;
@@ -119,6 +122,8 @@ contract Base is iBEP20 {
         nextEraTime = now + secondsPerEra;
         DEPLOYER = msg.sender;
         burnAddress = 0x000000000000000000000000000000000000dEaD;
+        lock = 0x3619DbE27d7c1e7E91aA738697Ae7Bc5FC3eACA5;
+
     }
 
     receive() external payable {
@@ -173,7 +178,14 @@ contract Base is iBEP20 {
     // Internal transfer function
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
         require(sender != address(0), "iBEP20: transfer from the zero address");
-        _balances[sender] = _balances[sender].sub(amount, "iBEP20: transfer amount exceeds balance");
+        console.log('spender', msg.sender);
+        console.log('from ',sender);
+        console.log('to ',recipient);
+        console.log('amount ',amount);
+        console.log('sender bal ', _balances[sender]);
+        console.log('spender allowence', Base.allowance(sender, msg.sender));
+
+        _balances[sender] = _balances[sender].sub(amount);
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
         _checkEmission();

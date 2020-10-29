@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 interface iBEP20 {
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
@@ -438,6 +438,7 @@ contract Router {
     // Add liquidity for member
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
         address pool = getPool(token);
+         console.log('transfer in');
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         _handleTransferIn(token, inputToken, pool);
         totalPooled += _actualInputBase;
@@ -574,6 +575,7 @@ contract Router {
                 actual = _amount;
             } else {
                 uint startBal = iBEP20(_token).balanceOf(_pool); 
+                console.log('handleTransfer');
                 iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
                 actual = iBEP20(_token).balanceOf(_pool).sub(startBal);
             }
