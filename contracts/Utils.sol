@@ -436,6 +436,7 @@ contract Utils {
 
     function calcAsymmetricShare(uint u, uint U, uint A) public pure returns (uint share){
         // share = (u * U * (2 * A^2 - 2 * U * u + U^2))/U^3
+        // share = (u * A * (2 * U^2 - 2 * U * u + u^2))/U^3
         // (part1 * (part2 - part3 + part4)) / part5
         uint part1 = u.mul(A);
         uint part2 = U.mul(U).mul(2);

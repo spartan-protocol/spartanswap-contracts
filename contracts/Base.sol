@@ -178,14 +178,7 @@ contract Base is iBEP20 {
     // Internal transfer function
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
         require(sender != address(0), "iBEP20: transfer from the zero address");
-        console.log('spender', msg.sender);
-        console.log('from ',sender);
-        console.log('to ',recipient);
-        console.log('amount ',amount);
-        console.log('sender bal ', _balances[sender]);
-        console.log('spender allowence', Base.allowance(sender, msg.sender));
-
-        _balances[sender] = _balances[sender].sub(amount);
+        _balances[sender] = _balances[sender].sub(amount, "iBEP20: transfer amount exceeds balance");
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
         _checkEmission();
