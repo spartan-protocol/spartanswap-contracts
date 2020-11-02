@@ -14,30 +14,30 @@ var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
+var TOKEN2 = artifacts.require("./Token2.sol");
+var TOKEN3 = artifacts.require("./Token3.sol");
 var LOCK = artifacts.require("./Lock.sol");
 var WBNB = artifacts.require("./WBNB");
 var base;
 var utils; var router; var Dao;
 
 var acc0; var acc1; var acc2; var acc3; var poolTKN1;
-
+var start;
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
 contract('LOCK', function (accounts) {
     constructor(accounts)
-    //whitelist LOCK Token
-    //whitelist BNB Token
-    //add bnb sparta pool
-    //deposit 1 bnb
-    //claim lp tokens
     checkLockSupply()
     checkListed()
     burnLock()
     createPoolTKN1()
     addLiquidityTKN1(acc1)
-    depositTKN()
+    depositTKN(acc2)
+    depositTKN(acc2)
+    claimLP(acc2, 1000)
+    claimLP(acc2, 10000)
 })
 
 //################################################################
@@ -52,6 +52,8 @@ function constructor(accounts) {
         router = await ROUTER.new(base.address, wbnb.address)
         lock = await LOCK.new(base.address, router.address)
         token1 = await TOKEN1.new();
+        token3 = await TOKEN3.new();
+        token2 = await TOKEN2.new(token3.address);
         await base.listAsset(lock.address, _.BN2Str(5000000 * _.one),_.BN2Str(_.one) ) // list lock
         await base.listAsset(token1.address, _.BN2Str(500000 * _.one),_.BN2Str(2*_.one) ) //list token 1
       
@@ -148,49 +150,45 @@ async function addLiquidityTKN1(acc) {
     })
 }
 
-async function depositTKN(){
-    it("It should deposit lock asset ", async () => {
+async function depositTKN(acc){
+    it("It should deposit asset and receive half LP", async () => {
         let tnk = token1.address
         let amount = _.BN2Str(_.one)
         let spartaAllocation = await utils.calcValueInBase(tnk,amount)
-        // console.log(`sparta deposit allocation ${_.BN2Str(spartaAllocation)/_.one}`)
-        //  console.log(`Acc1 ${acc1}`)
-        // console.log(`base ${base.address}`)
-        //  console.log(`router ${router.address}`)
-        //  console.log(`lock ${lock.address}`)
-        //console.log(`pool ${pool.address}`)
-       
-        // let rSPARTAAllowenceB = await (base.allowance(lock.address,router.address))
-        // console.log( "ROUTER SPARTA ALLOWENCE BEFORE " + _.BN2Str(rSPARTAAllowenceB)/_.one)
-        // let rTKNAllowenceB = await (token1.allowance(lock.address,router.address))
-        // console.log( "ROUTER TOKEN ALLOWENCE BEFORE " + _.BN2Str(rTKNAllowenceB)/_.one)
-       
-       // let tx = await lock.deposit(tnk, amount, { from: acc1}) 
-       await lock.getFunds(tnk,{from:acc1})
-       await lock.getApproval(tnk,{from:acc1})
-      await lock.depositLiquidity(tnk,{from:acc1})
-       
-       
-   // let tx = await router.addLiquidity(spartaAllocation,amount, tnk, {from:acc1});
-    //    console.log(tx.logs)
-        // console.log(`lock sparta bal ${await base.balanceOf(lock.address)/_.one}`)
-        // console.log(`lock token bal ${await token1.balanceOf(lock.address)/_.one}`)
-        // console.log(`acc sparta bal ${await base.balanceOf(acc1)/_.one}`)
-        // console.log(`acc token bal ${await token1.balanceOf(acc1)/_.one}`)
-        // console.log(`router sparta bal ${await base.balanceOf(router.address)/_.one}`)
-        // console.log(`router token bal ${await token1.balanceOf(router.address)/_.one}`)
-        // console.log(`base sparta bal ${await base.balanceOf(base.address)/_.one}`)
-        // console.log(`base token bal ${await token1.balanceOf(base.address)/_.one}`)
-        
-        // let rSPARTAAllowenceA = await (base.allowance(lock.address,router.address))
-        // console.log( "ROUTER SPARTA ALLOWENCE  " + _.BN2Str(rSPARTAAllowenceA)/_.one)
-        // let rTKNAllowenceA = await (token1.allowance(lock.address,router.address))
-        // console.log( `ROUTER TOKEN ALLOWENCE  ${ _.BN2Str(rTKNAllowenceA)/_.one}`)
+        let poolData = await utils.getPoolData(tnk);
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+        poolUnits = _.getBN((await poolTKN1.totalSupply()))
+        let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
+        let unitsAdj = units.times(5000).div(10000)
+        let balBefore = _.getBN(await poolTKN1.balanceOf(acc))
+        await lock.deposit(token1.address, amount,{from:acc})
+        let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
+        assert.equal(_.BN2Str((await poolTKN1.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
+        assert.equal(_.BN2Str(_.floorBN(balBefore.plus(unitsAdj))), _.BN2Str(balAfter), 'lp tokens')
+        assert.equal(_.BN2Str((await lock.mapAddress_LockedLP(acc)).lockedLP), _.BN2Str(await poolTKN1.balanceOf(acc)), 'locked LP')
 
-        // spender 0xf784709d2317d872237c4bc22f867d1bae2913ab
-        // from  0x3619dbe27d7c1e7e91aa738697ae7bc5fc3eaca5
-        // to  0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7
     })
 }
+
+async function claimLP(acc, ms){
+    it("It should claim vesting lp", async () => {
+        let delay = await sleep(ms)
+        let now = _.getBN((new Date())/1000)
+        let lastTime = _.getBN((await lock.mapAddress_LockedLP(acc)).secondsSinceLastClaim)
+        let calcClaimable = _.getBN(await lock.calcClaimableLockedLP(acc))
+        let lockLPBefore = _.getBN((await lock.mapAddress_LockedLP(acc)).lockedLP)
+        assert.exists(_.BN2Str(lastTime.minus(now)))
+        assert.exists(_.BN2Str(calcClaimable))
+        let balBefore = _.BN2Int(await poolTKN1.balanceOf(acc))
+        await lock.claim(poolTKN1.address,{from:acc})
+        let lockLPAfter = _.BN2Int((await lock.mapAddress_LockedLP(acc)).lockedLP)
+        let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
+        assert.isAtLeast(_.BN2Int(balAfter.minus(calcClaimable)), balBefore)
+        assert.isAtLeast(_.BN2Int(lockLPBefore.minus(calcClaimable)), lockLPAfter)
+    })
+    
+}
+
 
 

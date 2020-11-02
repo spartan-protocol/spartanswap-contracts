@@ -20,12 +20,12 @@ interface iBASE {
     function DAO() external view returns (iDAO);
 }
 interface iROUTER {
-    function addLiquidityForMember(uint256 inputBase, uint256 inputToken, address token, address member) external view returns (uint256 units);
-    function addLiquidity(uint256 inputBase, uint256 inputToken, address token) external view returns (uint256 units);
+    function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
 }
 interface iUTILS {
     function calcValueInBaseWithPool(address pool, uint256 amount) external view returns (uint256 value);
     function calcValueInBase(address token, uint256 amount) external view returns (uint256 value);
+    function getPool(address token)external view returns (address value);
 }
 interface iDAO {
     function ROUTER() external view returns(iROUTER);
@@ -95,11 +95,14 @@ contract Lock is iBEP20 {
         symbol  = "LTKN";
         decimals = 18;
         totalSupply = 1 * (10 ** 18);
+        
          _balances[address(this)] = totalSupply;
         emit Transfer(address(0), address(this), totalSupply);
 
     }
-
+    function _DAO() internal view returns(iDAO) {
+        return iBASE(BASE).DAO();
+    }
     //========================================iBEP20=========================================//
     function balanceOf(address account) public view override returns (uint256) {
         return _balances[account];
@@ -160,61 +163,42 @@ contract Lock is iBEP20 {
         return true;
     }
 
-    function getFunds(address asset) public payable returns (bool success){
-        uint amount = 10*10**18; uint spartaAllocation = 10**18;
+     function deposit(address asset, uint amount) public payable returns (bool success) {
+        require(amount > 0, 'must get asset');
+        if(asset == address(0)){
+            require(msg.value > 0, 'get bnb');
+        }
+        uint spartaAllocation; uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset);
+        spartaAllocation = _DAO().UTILS().calcValueInBase(asset, amount);
         iBEP20(asset).transferFrom(msg.sender, address(this), amount);
-        iBEP20(BASE).transferFrom(msg.sender, address(this), spartaAllocation);
+        iBEP20(asset).approve(ROUTER, amount); 
+        iBEP20(BASE).approve(ROUTER, spartaAllocation); 
+        liquidityUnits = iROUTER(ROUTER).addLiquidity(spartaAllocation, amount, asset);
+        uint lpAdjusted = liquidityUnits.mul(5000).div(10000);
+        mapAddress_LockedLP[msg.sender].lockedLP += lpAdjusted;
+        mapAddress_LockedLP[msg.sender].secondsSinceLastClaim = now;
+        mapAddress_LockedLP[msg.sender].claimRate = mapAddress_LockedLP[msg.sender].lockedLP.div(31536000);//12months 31536000
+        iBEP20(_pool).transfer(msg.sender, lpAdjusted);
+        return true;
     }
-    function getApproval(address asset) public payable {
-        uint assetSupply = iBEP20(asset).totalSupply();
-        uint baseSupply = iBEP20(BASE).totalSupply();
-        iBEP20(asset).approve(ROUTER, assetSupply);
-        iBEP20(BASE).approve(ROUTER, baseSupply); // not gas efficient 
-    }
-    function depositLiquidity(address asset) payable public {
-        uint amount = 1*10**18; uint spartaAllocation = 10*10**18;
-        // console.log('----Start----');
-        // console.log(' ');
-        // console.log('amount TKN',amount);
-        // console.log('amount Sparta',spartaAllocation);
-        iROUTER(ROUTER).addLiquidity(spartaAllocation, amount, asset);
-    }
-
-     // function deposit(address asset, uint amount) public payable returns (bool success) {
-    //     require(amount > 0, 'must get asset');
-    //     uint spartaAllocation; uint liquidityUnits;
-    //     //spartaAllocation = _DAO().UTILS().calcValueInBase(asset, amount);
-    //     spartaAllocation = 10**18;
-    //     amount = 10**18;
-
-    //     //user approves lock to spend token  - test
-    //     //lock aproves router to spend sparta 
-    //     //lock aproves router to spend infinite 
-
-    //     liquidityUnits =_DAO().ROUTER().addLiquidity(spartaAllocation,amount, asset);
-    //     // uint lpAdjusted = liquidityUnits.div(5000);
-    //     // mapAddress_LockedLP[msg.sender].lockedLP = lpAdjusted;
-    //     // mapAddress_LockedLP[msg.sender].secondsSinceLastClaim = now;
-    //     // mapAddress_LockedLP[msg.sender].claimRate = lpAdjusted.div(31536000);
-    //     // transfer(msg.sender, lpAdjusted);
-    //     // return true;
-    // }
 
     //============================== CLAIM LP TOKENS ================================//
 
-    function claim() public {
+    function claim(address _pool) public {
         require(mapAddress_LockedLP[msg.sender].lockedLP > 0, 'must have locked lps');
         uint256 claimable = calcClaimableLockedLP(msg.sender); 
+        require(claimable <= mapAddress_LockedLP[msg.sender].lockedLP,'attempted to overclaim');
         mapAddress_LockedLP[msg.sender].secondsSinceLastClaim = now;
         mapAddress_LockedLP[msg.sender].lockedLP = mapAddress_LockedLP[msg.sender].lockedLP.sub(claimable);
-        //iBEP20(pool).transfer(msg.sender, claimable);
+        iBEP20(_pool).transfer(msg.sender, claimable);
     }
 
     function calcClaimableLockedLP(address member) public view returns(uint256 claimAmount){
         uint256 secondsSinceClaim = now.sub(mapAddress_LockedLP[member].secondsSinceLastClaim); // Get time since last claim
         uint256 rate = mapAddress_LockedLP[member].claimRate;
-        uint256 claimAmount = secondsSinceClaim.mul(rate); 
-        return claimAmount;
+        if(secondsSinceClaim >= 31536000){
+            return mapAddress_LockedLP[member].lockedLP;
+        }
+        return secondsSinceClaim.mul(rate); 
     }
-//what happens if user comes back adds more deposit. 
 }
