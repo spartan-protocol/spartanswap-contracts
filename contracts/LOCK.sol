@@ -164,10 +164,10 @@ contract Lock is iBEP20 {
     }
 
      function deposit(address asset, uint amount) public payable returns (bool success) {
-        require(amount > 0, 'must get asset');
         if(asset == address(0)){
             require(msg.value > 0, 'get bnb');
         }
+        require(amount > 0, 'must get asset');
         uint spartaAllocation; uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset);
         spartaAllocation = _DAO().UTILS().calcValueInBase(asset, amount);
         iBEP20(asset).transferFrom(msg.sender, address(this), amount);
@@ -175,7 +175,7 @@ contract Lock is iBEP20 {
         iBEP20(BASE).approve(ROUTER, spartaAllocation); 
         liquidityUnits = iROUTER(ROUTER).addLiquidity(spartaAllocation, amount, asset);
         uint lpAdjusted = liquidityUnits.mul(5000).div(10000);
-        mapAddress_LockedLP[msg.sender].lockedLP += lpAdjusted;
+        mapAddress_LockedLP[msg.sender].lockedLP = mapAddress_LockedLP[msg.sender].lockedLP.add(lpAdjusted);
         mapAddress_LockedLP[msg.sender].secondsSinceLastClaim = now;
         mapAddress_LockedLP[msg.sender].claimRate = mapAddress_LockedLP[msg.sender].lockedLP.div(31536000);//12months 31536000
         iBEP20(_pool).transfer(msg.sender, lpAdjusted);
@@ -184,9 +184,10 @@ contract Lock is iBEP20 {
 
     //============================== CLAIM LP TOKENS ================================//
 
-    function claim(address _pool) public {
+    function claim(address asset) public {
         require(mapAddress_LockedLP[msg.sender].lockedLP > 0, 'must have locked lps');
         uint256 claimable = calcClaimableLockedLP(msg.sender); 
+        address _pool = _DAO().UTILS().getPool(asset);
         require(claimable <= mapAddress_LockedLP[msg.sender].lockedLP,'attempted to overclaim');
         mapAddress_LockedLP[msg.sender].secondsSinceLastClaim = now;
         mapAddress_LockedLP[msg.sender].lockedLP = mapAddress_LockedLP[msg.sender].lockedLP.sub(claimable);

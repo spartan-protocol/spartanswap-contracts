@@ -36,8 +36,8 @@ contract('LOCK', function (accounts) {
     addLiquidityTKN1(acc1)
     depositTKN(acc2)
     depositTKN(acc2)
-    claimLP(acc2, 1000)
-    claimLP(acc2, 10000)
+    claimLP(acc2, 1000) // claim after 1 second
+    claimLP(acc2, 10000) // claim after 10 seconds
 })
 
 //################################################################
@@ -181,7 +181,7 @@ async function claimLP(acc, ms){
         assert.exists(_.BN2Str(lastTime.minus(now)))
         assert.exists(_.BN2Str(calcClaimable))
         let balBefore = _.BN2Int(await poolTKN1.balanceOf(acc))
-        await lock.claim(poolTKN1.address,{from:acc})
+        await lock.claim(token1.address,{from:acc})
         let lockLPAfter = _.BN2Int((await lock.mapAddress_LockedLP(acc)).lockedLP)
         let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
         assert.isAtLeast(_.BN2Int(balAfter.minus(calcClaimable)), balBefore)
