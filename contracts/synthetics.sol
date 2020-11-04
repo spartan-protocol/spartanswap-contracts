@@ -76,29 +76,144 @@ library SafeMath {
 }
 
 
-contract Synthetics {
+contract Synthetics is iBEP20{
 
     using SafeMath for uint256;
 
+    
+    // ERC-20 Parameters
+    string public override name; string public override symbol;
+    uint256 public override decimals; uint256 public override totalSupply;
+
+    // ERC-20 Mappings
+    mapping(address => uint256) private _balances;
+    mapping(address => mapping(address => uint256)) private _allowances;
+
     address public BASE;
     address public ROUTER;
+    address public burnAddress;
 
+    mapping(address => lpCDP) public mapAddress_lpCDP;
+    mapping(address => lpCDPMember) public mapAddress_lpCDPMember;
+
+    struct lpCDP{
+        address lpToken;
+        uint debt;
+        uint collateral;
+        address [] members;
+        mapping(address => uint) memberShare;
+    }
    
+
     constructor (address _base, address _router) public payable {
         BASE = _base;
         ROUTER = _router;
+        name = 'Synthentic sUSD';
+        symbol = 'sUSD';
+        decimals = 18;
+        burnAddress = 0x000000000000000000000000000000000000dEaD;
     }
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
     }
+     //========================================iBEP20=========================================//
+    function balanceOf(address account) public view override returns (uint256) {
+        return _balances[account];
+    }
+    function allowance(address owner, address spender) public view virtual override returns (uint256) {
+        return _allowances[owner][spender];
+    }
+    // iBEP20 Transfer function
+    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
+        _transfer(msg.sender, recipient, amount);
+        return true;
+    }
+    // iBEP20 Approve, change allowance functions
+    function approve(address spender, uint256 amount) public virtual override returns (bool) {
+        _approve(msg.sender, spender, amount);
+        return true;
+    }
+    function _approve(address owner, address spender, uint256 amount) internal virtual {
+        require(owner != address(0), "iBEP20: approve from the zero address");
+        require(spender != address(0), "iBEP20: approve to the zero address");
+        _allowances[owner][spender] = amount;
+        emit Approval(owner, spender, amount);
+    } 
+    // iBEP20 TransferFrom function
+    function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
+        _transfer(sender, recipient, amount);
+        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "iBEP20: transfer amount exceeds allowance"));
+        return true;
+    }
 
+    // TransferTo function
+    function transferTo(address recipient, uint256 amount) public returns (bool) {
+        _transfer(tx.origin, recipient, amount);
+        return true;
+    }
+
+    // Internal transfer function
+    function _transfer(address sender, address recipient, uint256 amount) internal virtual {
+        require(sender != address(0), "iBEP20: transfer from the zero address");
+        _balances[sender] = _balances[sender].sub(amount, "iBEP20: transfer amount exceeds balance");
+        _balances[recipient] = _balances[recipient].add(amount);
+        emit Transfer(sender, recipient, amount);
+        _checkEmission();
+    }
+    // Internal mint (upgrading and daily emissions)
+    function _mint(address account, uint256 amount) internal virtual {
+        require(account != address(0), "iBEP20: mint to the zero address");
+        totalSupply = totalSupply.add(amount);
+        require(totalSupply <= totalCap, "Must not mint more than the cap");
+        _balances[account] = _balances[account].add(amount);
+        emit Transfer(address(0), account, amount);
+    }
+    // Burn supply
+    function burn(uint256 amount) public virtual {
+        _burn(msg.sender, amount);
+    }
     
-    
+    function _burn(address account, uint256 amount) internal virtual {
+        require(account != address(0), "iBEP20: burn from the zero address");
+        _balances[account] = _balances[account].sub(amount, "iBEP20: burn amount exceeds balance");
+        totalSupply = totalSupply.sub(amount);
+        emit Transfer(account, address(0), amount);
+    }
 
-    //==================================================================================//
-    // Add/Remove Liquidity functions
+    function depositLP(address lptokens, uint amount) public payable returns (uint cdpShare){
+        //get lp tokens
+        //get lp value
+        //add to mappings
+        //mint equivalent sUSD value
+        //transfer msg.sender sUSD
+        //return cdp share
+    }
 
+    function withDrawLP(address lpCDP, uint withDrawBP) public payable returns (uint lpTokens){
+        //require bp
+        //transfer debt from msg.sender - delete
+        //calculate amount to close
+        //update sender mappings
+        //update lpCDP mappings
+        //transfer back lp tokens
+        //emit event
+
+    }
+
+    function liquidate(address lpCDP, uint liquidateBP) public returns (bool success){
+        //bp liquidation
+        //if can liquidate 
+        //require blocktime to be 4hrs later
+        //small liquidations - need to run some simulations
+        //removeLiquidityAndSwap - output sparta
+        //buy token from pool with sparta
+        //
+    }
+    function _checkLiquidation(address lpCDP) public returns (bool canLiquidate){
+        //check debt is less than lptoken value in mappings
+        //return true or false
+    }
     
 
 }

@@ -75,7 +75,6 @@ contract Base is iBEP20 {
     address public DAO;
     address public burnAddress;
     address public DEPLOYER;
-    address public lock;
 
     address[] public assetArray;
     mapping(address => bool) public isListed;
@@ -122,8 +121,6 @@ contract Base is iBEP20 {
         nextEraTime = now + secondsPerEra;
         DEPLOYER = msg.sender;
         burnAddress = 0x000000000000000000000000000000000000dEaD;
-        lock = 0x3619DbE27d7c1e7E91aA738697Ae7Bc5FC3eACA5;
-
     }
 
     receive() external payable {
@@ -160,8 +157,7 @@ contract Base is iBEP20 {
         require(spender != address(0), "iBEP20: approve to the zero address");
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
-    }
-    
+    } 
     // iBEP20 TransferFrom function
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
