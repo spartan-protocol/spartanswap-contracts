@@ -92,6 +92,7 @@ contract Synthetics is iBEP20{
     address public BASE;
     address public ROUTER;
     address public burnAddress;
+    uint public defaultCollateralisation;
 
     mapping(address => lpCDP) public mapAddress_lpCDP;
     mapping(address => lpCDPMember) public mapAddress_lpCDPMember;
@@ -112,6 +113,7 @@ contract Synthetics is iBEP20{
         symbol = 'sUSD';
         decimals = 18;
         burnAddress = 0x000000000000000000000000000000000000dEaD;
+        defaultCollateralisation = 150;
     }
 
     function _DAO() internal view returns(iDAO) {
@@ -184,11 +186,16 @@ contract Synthetics is iBEP20{
     function depositLP(address lptokens, uint amount) public payable returns (uint cdpShare){
         //get lp tokens
         //get lp value
+        //check for member
+        //calculate share - update share
         //add to mappings
-        //mint equivalent sUSD value
+        //mint sUSD value at default collateralisation
         //transfer msg.sender sUSD
         //return cdp share
+        //emit event
     }
+
+
 
     function withDrawLP(address lpCDP, uint withDrawBP) public payable returns (uint lpTokens){
         //require bp
@@ -206,14 +213,19 @@ contract Synthetics is iBEP20{
         //if can liquidate 
         //require blocktime to be 4hrs later
         //small liquidations - need to run some simulations
+        //calc how much to liquidate +fee
         //removeLiquidityAndSwap - output sparta
         //buy token from pool with sparta
-        //
+        //delete
+        //transfer sparta fee back to msg.sender
+        //emit event
     }
+    
     function _checkLiquidation(address lpCDP) public returns (bool canLiquidate){
         //check debt is less than lptoken value in mappings
         //return true or false
     }
     
+   
 
 }
