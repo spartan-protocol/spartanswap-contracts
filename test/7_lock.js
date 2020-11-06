@@ -166,7 +166,7 @@ async function depositTKN(acc){
         let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
         assert.equal(_.BN2Str((await poolTKN1.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
         assert.equal(_.BN2Str(_.floorBN(balBefore.plus(unitsAdj))), _.BN2Str(balAfter), 'lp tokens')
-        assert.equal(_.BN2Str((await lock.mapAddress_LockedLP(acc)).lockedLP), _.BN2Str(await poolTKN1.balanceOf(acc)), 'locked LP')
+        assert.equal(_.BN2Str(await lock.mapMember_lockedLP(acc)), _.BN2Str(await poolTKN1.balanceOf(acc)), 'locked LP')
 
     })
 }
@@ -175,14 +175,14 @@ async function claimLP(acc, ms){
     it("It should claim vesting lp", async () => {
         let delay = await sleep(ms)
         let now = _.getBN((new Date())/1000)
-        let lastTime = _.getBN((await lock.mapAddress_LockedLP(acc)).secondsSinceLastClaim)
+        let lastTime = _.getBN(await lock.mapMember_lastTime(acc))
         let calcClaimable = _.getBN(await lock.calcClaimableLockedLP(acc))
-        let lockLPBefore = _.getBN((await lock.mapAddress_LockedLP(acc)).lockedLP)
+        let lockLPBefore = _.getBN(await lock.mapMember_lockedLP(acc))
         assert.exists(_.BN2Str(lastTime.minus(now)))
         assert.exists(_.BN2Str(calcClaimable))
         let balBefore = _.BN2Int(await poolTKN1.balanceOf(acc))
         await lock.claim(token1.address,{from:acc})
-        let lockLPAfter = _.BN2Int((await lock.mapAddress_LockedLP(acc)).lockedLP)
+        let lockLPAfter = _.BN2Int(await lock.mapMember_lockedLP(acc))
         let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
         assert.isAtLeast(_.BN2Int(balAfter.minus(calcClaimable)), balBefore)
         assert.isAtLeast(_.BN2Int(lockLPBefore.minus(calcClaimable)), lockLPAfter)

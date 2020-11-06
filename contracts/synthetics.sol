@@ -12,7 +12,6 @@ interface iBEP20 {
     function allowance(address owner, address spender) external view returns (uint256);
     function approve(address, uint256) external returns (bool);
     function transferFrom(address, address, uint256) external returns (bool);
-    function burnFrom(address, uint256) external;
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
@@ -95,7 +94,7 @@ contract Synthetics is iBEP20{
     uint public defaultCollateralisation;
 
     mapping(address => lpCDP) public mapAddress_lpCDP;
-    mapping(address => lpCDPMember) public mapAddress_lpCDPMember;
+    //mapping(address => lpCDPMember) public mapAddress_lpCDPMember;
 
     struct lpCDP{
         address lpToken;
@@ -161,13 +160,11 @@ contract Synthetics is iBEP20{
         _balances[sender] = _balances[sender].sub(amount, "iBEP20: transfer amount exceeds balance");
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
-        _checkEmission();
     }
     // Internal mint (upgrading and daily emissions)
     function _mint(address account, uint256 amount) internal virtual {
         require(account != address(0), "iBEP20: mint to the zero address");
         totalSupply = totalSupply.add(amount);
-        require(totalSupply <= totalCap, "Must not mint more than the cap");
         _balances[account] = _balances[account].add(amount);
         emit Transfer(address(0), account, amount);
     }
@@ -220,7 +217,6 @@ contract Synthetics is iBEP20{
         //transfer sparta fee back to msg.sender
         //emit event
     }
-    
     function _checkLiquidation(address lpCDP) public returns (bool canLiquidate){
         //check debt is less than lptoken value in mappings
         //return true or false

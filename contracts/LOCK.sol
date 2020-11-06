@@ -75,16 +75,28 @@ contract Lock is iBEP20 {
     // ERC-20 Mappings
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
-    mapping(address => LockedLP) public mapAddress_LockedLP;
 
-    struct LockedLP{
-        uint256 lockedLP;
-        uint256 claimRate;
-        uint256 secondsSinceLastClaim;
+
+
+    struct MemberDetails {
+        bool isMember;
+        uint lockedLP;
+        uint claimRate;
+        uint lastBlockTime;
     }
+
+ 
   // Parameters
     address public BASE;
     address public ROUTER;
+    address[] public arrayMembers;
+
+    mapping(address => bool) public isMember; // Is Member
+    mapping(address => uint256) public mapMember_lockedLP; // Member's locked LP 
+    mapping(address => uint256) public mapMember_claimRate; // Member's Claim rate
+    mapping(address => uint256) public mapMember_lastTime;
+    mapping(address => address[]) public mapMember_lockedArray;
+
 
     //=====================================CREATION=========================================//
     // Constructor
@@ -175,9 +187,13 @@ contract Lock is iBEP20 {
         iBEP20(BASE).approve(ROUTER, spartaAllocation); 
         liquidityUnits = iROUTER(ROUTER).addLiquidity(spartaAllocation, amount, asset);
         uint lpAdjusted = liquidityUnits.mul(5000).div(10000);
-        mapAddress_LockedLP[msg.sender].lockedLP = mapAddress_LockedLP[msg.sender].lockedLP.add(lpAdjusted);
-        mapAddress_LockedLP[msg.sender].secondsSinceLastClaim = now;
-        mapAddress_LockedLP[msg.sender].claimRate = mapAddress_LockedLP[msg.sender].lockedLP.div(31536000);//12months 31536000
+        if(!isMember[msg.sender]){
+          isMember[msg.sender] = true;
+          arrayMembers.push(msg.sender);
+        }
+        mapMember_lockedLP[msg.sender] = mapMember_lockedLP[msg.sender].add(lpAdjusted);
+        mapMember_lastTime[msg.sender] = now;
+        mapMember_claimRate[msg.sender] = mapMember_lockedLP[msg.sender].div(31536000);//12months 31536000
         iBEP20(_pool).transfer(msg.sender, lpAdjusted);
         return true;
     }
@@ -185,21 +201,33 @@ contract Lock is iBEP20 {
     //============================== CLAIM LP TOKENS ================================//
 
     function claim(address asset) public {
-        require(mapAddress_LockedLP[msg.sender].lockedLP > 0, 'must have locked lps');
+        require(mapMember_lockedLP[msg.sender] > 0, 'must have locked lps');
         uint256 claimable = calcClaimableLockedLP(msg.sender); 
         address _pool = _DAO().UTILS().getPool(asset);
-        require(claimable <= mapAddress_LockedLP[msg.sender].lockedLP,'attempted to overclaim');
-        mapAddress_LockedLP[msg.sender].secondsSinceLastClaim = now;
-        mapAddress_LockedLP[msg.sender].lockedLP = mapAddress_LockedLP[msg.sender].lockedLP.sub(claimable);
+        require(claimable <= mapMember_lockedLP[msg.sender],'attempted to overclaim');
+        mapMember_lastTime[msg.sender] = now;
+        mapMember_lockedLP[msg.sender] = mapMember_lockedLP[msg.sender].sub(claimable);
         iBEP20(_pool).transfer(msg.sender, claimable);
     }
 
     function calcClaimableLockedLP(address member) public view returns(uint256 claimAmount){
-        uint256 secondsSinceClaim = now.sub(mapAddress_LockedLP[member].secondsSinceLastClaim); // Get time since last claim
-        uint256 rate = mapAddress_LockedLP[member].claimRate;
+        uint256 secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
+        uint256 rate = mapMember_claimRate[member];
         if(secondsSinceClaim >= 31536000){
-            return mapAddress_LockedLP[member].lockedLP;
+            return mapMember_lockedLP[member];
         }
         return secondsSinceClaim.mul(rate); 
+    }
+
+
+
+    //============================== HELPERS ================================//
+
+    function getMemberDetails(address member) public view returns (MemberDetails memory memberDetails){
+        memberDetails.isMember = isMember[member];
+        memberDetails.lockedLP = mapMember_lockedLP[member];
+        memberDetails.claimRate = mapMember_claimRate[member];
+        memberDetails.lastBlockTime = mapMember_lastTime[member];
+        return memberDetails;
     }
 }
