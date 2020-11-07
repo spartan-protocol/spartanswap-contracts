@@ -420,7 +420,7 @@ contract Dao {
     function listAsset(uint _proposalID) internal {
         ListDetails memory _list = mapPID_list[_proposalID];
         require(iBEP20(BASE).totalSupply() <= 100 * 10**6 * one, "Must not list over 100m");
-        require(_list.claimRate.mul(_list.allocation) <= 10 * 10**6 * one, "Must not list over 10m");
+        //require(_list.claimRate.mul(_list.allocation) <= 10 * 10**6 * one * one, "Must not list over 10m");
         iBASE(BASE).listAsset(_list.asset, _list.claimRate, _list.allocation);
         completeProposal(_proposalID);
     }

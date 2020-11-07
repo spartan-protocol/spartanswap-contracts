@@ -90,7 +90,7 @@ contract Lock is iBEP20 {
     address public BASE;
     address public ROUTER;
     address[] public arrayMembers;
-
+    address public WBNB;
     mapping(address => bool) public isMember; // Is Member
     mapping(address => uint256) public mapMember_lockedLP; // Member's locked LP 
     mapping(address => uint256) public mapMember_claimRate; // Member's Claim rate
@@ -100,9 +100,10 @@ contract Lock is iBEP20 {
 
     //=====================================CREATION=========================================//
     // Constructor
-    constructor(address _base, address _router) public {
+    constructor(address _base, address _router, address _wbnb) public {
          BASE = _base;
         ROUTER = _router;
+        WBNB = _wbnb;
         name = "lock-token";
         symbol  = "LTKN";
         decimals = 18;
@@ -176,13 +177,10 @@ contract Lock is iBEP20 {
     }
 
      function deposit(address asset, uint amount) public payable returns (bool success) {
-        if(asset == address(0)){
-            require(msg.value > 0, 'get bnb');
-        }
         require(amount > 0, 'must get asset');
         uint spartaAllocation; uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset);
         spartaAllocation = _DAO().UTILS().calcValueInBase(asset, amount);
-        iBEP20(asset).transferFrom(msg.sender, address(this), amount);
+        handleTransferIn(asset, amount);
         iBEP20(asset).approve(ROUTER, amount); 
         iBEP20(BASE).approve(ROUTER, spartaAllocation); 
         liquidityUnits = iROUTER(ROUTER).addLiquidity(spartaAllocation, amount, asset);
@@ -198,6 +196,16 @@ contract Lock is iBEP20 {
         return true;
     }
 
+    function handleTransferIn(address _token, uint _amount) internal {
+        if(_token == address(0)){
+                // If BNB, then send to WBNB contract, then forward WBNB to pool
+                require((_amount == msg.value), "InputErr");
+                payable(WBNB).call{value:_amount}(""); 
+                iBEP20(WBNB).transfer(address(this), _amount); 
+            } else {
+                iBEP20(_token).transferFrom(msg.sender, address(this), _amount); 
+            }
+    }
     //============================== CLAIM LP TOKENS ================================//
 
     function claim(address asset) public {
