@@ -91,6 +91,7 @@ contract Lock is iBEP20 {
     address public ROUTER;
     address[] public arrayMembers;
     address public WBNB;
+    uint256 baseSupply;
     mapping(address => bool) public isMember; // Is Member
     mapping(address => uint256) public mapMember_lockedLP; // Member's locked LP 
     mapping(address => uint256) public mapMember_claimRate; // Member's Claim rate
@@ -108,7 +109,6 @@ contract Lock is iBEP20 {
         symbol  = "LTKN";
         decimals = 18;
         totalSupply = 1 * (10 ** 18);
-        
          _balances[address(this)] = totalSupply;
         emit Transfer(address(0), address(this), totalSupply);
 
@@ -170,20 +170,19 @@ contract Lock is iBEP20 {
     }
 
     function burn() public returns (bool success){
+        require(totalSupply >= 1, 'burnt already');
         _approve(address(this), BASE, totalSupply);
         iBASE(BASE).claim(address(this), totalSupply);
         totalSupply = totalSupply.sub(totalSupply);
+        baseSupply = iBEP20(BASE).balanceOf(address(this));
+        iBEP20(BASE).approve(ROUTER, baseSupply);
         return true;
     }
 
      function deposit(address asset, uint amount) public payable returns (bool success) {
         require(amount > 0, 'must get asset');
-        uint spartaAllocation; uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset);
-        spartaAllocation = _DAO().UTILS().calcValueInBase(asset, amount);
-        handleTransferIn(asset, amount);
-        iBEP20(asset).approve(ROUTER, amount); 
-        iBEP20(BASE).approve(ROUTER, spartaAllocation); 
-        liquidityUnits = iROUTER(ROUTER).addLiquidity(spartaAllocation, amount, asset);
+         uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset);
+        liquidityUnits = handleTransferIn(asset, amount);
         uint lpAdjusted = liquidityUnits.mul(5000).div(10000);
         if(!isMember[msg.sender]){
           isMember[msg.sender] = true;
@@ -196,14 +195,23 @@ contract Lock is iBEP20 {
         return true;
     }
 
-    function handleTransferIn(address _token, uint _amount) internal {
+    function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
+        uint spartaAllocation;
+        spartaAllocation = _DAO().UTILS().calcValueInBase(_token, _amount);
         if(_token == address(0)){
                 // If BNB, then send to WBNB contract, then forward WBNB to pool
                 require((_amount == msg.value), "InputErr");
                 payable(WBNB).call{value:_amount}(""); 
-                iBEP20(WBNB).transfer(address(this), _amount); 
+                iBEP20(WBNB).transfer(address(this), _amount);
+                iBEP20(WBNB).approve(ROUTER, _amount); 
+                LPunits = iROUTER(ROUTER).addLiquidity(spartaAllocation, _amount, WBNB);
             } else {
-                iBEP20(_token).transferFrom(msg.sender, address(this), _amount); 
+                iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
+                if(iBEP20(_token).allowance(address(this), ROUTER) < _amount){
+                    uint256 approvalTNK = iBEP20(_token).totalSupply();  
+                    iBEP20(_token).approve(ROUTER, approvalTNK);  
+                }
+                LPunits = iROUTER(ROUTER).addLiquidity(spartaAllocation, _amount, _token);
             }
     }
     //============================== CLAIM LP TOKENS ================================//

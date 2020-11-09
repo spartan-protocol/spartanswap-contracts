@@ -32,14 +32,16 @@ contract('LOCK', function (accounts) {
     checkLockSupply()
     checkListed()
     burnLock()
-    //createPoolTKN1()
-    wrapBNB()
-    createPoolWBNB()
-    addLiquidityTKN1(acc1)
-    depositTKN(acc2)
-    depositTKN(acc2)
-    claimLP(acc2, 1000) // claim after 1 second
-     claimLP(acc2, 10000) // claim after 10 seconds
+    // createPoolTKN1()
+    // wrapBNB()
+    createPoolBNB()
+    //addLiquidity(acc1)
+    // depositTKN(acc2)
+    // depositTKN(acc2)
+    depositBNB(acc2)
+    // claimLPTKN(acc2, 1000) // claim after 1 second
+    // claimLPTKN(acc2, 10000) // claim after 10 seconds
+    claimLPBNB(acc2, 1000) 
 })
 
 //################################################################
@@ -68,22 +70,27 @@ function constructor(accounts) {
         //console.log(_.BN2Str(await base.balanceOf(acc1))/_.one)
 
         await wbnb.approve(router.address, supply, {from:acc1}) // approve router to add token1
+        await token1.approve(router.address, supply, {from:acc1}) // approve router to add token1
         await base.approve(router.address, supply, {from:acc1}) //approve router to add base
 
         await wbnb.approve(lock.address, supply, {from:acc1}) // approve lock 
+        await token1.approve(lock.address, supply, {from:acc1}) // approve lock 
         await base.approve(lock.address, supply, {from:acc1})
         await base.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc1})
         await wbnb.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc1})
+        await token1.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc1})
 
         await token1.transfer(acc2, _.getBN(_.BN2Int(supply)/4)) // give acc1 token1 to burn
         await token1.approve(base.address, supply, {from:acc2})//approve base to burn token1 from acc1
         await base.claim(token1.address, _.BN2Str(_.one), {from: acc2}) // burn 1 token1 to get sparta
         //console.log(_.BN2Str(await base.balanceOf(acc1))/_.one)
 
-        await wbnb.approve(router.address, supply, {from:acc2}) // approve router to add token1
+        await wbnb.approve(router.address, supply, {from:acc2}) // approve router to add wbnb
+        await token1.approve(router.address, supply, {from:acc2}) // approve router to add token1
         await base.approve(router.address, supply, {from:acc2}) //approve router to add base
 
         await wbnb.approve(lock.address, supply, {from:acc2}) // approve lock 
+        await token1.approve(lock.address, supply, {from:acc2}) // approve lock 
         await base.approve(lock.address, supply, {from:acc2})
         await base.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc2})
         await wbnb.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc2})
@@ -127,50 +134,50 @@ async function burnLock(){
     })
 }
 
-// async function createPoolTKN1() {
-//     it("It should deploy TKN1 Pool", async () => {
-//         //console.log(" before" + _.BN2Str(await poolTKN1.balanceOf(acc1)/_.one));
-//         var _pool = await router.createPool.call(_.BN2Str(_.one * 1000), _.BN2Str(10*_.one), token1.address, {from:acc1})
-//         await router.createPool(_.BN2Str(_.one * 1000), _.BN2Str(10*_.one), token1.address, {from:acc1})
-//         poolTKN1 = await POOL.at(_pool,{from:acc1})
-//         //console.log(`Pools: ${poolTKN1.address}`)
+async function createPoolTKN1() {
+    it("It should deploy TKN1 Pool", async () => {
+        //console.log(" before" + _.BN2Str(await poolTKN1.balanceOf(acc1)/_.one));
+        var _pool = await router.createPool.call(_.BN2Str(_.one * 1000), _.BN2Str(10*_.one), token1.address, {from:acc1})
+        await router.createPool(_.BN2Str(_.one * 1000), _.BN2Str(10*_.one), token1.address, {from:acc1})
+        poolTKN1 = await POOL.at(_pool,{from:acc1})
+        //console.log(`Pools: ${poolTKN1.address}`)
        
-//         poolUnits = _.getBN((await poolTKN1.totalSupply()))
-//         // console.log(_.BN2Str(poolUnits)/_.one);
-//         const baseAddr = await poolTKN1.BASE()
-//         assert.equal(baseAddr, base.address, "address is correct")
-//         //assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(_.one * 100), 'base balance')
-//         //assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(_.one), 'token1 balance')
+        poolUnits = _.getBN((await poolTKN1.totalSupply()))
+        // console.log(_.BN2Str(poolUnits)/_.one);
+        const baseAddr = await poolTKN1.BASE()
+        assert.equal(baseAddr, base.address, "address is correct")
+        //assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(_.one * 100), 'base balance')
+        //assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(_.one), 'token1 balance')
 
-//         let supply = await base.totalSupply()
-//         await base.approve(poolTKN1.address, supply, { from: acc0 })
-//         await base.approve(poolTKN1.address, supply, { from: acc1 })
-//     })
-// }
-async function wrapBNB() {
-    it("It should wrap", async () => {
-        await web3.eth.sendTransaction({to: wbnb.address, value:_.BN2Str(10*_.one), from:acc0});
-        await wbnb.transfer(acc1, _.getBN(_.BN2Int(_.one * 3)))
-        await wbnb.transfer(acc2, _.getBN(_.BN2Int(_.one*3)))
-        await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await wbnb.approve(lock.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await wbnb.approve(lock.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await wbnb.approve(lock.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        let supply = await base.totalSupply()
+        await base.approve(poolTKN1.address, supply, { from: acc0 })
+        await base.approve(poolTKN1.address, supply, { from: acc1 })
     })
 }
+// async function wrapBNB() {
+//     it("It should wrap", async () => {
+//         await web3.eth.sendTransaction({to: wbnb.address, value:_.BN2Str(10*_.one), from:acc0});
+//         await wbnb.transfer(acc1, _.getBN(_.BN2Int(_.one * 3)))
+//         await wbnb.transfer(acc2, _.getBN(_.BN2Int(_.one*3)))
+//         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+//         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
+//         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+//         await wbnb.approve(lock.address, _.BN2Str(500000 * _.one), { from: acc0 })
+//         await wbnb.approve(lock.address, _.BN2Str(500000 * _.one), { from: acc1 })
+//         await wbnb.approve(lock.address, _.BN2Str(500000 * _.one), { from: acc2 })
+//     })
+// }
 
-async function createPoolWBNB() {
+async function createPoolBNB() {
     it("It should deploy BNB Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, wbnb.address, { from: acc1 })
-        await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, wbnb.address, { from: acc1 })
+        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.BN2Str(_.one), _.BNB, {from: acc1,value:_.BN2Str(_.one)})
+        await router.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one), _.BNB, {from: acc1, value:_.BN2Str(_.one)})
         poolWBNB = await POOL.at(_pool)
         //console.log(`Pools: ${poolWBNB.address}`)
         const baseAddr = await poolWBNB.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
         assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(_.one * 10), 'base balance')
-        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(_.dot1BN), 'wbnb balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(_.one), 'bnb balance')
 
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
@@ -178,15 +185,19 @@ async function createPoolWBNB() {
     })
 }
 
-async function addLiquidityTKN1(acc) {
-    it("It should add liquidity", async () => {
-        await router.addLiquidity(_.BN2Str(_.one * 100),10, wbnb.address, { from: acc})
-    })
-}
+// async function addLiquidity(acc) {
+//     it("It should add liquidity", async () => {
+//          let token = _.BNB
+//         //let token = token1.address
+//         let y = _.BN2Str(_.one * 10)
+//         let x = _.BN2Str(_.one * 100)
+//         await router.addLiquidity(x, y, token, { from: acc, value:y})
+//     })
+// }
 
-async function depositTKN(acc){
+async function depositBNB(acc){
     it("It should deposit asset and receive half LP", async () => {
-        let tnk = wbnb.address
+        let tnk = _.BNB
         let amount = _.BN2Str(_.one)
         let spartaAllocation = await utils.calcValueInBase(tnk,amount)
         let poolData = await utils.getPoolData(tnk);
@@ -196,7 +207,7 @@ async function depositTKN(acc){
         let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
         let unitsAdj = units.times(5000).div(10000)
         let balBefore = _.getBN(await poolWBNB.balanceOf(acc))
-        await lock.deposit(wbnb.address, amount,{from:acc})
+        await lock.deposit(tnk, amount,{from:acc, value:amount})
         let balAfter = _.getBN(await poolWBNB.balanceOf(acc))
         assert.equal(_.BN2Str((await poolWBNB.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
         assert.equal(_.BN2Str(_.floorBN(balBefore.plus(unitsAdj))), _.BN2Str(balAfter), 'lp tokens')
@@ -204,8 +215,47 @@ async function depositTKN(acc){
 
     })
 }
+async function depositTKN(acc){
+    it("It should deposit asset and receive half LP", async () => {
+        let tnk = token1.address
+        let amount = _.BN2Str(_.one)
+        let spartaAllocation = await utils.calcValueInBase(tnk,amount)
+        let poolData = await utils.getPoolData(tnk);
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+        poolUnits = _.getBN((await poolTKN1.totalSupply()))
+        let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
+        let unitsAdj = units.times(5000).div(10000)
+        let balBefore = _.getBN(await poolTKN1.balanceOf(acc))
+        await lock.deposit(tnk, amount,{from:acc})
+        let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
+        assert.equal(_.BN2Str((await poolTKN1.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
+        assert.equal(_.BN2Str(_.floorBN(balBefore.plus(unitsAdj))), _.BN2Str(balAfter), 'lp tokens')
+        assert.equal(_.BN2Str(await lock.mapMember_lockedLP(acc)), _.BN2Str(await poolTKN1.balanceOf(acc)), 'locked LP')
 
-async function claimLP(acc, ms){
+    })
+}
+
+
+async function claimLPTKN(acc, ms){
+    it(`It should claim vesting lp after ${ms/1000} seconds`, async () => {
+        let delay = await sleep(ms)
+        let now = _.getBN((new Date())/1000)
+        let lastTime = _.getBN(await lock.mapMember_lastTime(acc))
+        let calcClaimable = _.getBN(await lock.calcClaimableLockedLP(acc))
+        let lockLPBefore = _.getBN(await lock.mapMember_lockedLP(acc))
+        assert.exists(_.BN2Str(lastTime.minus(now)))
+        assert.exists(_.BN2Str(calcClaimable))
+        let balBefore = _.BN2Int(await poolTKN1.balanceOf(acc))
+        await lock.claim(token1.address,{from:acc})
+        let lockLPAfter = _.BN2Int(await lock.mapMember_lockedLP(acc))
+        let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
+        assert.isAtLeast(_.BN2Int(balAfter.minus(calcClaimable)), balBefore)
+        assert.isAtLeast(_.BN2Int(lockLPBefore.minus(calcClaimable)), lockLPAfter)
+    })
+    
+}
+async function claimLPBNB(acc, ms){
     it(`It should claim vesting lp after ${ms/1000} seconds`, async () => {
         let delay = await sleep(ms)
         let now = _.getBN((new Date())/1000)

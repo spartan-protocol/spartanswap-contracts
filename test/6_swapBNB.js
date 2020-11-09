@@ -149,7 +149,7 @@ async function addLiquidity(acc, x, y) {
 async function addLiquidityTKN1(acc, x, y) {
 
     it(`It should addLiquidity BNB from ${acc}`, async () => {
-        let token = token1.address
+        let token = _.BNB
         let poolData = await utils.getPoolData(token);
         var X = _.getBN(poolData.baseAmount)
         var Y = _.getBN(poolData.tokenAmount)
