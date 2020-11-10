@@ -31,6 +31,7 @@ interface iUTILS {
     function calcValueInBase(address token, uint amount) external view returns (uint value);
     function calcValueInToken(address token, uint amount) external view returns (uint value);
     function calcValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
+    function calcAsymmetricShare(uint u, uint U, uint A) external view returns (uint value);
 }
 interface iDAO {
     function ROUTER() external view returns(address);
@@ -91,7 +92,7 @@ contract Synthetics is iBEP20{
     address public BASE;
     address public ROUTER;
     address public burnAddress;
-    uint public defaultCollateralisation;
+    uint256 public defaultCollateralisation;
 
     mapping(address => lpCDP) public mapAddress_lpCDP;
     //mapping(address => lpCDPMember) public mapAddress_lpCDPMember;
@@ -180,7 +181,7 @@ contract Synthetics is iBEP20{
         emit Transfer(account, address(0), amount);
     }
 
-    function depositLP(address lptokens, uint amount) public payable returns (uint cdpShare){
+    function depositLP(address lptoken, uint amount) public payable returns (uint cdpShare){
         //get lp tokens
         //get lp value
         //check for member
@@ -190,6 +191,13 @@ contract Synthetics is iBEP20{
         //transfer msg.sender sUSD
         //return cdp share
         //emit event
+        require(amount > 0, 'must get lp tokens');
+        uint256 lpValue; uint256 asymAmount; uint256 lpTokenSupply; uint256 baseDepth;
+        baseDepth = iBEP20(BASE).balanceOf(lptoken);
+        lpTokenSupply = iBEP20(lptoken).totalSupply();
+        asymAmount = _DAO().UTILS().calcAsymmetricShare(amount, lpTokenSupply, baseDepth);
+        lpValue = _DAO().UTILS().calcValueInBase();
+
     }
 
 

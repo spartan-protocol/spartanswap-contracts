@@ -226,10 +226,11 @@ contract Lock is iBEP20 {
         iBEP20(_pool).transfer(msg.sender, claimable);
     }
 
-    function calcClaimableLockedLP(address member) public view returns(uint256 claimAmount){
+    function calcClaimableLockedLP(address member) public returns(uint256 claimAmount){
         uint256 secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
         uint256 rate = mapMember_claimRate[member];
         if(secondsSinceClaim >= 31536000){
+            mapMember_claimRate[member] = 0;
             return mapMember_lockedLP[member];
         }
         return secondsSinceClaim.mul(rate); 
