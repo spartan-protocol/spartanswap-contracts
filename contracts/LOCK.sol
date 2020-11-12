@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "@nomiclabs/buidler/console.sol";
+
 //iBEP20 Interface
 interface iBEP20 {
     function name() external view returns (string memory);
@@ -273,6 +273,18 @@ contract Lock is iBEP20 {
 
 
     //============================== HELPERS ================================//
+    function assetListedCount() public view returns (uint256 count){
+        return listedLockAssets.length;
+    }
+    function allListedAssets() public view returns (address[] memory _allListedAssets){
+        return listedLockAssets;
+    }
+    function memberCount() public view returns (uint256 count){
+        return arrayMembers.length;
+    }
+    function allMembers() public view returns (address[] memory _allMembers){
+        return arrayMembers;
+    }
 
     function getMemberDetails(address member, address asset) public view returns (MemberDetails memory memberDetails){
         memberDetails.isMember = mapAddress_listedAssets[asset].isMember[member];
@@ -281,4 +293,5 @@ contract Lock is iBEP20 {
         memberDetails.lastBlockTime = mapAddress_listedAssets[asset].lastBlockTime[member];
         return memberDetails;
     }
+    
 }
