@@ -16,12 +16,12 @@
     },
     {
       "inputs": [],
-      "name": "secondsPerEra",
+      "name": "mapAddressHasClaimed",
       "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "bool",
           "name": "",
-          "type": "uint256"
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
