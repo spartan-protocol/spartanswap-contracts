@@ -57,7 +57,7 @@ function constructor(accounts) {
         utils = await UTILS.new(base.address)
         Dao = await DAO.new(base.address)
         router = await ROUTER.new(base.address, wbnb.address)
-        lock = await BOND.new(base.address, router.address, wbnb.address)
+        lock = await BOND.new(base.address, router.address)
         token1 = await TOKEN1.new();
       
         await base.listAsset(lock.address, _.BN2Str(5000000 * _.one),_.BN2Str(_.one) ) // list lock

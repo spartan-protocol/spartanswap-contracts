@@ -98,7 +98,6 @@ contract Bond is iBEP20 {
     address public BASE;
     address public ROUTER;
     address[] public arrayMembers;
-    address public WBNB;
     address public DEPLOYER;
     address [] listedBondAssets;
     uint256 baseSupply;
@@ -119,10 +118,9 @@ contract Bond is iBEP20 {
 
     //=====================================CREATION=========================================//
     // Constructor
-    constructor(address _base, address _router, address _wbnb) public {
+    constructor(address _base, address _router) public {
         BASE = _base;
         ROUTER = _router;
-        WBNB = _wbnb;
         name = "Bond-Token";
         symbol  = "BND";
         decimals = 18;
