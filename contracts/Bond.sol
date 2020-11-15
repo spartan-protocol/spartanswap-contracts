@@ -66,7 +66,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract Lock is iBEP20 {
+contract Bond is iBEP20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -82,13 +82,13 @@ contract Lock is iBEP20 {
         bool isListed;
         address[] members;
         mapping(address => bool) isMember;
-        mapping(address => uint256) lockedLP;
+        mapping(address => uint256) bondedLP;
         mapping(address => uint256) claimRate;
         mapping(address => uint256) lastBlockTime;
     }
     struct MemberDetails {
         bool isMember;
-        uint256 lockedLP;
+        uint256 bondedLP;
         uint256 claimRate;
         uint256 lastBlockTime;
     }
@@ -100,15 +100,17 @@ contract Lock is iBEP20 {
     address[] public arrayMembers;
     address public WBNB;
     address public DEPLOYER;
-    address [] listedLockAssets;
+    address [] listedBondAssets;
     uint256 baseSupply;
+    uint256 public secondsPerYear;
+    uint256 public fiftyPercent = 5000;
 
     mapping(address => ListedAssets) public mapAddress_listedAssets;
     mapping(address => bool) public isListed;
     
 
     event ListedAsset(address indexed DEPLOYER, address indexed asset);
-    event DepositAsset(address indexed owner, uint256 indexed depositAmount, uint256 indexed lockedLP);
+    event DepositAsset(address indexed owner, uint256 indexed depositAmount, uint256 indexed bondedLP);
 
     modifier onlyDeployer() {
         require(msg.sender == DEPLOYER, "Must be DAO");
@@ -121,9 +123,10 @@ contract Lock is iBEP20 {
         BASE = _base;
         ROUTER = _router;
         WBNB = _wbnb;
-        name = "lock-token";
-        symbol  = "LTKN";
+        name = "Bond-Token";
+        symbol  = "BND";
         decimals = 18;
+        secondsPerYear = 31536000;
         DEPLOYER = msg.sender;
         totalSupply = 1 * (10 ** 18);
         _balances[address(this)] = totalSupply;
@@ -196,10 +199,10 @@ contract Lock is iBEP20 {
         return true;
     }
 
-    function listLockAsset(address asset) public onlyDeployer returns (bool){
+    function listBondAsset(address asset) public onlyDeployer returns (bool){
          if(!isListed[asset]){
             isListed[asset] = true;
-            listedLockAssets.push(asset);
+            listedBondAssets.push(asset);
         }
         emit ListedAsset(msg.sender, asset);
         return true;
@@ -208,17 +211,17 @@ contract Lock is iBEP20 {
      function deposit(address asset, uint amount) public payable returns (bool success) {
         require(amount > 0, 'must get asset');
         require(isListed[asset], 'must be listed');
-        uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset);
+        uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset); uint256 basisPoints = 10000;
         liquidityUnits = handleTransferIn(asset, amount);
-        uint lpAdjusted = liquidityUnits.mul(5000).div(10000);
+        uint lpAdjusted = liquidityUnits.mul(fiftyPercent).div(basisPoints);
         if(!mapAddress_listedAssets[asset].isMember[msg.sender]){
           mapAddress_listedAssets[asset].isMember[msg.sender] = true;
           arrayMembers.push(msg.sender);
           mapAddress_listedAssets[asset].members.push(msg.sender);
         }
-        mapAddress_listedAssets[asset].lockedLP[msg.sender] = mapAddress_listedAssets[asset].lockedLP[msg.sender].add(lpAdjusted);
+        mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(lpAdjusted);
         mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
-        mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].lockedLP[msg.sender].div(31536000);//12months 31536000
+        mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(secondsPerYear);//12months 31536000
         iBEP20(_pool).transfer(msg.sender, lpAdjusted);
         emit DepositAsset(msg.sender, amount, lpAdjusted);
         return true;
@@ -228,12 +231,8 @@ contract Lock is iBEP20 {
         uint spartaAllocation;
         spartaAllocation = _DAO().UTILS().calcValueInBase(_token, _amount);
         if(_token == address(0)){
-                // If BNB, then send to WBNB contract, then forward WBNB to pool
                 require((_amount == msg.value), "InputErr");
-                payable(WBNB).call{value:_amount}(""); 
-                iBEP20(WBNB).transfer(address(this), _amount);
-                iBEP20(WBNB).approve(ROUTER, _amount); 
-                LPunits = iROUTER(ROUTER).addLiquidity(spartaAllocation, _amount, WBNB);
+                LPunits = iROUTER(ROUTER).addLiquidity{value:_amount}(spartaAllocation, _amount, _token);
             } else {
                 iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
                 if(iBEP20(_token).allowance(address(this), ROUTER) < _amount){
@@ -246,24 +245,24 @@ contract Lock is iBEP20 {
     //============================== CLAIM LP TOKENS ================================//
 
     function claim(address asset) public returns(bool){
-        require(mapAddress_listedAssets[asset].lockedLP[msg.sender] > 0, 'must have locked lps');
+        require(mapAddress_listedAssets[asset].bondedLP[msg.sender] > 0, 'must have bonded lps');
         require(mapAddress_listedAssets[asset].isMember[msg.sender], 'must have deposited first');
-        uint256 claimable = calcClaimLockedLP(msg.sender, asset); 
+        uint256 claimable = calcClaimbondedLP(msg.sender, asset); 
         address _pool = _DAO().UTILS().getPool(asset);
-        require(claimable <= mapAddress_listedAssets[asset].lockedLP[msg.sender],'attempted to overclaim');
+        require(claimable <= mapAddress_listedAssets[asset].bondedLP[msg.sender],'attempted to overclaim');
         mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
-        mapAddress_listedAssets[asset].lockedLP[msg.sender] = mapAddress_listedAssets[asset].lockedLP[msg.sender].sub(claimable);
+        mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].sub(claimable);
         iBEP20(_pool).transfer(msg.sender, claimable);
         return true;
     }
     
 
-    function calcClaimLockedLP(address lockMember, address asset) public returns (uint256 claimAmount){
-        uint256 secondsSinceClaim = now.sub(mapAddress_listedAssets[asset].lastBlockTime[lockMember]); // Get time since last claim
-        uint256 rate = mapAddress_listedAssets[asset].claimRate[lockMember];
-        if(secondsSinceClaim >= 31536000){
-            mapAddress_listedAssets[asset].claimRate[lockMember] = 0;
-            claimAmount = mapAddress_listedAssets[asset].lockedLP[lockMember];
+    function calcClaimbondedLP(address bondedMember, address asset) public returns (uint256 claimAmount){
+        uint256 secondsSinceClaim = now.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
+        uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
+        if(secondsSinceClaim >= secondsPerYear){
+            mapAddress_listedAssets[asset].claimRate[bondedMember] = 0;
+            claimAmount = mapAddress_listedAssets[asset].bondedLP[bondedMember];
         }else{
             claimAmount = secondsSinceClaim.mul(rate);
         }
@@ -274,10 +273,10 @@ contract Lock is iBEP20 {
 
     //============================== HELPERS ================================//
     function assetListedCount() public view returns (uint256 count){
-        return listedLockAssets.length;
+        return listedBondAssets.length;
     }
     function allListedAssets() public view returns (address[] memory _allListedAssets){
-        return listedLockAssets;
+        return listedBondAssets;
     }
     function memberCount() public view returns (uint256 count){
         return arrayMembers.length;
@@ -288,7 +287,7 @@ contract Lock is iBEP20 {
 
     function getMemberDetails(address member, address asset) public view returns (MemberDetails memory memberDetails){
         memberDetails.isMember = mapAddress_listedAssets[asset].isMember[member];
-        memberDetails.lockedLP = mapAddress_listedAssets[asset].lockedLP[member];
+        memberDetails.bondedLP = mapAddress_listedAssets[asset].bondedLP[member];
         memberDetails.claimRate = mapAddress_listedAssets[asset].claimRate[member];
         memberDetails.lastBlockTime = mapAddress_listedAssets[asset].lastBlockTime[member];
         return memberDetails;
