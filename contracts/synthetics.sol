@@ -21,6 +21,7 @@ interface iBASE {
 }
 interface iUTILS {
     function getPool(address token) external returns(address pool);
+    function calcShare(uint part, uint total, uint amount) external returns(uint value);
     function calcAsymmetricShare(uint u, uint U, uint A) external view returns (uint value);
     function calcBasePPinTokenWithPool(address pool, uint amount)external view returns (uint value);
     function calcValueInTokenWithPool(address pool, uint amount) external view returns (uint value);
@@ -87,33 +88,45 @@ contract Synthetics is iBEP20{
 
     address public BASE;
     address public ROUTER;
+    address public DEPLOYER;
     address public burnAddress;
     uint256 public defaultCollateralisation;
     uint256 public sUSDprice;
     uint256 public baseGenesisPrice;
+    address [] listedCollateralAssets;
+    uint256 public BasisPoints = 10000;
 
-    struct LPCDPDetails{
-        uint256 debt;
-        uint256 collateral;
-        address [] members;
+    uint256 public cdpTier1 = 20000;
+    uint256 public cdpTier2 = 15000;
+    uint256 public cdpTier3 = 12500;
+
+    struct LPCDPData {
+        mapping(uint256 => uint256) totalDebt;
+        mapping(uint256 => uint256) totalCollateral;
     }
-    struct MemberShare{
-        address lpTKNAddress;
-        uint256 share;
+
+    struct MemberDetails {
+        mapping(address => mapping(uint256 => uint256)) memberShare;
+        mapping(address => mapping(uint256 => bool)) isMember;
+        address [] CDPAddresses;
     }
 
-    mapping(address => LPCDPDetails) public mapAddress_LPCDPDetails;
-    mapping(address => uint256) public mapAddress_cdpTier;
-    mapping(address => uint256) public mapAddress_debt;
-    mapping(address => uint256) public mapAddress_collateral;
-    mapping(address => address[]) public mapAddress_members;
-    mapping(address => uint256) public mapAddress_memberShare;
-    // mapping(address => MemberShare)public mapAddress_
-     mapping(address => bool) public mapAddress_isMember;
+    mapping(address => LPCDPData) mapAddress_lPCDPData;
+    mapping(address => MemberDetails) mapAddress_memberDetails;
+    mapping(address => mapping(uint256 => address[])) mapAddress_members;
+    mapping(address => bool) public  mapAddress_isListed;
 
-    event AddLPCollateral(address indexed member, uint256 indexed lpAmount, address indexed lpCDPAddress);
 
-    constructor (address _base, address _router, address lpTKN, uint256 initLp) public payable {
+    event ListedCollateralTKN(address indexed DEPLOYER, address indexed asset);
+    event AddLPCollateral(address indexed member, uint256 indexed debt, address indexed lpCDPAddress);
+
+
+    modifier onlyDeployer() {
+        require(msg.sender == DEPLOYER, "Must be DAO");
+        _;
+    }
+
+    constructor (address _base, address _router, address collateral, uint256 initLp) public payable {
         BASE = _base;
         ROUTER = _router;
         name = 'Synthentic USD';
@@ -192,37 +205,53 @@ contract Synthetics is iBEP20{
         emit Transfer(account, address(0), amount);
     }
 
-    function depositLP(address lpToken, uint amount, uint cdpTier) public payable returns (uint cdpShare){
-        require(amount > 0, 'must get lp tokens');
-        require((cdpTier == 200 || cdpTier == 150 || cdpTier == 125), 'cdpTier must exist');//only 3 tiers
-        uint256 sUSDValue; uint256 asymBase; uint256 sUSDLPtkn;  
-        uint256 lpAdjusted; address _pool;
+    function listCollateralToken(address lpToken) public onlyDeployer returns(bool){
+         if(!mapAddress_isListed[lpToken]){
+            mapAddress_isListed[lpToken] = true;
+            listedCollateralAssets.push(lpToken);
+        }
+        emit ListedCollateralTKN(msg.sender, lpToken);
+        return true;
+        
+    }
 
-        iBEP20(lpToken).transferFrom(msg.sender, address(this), amount); //get lpTokens from sender
-        lpAdjusted = amount.mul(10000).div(20000);// cdp tiers later development 
+    function depositCollateral(address lpCollateralAddress, uint amount, uint collateralisation) public payable returns (uint cdpShare){
+        require(amount > 0, 'must get lp tokens');
+        require((collateralisation == cdpTier1 || collateralisation == cdpTier2 || collateralisation == cdpTier3), 'cdpTier must exist');//only 3 tiers
+        require(mapAddress_isListed[lpCollateralAddress], 'lpAddress must be listed as collateral');
+        uint256 sUSDDebt; uint256 asymBase; uint256 sUSDLPtkn; address member = msg.sender;
+        uint256 lpCollateralAdjusted; address _pool; 
+        iBEP20(lpCollateralAddress).transferFrom(msg.sender, address(this), amount); //get lpTokens from sender
+        lpCollateralAdjusted = getLPAdjustedAmount(collateralisation, amount);
         _pool = _DAO().UTILS().getPool(address(this)); //sUSD pool created in constructor
-        asymBase = iROUTER(ROUTER).removeLiquidityExactAndSwap(lpAdjusted,true,lpToken);//go get asym sparta
-        sUSDValue = _DAO().UTILS().calcValueInTokenWithPool(_pool, asymBase); //get value of asymBase
-        _mint(address(this), sUSDValue); // mint equivilant sparta values
-        _approve(address(this), ROUTER, sUSDValue);//approve router to spend sUSD for lp into sUSD:Sparta pools
-        sUSDLPtkn = iROUTER(ROUTER).addLiquidity(asymBase, sUSDValue, address(this)); // add liquidity into sparta : sUSD
-        iBEP20(_pool).transfer(msg.sender, sUSDLPtkn);
-        emit AddLPCollateral(msg.sender, amount, lpToken);
-        //cdpShare = added value - get share
-        if(mapAddress_isMember[msg.sender]){
-            //add member share
-            
+        asymBase = iROUTER(ROUTER).removeLiquidityExactAndSwap(lpCollateralAdjusted,true,lpCollateralAddress);//go get asym sparta
+        sUSDDebt = _DAO().UTILS().calcValueInTokenWithPool(_pool, asymBase); //get value of asymBase
+        mapAddress_lPCDPData[lpCollateralAddress].totalDebt[collateralisation] = mapAddress_lPCDPData[lpCollateralAddress].totalDebt[collateralisation].add(sUSDDebt); // add debt to totalDebt
+        mapAddress_lPCDPData[lpCollateralAddress].totalCollateral[collateralisation] = mapAddress_lPCDPData[lpCollateralAddress].totalCollateral[collateralisation].add(lpCollateralAdjusted); // add collateral to totalCollateral
+        cdpShare = mapAddress_lPCDPData[lpCollateralAddress].totalDebt[collateralisation] // share = amount * part/total
+        mapAddress_memberDetails[msg.sender].memberShare[lpCollateralAddress][collateralisation] = mapAddress_memberDetails[msg.sender].memberShare[lpCollateralAddress][collateralisation].add(cdpShare);
+        _mint(address(this), sUSDDebt); // mint equivilant sparta values
+        _approve(address(this), ROUTER, sUSDDebt);//approve router to spend sUSD for lp into sUSD:Sparta pools
+        sUSDLPtkn = iROUTER(ROUTER).addLiquidity(asymBase, sUSDDebt, address(this)); // add liquidity into sparta : sUSD
+        iBEP20(_pool).transfer(msg.sender, sUSDLPtkn); //send lptokens to user
+        emit AddLPCollateral(msg.sender, sUSDDebt, lpCollateralAddress);
+        if(!mapAddress_memberDetails[msg.sender].isMember[lpCollateralAddress][collateralisation]){
+            mapAddress_memberDetails[msg.sender].isMember[lpCollateralAddress][collateralisation] = true;
+            mapAddress_members[lpCollateralAddress][collateralisation].push(member);
         }else{
-            mapAddress_isMember[msg.sender] = true;
+          
             //fix mappings
         }
+    }
 
-
-
-
-
-
-
+    function getLPAdjustedAmount(uint256 _collateralisation, uint256 _amount) public returns (uint lpAdjusted ){
+         if(_collateralisation == cdpTier1){
+         return lpAdjusted = _amount.mul(BasisPoints).div(cdpTier1); // 200% collateralisation
+        } 
+        else if (_collateralisation == cdpTier2){
+         return lpAdjusted = _amount.mul(BasisPoints).div(cdpTier2); // 150% collateralisation
+        } 
+        return lpAdjusted = _amount.mul(BasisPoints).div(cdpTier3); // 125% collateralisation
     }
 
 
