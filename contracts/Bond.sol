@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 //iBEP20 Interface
 interface iBEP20 {
     function name() external view returns (string memory);
@@ -19,6 +19,7 @@ interface iBEP20 {
 interface iBASE {
     function claim(address asset, uint256 amount) external payable;  
     function DAO() external view returns (iDAO);
+    function burn(uint) external;
 }
 interface iROUTER {
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
@@ -100,7 +101,7 @@ contract Bond is iBEP20 {
     address public DEPLOYER;
     address [] listedBondAssets;
     uint256 baseSupply;
-    uint256 public secondsPerYear;
+    uint256 public secondsPerYear = 31536000;
     uint256 public emissionPercent = 2500;
     uint256 private basisPoints = 10000;
 
@@ -121,10 +122,9 @@ contract Bond is iBEP20 {
     constructor(address _base, address _router) public {
         BASE = _base;
         ROUTER = _router;
-        name = "SpartanBondTokenV1";
-        symbol  = "SPT-BOND-V1";
+        name = "SpartanBondTokenV2";
+        symbol  = "SPT-BOND-V2";
         decimals = 18;
-        secondsPerYear = 31536000;
         DEPLOYER = msg.sender;
         totalSupply = 1 * (10 ** 18);
         _balances[address(this)] = totalSupply;
@@ -187,7 +187,7 @@ contract Bond is iBEP20 {
         emit Transfer(sender, recipient, amount);
     }
 
-    function burn() public returns (bool success){
+    function burnBond() public returns (bool success){
         require(totalSupply >= 1, 'burnt already');
         _approve(address(this), BASE, totalSupply);
         iBASE(BASE).claim(address(this), totalSupply);
@@ -196,7 +196,7 @@ contract Bond is iBEP20 {
         iBEP20(BASE).approve(ROUTER, baseSupply);
         return true;
     }
-
+    //====================DEPLOYER=========================
     function listBondAsset(address asset) public onlyDeployer returns (bool){
          if(!isListed[asset]){
             isListed[asset] = true;
@@ -205,19 +205,33 @@ contract Bond is iBEP20 {
         emit ListedAsset(msg.sender, asset);
         return true;
     }
+    function changeEmission(uint256 bpEmission) public onlyDeployer returns (bool){
+        emissionPercent = bpEmission;
+        return true;
+    }
+    function changeBondPeriod(uint256 bondSeconds) public onlyDeployer returns (bool){
+        secondsPerYear = bondSeconds;
+        return true;
+    }
+    function deployerBurnBalance() public onlyDeployer {
+        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
+        iBASE(BASE).burn(baseBal);
+    }
+
 
      function deposit(address asset, uint amount) public payable returns (bool success) {
         require(amount > 0, 'must get asset');
         require(isListed[asset], 'must be listed');
-        uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset); 
+        uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset); uint lpBondedAdjusted;
         liquidityUnits = handleTransferIn(asset, amount);
         uint lpAdjusted = liquidityUnits.mul(emissionPercent).div(basisPoints);
+        lpBondedAdjusted = liquidityUnits.sub(lpAdjusted);
         if(!mapAddress_listedAssets[asset].isMember[msg.sender]){
           mapAddress_listedAssets[asset].isMember[msg.sender] = true;
           arrayMembers.push(msg.sender);
           mapAddress_listedAssets[asset].members.push(msg.sender);
         }
-        mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(lpAdjusted);
+        mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(lpBondedAdjusted);
         mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
         mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(secondsPerYear);//12months 31536000
         iBEP20(_pool).transfer(msg.sender, lpAdjusted);

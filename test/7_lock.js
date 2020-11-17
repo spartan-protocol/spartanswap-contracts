@@ -33,7 +33,6 @@ contract('LOCK', function (accounts) {
     checkLockSupply()
     checkListed()
     burnLock()
-    //wrapBNB()
     createPoolBNB()
     createPoolTKN1()
     deployerListBNB()
@@ -42,8 +41,13 @@ contract('LOCK', function (accounts) {
     attackerListAsset()
     depositNONEListedAsset()
     deployerListTKN()
-    depositTKN(acc2, 2500)
+    deployerChangeEmission(5000)
+    depositTKN(acc2, 5000)
     claimLPTKN(acc2, 1000) // claim after 1 second
+    deployerChangeSecondsPerYear(5000)
+    deployerBurnBaseBalance()
+    attackerChangeVesting(10000)
+    
     
 })
 
@@ -129,7 +133,7 @@ async function burnLock(){
         assert.equal(spartaBalBefore,'0', 'Sparta balance zero')
         await lock.approve(base.address, lockBalBefore, {from:acc0})
         expect(_.BN2Str(await lock.allowance(acc0, base.address))).to.equal(_.BN2Str(lockBalBefore));
-        let tx = await lock.burn()
+        let tx = await lock.burnBond()
         let lockBalAfter = await lock.balanceOf(lock.address)
         assert.equal(lockBalAfter,'0',  'lock was burnt')
         let spartaBalAfter = await base.balanceOf(lock.address)
@@ -157,29 +161,15 @@ async function createPoolTKN1() {
         await base.approve(poolTKN1.address, supply, { from: acc1 })
     })
 }
-// async function wrapBNB() {
-//     it("It should wrap", async () => {
-//         await web3.eth.sendTransaction({to: wbnb.address, value:_.BN2Str(10*_.one), from:acc0});
-//         await wbnb.transfer(acc1, _.getBN(_.BN2Int(_.one * 3)))
-//         await wbnb.transfer(acc2, _.getBN(_.BN2Int(_.one*3)))
-//         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
-//         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
-//         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-//         await wbnb.approve(lock.address, _.BN2Str(500000 * _.one), { from: acc0 })
-//         await wbnb.approve(lock.address, _.BN2Str(500000 * _.one), { from: acc1 })
-//         await wbnb.approve(lock.address, _.BN2Str(500000 * _.one), { from: acc2 })
-//     })
-// }
-
 async function createPoolBNB() {
     it("It should deploy BNB Pool", async () => {
         var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.BN2Str(_.one), _.BNB, {from: acc1,value:_.BN2Str(_.one)})
         await router.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one), _.BNB, {from: acc1, value:_.BN2Str(_.one)})
-        poolWBNB = await POOL.at(_pool)
+        poolBNB = await POOL.at(_pool)
         //console.log(`Pools: ${poolWBNB.address}`)
-        const baseAddr = await poolWBNB.BASE()
+        const baseAddr = await poolBNB.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(_.one * 10), 'base balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolBNB.address)), _.BN2Str(_.one * 10), 'base balance')
     })
 }
 async function createPoolWBNB() {
@@ -198,42 +188,31 @@ async function createPoolWBNB() {
         await base.approve(poolWBNB.address, supply, { from: acc1 })
     })
 }
-
-
-// async function addLiquidity(acc) {
-//     it("It should add liquidity", async () => {
-//          let token = _.BNB
-//         //let token = token1.address
-//         let y = _.BN2Str(_.one * 10)
-//         let x = _.BN2Str(_.one * 100)
-//         await router.addLiquidity(x, y, token, { from: acc, value:y})
-//     })
-// }
-
 async function depositBNB(acc, vesting){
-    it("It should deposit asset and receive half LP", async () => {
+    it(`It should deposit and recieve ${vesting/10000*100} % back`, async () => {
         let asset = _.BNB
         let amount = _.BN2Str(_.one)
         let spartaAllocation = await utils.calcValueInBase(asset,amount)
         let poolData = await utils.getPoolData(asset);
         var B = _.getBN(poolData.baseAmount)
         var T = _.getBN(poolData.tokenAmount)
-        poolUnits = _.getBN((await poolWBNB.totalSupply()))
+        poolUnits = _.getBN((await poolBNB.totalSupply()))
         let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
         let unitsAdj = units.times(vesting).div(10000)
-        let balBefore = _.getBN(await poolWBNB.balanceOf(acc))
+        let unitsBonded = units.minus(unitsAdj)
+        let balBefore = _.getBN(await poolBNB.balanceOf(acc))
         DEPOTime = _.getBN((new Date())/1000)
         await lock.deposit(asset, amount,{from:acc, value:amount})
         let memberDetails = await lock.getMemberDetails(acc, asset);
-        let balAfter = _.getBN(await poolWBNB.balanceOf(acc))
-        assert.equal(_.BN2Str((await poolWBNB.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
+        let balAfter = _.getBN(await poolBNB.balanceOf(acc))
+        assert.equal(_.BN2Str((await poolBNB.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
         assert.equal(_.BN2Str(_.floorBN(balBefore.plus(unitsAdj))), _.BN2Str(balAfter), 'lp tokens')
-        assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(await poolWBNB.balanceOf(acc)), 'locked LP')
+        assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(unitsBonded), 'bonded LP')
 
     })
 }
 async function depositTKN(acc, vesting){
-    it("It should deposit asset and receive half LP", async () => {
+    it(`It should deposit and recieve ${vesting/10000*100} % back`, async () => {
         let asset = token1.address
         let amount = _.BN2Str(_.one)
         let spartaAllocation = await utils.calcValueInBase(asset,amount)
@@ -244,18 +223,17 @@ async function depositTKN(acc, vesting){
         let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
         let unitsAdj = units.times(vesting).div(10000)
         let balBefore = _.getBN(await poolTKN1.balanceOf(acc))
+        let unitsBonded = units.minus(unitsAdj)
         await lock.deposit(asset, amount,{from:acc})
         DEPOTime = _.getBN((new Date())/1000)
         let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
         let memberDetails = await lock.getMemberDetails(acc, asset);
         assert.equal(_.BN2Str((await poolTKN1.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
         assert.equal(_.BN2Str(_.floorBN(balBefore.plus(unitsAdj))), _.BN2Str(balAfter), 'lp tokens')
-        assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(await poolTKN1.balanceOf(acc)), 'locked LP')
+        assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(unitsBonded), 'bonded LP')
 
     })
 }
-
-
 async function claimLPTKN(acc, ms){
     it(`It should claim vesting lp after ${ms/1000} seconds`, async () => {
         await sleep(ms)
@@ -279,7 +257,7 @@ async function claimLPBNB(acc, ms){
     it(`It should claim vesting lp after ${ms/1000} seconds`, async () => {
         await sleep(ms)
         let asset = _.BNB
-        let balBefore = _.getBN(await poolWBNB.balanceOf(acc))
+        let balBefore = _.getBN(await poolBNB.balanceOf(acc))
         let now = _.getBN((new Date())/1000)
         let memberDetailsBefore = await lock.getMemberDetails(acc, asset);
         let lockLPBefore = _.BN2Int(memberDetailsBefore.bondedLP)
@@ -288,12 +266,37 @@ async function claimLPBNB(acc, ms){
         let calcClaimable = _.floorBN(now.minus(DEPOTime).times(claimRate))
         let memberDetailsAfter = await lock.getMemberDetails(acc, asset);
         let lockLPAfter = _.getBN(memberDetailsAfter.bondedLP)
-        let balAfter = _.getBN(await poolWBNB.balanceOf(acc))
+        let balAfter = _.getBN(await poolBNB.balanceOf(acc))
         assert.isAtLeast(_.BN2Int(balBefore.plus(calcClaimable)), _.BN2Int(balAfter))
         assert.isAtLeast(_.BN2Int(lockLPAfter.plus(calcClaimable)), lockLPBefore)
     })
     
 }
+
+async function deployerChangeEmission(vesting){
+    it(`Deployer change vesting to ${vesting/10000*100}%`, async () => {
+        await lock.changeEmission(vesting, {from:acc0});
+        let emissionA = _.BN2Str(await lock.emissionPercent());
+        assert.equal(emissionA, vesting, 'deployer change emissions')
+
+    })
+}
+async function deployerChangeSecondsPerYear(seconds){
+    it(`Deployer change bond period to ${seconds} seconds`, async () => {
+        await lock.changeBondPeriod(seconds, {from:acc0});
+        let secondsPerYearA = _.BN2Str(await lock.secondsPerYear());
+        assert.equal(secondsPerYearA, seconds, 'deployer change bond period in seconds')
+    })
+}
+
+async function deployerBurnBaseBalance(){
+    it(`Deployer burn base from bond`, async () => {
+        await lock.deployerBurnBalance();
+        let bal = _.BN2Str(await base.balanceOf(lock.address))
+        assert.equal(bal, 0, 'balance burnt');
+    })
+}
+
 
 async function depositNONEListedAsset(){
     it('should fail to deposit none listed asset', async () =>{
@@ -324,6 +327,20 @@ async function attackerListAsset(){
 
     })
 }
+async function attackerChangeVesting(vesting){
+    it('should fail to change vesting from attacker', async () =>{
+        let attacker = acc3;
+        try {
+            await lock.changeEmission(vesting, {from:attacker});
+            assert.fail("The transaction should reject attacker");
+        }
+        catch (err) {
+            assert.include(err.message, "revert", "revert Must be DAO");
+        }
+
+    })
+}
+
 
 async function deployerListTKN(){
     it('deployer list TKN asset', async () =>{
