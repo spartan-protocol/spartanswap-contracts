@@ -62,7 +62,7 @@ function constructor(accounts) {
         utils = await UTILS.new(base.address)
         Dao = await DAO.new(base.address)
         router = await ROUTER.new(base.address, wbnb.address)
-        lock = await BOND.new(base.address, router.address)
+        lock = await BOND.new(base.address)
         token1 = await TOKEN1.new();
       
         await base.listAsset(lock.address, _.BN2Str(5000000 * _.one),_.BN2Str(_.one) ) // list lock
@@ -276,15 +276,15 @@ async function claimLPBNB(acc, ms){
 
 async function deployerChangeEmission(vesting){
     it(`Deployer change vesting to ${vesting/10000*100}%`, async () => {
-        await lock.changeEmission(vesting, {from:acc0});
-        let emissionA = _.BN2Str(await lock.emissionPercent());
+        await lock.changeEmissionBP(vesting, {from:acc0});
+        let emissionA = _.BN2Str(await lock.emissionBP());
         assert.equal(emissionA, vesting, 'deployer change emissions')
 
     })
 }
 async function deployerBurnBaseBalance(){
     it(`Deployer burn base from bond`, async () => {
-        await lock.deployerBurnBalance();
+        await lock.burnBalance();
         let bal = _.BN2Str(await base.balanceOf(lock.address))
         assert.equal(bal, 0, 'balance burnt');
     })
@@ -324,7 +324,7 @@ async function attackerChangeVesting(vesting){
     it('should fail to change vesting from attacker', async () =>{
         let attacker = acc3;
         try {
-            await lock.changeEmission(vesting, {from:attacker});
+            await lock.changeEmissionBP(vesting, {from:attacker});
             assert.fail("The transaction should reject attacker");
         }
         catch (err) {
@@ -365,8 +365,8 @@ async function claimAfterPeriod(acc, ms){
 
 async function deployerChangeSecondsPerYear(seconds){
     it(`Deployer change bond period to ${seconds} seconds`, async () => {
-        await lock.changeBondPeriod(seconds, {from:acc0});
-        let secondsPerYearA = _.BN2Str(await lock.secondsPerYear());
+        await lock.changeBondingPeriod(seconds, {from:acc0});
+        let secondsPerYearA = _.BN2Str(await lock.bondingPeriodSeconds());
         assert.equal(secondsPerYearA, seconds, 'deployer change bond period in seconds')
     })
 }
