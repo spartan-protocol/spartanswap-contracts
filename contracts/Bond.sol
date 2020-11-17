@@ -233,7 +233,7 @@ contract Bond is iBEP20 {
         }
         mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(lpBondedAdjusted);
         mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
-        mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(secondsPerYear);//12months 31536000
+        mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(secondsPerYear);
         iBEP20(_pool).transfer(msg.sender, lpAdjusted);
         emit DepositAsset(msg.sender, amount, lpAdjusted);
         return true;
@@ -274,11 +274,11 @@ contract Bond is iBEP20 {
         uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
         if(secondsSinceClaim >= secondsPerYear){
             mapAddress_listedAssets[asset].claimRate[bondedMember] = 0;
-            claimAmount = mapAddress_listedAssets[asset].bondedLP[bondedMember];
+            return claimAmount = mapAddress_listedAssets[asset].bondedLP[bondedMember];
         }else{
-            claimAmount = secondsSinceClaim.mul(rate);
+            return claimAmount = secondsSinceClaim.mul(rate);
         }
-        return claimAmount; 
+        
     }
 
 

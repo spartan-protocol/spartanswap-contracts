@@ -44,9 +44,10 @@ contract('LOCK', function (accounts) {
     deployerChangeEmission(5000)
     depositTKN(acc2, 5000)
     claimLPTKN(acc2, 1000) // claim after 1 second
-    deployerChangeSecondsPerYear(5000)
+    deployerChangeSecondsPerYear(10)
     deployerBurnBaseBalance()
     attackerChangeVesting(10000)
+    claimAfterPeriod(acc2, 10000)
     
     
 })
@@ -281,14 +282,6 @@ async function deployerChangeEmission(vesting){
 
     })
 }
-async function deployerChangeSecondsPerYear(seconds){
-    it(`Deployer change bond period to ${seconds} seconds`, async () => {
-        await lock.changeBondPeriod(seconds, {from:acc0});
-        let secondsPerYearA = _.BN2Str(await lock.secondsPerYear());
-        assert.equal(secondsPerYearA, seconds, 'deployer change bond period in seconds')
-    })
-}
-
 async function deployerBurnBaseBalance(){
     it(`Deployer burn base from bond`, async () => {
         await lock.deployerBurnBalance();
@@ -358,6 +351,26 @@ async function deployerListBNB(){
 
     })
 }
+async function claimAfterPeriod(acc, ms){
+    it('claim correct mount after time-locked period', async () =>{
+        await sleep(ms)
+        let asset = _.BNB
+        await lock.claim(asset,{from:acc})
+        let memberDetailsAfter = await lock.getMemberDetails(acc, asset);
+        let bondedLPAfter = _.getBN(memberDetailsAfter.bondedLP)
+        assert.equal(_.BN2Int(bondedLPAfter), 0, 'no more to claim')
+
+    })
+}
+
+async function deployerChangeSecondsPerYear(seconds){
+    it(`Deployer change bond period to ${seconds} seconds`, async () => {
+        await lock.changeBondPeriod(seconds, {from:acc0});
+        let secondsPerYearA = _.BN2Str(await lock.secondsPerYear());
+        assert.equal(secondsPerYearA, seconds, 'deployer change bond period in seconds')
+    })
+}
+
 
 
 
