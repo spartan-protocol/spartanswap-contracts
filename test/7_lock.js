@@ -37,12 +37,12 @@ contract('LOCK', function (accounts) {
     createPoolBNB()
     createPoolTKN1()
     deployerListBNB()
-    depositBNB(acc2)
+    depositBNB(acc2, 2500)
     claimLPBNB(acc2, 1000) 
     attackerListAsset()
     depositNONEListedAsset()
     deployerListTKN()
-    depositTKN(acc2)
+    depositTKN(acc2, 2500)
     claimLPTKN(acc2, 1000) // claim after 1 second
     
 })
@@ -210,7 +210,7 @@ async function createPoolWBNB() {
 //     })
 // }
 
-async function depositBNB(acc){
+async function depositBNB(acc, vesting){
     it("It should deposit asset and receive half LP", async () => {
         let asset = _.BNB
         let amount = _.BN2Str(_.one)
@@ -220,7 +220,7 @@ async function depositBNB(acc){
         var T = _.getBN(poolData.tokenAmount)
         poolUnits = _.getBN((await poolWBNB.totalSupply()))
         let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
-        let unitsAdj = units.times(5000).div(10000)
+        let unitsAdj = units.times(vesting).div(10000)
         let balBefore = _.getBN(await poolWBNB.balanceOf(acc))
         DEPOTime = _.getBN((new Date())/1000)
         await lock.deposit(asset, amount,{from:acc, value:amount})
@@ -232,7 +232,7 @@ async function depositBNB(acc){
 
     })
 }
-async function depositTKN(acc){
+async function depositTKN(acc, vesting){
     it("It should deposit asset and receive half LP", async () => {
         let asset = token1.address
         let amount = _.BN2Str(_.one)
@@ -242,7 +242,7 @@ async function depositTKN(acc){
         var T = _.getBN(poolData.tokenAmount)
         poolUnits = _.getBN((await poolTKN1.totalSupply()))
         let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
-        let unitsAdj = units.times(5000).div(10000)
+        let unitsAdj = units.times(vesting).div(10000)
         let balBefore = _.getBN(await poolTKN1.balanceOf(acc))
         await lock.deposit(asset, amount,{from:acc})
         DEPOTime = _.getBN((new Date())/1000)

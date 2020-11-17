@@ -228,8 +228,8 @@ contract Synthetics is iBEP20{
         sUSDDebt = _DAO().UTILS().calcValueInTokenWithPool(_pool, asymBase); //get value of asymBase
         mapAddress_lPCDPData[lpCollateralAddress].totalDebt[collateralisation] = mapAddress_lPCDPData[lpCollateralAddress].totalDebt[collateralisation].add(sUSDDebt); // add debt to totalDebt
         mapAddress_lPCDPData[lpCollateralAddress].totalCollateral[collateralisation] = mapAddress_lPCDPData[lpCollateralAddress].totalCollateral[collateralisation].add(lpCollateralAdjusted); // add collateral to totalCollateral
-        cdpShare = mapAddress_lPCDPData[lpCollateralAddress].totalDebt[collateralisation] // share = amount * part/total
-        mapAddress_memberDetails[msg.sender].memberShare[lpCollateralAddress][collateralisation] = mapAddress_memberDetails[msg.sender].memberShare[lpCollateralAddress][collateralisation].add(cdpShare);
+        cdpShare = mapAddress_lPCDPData[lpCollateralAddress].totalDebt[collateralisation]; // share = amount * part/total
+       // mapAddress_memberDetails[msg.sender].memberShare[lpCollateralAddress][collateralisation] = mapAddress_memberDetails[msg.sender].memberShare[lpCollateralAddress][collateralisation].add(cdpShare);
         _mint(address(this), sUSDDebt); // mint equivilant sparta values
         _approve(address(this), ROUTER, sUSDDebt);//approve router to spend sUSD for lp into sUSD:Sparta pools
         sUSDLPtkn = iROUTER(ROUTER).addLiquidity(asymBase, sUSDDebt, address(this)); // add liquidity into sparta : sUSD

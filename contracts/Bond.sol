@@ -93,16 +93,16 @@ contract Bond is iBEP20 {
         uint256 lastBlockTime;
     }
 
- 
   // Parameters
     address public BASE;
     address public ROUTER;
-    address[] public arrayMembers;
+    address [] public arrayMembers;
     address public DEPLOYER;
     address [] listedBondAssets;
     uint256 baseSupply;
     uint256 public secondsPerYear;
-    uint256 public fiftyPercent = 5000;
+    uint256 public emissionPercent = 2500;
+    uint256 private basisPoints = 10000;
 
     mapping(address => ListedAssets) public mapAddress_listedAssets;
     mapping(address => bool) public isListed;
@@ -121,8 +121,8 @@ contract Bond is iBEP20 {
     constructor(address _base, address _router) public {
         BASE = _base;
         ROUTER = _router;
-        name = "Bond-Token";
-        symbol  = "BND";
+        name = "SpartanBondTokenV1";
+        symbol  = "SPT-BOND-V1";
         decimals = 18;
         secondsPerYear = 31536000;
         DEPLOYER = msg.sender;
@@ -209,9 +209,9 @@ contract Bond is iBEP20 {
      function deposit(address asset, uint amount) public payable returns (bool success) {
         require(amount > 0, 'must get asset');
         require(isListed[asset], 'must be listed');
-        uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset); uint256 basisPoints = 10000;
+        uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset); 
         liquidityUnits = handleTransferIn(asset, amount);
-        uint lpAdjusted = liquidityUnits.mul(fiftyPercent).div(basisPoints);
+        uint lpAdjusted = liquidityUnits.mul(emissionPercent).div(basisPoints);
         if(!mapAddress_listedAssets[asset].isMember[msg.sender]){
           mapAddress_listedAssets[asset].isMember[msg.sender] = true;
           arrayMembers.push(msg.sender);
