@@ -1,3 +1,7 @@
+/**
+ *Submitted for verification at BscScan.com on 2020-11-17
+*/
+
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
@@ -19,7 +23,6 @@ interface iBEP20 {
 interface iBASE {
     function claim(address asset, uint256 amount) external payable;  
     function DAO() external view returns (iDAO);
-    function burn(uint) external;
 }
 interface iROUTER {
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
@@ -30,8 +33,8 @@ interface iUTILS {
     function getPool(address token)external view returns (address value);
 }
 interface iDAO {
-    function ROUTER() external view returns(address);
-    function UTILS() external view returns(address);
+    function ROUTER() external view returns(iROUTER);
+    function UTILS() external view returns(iUTILS);
 }
 
 
@@ -67,7 +70,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract Bond is iBEP20 {
+contract BondV1 is iBEP20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -96,12 +99,13 @@ contract Bond is iBEP20 {
 
   // Parameters
     address public BASE;
+    address public ROUTER;
     address [] public arrayMembers;
     address public DEPLOYER;
     address [] listedBondAssets;
     uint256 baseSupply;
-    uint256 public bondingPeriodSeconds = 31536000;
-    uint256 public emissionBP = 2500;
+    uint256 public secondsPerYear;
+    uint256 public emissionPercent = 2500;
     uint256 private basisPoints = 10000;
 
     mapping(address => ListedAssets) public mapAddress_listedAssets;
@@ -118,11 +122,13 @@ contract Bond is iBEP20 {
 
     //=====================================CREATION=========================================//
     // Constructor
-    constructor(address _base) public {
+    constructor(address _base, address _router) public {
         BASE = _base;
-        name = "SpartanBondTokenV2";
-        symbol  = "SPT-BOND-V2";
+        ROUTER = _router;
+        name = "SpartanBondTokenV1";
+        symbol  = "SPT-BOND-V1";
         decimals = 18;
+        secondsPerYear = 31536000;
         DEPLOYER = msg.sender;
         totalSupply = 1 * (10 ** 18);
         _balances[address(this)] = totalSupply;
@@ -185,16 +191,16 @@ contract Bond is iBEP20 {
         emit Transfer(sender, recipient, amount);
     }
 
-    function burnBond() public returns (bool success){
+    function burn() public returns (bool success){
         require(totalSupply >= 1, 'burnt already');
         _approve(address(this), BASE, totalSupply);
         iBASE(BASE).claim(address(this), totalSupply);
         totalSupply = totalSupply.sub(totalSupply);
         baseSupply = iBEP20(BASE).balanceOf(address(this));
-        iBEP20(BASE).approve(_DAO().ROUTER(), baseSupply);
+        iBEP20(BASE).approve(ROUTER, baseSupply);
         return true;
     }
-    //====================DEPLOYER=========================
+
     function listBondAsset(address asset) public onlyDeployer returns (bool){
          if(!isListed[asset]){
             isListed[asset] = true;
@@ -203,35 +209,21 @@ contract Bond is iBEP20 {
         emit ListedAsset(msg.sender, asset);
         return true;
     }
-    function changeEmissionBP(uint256 bp) public onlyDeployer returns (bool){
-        emissionBP = bp;
-        return true;
-    }
-    function changeBondingPeriod(uint256 bondingSeconds) public onlyDeployer returns (bool){
-        bondingPeriodSeconds = bondingSeconds;
-        return true;
-    }
-    function burnBalance() public onlyDeployer {
-        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
-        iBASE(BASE).burn(baseBal);
-    }
-
 
      function deposit(address asset, uint amount) public payable returns (bool success) {
         require(amount > 0, 'must get asset');
         require(isListed[asset], 'must be listed');
-        uint liquidityUnits; address _pool = iUTILS(_DAO().UTILS()).getPool(asset); uint lpBondedAdjusted;
+        uint liquidityUnits; address _pool = _DAO().UTILS().getPool(asset); 
         liquidityUnits = handleTransferIn(asset, amount);
-        uint lpAdjusted = liquidityUnits.mul(emissionBP).div(basisPoints);
-        lpBondedAdjusted = liquidityUnits.sub(lpAdjusted);
+        uint lpAdjusted = liquidityUnits.mul(emissionPercent).div(basisPoints);
         if(!mapAddress_listedAssets[asset].isMember[msg.sender]){
           mapAddress_listedAssets[asset].isMember[msg.sender] = true;
           arrayMembers.push(msg.sender);
           mapAddress_listedAssets[asset].members.push(msg.sender);
         }
-        mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(lpBondedAdjusted);
+        mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(lpAdjusted);
         mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
-        mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(bondingPeriodSeconds);
+        mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(secondsPerYear);//12months 31536000
         iBEP20(_pool).transfer(msg.sender, lpAdjusted);
         emit DepositAsset(msg.sender, amount, lpAdjusted);
         return true;
@@ -239,17 +231,17 @@ contract Bond is iBEP20 {
 
     function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
         uint spartaAllocation;
-        spartaAllocation = iUTILS(_DAO().UTILS()).calcValueInBase(_token, _amount);
+        spartaAllocation = _DAO().UTILS().calcValueInBase(_token, _amount);
         if(_token == address(0)){
                 require((_amount == msg.value), "InputErr");
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidity{value:_amount}(spartaAllocation, _amount, _token);
+                LPunits = iROUTER(ROUTER).addLiquidity{value:_amount}(spartaAllocation, _amount, _token);
             } else {
                 iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
-                if(iBEP20(_token).allowance(address(this), _DAO().ROUTER()) < _amount){
+                if(iBEP20(_token).allowance(address(this), ROUTER) < _amount){
                     uint256 approvalTNK = iBEP20(_token).totalSupply();  
-                    iBEP20(_token).approve(_DAO().ROUTER(), approvalTNK);  
+                    iBEP20(_token).approve(ROUTER, approvalTNK);  
                 }
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidity(spartaAllocation, _amount, _token);
+                LPunits = iROUTER(ROUTER).addLiquidity(spartaAllocation, _amount, _token);
             }
     }
     //============================== CLAIM LP TOKENS ================================//
@@ -257,8 +249,8 @@ contract Bond is iBEP20 {
     function claim(address asset) public returns(bool){
         require(mapAddress_listedAssets[asset].bondedLP[msg.sender] > 0, 'must have bonded lps');
         require(mapAddress_listedAssets[asset].isMember[msg.sender], 'must have deposited first');
-        uint256 claimable = calcClaimBondedLP(msg.sender, asset); 
-        address _pool = iUTILS(_DAO().UTILS()).getPool(asset);
+        uint256 claimable = calcClaimbondedLP(msg.sender, asset); 
+        address _pool = _DAO().UTILS().getPool(asset);
         require(claimable <= mapAddress_listedAssets[asset].bondedLP[msg.sender],'attempted to overclaim');
         mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
         mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].sub(claimable);
@@ -267,16 +259,16 @@ contract Bond is iBEP20 {
     }
     
 
-    function calcClaimBondedLP(address bondedMember, address asset) public returns (uint256 claimAmount){
+    function calcClaimbondedLP(address bondedMember, address asset) public returns (uint256 claimAmount){
         uint256 secondsSinceClaim = now.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
         uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
-        if(secondsSinceClaim >= bondingPeriodSeconds){
+        if(secondsSinceClaim >= secondsPerYear){
             mapAddress_listedAssets[asset].claimRate[bondedMember] = 0;
-            return claimAmount = mapAddress_listedAssets[asset].bondedLP[bondedMember];
+            claimAmount = mapAddress_listedAssets[asset].bondedLP[bondedMember];
         }else{
-            return claimAmount = secondsSinceClaim.mul(rate);
+            claimAmount = secondsSinceClaim.mul(rate);
         }
-        
+        return claimAmount; 
     }
 
 
