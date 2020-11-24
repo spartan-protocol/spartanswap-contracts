@@ -55,6 +55,18 @@ contract('LOCK', function (accounts) {
     checkLockSupply2()
     burnLock2()
     depositTKN(acc2)
+    deployerBurnBaseBalance()
+    addLiquidityTKN1(acc1)
+    addLiquidityTKN1(acc2)
+    addLiquidityTKN1(acc3)
+    lockTKN(acc1, _.BN2Str(_.one * 10)) // 25% <33%
+    lockTKN(acc2, _.BN2Str(_.one * 10)) // 25% +1 >33% <50%
+    lockTKN(acc3, _.BN2Str(_.one * 15)) // 37% +1 >50%
+    deployerBurnBaseBalance()
+    mintBond()
+    burnLock2()
+    voteList()
+  
 })
 
 //################################################################
@@ -67,19 +79,23 @@ function constructor(accounts) {
         utils = await UTILS.new(base.address)
         Dao = await DAO.new(base.address)
         router = await ROUTER.new(base.address, wbnb.address)
-        lock = await BOND.new(base.address)
+        bond = await BOND.new(base.address)
         bondtwo = await BONDv.new(base.address)
         token1 = await TOKEN1.new();
+        token2 = await TOKEN1.new();
       
-        await base.listAsset(lock.address, _.BN2Str(5000000* _.one),_.BN2Str(8*_.one) ) // list lock
-        await base.listAsset(bondtwo.address, _.BN2Str(5000000* _.one),_.BN2Str(1*_.one) ) // list lock
-        await base.listAsset(token1.address, _.BN2Str(500000 * _.one),_.BN2Str(2*_.one) ) //list token 1
+        await base.listAsset(bond.address, _.BN2Str(5000000* _.one),_.BN2Str(10*_.one) ) // list bond
+        await base.listAsset(bondtwo.address, _.BN2Str(5000000* _.one),_.BN2Str(1*_.one) ) // list bond
+        await base.listAsset(token1.address, _.BN2Str(500000 * _.one),_.BN2Str(3*_.one) ) //list token 1
       
         await base.changeDAO(Dao.address)
         await Dao.setGenesisAddresses(router.address, utils.address)
 
         let supply = await token1.totalSupply()
         await token1.transfer(acc1, _.getBN(_.BN2Int(supply)/4)) // give acc1 token1 to burn
+        await token1.transfer(acc2, _.getBN(_.BN2Int(supply)/4))
+        await token1.transfer(acc3, _.getBN(_.BN2Int(supply)/4))
+
         await token1.approve(base.address, supply, {from:acc1})//approve base to burn token1 from acc1
         await base.claim(token1.address, _.BN2Str(_.one), {from: acc1}) // burn 1 token1 to get sparta
         //console.log(_.BN2Str(await base.balanceOf(acc1))/_.one)
@@ -88,30 +104,33 @@ function constructor(accounts) {
         await token1.approve(router.address, supply, {from:acc1}) // approve router to add token1
         await base.approve(router.address, supply, {from:acc1}) //approve router to add base
 
-        await wbnb.approve(lock.address, supply, {from:acc1}) // approve lock 
-        await token1.approve(lock.address, supply, {from:acc1}) // approve lock 
-        await base.approve(lock.address, supply, {from:acc1})
-        await wbnb.approve(bondtwo.address, supply, {from:acc1}) // approve lock 
-        await token1.approve(bondtwo.address, supply, {from:acc1}) // approve lock 
+        await wbnb.approve(bond.address, supply, {from:acc1}) // approve bond 
+        await token1.approve(bond.address, supply, {from:acc1}) // approve bond 
+        await base.approve(bond.address, supply, {from:acc1})
+        await wbnb.approve(bondtwo.address, supply, {from:acc1}) // approve bond 
+        await token1.approve(bondtwo.address, supply, {from:acc1}) // approve bond 
         await base.approve(bondtwo.address, supply, {from:acc1})
         await base.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc1})
         await wbnb.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc1})
         await token1.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc1})
-
-        await token1.transfer(acc2, _.getBN(_.BN2Int(supply)/4)) // give acc1 token1 to burn
+        
         await token1.approve(base.address, supply, {from:acc2})//approve base to burn token1 from acc1
+        await token1.approve(base.address, supply, {from:acc3})//approve base to burn token1 from acc1
         await base.claim(token1.address, _.BN2Str(_.one), {from: acc2}) // burn 1 token1 to get sparta
+        await base.claim(token1.address, _.BN2Str(_.one), {from: acc3}) // burn 1 token1 to get sparta
         //console.log(_.BN2Str(await base.balanceOf(acc1))/_.one)
 
         await wbnb.approve(router.address, supply, {from:acc2}) // approve router to add wbnb
         await token1.approve(router.address, supply, {from:acc2}) // approve router to add token1
         await base.approve(router.address, supply, {from:acc2}) //approve router to add base
+        await token1.approve(router.address, supply, {from:acc3}) // approve router to add token1
+        await base.approve(router.address, supply, {from:acc3}) //approve router to add base
 
-        await wbnb.approve(lock.address, supply, {from:acc2}) // approve lock 
-        await token1.approve(lock.address, supply, {from:acc2}) // approve lock 
-        await base.approve(lock.address, supply, {from:acc2})
-        await wbnb.approve(bondtwo.address, supply, {from:acc2}) // approve lock 
-        await token1.approve(bondtwo.address, supply, {from:acc2}) // approve lock 
+        await wbnb.approve(bond.address, supply, {from:acc2}) // approve bond 
+        await token1.approve(bond.address, supply, {from:acc2}) // approve bond 
+        await base.approve(bond.address, supply, {from:acc2})
+        await wbnb.approve(bondtwo.address, supply, {from:acc2}) // approve bond 
+        await token1.approve(bondtwo.address, supply, {from:acc2}) // approve bond 
         await base.approve(bondtwo.address, supply, {from:acc2})
         await base.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc2})
         await wbnb.approve('0x93892e7ef9ab548bcb7b00354a51a84a4fe94cd7',supply, {from:acc2})
@@ -124,25 +143,25 @@ function constructor(accounts) {
     });
 }
 async function checkLockSupply(){
-    it("It should mint 1 Lock", async () => {
-        let lockSupply = await lock.totalSupply()
+    it("It should mint 1 BOND token", async () => {
+        let lockSupply = await bond.totalSupply()
         assert.equal(lockSupply,_.BN2Str(_.one), '1 Lock exists')
 })
 }
 async function burnLock(){
     it("Burn bond for Allocation", async () => {
-        let lockBalBefore = await lock.balanceOf(lock.address)
-        assert.equal(_.BN2Str(lockBalBefore), _.BN2Str(_.one), '1 lock exist')
-        let spartaBalBefore = await base.balanceOf(lock.address)
+        let lockBalBefore = await bond.balanceOf(bond.address)
+        assert.equal(_.BN2Str(lockBalBefore), _.BN2Str(_.one), '1 bond exist')
+        let spartaBalBefore = await base.balanceOf(bond.address)
         assert.equal(spartaBalBefore,'0', 'Sparta balance zero')
-        await lock.approve(base.address, lockBalBefore, {from:acc0})
+        await bond.approve(base.address, lockBalBefore, {from:acc0})
         await bondtwo.approve(base.address, lockBalBefore, {from:acc0})
-        expect(_.BN2Str(await lock.allowance(acc0, base.address))).to.equal(_.BN2Str(lockBalBefore));
-        let tx = await lock.burnBond()
+        expect(_.BN2Str(await bond.allowance(acc0, base.address))).to.equal(_.BN2Str(lockBalBefore));
+        let tx = await bond.burnBond()
         let tx1 = await bondtwo.burnBond()
-        let lockBalAfter = await lock.balanceOf(lock.address)
-        assert.equal(lockBalAfter,'0',  'lock was burnt')
-        let spartaBalAfter = await base.balanceOf(lock.address)
+        let lockBalAfter = await bond.balanceOf(bond.address)
+        assert.equal(lockBalAfter,'0',  'bond was burnt')
+        let spartaBalAfter = await base.balanceOf(bond.address)
         assert.equal(_.BN2Str(spartaBalAfter/_.one),'5000000', 'did it get 5m sparta')
     })
 }
@@ -179,7 +198,7 @@ async function createPoolBNB() {
     })
 }
 async function depositBNB(acc){
-    it(`It should deposit and lock into dao `, async () => {
+    it(`It should deposit and bond into dao `, async () => {
         let asset = _.BNB
         let amount = _.BN2Str(_.one)
         let poolData = await utils.getPoolData(asset);
@@ -189,8 +208,8 @@ async function depositBNB(acc){
         poolUnits = _.getBN((await poolBNB.totalSupply()))
         let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
         DEPOTime = _.getBN((new Date())/1000)
-       let tx = await lock.deposit(asset, amount,{from:acc, value:amount})
-       let memberDetails = await lock.getMemberDetails(acc, asset);
+       let tx = await bond.deposit(asset, amount,{from:acc, value:amount})
+       let memberDetails = await bond.getMemberDetails(acc, asset);
        assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(units), 'bonded LP')
        let poolData2 = await utils.getPoolData(asset);
        let spartaAllocation2 = await utils.calcValueInBase(asset,amount)
@@ -207,7 +226,7 @@ async function depositBNB(acc){
     })
 }
 async function depositTKN(acc){
-    it(`It should deposit and lock into dao`, async () => {
+    it(`It should deposit and bond into dao`, async () => {
         let asset = token1.address
         let amount = _.BN2Str(_.one)
         let poolData = await utils.getPoolData(asset);
@@ -217,10 +236,10 @@ async function depositTKN(acc){
         poolUnits = _.getBN((await poolTKN1.totalSupply()))
         let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
         DEPOTime = _.getBN((new Date())/1000)
-        let lockLPBalB =  _.BN2Str(await poolTKN1.balanceOf(lock.address))
-        await lock.deposit(asset, amount,{from:acc})
-        let memberDetails = await lock.getMemberDetails(acc, asset);
-        let lockLPBal =  _.getBN(await poolTKN1.balanceOf(lock.address))
+        let lockLPBalB =  _.BN2Str(await poolTKN1.balanceOf(bond.address))
+        await bond.deposit(asset, amount,{from:acc})
+        let memberDetails = await bond.getMemberDetails(acc, asset);
+        let lockLPBal =  _.getBN(await poolTKN1.balanceOf(bond.address))
        assert.equal(lockLPBal.minus(units), lockLPBalB, 'got LP')
         assert.equal(_.BN2Str((await poolTKN1.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
         assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(units.plus(lockLPBalB)), 'bonded LP')
@@ -233,12 +252,12 @@ async function claimLPAndLockTNK(acc, ms){
         let asset = token1.address
         let balBefore = _.getBN(await poolTKN1.balanceOf(Dao.address))
         let now = _.getBN((new Date())/1000)
-        let memberDetailsBefore = await lock.getMemberDetails(acc, asset);
+        let memberDetailsBefore = await bond.getMemberDetails(acc, asset);
         let bondedLPBefore = _.BN2Int(memberDetailsBefore.bondedLP)
         let claimRate = _.BN2Str(memberDetailsBefore.claimRate)
-        await lock.claimAndLock(asset,{from:acc})
+        await bond.claimAndLock(asset,{from:acc})
         let calcClaimable = _.floorBN(now.minus(DEPOTime).times(claimRate))
-        let memberDetailsAfter = await lock.getMemberDetails(acc, asset);
+        let memberDetailsAfter = await bond.getMemberDetails(acc, asset);
         let bondedLPAfter = _.getBN(memberDetailsAfter.bondedLP)
         let balAfter = _.getBN(await poolTKN1.balanceOf(Dao.address))
         assert.isAtLeast(_.BN2Int(balBefore.plus(9008584171235832928)), _.BN2Int(balAfter))
@@ -247,18 +266,18 @@ async function claimLPAndLockTNK(acc, ms){
     
 }
 async function claimLPAndLock(acc, ms){
-    it(`It should claim and lock into DAO LPs after ${ms/1000} seconds`, async () => {
+    it(`It should claim and bond into DAO LPs after ${ms/1000} seconds`, async () => {
         await sleep(ms)
         let asset = _.BNB
         let now = _.getBN((new Date())/1000)
         let balBefore = _.getBN(await poolBNB.balanceOf(Dao.address))
-        let memberDetailsBefore = await lock.getMemberDetails(acc, asset);
+        let memberDetailsBefore = await bond.getMemberDetails(acc, asset);
         let bondedLPBefore = _.getBN(memberDetailsBefore.bondedLP)
         let claimRate = _.BN2Str(memberDetailsBefore.claimRate)
         let tx = await bondtwo.claim(asset,{from:acc})
         let accBal = _.getBN(await poolBNB.balanceOf(acc))
-        await lock.claimAndLock(asset,{from:acc})
-        let memberDetailsAfter = await lock.getMemberDetails(acc, asset);
+        await bond.claimAndLock(asset,{from:acc})
+        let memberDetailsAfter = await bond.getMemberDetails(acc, asset);
         let bondedLPAfter = _.getBN(memberDetailsAfter.bondedLP)
         let balAfter = _.getBN(await poolBNB.balanceOf(Dao.address))
         assert.isAtLeast(_.BN2Int(balBefore.plus('1875000000000000000').plus(accBal)), _.BN2Int(balAfter))
@@ -268,8 +287,8 @@ async function claimLPAndLock(acc, ms){
 }
 async function deployerBurnBaseBalance(){
     it(`Deployer burn base from bond`, async () => {
-        await lock.burnBalance();
-        let bal = _.BN2Str(await base.balanceOf(lock.address))
+        await bond.burnBalance();
+        let bal = _.BN2Str(await base.balanceOf(bond.address))
         assert.equal(bal, 0, 'balance burnt');
     })
 }
@@ -279,7 +298,7 @@ async function depositNONEListedAsset(){
         let amount = _.BN2Str(_.one)
         let tnk = token1.address;
         try {
-            await lock.deposit(tnk, amount,{from:attacker})
+            await bond.deposit(tnk, amount,{from:attacker})
             assert.fail("The transaction should reject attacker");
         }
         catch (err) {
@@ -293,7 +312,7 @@ async function attackerListAsset(){
         let attacker = acc3;
         let asset = token1.address;
         try {
-            await lock.listBondAsset(asset, {from:attacker});
+            await bond.listBondAsset(asset, {from:attacker});
             assert.fail("The transaction should reject attacker");
         }
         catch (err) {
@@ -306,7 +325,7 @@ async function deployerListTKN(){
     it('deployer list TKN asset', async () =>{
         let deployer = acc0;
         let asset = token1.address;
-        await lock.listBondAsset(asset, {from:deployer});
+        await bond.listBondAsset(asset, {from:deployer});
         await bondtwo.listBondAsset(asset, {from:deployer});
 
     })
@@ -315,7 +334,7 @@ async function deployerListBNB(){
     it('deployer list bnb asset', async () =>{
         let deployer = acc0;
         let asset = _.BNB;
-        await lock.listBondAsset(asset, {from:deployer});
+        await bond.listBondAsset(asset, {from:deployer});
         await bondtwo.listBondAsset(asset, {from:deployer});
 
     })
@@ -324,8 +343,8 @@ async function claimAfterPeriod(acc, ms){
     it('claim correct mount after time-locked period', async () =>{
         await sleep(ms)
         let asset = _.BNB
-        await lock.claimAndLock(asset,{from:acc})
-        let memberDetailsAfter = await lock.getMemberDetails(acc, asset);
+        await bond.claimAndLock(asset,{from:acc})
+        let memberDetailsAfter = await bond.getMemberDetails(acc, asset);
         let bondedLPAfter = _.getBN(memberDetailsAfter.bondedLP)
         assert.equal(_.BN2Int(bondedLPAfter), 0, 'no more to claim')
 
@@ -333,9 +352,9 @@ async function claimAfterPeriod(acc, ms){
 }
 async function deployerChangeSecondsPerYear(seconds){
     it(`Deployer change bond period to ${seconds} seconds`, async () => {
-        await lock.changeBondingPeriod(seconds, {from:acc0});
+        await bond.changeBondingPeriod(seconds, {from:acc0});
         await bondtwo.changeBondingPeriod(seconds, {from:acc0});
-        let secondsPerYearA = _.BN2Str(await lock.bondingPeriodSeconds());
+        let secondsPerYearA = _.BN2Str(await bond.bondingPeriodSeconds());
         assert.equal(secondsPerYearA, seconds, 'deployer change bond period in seconds')
     })
 }
@@ -343,29 +362,83 @@ async function deployerMintBond(){
     it('deployer mint BOND', async () =>{
         let deployer = acc0;
         let amount = _.BN2Str(_.one);
-        await lock.mintBond({from:deployer});
-        let totalSupply = _.BN2Str(await lock.totalSupply());
+        await bond.mintBond({from:deployer});
+        let totalSupply = _.BN2Str(await bond.totalSupply());
         assert.equal(totalSupply, amount, "total supply bond")
 
     })
 }
 async function checkLockSupply2(){
     it("Check total Bond Supply to be 1", async () => {
-        let lockSupply = await lock.totalSupply()
+        let lockSupply = await bond.totalSupply()
         assert.equal(lockSupply,_.BN2Str(_.one), '1 Lock exists')
 })
 }
+async function lockTKN(acc, amount) {
+    it("It should bond into dao", async () => {
+        // let balance = await poolTKN1.balanceOf(acc)
+        // //console.log(`balance: ${balance}`)
+        // await poolTKN1.approve(Dao.address, balance, { from: acc })
+        await Dao.deposit(poolTKN1.address, amount, { from: acc })
+        //console.log(`isMember: ${await Dao.isMember(acc)}`)
+        //console.log(`mapMemberPool_balance: ${await Dao.mapMemberPool_balance(acc, poolWBNB.address)}`)
+        //console.log(`totalWeight: ${await Dao.totalWeight()}`)
+        //console.log(`mapMember_weight: ${await Dao.mapMember_weight(acc)}`)
+        //console.log(`rate: ${_.getBN(await Dao.mapMember_weight(acc)).div(_.getBN(await Dao.totalWeight()))}`)
+    })
+}
+async function addLiquidityTKN1(acc) {
+    it("Acc should add liquidity ", async () => {
+        await router.addLiquidity(_.BN2Str(_.one * 15), _.BN2Str(_.one * 200), token1.address, { from: acc})
+    })
+}
+async function voteList() {
+    it("Proposal to LIST bonding asset", async () => {
+        await bond.newAddressProposal(token2.address, 'LIST',{ from: acc1 })
+        let proposalCount = _.BN2Str(await bond.proposalCount())
+        await bond.voteProposal(proposalCount, { from: acc1 })
+        await bond.voteProposal(proposalCount, { from: acc2 })
+        await sleep(2100)
+        await bond.finaliseProposal(proposalCount)
+        assert.equal(await bond.isListed(token2.address), true)
+    })
+    it("Proposal to DELIST bonding asset", async () => {
+        await bond.newAddressProposal(token2.address, 'DELIST', { from: acc1 })
+        let proposalCount = _.BN2Str(await bond.proposalCount())
+        await bond.voteProposal(proposalCount, { from: acc1 })
+        await bond.voteProposal(proposalCount, { from: acc2 })
+        await sleep(2100)
+        await bond.finaliseProposal(proposalCount)
+        assert.equal(await bond.isListed(token2.address), false)
+    })
+}
+async function mintBond() {
+   
+    it("Final Proposal should mint another bond", async () => {
+        assert.equal(await bond.totalSupply(), '0')
+        await bond.newActionProposal('MINT', { from: acc1 })
+        let proposalCount = _.BN2Str(await bond.proposalCount())
+        await bond.voteProposal(proposalCount, { from: acc1 })
+        await bond.voteProposal(proposalCount, { from: acc2 })
+        await sleep(2100)
+        await bond.finaliseProposal(proposalCount)
+        assert.equal(await bond.totalSupply(), '1000000000000000000')
+    })
+}
 async function burnLock2(){
-    it("Burn Lock for Allocation", async () => {
-        let lockBalBefore = await lock.totalSupply()
-        let spartaBalBefore = _.getBN(await base.balanceOf(lock.address))
-        await lock.approve(base.address, lockBalBefore, {from:acc0})
-        expect(_.BN2Str(await lock.allowance(acc0, base.address))).to.equal(_.BN2Str(lockBalBefore));
-        let tx = await lock.burnBond()
-        let lockBalAfter = _.BN2Str(await lock.balanceOf(lock.address))
-        assert.equal(lockBalAfter,'0',  'lock was burnt')
-        let spartaBalAfter = _.getBN(await base.balanceOf(lock.address))
+    it("Burn Bond for Allocation", async () => {
+        let lockBalBefore = await bond.totalSupply()
+        let spartaBalBefore = _.getBN(await base.balanceOf(bond.address))
+        await bond.approve(base.address, lockBalBefore, {from:acc0})
+        expect(_.BN2Str(await bond.allowance(acc0, base.address))).to.equal(_.BN2Str(lockBalBefore));
+        let tx = await bond.burnBond()
+        let lockBalAfter = _.BN2Str(await bond.balanceOf(bond.address))
+        assert.equal(lockBalAfter,'0',  'bond was burnt')
+        let spartaBalAfter = _.getBN(await base.balanceOf(bond.address))
         assert.equal(_.BN2Str(spartaBalAfter.minus(spartaBalBefore)/_.one),'5000000', 'did it get 5m sparta')
         
     })
 }
+
+
+

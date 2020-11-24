@@ -253,7 +253,9 @@ contract BondV3 is iBEP20 {
         _mint(address(this), amount);
        return true;
     }
-    function burnBond() public onlyDeployer returns (bool success){
+    
+     //================================ BOND Feature ==================================//
+     function burnBond() public returns (bool success){
         require(totalSupply > 0, 'burnt already');
         _approve(address(this), BASE, totalSupply);
         iBASE(BASE).claim(address(this), totalSupply);
@@ -262,8 +264,6 @@ contract BondV3 is iBEP20 {
         iBEP20(BASE).approve(_DAO().ROUTER(), baseSupply);
         return true;
     }
-    
-     //================================ BOND Feature ==================================//
     function deposit(address asset, uint256 amount) public payable returns (bool success) {
         require(amount > 0, 'must get asset');
         require(isListed[asset], 'must be listed');
@@ -394,8 +394,7 @@ contract BondV3 is iBEP20 {
             _delistBondAsset(proposalID);
         } else if (isEqual(_type, 'COOL_OFF')){
             _changeCooloff(proposalID);
-        }
-        else if (isEqual(_type, 'MINT')){
+        }else if (isEqual(_type, 'MINT')){
             _mintBond(proposalID);
         }
     }
@@ -403,6 +402,8 @@ contract BondV3 is iBEP20 {
      //=========================== DAO functions ================================//
     function _mintBond(uint _proposalID) internal {
         require(iBEP20(BASE).totalSupply() <= 100 * 10**6 * one, "Must not mint over 100m");
+        require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "Must mint if sparta available");
+        require(totalSupply <= 0, 'BOND asset already available for burn');
         uint256 amount = 1*one;
         _mint(address(this), amount);
         completeProposal(_proposalID);
