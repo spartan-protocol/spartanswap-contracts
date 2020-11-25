@@ -22,6 +22,7 @@ var WBNB = artifacts.require("./WBNB");
 var base;
 var DEPOTime;
 var DEPOTime2;
+var allocation = 2500000;
 var utils; var router; var Dao;
 
 var acc0; var acc1; var acc2; var acc3; var poolTKN1;
@@ -62,6 +63,7 @@ contract('LOCK', function (accounts) {
     lockTKN(acc1, _.BN2Str(_.one * 10)) // 25% <33%
     lockTKN(acc2, _.BN2Str(_.one * 10)) // 25% +1 >33% <50%
     lockTKN(acc3, _.BN2Str(_.one * 15)) // 37% +1 >50%
+    // rate()
     deployerBurnBaseBalance()
     mintBond()
     burnLock2()
@@ -84,7 +86,7 @@ function constructor(accounts) {
         token1 = await TOKEN1.new();
         token2 = await TOKEN1.new();
       
-        await base.listAsset(bond.address, _.BN2Str(5000000* _.one),_.BN2Str(10*_.one) ) // list bond
+        await base.listAsset(bond.address, _.BN2Str(allocation* _.one),_.BN2Str(18*_.one) ) // list bond
         await base.listAsset(bondtwo.address, _.BN2Str(5000000* _.one),_.BN2Str(1*_.one) ) // list bond
         await base.listAsset(token1.address, _.BN2Str(500000 * _.one),_.BN2Str(3*_.one) ) //list token 1
       
@@ -162,7 +164,7 @@ async function burnLock(){
         let lockBalAfter = await bond.balanceOf(bond.address)
         assert.equal(lockBalAfter,'0',  'bond was burnt')
         let spartaBalAfter = await base.balanceOf(bond.address)
-        assert.equal(_.BN2Str(spartaBalAfter/_.one),'5000000', 'did it get 5m sparta')
+        assert.equal(_.BN2Str(spartaBalAfter/_.one),allocation, 'did it get 5m sparta')
     })
 }
 async function createPoolTKN1() {
@@ -343,10 +345,14 @@ async function claimAfterPeriod(acc, ms){
     it('claim correct mount after time-locked period', async () =>{
         await sleep(ms)
         let asset = _.BNB
+        await bondtwo.claim(asset,{from:acc})
         await bond.claimAndLock(asset,{from:acc})
         let memberDetailsAfter = await bond.getMemberDetails(acc, asset);
         let bondedLPAfter = _.getBN(memberDetailsAfter.bondedLP)
         assert.equal(_.BN2Int(bondedLPAfter), 0, 'no more to claim')
+        let memberDetailsAfter2 = await bondtwo.getMemberDetails(acc, asset);
+        let bondedLPAfter2 = _.getBN(memberDetailsAfter2.bondedLP)
+        assert.equal(_.BN2Int(bondedLPAfter2), 0, 'no more to claim')
 
     })
 }
@@ -413,7 +419,6 @@ async function voteList() {
     })
 }
 async function mintBond() {
-   
     it("Final Proposal should mint another bond", async () => {
         assert.equal(await bond.totalSupply(), '0')
         await bond.newActionProposal('MINT', { from: acc1 })
@@ -435,8 +440,17 @@ async function burnLock2(){
         let lockBalAfter = _.BN2Str(await bond.balanceOf(bond.address))
         assert.equal(lockBalAfter,'0',  'bond was burnt')
         let spartaBalAfter = _.getBN(await base.balanceOf(bond.address))
-        assert.equal(_.BN2Str(spartaBalAfter.minus(spartaBalBefore)/_.one),'5000000', 'did it get 5m sparta')
+        assert.equal(_.BN2Str(spartaBalAfter.minus(spartaBalBefore)/_.one),allocation, 'did it get sparta')
         
+    })
+}
+async function rate() {
+    it("It should check rates", async () => {
+        console.log(`acc0 rate: ${await Dao.mapMember_weight(acc0)} ${_.getBN(await Dao.mapMember_weight(acc0)).div(_.getBN(await Dao.totalWeight()))}`)
+        console.log(`acc1 rate: ${await Dao.mapMember_weight(acc1)} ${_.getBN(await Dao.mapMember_weight(acc1)).div(_.getBN(await Dao.totalWeight()))}`)
+        console.log(`acc2 rate: ${await Dao.mapMember_weight(acc2)} ${_.getBN(await Dao.mapMember_weight(acc2)).div(_.getBN(await Dao.totalWeight()))}`)
+        console.log(`acc3 rate: ${await Dao.mapMember_weight(acc3)} ${_.getBN(await Dao.mapMember_weight(acc3)).div(_.getBN(await Dao.totalWeight()))}`)
+
     })
 }
 

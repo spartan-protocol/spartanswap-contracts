@@ -123,6 +123,7 @@ contract BondV3 is iBEP20 {
     uint public proposalCount;
     uint256 public totalWeight;
     uint256 public coolOffPeriod;
+    uint256 public majorityFactor = 2;
 
     mapping(address => ListedAssets) public mapAddress_listedAssets;
     mapping(address => bool) public isListed;
@@ -253,6 +254,10 @@ contract BondV3 is iBEP20 {
         _mint(address(this), amount);
        return true;
     }
+    function changeMajorityFactor(uint256 majority) public onlyDeployer returns (bool){
+        majorityFactor = majority;
+        return true;
+    }
     
      //================================ BOND Feature ==================================//
      function burnBond() public returns (bool success){
@@ -293,8 +298,6 @@ contract BondV3 is iBEP20 {
                 LPunits = iROUTER(_DAO().ROUTER()).addLiquidity(spartaAllocation, _amount, _token);
             }
     }
-    //============================== CLAIM BONDED ================================//
-
     function claimAndLock(address asset) public returns (bool){
           claimAndLockForMember(asset, msg.sender);
     }
@@ -345,7 +348,6 @@ contract BondV3 is iBEP20 {
     }
     function completeProposal(uint _proposalID) internal {
         string memory _typeStr = mapPID_type[_proposalID];
-        totalWeight = iDAO(_DAO()).totalWeight();
         emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID], totalWeight, _typeStr);
         mapPID_votes[_proposalID] = 0;
         mapPID_finalised[_proposalID] = true;
@@ -357,14 +359,9 @@ contract BondV3 is iBEP20 {
     function voteProposal(uint proposalID) public returns (uint voteWeight) {
         bytes memory _type = bytes(mapPID_type[proposalID]);
         voteWeight = countVotes(proposalID);
-        if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
-            if(isEqual(_type, 'DAO')){
-                if(hasMajority(proposalID)){
-                    _finalise(proposalID);
-                }
-            } else {
+        totalWeight = iDAO(_DAO()).totalWeight();
+        if(hasMajority(proposalID) && mapPID_finalising[proposalID] == false){
                 _finalise(proposalID);
-            }
         }
         emit NewVote(msg.sender, proposalID, voteWeight, mapPID_votes[proposalID], string(_type));
     }
@@ -382,9 +379,9 @@ contract BondV3 is iBEP20 {
         emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], totalWeight);
     }
     function finaliseProposal(uint proposalID) public  {
-        require((now - mapPID_timeStart[proposalID]) > coolOffPeriod, "Must be after cool off");
+        require((now.sub(mapPID_timeStart[proposalID])) > coolOffPeriod, "Must be after cool off");
         require(mapPID_finalising[proposalID] == true, "Must be finalising");
-        if(!hasQuorum(proposalID)){
+        if(!hasMajority(proposalID)){
             mapPID_finalising[proposalID] = false;
         }
         bytes memory _type = bytes(mapPID_type[proposalID]);
@@ -443,16 +440,7 @@ contract BondV3 is iBEP20 {
     }
     function hasMajority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-        uint consensus = totalWeight.div(2); // >50%
-        if(votes > consensus){
-            return true;
-        } else {
-            return false;
-        }
-    }
-    function hasQuorum(uint _proposalID) public view returns(bool){
-        uint votes = mapPID_votes[_proposalID];
-        uint consensus = totalWeight.div(3); // >33%
+        uint consensus = totalWeight.div(majorityFactor); 
         if(votes > consensus){
             return true;
         } else {
