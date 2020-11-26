@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "@nomiclabs/buidler/console.sol";
+
 //iBEP20 Interface
 interface iBEP20 {
     function name() external view returns (string memory);
@@ -18,7 +18,7 @@ interface iBEP20 {
 }
 interface iBASE {
     function claim(address asset, uint256 amount) external payable;  
-    function DAO() external view returns (iDAO);
+    function DAO() external view returns (address);
     function burn(uint) external;
 }
 interface iROUTER {
@@ -124,6 +124,7 @@ contract BondV3 is iBEP20 {
     uint256 public totalWeight;
     uint256 public coolOffPeriod;
     uint256 public majorityFactor = 2;
+    uint256 public daoFee = 100*one;
 
     mapping(address => ListedAssets) public mapAddress_listedAssets;
     mapping(address => bool) public isListed;
@@ -165,7 +166,7 @@ contract BondV3 is iBEP20 {
         emit Transfer(address(0), address(this), totalSupply);
 
     }
-    function _DAO() internal view returns(iDAO) {
+    function _DAO() internal view returns(address) {
         return iBASE(BASE).DAO();
     }
     function purgeDeployer() public onlyDeployer {
@@ -258,6 +259,10 @@ contract BondV3 is iBEP20 {
         majorityFactor = majority;
         return true;
     }
+    function changeDAOFee(uint256 fee) public onlyDeployer returns (bool){
+        daoFee = fee;
+        return true;
+    }
     
      //================================ BOND Feature ==================================//
      function burnBond() public returns (bool success){
@@ -266,7 +271,7 @@ contract BondV3 is iBEP20 {
         iBASE(BASE).claim(address(this), totalSupply);
         totalSupply = totalSupply.sub(totalSupply);
         baseSupply = iBEP20(BASE).balanceOf(address(this));
-        iBEP20(BASE).approve(_DAO().ROUTER(), baseSupply);
+        iBEP20(BASE).approve(iDAO(_DAO()).ROUTER(), baseSupply);
         return true;
     }
     function deposit(address asset, uint256 amount) public payable returns (bool success) {
@@ -285,17 +290,17 @@ contract BondV3 is iBEP20 {
         return true;
     }
     function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
-        uint256 spartaAllocation = iUTILS(_DAO().UTILS()).calcTokenPPinBase(_token, _amount);
+        uint256 spartaAllocation = iUTILS(iDAO(_DAO()).UTILS()).calcTokenPPinBase(_token, _amount);
         if(_token == address(0)){
                 require((_amount == msg.value), "InputErr");
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidity{value:_amount}(spartaAllocation, _amount, _token);
+                LPunits = iROUTER(iDAO(_DAO()).ROUTER()).addLiquidity{value:_amount}(spartaAllocation, _amount, _token);
             } else {
                 iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
-                if(iBEP20(_token).allowance(address(this), _DAO().ROUTER()) < _amount){
+                if(iBEP20(_token).allowance(address(this), iDAO(_DAO()).ROUTER()) < _amount){
                     uint256 approvalTNK = iBEP20(_token).totalSupply();  
-                    iBEP20(_token).approve(_DAO().ROUTER(), approvalTNK);  
+                    iBEP20(_token).approve(iDAO(_DAO()).ROUTER(), approvalTNK);  
                 }
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidity(spartaAllocation, _amount, _token);
+                LPunits = iROUTER(iDAO(_DAO()).ROUTER()).addLiquidity(spartaAllocation, _amount, _token);
             }
     }
     function claimAndLock(address asset) public returns (bool){
@@ -305,7 +310,7 @@ contract BondV3 is iBEP20 {
         require(mapAddress_listedAssets[asset].bondedLP[member] > 0, 'must have bonded lps');
         require(mapAddress_listedAssets[asset].isMember[member], 'must have deposited first');
         uint256 claimable = calcClaimBondedLP(member, asset); 
-        address _pool = iUTILS(_DAO().UTILS()).getPool(asset);
+        address _pool = iUTILS(iDAO(_DAO()).UTILS()).getPool(asset);
         require(claimable <= mapAddress_listedAssets[asset].bondedLP[member],'attempted to overclaim');
         mapAddress_listedAssets[asset].lastBlockTime[member] = now;
         mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].sub(claimable);
@@ -316,6 +321,7 @@ contract BondV3 is iBEP20 {
     }
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
         require(isListed[asset], 'asset must be listed');
+        require(mapAddress_listedAssets[asset].isMember[msg.sender], 'must be member');
         uint256 secondsSinceClaim = now.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
         uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
         uint claimAmount;
@@ -334,6 +340,7 @@ contract BondV3 is iBEP20 {
     // IDs are finalised
     // IDs are executed, but type specifies unique logic
     function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
+        require(iBEP20(BASE).transferFrom(msg.sender, _DAO(), daoFee), 'Fee For DAO');
         proposalCount += 1;
         mapPID_address[proposalCount] = proposedAddress;
         mapPID_type[proposalCount] = typeStr;
@@ -341,6 +348,7 @@ contract BondV3 is iBEP20 {
         return proposalCount;
     }
     function newActionProposal(string memory typeStr) public returns(uint) {
+        require(iBEP20(BASE).transferFrom(msg.sender, _DAO(), daoFee), 'Fee For DAO');
         proposalCount += 1;
         mapPID_type[proposalCount] = typeStr;
         emit NewProposal(msg.sender, proposalCount, typeStr);
@@ -399,7 +407,7 @@ contract BondV3 is iBEP20 {
      //=========================== DAO functions ================================//
     function _mintBond(uint _proposalID) internal {
         require(iBEP20(BASE).totalSupply() <= 100 * 10**6 * one, "Must not mint over 100m");
-        require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "Must mint if sparta available");
+        require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "Must not mint if sparta already available");
         require(totalSupply <= 0, 'BOND asset already available for burn');
         uint256 amount = 1*one;
         _mint(address(this), amount);

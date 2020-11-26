@@ -63,7 +63,6 @@ contract('LOCK', function (accounts) {
     lockTKN(acc1, _.BN2Str(_.one * 10)) // 25% <33%
     lockTKN(acc2, _.BN2Str(_.one * 10)) // 25% +1 >33% <50%
     lockTKN(acc3, _.BN2Str(_.one * 15)) // 37% +1 >50%
-    // rate()
     deployerBurnBaseBalance()
     mintBond()
     burnLock2()
@@ -400,6 +399,7 @@ async function addLiquidityTKN1(acc) {
 }
 async function voteList() {
     it("Proposal to LIST bonding asset", async () => {
+        let balBefore = _.BN2Str(await base.balanceOf(acc1))
         await bond.newAddressProposal(token2.address, 'LIST',{ from: acc1 })
         let proposalCount = _.BN2Str(await bond.proposalCount())
         await bond.voteProposal(proposalCount, { from: acc1 })
@@ -407,8 +407,10 @@ async function voteList() {
         await sleep(2100)
         await bond.finaliseProposal(proposalCount)
         assert.equal(await bond.isListed(token2.address), true)
+        assert.equal(_.BN2Str(await base.balanceOf(acc1)),balBefore-100*10**18, )
     })
     it("Proposal to DELIST bonding asset", async () => {
+        let balBefore = _.BN2Str(await base.balanceOf(acc1))
         await bond.newAddressProposal(token2.address, 'DELIST', { from: acc1 })
         let proposalCount = _.BN2Str(await bond.proposalCount())
         await bond.voteProposal(proposalCount, { from: acc1 })
@@ -416,6 +418,7 @@ async function voteList() {
         await sleep(2100)
         await bond.finaliseProposal(proposalCount)
         assert.equal(await bond.isListed(token2.address), false)
+        assert.equal(_.BN2Str(await base.balanceOf(acc1)),balBefore-100*10**18, )
     })
 }
 async function mintBond() {
