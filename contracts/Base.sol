@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
+
 //iBEP20 Interface
 interface iBEP20 {
     function name() external view returns (string memory);
@@ -68,6 +69,7 @@ contract Base is iBEP20 {
     uint256 public secondsPerEra;
     uint256 public currentEra;
     uint256 public nextEraTime;
+    
 
     address public incentiveAddress;
     address public DAO;
@@ -155,8 +157,7 @@ contract Base is iBEP20 {
         require(spender != address(0), "iBEP20: approve to the zero address");
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
-    }
-    
+    } 
     // iBEP20 TransferFrom function
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
@@ -293,7 +294,6 @@ contract Base is iBEP20 {
     //======================================CLAIM========================================//
     // Anyone to Claim
     function claim(address asset, uint amount) public payable {
-        
         uint _claim = amount;
         if(mapAsset_claimed[asset].add(amount) > mapAsset_allocation[asset]){
             _claim = mapAsset_allocation[asset].sub(mapAsset_claimed[asset]);

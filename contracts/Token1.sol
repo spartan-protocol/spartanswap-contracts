@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
-
-
 //IERC20 Interface
-interface ERC20 {
+interface iBEP20  {
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
     function transfer(address, uint) external returns (bool);
@@ -62,7 +60,7 @@ library SafeMath {
 }
 
 // Token Contract
-contract Token1 is ERC20 {
+contract Token1 is iBEP20 {
 
     using SafeMath for uint256;
 
@@ -70,7 +68,7 @@ contract Token1 is ERC20 {
     string public name;                                         // Name of Coin
     string public symbol;                                       // Symbol of Coin
     uint256 public decimals  = 18;                              // Decimals
-    uint256 public override totalSupply  = 1*10**9 * (10 ** decimals);   // 1,000,000 Total
+    uint256 public override totalSupply  = 15*10**9 * (10 ** decimals);   // 1,000,000 Total
 
     // Mapping
     mapping(address => uint256) public override balanceOf;                          // Map balanceOf
@@ -114,10 +112,10 @@ contract Token1 is ERC20 {
         require(_to != address(0));
         require(balanceOf[_from] >= _value);
         require(balanceOf[_to].add(_value) >= balanceOf[_to]);                 // catch overflow       
-        
         balanceOf[_from] = balanceOf[_from].sub(_value);                       // Subtract from sender         
         balanceOf[_to] = balanceOf[_to].add(_value);                            // Add to receiver
-        
         emit Transfer(_from, _to, _value);                    // Transaction event            
     }
+
+
 }

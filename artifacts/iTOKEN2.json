@@ -1,6 +1,30 @@
 {
-  "contractName": "iROUTER",
+  "contractName": "iTOKEN2",
   "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token1",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "addLig",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "success",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
     {
       "inputs": [
         {
@@ -24,35 +48,6 @@
         {
           "internalType": "uint256",
           "name": "units",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "units",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bool",
-          "name": "toBase",
-          "type": "bool"
-        },
-        {
-          "internalType": "address",
-          "name": "token",
-          "type": "address"
-        }
-      ],
-      "name": "removeLiquidityExactAndSwap",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "outputAmount",
           "type": "uint256"
         }
       ],

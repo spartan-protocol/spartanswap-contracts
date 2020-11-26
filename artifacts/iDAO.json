@@ -6,7 +6,20 @@
       "name": "ROUTER",
       "outputs": [
         {
-          "internalType": "address",
+          "internalType": "contract iROUTER",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "UTILS",
+      "outputs": [
+        {
+          "internalType": "contract iUTILS",
           "name": "",
           "type": "address"
         }
