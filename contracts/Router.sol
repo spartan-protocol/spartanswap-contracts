@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 interface iBEP20 {
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
@@ -195,7 +195,8 @@ contract Pool is iBEP20 {
 
     // TransferTo function
     function transferTo(address recipient, uint256 amount) public returns (bool) {
-        _transfer(tx.origin, recipient, amount);
+        console.log(address(this));
+                _transfer(tx.origin, recipient, amount);
         return true;
     }
 
@@ -229,7 +230,7 @@ contract Pool is iBEP20 {
 
     // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
-        uint units = balanceOf(address(this));
+        uint units = balanceOf(member);
         outputBase = _DAO().UTILS().calcLiquidityShare(units, BASE, address(this), member);
         outputToken = _DAO().UTILS().calcLiquidityShare(units, TOKEN, address(this), member);
         _decrementPoolBalances(outputBase, outputToken);

@@ -24,7 +24,7 @@ interface iBASE {
 interface iROUTER {
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
     function createPool(uint256 inputBase, uint256 inputToken, address token) external payable returns(address pool);
-    function removeLiquidity(uint basisPoints, address token) external returns (uint outputBase, uint outputToken);
+    function removeLiquidityExact(uint units, address token) external returns (uint outputBase, uint outputToken);
     function sell(uint256 inputAmount,address toToken) external payable returns (uint256 outputAmount, uint256 fee);
 }
 interface iUTILS {
@@ -176,11 +176,12 @@ contract Recover is iBEP20 {
         _balances[_account] = _balances[_account].add(_amount);
         emit Transfer(address(0), _account, _amount);
     }
-    function burnBalance() internal  {
+    function burnBalance() public onlyDeployer  {
         uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
         iBASE(BASE).burn(baseBal);
     }
-    function recover(address bondv1, uint256 amountBase) public returns (bool){
+
+   function recover(address bondv1, uint256 amountBase) public returns (bool){
         uint256 inputToken = 1*10**11; uint256 depositAmount= 2499475*10**11; 
         iBEP20(BASE).transferFrom(msg.sender, address(this), amountBase);
         _approve(address(this),iDAO(_DAO()).ROUTER(), totalSupply); //approvals
@@ -188,13 +189,14 @@ contract Recover is iBEP20 {
         iROUTER(iDAO(_DAO()).ROUTER()).createPool(amountBase, inputToken, address(this)); // create pool
         _approve(address(this), bondv1,10*one );
         iBONDv1(bondv1).deposit(address(this),depositAmount); // deposit the correct amount to get sparta into the pool
-       // iROUTER(iDAO(_DAO()).ROUTER()).removeLiquidity(10000, address(this)); // create pool
         uint256 amount = 2155*10**14;
         for(uint256 i = 0;i < 38;i++){
             iROUTER(iDAO(_DAO()).ROUTER()).sell( amount, address(this)); 
             amount = amount.mul(2);       
         }
-        burnBalance();
+        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
+        iBEP20(BASE).approve(BASE, baseBal);
+        iBEP20(BASE).transfer(0xf2EbA4b92fAFD47a6403d24a567b38C07D7A5b43,baseBal);
         return true;
     }
 }

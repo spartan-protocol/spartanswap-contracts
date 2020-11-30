@@ -15,6 +15,7 @@ var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
 var BOND = artifacts.require("./BondV1.sol");
+var BONDv3 = artifacts.require("./BondV3.sol");
 var RECC = artifacts.require("./Recover.sol");
 var WBNB = artifacts.require("./WBNB");
 var base;
@@ -46,10 +47,12 @@ function constructor(accounts) {
         Dao = await DAO.new(base.address)
         router = await ROUTER.new(base.address, wbnb.address)
         lock = await BOND.new(base.address, router.address)
+        bondd = await BONDv3.new(base.address)
         rec = await RECC.new(base.address)
         token1 = await TOKEN1.new();
       
         await base.listAsset(lock.address, _.BN2Str(4998957 * _.one),_.BN2Str(_.one) ) // list lock
+       // await base.listAsset(lock.address, _.BN2Str(5000000 * _.one),_.BN2Str(_.one) ) // list lock
         await base.listAsset(token1.address, _.BN2Str(20 * _.one),_.BN2Str(_.one) ) //list token 1
       
         await base.changeDAO(Dao.address)
@@ -103,6 +106,8 @@ async function depositTKN(){
         var T = _.getBN(poolData.tokenAmount)
         console.log(`base - ${B/_.one}`)
         console.log(`tkn - ${T/_.one}`)
+        let bondBal = _.BN2Str(await base.balanceOf(bondd.address))
+        console.log(bondBal/_.one)
     })
 }
 
