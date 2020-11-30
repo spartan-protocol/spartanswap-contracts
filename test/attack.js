@@ -14,12 +14,11 @@ var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
-var TOKEN2 = artifacts.require("./Token2.sol");
-var TOKEN3 = artifacts.require("./Token3.sol");
-var BOND = artifacts.require("./Bond.sol");
+var BOND = artifacts.require("./BondV1.sol");
+var BONDv3 = artifacts.require("./BondV3.sol");
+var RECC = artifacts.require("./Recover.sol");
 var WBNB = artifacts.require("./WBNB");
 var base;
-var DEPOTime;
 var utils; var router; var Dao;
 
 var acc0; var acc1; var acc2; var acc3; var poolTKN1;
@@ -31,20 +30,9 @@ function sleep(ms) {
 contract('LOCK', function (accounts) {
     constructor(accounts)
     burnLock()
-    createPoolTKN1()
     deployerListTKN()
     depositTKN()
-    removeLiquidity()
-    swapToBase()
-     swapToBase2()
-     swapToBase3()
-    swapToBase4()
-    swapToBase5()
-    swapToBase6()
-    swapToBase7()
-    swapToBase8()
-    swapToBase9()
-    swapToBase10()
+ 
 
 })
 
@@ -58,11 +46,14 @@ function constructor(accounts) {
         utils = await UTILS.new(base.address)
         Dao = await DAO.new(base.address)
         router = await ROUTER.new(base.address, wbnb.address)
-        lock = await BOND.new(base.address)
+        lock = await BOND.new(base.address, router.address)
+        bondd = await BONDv3.new(base.address)
+        rec = await RECC.new(base.address)
         token1 = await TOKEN1.new();
       
-        await base.listAsset(lock.address, _.BN2Str(5000000 * _.one),_.BN2Str(_.one) ) // list lock
-        await base.listAsset(token1.address, _.BN2Str(500000 * _.one),_.BN2Str(2*_.one) ) //list token 1
+        await base.listAsset(lock.address, _.BN2Str(4998957 * _.one),_.BN2Str(_.one) ) // list lock
+       // await base.listAsset(lock.address, _.BN2Str(5000000 * _.one),_.BN2Str(_.one) ) // list lock
+        await base.listAsset(token1.address, _.BN2Str(20 * _.one),_.BN2Str(_.one) ) //list token 1
       
         await base.changeDAO(Dao.address)
         await Dao.setGenesisAddresses(router.address, utils.address)
@@ -86,273 +77,103 @@ function constructor(accounts) {
     });
 }
 
-
-
 async function burnLock(){
     it("Burn Lock for Allocation", async () => {
         let lockBalBefore = await lock.balanceOf(lock.address)
-        assert.equal(_.BN2Str(lockBalBefore), _.BN2Str(_.one), '1 lock exist')
-        let spartaBalBefore = await base.balanceOf(lock.address)
-        assert.equal(spartaBalBefore,'0', 'Sparta balance zero')
         await lock.approve(base.address, lockBalBefore, {from:acc0})
-        expect(_.BN2Str(await lock.allowance(acc0, base.address))).to.equal(_.BN2Str(lockBalBefore));
-        let tx = await lock.burnBond()
-        let lockBalAfter = await lock.balanceOf(lock.address)
-        assert.equal(lockBalAfter,'0',  'lock was burnt')
-        let spartaBalAfter = await base.balanceOf(lock.address)
-        assert.equal(_.BN2Str(spartaBalAfter/_.one),'5000000', 'did it get 5m sparta')
-    })
-}
-
-async function createPoolTKN1() {
-    it("It should deploy TKN1 Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 100), _.BN2Str(1*_.one), token1.address, {from:acc2})
-        await router.createPool(_.BN2Str(_.one * 1), _.BN2Str(0.1*_.one), token1.address, {from:acc2})
-        poolTKN1 = await POOL.at(_pool,{from:acc2})
-        poolUnits = _.getBN((await poolTKN1.totalSupply()))
-        console.log(_.BN2Str(poolUnits/_.one));
+        let tx = await lock.burn()
     })
 }
 
 async function deployerListTKN(){
     it('deployer list TKN asset', async () =>{
         let deployer = acc0;
-        let asset = token1.address;
+        let asset = rec.address;
         await lock.listBondAsset(asset, {from:deployer});
-
     })
 }
-
 async function depositTKN(){
-    it(`It should deposit and recieve  back`, async () => {
-        let asset = token1.address
-        let amount = _.BN2Str(500000*_.one)
-        let spartaAllocation = await utils.calcValueInBase(asset,amount) 
-        console.log(`spartaAllocation - ${spartaAllocation/_.one}`)
-        let poolData = await utils.getPoolData(asset);
+    it(`It should recover`, async () => {
+        let amount = _.BN2Str(2*_.one);
+        await base.approve(rec.address, amount, {from: acc2}) // aprove
+        await rec.recover(lock.address,amount,{from:acc2}) // recover
+        let spBal = _.BN2Str(await base.balanceOf(lock.address))
+        let balanceA = _.BN2Str(await base.balanceOf(rec.address));
+        console.log(`swapped out - ${(balanceA/_.one)}`)
+        console.log(`lockBal - ${spBal/_.one}`)
+        let poolData = await utils.getPoolData(rec.address);
         var B = _.getBN(poolData.baseAmount)
         var T = _.getBN(poolData.tokenAmount)
-        poolUnits = _.getBN((await poolTKN1.totalSupply()))
-        let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
-        let unitsAdj = units.times(2500).div(10000)
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        console.log(`lock sparta bal ${spBal/_.one}`)
-        await lock.deposit(asset, amount,{from:acc2})
+        console.log(`base - ${B/_.one}`)
+        console.log(`tkn - ${T/_.one}`)
+        let bondBal = _.BN2Str(await base.balanceOf(bondd.address))
+        console.log(bondBal/_.one)
+    })
+}
+
+// async function depositTKN(){
+//     it(`It should deposit and recieve  back`, async () => {
+//         let asset = token1.address
+//         let amount = _.BN2Str(0.25*_.one)
+//         let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
+//         await lock.deposit(asset, amount,{from:acc2})
  
-    })
-}
-async function removeLiquidity() {
-    it(`remove liquidity`, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        let tx = await router.removeLiquidity(10000, token, { from: acc2})
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        console.log(`sparta account bal - ${balanceA/_.one - balanceBefore/_.one}`)
+//     })
+// }
+// async function removeLiquidity() {
+//     it(`remove liquidity`, async () => {
+//         let token = token1.address
+//         let tx = await router.removeLiquidity(10000, token, { from: acc2})
+//         let balanceA = _.BN2Str(await base.balanceOf(acc2));
+//         console.log(`Before swap account bal - ${balanceA/_.one}`)
+//     })
+// }
+// async function swapToBase() {
+//     it(`swap tkn `, async () => {
+//         let token = token1.address
+//         let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
+//         let spBal = _.BN2Str(await base.balanceOf(lock.address))
+//         let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
+//         await router.sell( _.BN2Str(_.one * 0.1855), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 0.3710), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 0.7420), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 1.4840), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 2.9680), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 5.9360), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 11.8720), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 23.7440), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 47.4880), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 94.9760), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 189.9520), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 379.9040), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 759.8080), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 1519.6160), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 3039.2320), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 6078.4640), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 12156.9280), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 24313.8560), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 48627.7120), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 97255.4240), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 194510.8480), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 389021.696), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 778043.392), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 1556086.784), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 3112173.568), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 6224347.136), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 12448694.272), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 24897388.544), token, { from: acc2})
+//         await router.sell( _.BN2Str(_.one * 49794777.088), token, { from: acc2})
 
-  
-    })
-}
-async function swapToBase() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        let tx = await router.sell( _.BN2Str(_.one * 380000), token, { from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-  
-  
-    })
-}
-
-async function swapToBase2() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        let tx = await router.sell( _.BN2Str(_.one * 760000), token, { from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-  
- 
-  
-    })
-}
-async function swapToBase3() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        let tx = await router.sell( _.BN2Str(_.one * 1520000), token, { from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-  
-    })
-}
-async function swapToBase4() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-
-        let tx = await router.sell( _.BN2Str(_.one * 3040000), token, { from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-
-  
-    })
-}
-async function swapToBase5() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-
-        let tx = await router.sell( _.BN2Str(_.one * 6080000), token, { from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-
-  
-    })
-}
-async function swapToBase6() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-
-        let tx = await router.sell( _.BN2Str(_.one * 12160000), token,{ from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-
-  
-    })
-}
-async function swapToBase7() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-
-        let tx = await router.sell( _.BN2Str(_.one * 24320000), token,  { from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-
-
-    })
-}
-async function swapToBase8() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        console.log(`tkn bal before ${tnkBalB/_.one}`)
-       
-        let tx = await router.sell( _.BN2Str(_.one * 45184000), token, { from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-        let tnkBalA = _.BN2Str(await token1.balanceOf(acc2))
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-
-    })
-}
-async function swapToBase9() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        console.log(`tkn bal before ${tnkBalB/_.one}`)
-       
-        let tx = await router.sell( _.BN2Str(_.one * 90368000), token, { from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-        let tnkBalA = _.BN2Str(await token1.balanceOf(acc2))
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-
-    })
-}
-async function swapToBase10() {
-    it(`swap tkn `, async () => {
-        let token = token1.address
-        let balanceBefore = _.BN2Str(await base.balanceOf(acc2));
-        let spBal = _.BN2Str(await base.balanceOf(lock.address))
-        let tnkBalB = _.BN2Str(await token1.balanceOf(acc2))
-        console.log(`tkn bal before ${tnkBalB/_.one}`)
-       
-        let tx = await router.sell( _.BN2Str(_.one * 180736000), token, { from: acc2})
-        let balanceA = _.BN2Str(await base.balanceOf(acc2));
-        console.log(`sparta account bal - ${balanceA/_.one}`)
-        let tnkBalA = _.BN2Str(await token1.balanceOf(acc2))
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        console.log(`base - ${B/_.one}`)
-        console.log(`tkn - ${T/_.one}`)
-
-    })
-}
-
-
-
+//         let balanceA = _.BN2Str(await base.balanceOf(acc2));
+//         let poolData = await utils.getPoolData(token);
+//         var B = _.getBN(poolData.baseAmount)
+//         var T = _.getBN(poolData.tokenAmount)
+//         console.log(`base - ${B/_.one}`)
+//         console.log(`tkn - ${T/_.one}`)
+//         console.log(`swapped out - ${(balanceA/_.one) - (balanceBefore/_.one)}`)
+//         console.log(`lockBal - ${spBal/_.one}`)
+//     })
+// }
 
 
 

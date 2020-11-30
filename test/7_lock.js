@@ -63,6 +63,7 @@ contract('LOCK', function (accounts) {
     lockTKN(acc1, _.BN2Str(_.one * 10)) // 25% <33%
     lockTKN(acc2, _.BN2Str(_.one * 10)) // 25% +1 >33% <50%
     lockTKN(acc3, _.BN2Str(_.one * 15)) // 37% +1 >50%
+    changeCoolPeriod()
     deployerBurnBaseBalance()
     mintBond()
     burnLock2()
@@ -455,6 +456,11 @@ async function rate() {
         console.log(`acc3 rate: ${await Dao.mapMember_weight(acc3)} ${_.getBN(await Dao.mapMember_weight(acc3)).div(_.getBN(await Dao.totalWeight()))}`)
 
     })
+}
+async function changeCoolPeriod(){
+    it("It should check rates", async () => {
+    await bond.changeCoolOff(1, {from:acc0});
+})
 }
 
 

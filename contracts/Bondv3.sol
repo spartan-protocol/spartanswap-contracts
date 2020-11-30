@@ -159,7 +159,7 @@ contract BondV3 is iBEP20 {
         name = "SpartanBondTokenV3";
         symbol  = "SPT-BOND-V3";
         decimals = 18;
-        coolOffPeriod = 1;
+        coolOffPeriod = 259200;
         DEPLOYER = msg.sender;
         totalSupply = 1 * (10 ** 18);
         _balances[address(this)] = totalSupply;
@@ -263,9 +263,13 @@ contract BondV3 is iBEP20 {
         daoFee = fee;
         return true;
     }
+    function changeCoolOff(uint256 coolOff) public onlyDeployer returns (bool){
+        coolOffPeriod = coolOff;
+        return true;
+    }
     
      //================================ BOND Feature ==================================//
-     function burnBond() public returns (bool success){
+    function burnBond() public returns (bool success){
         require(totalSupply > 0, 'burnt already');
         _approve(address(this), BASE, totalSupply);
         iBASE(BASE).claim(address(this), totalSupply);
@@ -321,7 +325,6 @@ contract BondV3 is iBEP20 {
     }
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
         require(isListed[asset], 'asset must be listed');
-        require(mapAddress_listedAssets[asset].isMember[msg.sender], 'must be member');
         uint256 secondsSinceClaim = now.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
         uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
         uint claimAmount;
@@ -406,7 +409,6 @@ contract BondV3 is iBEP20 {
 
      //=========================== DAO functions ================================//
     function _mintBond(uint _proposalID) internal {
-        require(iBEP20(BASE).totalSupply() <= 100 * 10**6 * one, "Must not mint over 100m");
         require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "Must not mint if sparta already available");
         require(totalSupply <= 0, 'BOND asset already available for burn');
         uint256 amount = 1*one;
