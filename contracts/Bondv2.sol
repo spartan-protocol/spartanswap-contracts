@@ -1,11 +1,8 @@
-/**
- *Submitted for verification at BscScan.com on 2020-11-17
-*/
 
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 //iBEP20 Interface
 interface iBEP20 {
     function name() external view returns (string memory);
@@ -259,6 +256,7 @@ contract BondV2 is iBEP20 {
     //============================== CLAIM LP TOKENS ================================//
 
     function claim(address asset) public returns(bool){
+        console.log(msg.sender);
         require(mapAddress_listedAssets[asset].bondedLP[msg.sender] > 0, 'must have bonded lps');
         require(mapAddress_listedAssets[asset].isMember[msg.sender], 'must have deposited first');
         uint256 claimable = calcClaimBondedLP(msg.sender, asset); 
