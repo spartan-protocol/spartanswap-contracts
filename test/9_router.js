@@ -248,3 +248,12 @@ async function swapTOKEN(acc, x) {
 
     })
 }
+// async function swapTOKEN(acc, x) {
+//     it(`ForwardFunds`, async () => {
+//         console.log(_.BN2Str(await base.balanceOf(acc3)));
+//        await router.forwardRouterFunds(acc3, {from:acc0});
+//        console.log(_.BN2Str(await base.balanceOf(acc3)));
+
+//     })
+// }
+

@@ -540,13 +540,15 @@ contract Router {
 
     function addDividend(address _token, uint256 _fees) internal returns (bool){
         if(!(normalAverageFee == 0)){
-        uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance
-        address _pool = getPool(_token);
-        uint dailyAllocation = reserve.div(eraLength).div(maxTrades); // get max dividend for reserve/30/100 
-        uint numerator = _fees.mul(dailyAllocation);
-        uint feeDividend = numerator.div(_fees.add(normalAverageFee));
-        iBEP20(BASE).transfer(_pool,feeDividend);   
-        Pool(_pool).sync();
+             uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance
+            if(!(reserve == 0)){
+            address _pool = getPool(_token);
+            uint dailyAllocation = reserve.div(eraLength).div(maxTrades); // get max dividend for reserve/30/100 
+            uint numerator = _fees.mul(dailyAllocation);
+            uint feeDividend = numerator.div(_fees.add(normalAverageFee));
+            iBEP20(BASE).transfer(_pool,feeDividend);   
+            Pool(_pool).sync();
+            }
         return true;
         }
        
