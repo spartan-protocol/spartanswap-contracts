@@ -332,7 +332,7 @@ contract Router {
         for(uint256 i = 0; i<tokenCount; i++){
             address token = Router(oldRouter).getToken(i);
             address pool = Router(oldRouter).getPool(token);
-        if(!(pool == 0xdD1755e883a39C0D4643733E02003044a3B2D7A7)){//removes RECOVERY token from listed pools array
+        if(!(token == 0xdD1755e883a39C0D4643733E02003044a3B2D7A7)){//removes RECOVERY token from listed pools array
             isPool[pool] = true;
             arrayTokens.push(token);
             mapToken_Pool[token] = pool;
