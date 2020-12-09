@@ -58,8 +58,27 @@ interface iBASE {
     function secondsPerEra() external view returns (uint256);
     function DAO() external view returns (iDAO);
     function burn(uint) external;
+    function changeIncentiveAddress(address) external returns(bool);
+    function changeDAO(address) external returns(bool);
+    function changeEmissionCurve(uint256) external returns(bool);
+    function changeEraDuration(uint256) external returns(bool);
+    function listAsset(address, uint256, uint256) external returns(bool);
+    function delistAsset(address) external returns(bool);
+    function startEmissions() external returns(bool);
+    function stopEmissions() external returns(bool);
 }
 interface iROUTER {
+    function totalPooled() external view returns (uint);
+    function totalVolume() external view returns (uint);
+    function totalFees() external view returns (uint);
+    function removeLiquidityTx() external view returns (uint);
+    function addLiquidityTx() external view returns (uint);
+    function swapTx() external view returns (uint);
+    function tokenCount() external view returns(uint);
+    function getToken(uint) external view returns(address);
+    function getPool(address) external view returns(address payable);
+    function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) external payable returns (uint units);
+    function isPool(address) external view returns(bool);
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
 }
 interface iWBNB {
@@ -72,6 +91,7 @@ interface iUTILS {
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
     function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units);
+    function getPoolShareWeight(address token, uint units)external view returns(uint weight);
     function getPoolShare(address token, uint units) external view returns(uint baseAmount, uint tokenAmount);
     function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmount, uint tokenAmount, uint outputAmt);
     function calcValueInBase(address token, uint amount) external view returns (uint value);
@@ -79,6 +99,7 @@ interface iUTILS {
     function calcValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
     function calcTokenPPinBase(address pool, uint256 amount) external view returns (uint256 value);
     function getPool(address token)external view returns (address value);
+    function getDepth(address pool) external view returns (uint depth);
 }
 interface iDAO {
     function ROUTER() external view returns(address);
@@ -88,6 +109,24 @@ interface iDAO {
     function deposit(address pool, uint256 amount) external;
     function mapMember_weight(address member) external returns (uint256);
     function totalWeight() external returns (uint256);
+}
+interface iPOOL {
+    function TOKEN() external view returns(address);
+    function transferTo(address, uint) external returns (bool);
+    function genesis() external view returns(uint);
+    function baseAmount() external view returns(uint);
+    function tokenAmount() external view returns(uint);
+    function baseAmountPooled() external view returns(uint);
+    function tokenAmountPooled() external view returns(uint);
+    function fees() external view returns(uint);
+    function volume() external view returns(uint);
+    function txCount() external view returns(uint);
+    function getBaseAmtPooled(address) external view returns(uint);
+    function getTokenAmtPooled(address) external view returns(uint);
+    function calcValueInBase(uint) external view returns (uint);
+    function calcValueInToken(uint) external view returns (uint);
+    function calcTokenPPinBase(uint) external view returns (uint);
+    function calcBasePPinToken(uint) external view returns (uint);
 }
 
 
