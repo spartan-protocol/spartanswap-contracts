@@ -289,7 +289,7 @@ contract Router {
 
     address[] public arrayTokens;
     address[] public curatedPools;
-    address[] public bootstrapPools;
+    address[] public arrayPools;
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isPool;
     mapping(address=>bool) public isCuratedPool;
@@ -337,9 +337,9 @@ contract Router {
         for(uint256 i = 0; i<tokenCount; i++){
             address token = Router(oldRouter).getToken(i);
             address pool = Router(oldRouter).getPool(token);
-        if(!(token == 0xdD1755e883a39C0D4643733E02003044a3B2D7A7)){//removes RECOVERY token from listed pools array
             isPool[pool] = true;
             arrayTokens.push(token);
+            arrayPools.push(pool);
             if(curatedPools.length < curatedPoolSize){
                 curatedPools.push(pool);
                 sortDescCuratedPoolsByDepth();
@@ -348,15 +348,11 @@ contract Router {
                 uint challangerPD = iUTILS(_DAO().UTILS()).getDepth(pool);
                 uint challengedPD = iUTILS(_DAO().UTILS()).getDepth(curatedPools[curatedPoolSize - 1]);
                 if(challangerPD > challengedPD){
-                    bootstrapPools.push(curatedPools[curatedPoolSize - 1]);
                     curatedPools.pop();
                     curatedPools.push(pool);
-                }else{
-                    bootstrapPools.push(pool);
                 }
             }
             mapToken_Pool[token] = pool;
-        } 
         }
         for(uint i = 0; i <= curatedPools.length; i++){
             isCuratedPool[curatedPools[i]] = true;
@@ -379,12 +375,11 @@ contract Router {
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         _handleTransferIn(token, inputToken, pool);
         arrayTokens.push(_token); 
-        bootstrapPools.push(_token);
         isPool[pool] = true;
         totalPooled += _actualInputBase;
         addLiquidityTx += 1;
         Pool(pool).addLiquidityForMember(msg.sender);
-        challengLowestCuratedPool();
+        challengLowestCuratedPool(token);
         emit NewPool(token, pool, now);
         return pool;
     }
@@ -618,38 +613,18 @@ contract Router {
         }
         return true;
     }
-    function sortAscBootStrapPoolsByDepth() internal returns (bool){
-         for (uint i = 0; i < bootstrapPools.length; ++i) 
-        {
-            for (uint j = i + 1; j < bootstrapPools.length; ++j) 
-            {
-                uint iDepth = iUTILS(_DAO().UTILS()).getDepth(bootstrapPools[i]);
-                uint jDepth = iUTILS(_DAO().UTILS()).getDepth(bootstrapPools[j]);
-                if (iDepth > jDepth) 
-                {
-                    address a = bootstrapPools[i];
-                    bootstrapPools[i] = bootstrapPools[j];
-                    bootstrapPools[j] = a;
-                }
-            }
-        }
-        return true;
-    }
 
-    function challengLowestCuratedPool() public {
+    function challengLowestCuratedPool(address _pool) public {
          sortDescCuratedPoolsByDepth();
-         sortAscBootStrapPoolsByDepth();
-         uint highestBootstrap = iUTILS(_DAO().UTILS()).getDepth(bootstrapPools[bootstrapPools.length - 1]);
+         uint challenger = iUTILS(_DAO().UTILS()).getDepth(_pool);
          uint lowestCurated = iUTILS(_DAO().UTILS()).getDepth(curatedPools[curatedPoolSize - 1]);
-        if(highestBootstrap > lowestCurated){
+        if(challenger > lowestCurated){
             address loser = curatedPools[curatedPools.length - 1];
-            address winner = bootstrapPools[bootstrapPools.length - 1];
+            address winner = _pool;
             curatedPools.pop();
             isCuratedPool[winner] = true;
             curatedPools.push(winner);
-            bootstrapPools.pop();
             isCuratedPool[loser] = false;
-            bootstrapPools.push(loser);
         }
     }
     //=================================onlyDAO=====================================//
