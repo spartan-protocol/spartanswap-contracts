@@ -11,6 +11,7 @@ const { expect } = require("chai");
 var BASE = artifacts.require("./Base.sol");
 var DAO = artifacts.require("./Dao.sol");
 var ROUTER = artifacts.require("./Router.sol");
+var ROUTERv1 = artifacts.require("./RouterV1.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
@@ -36,38 +37,38 @@ contract('LOCK', function (accounts) {
     checkLockSupply()
     burnLock()
     createPoolBNB()
-    createPoolTKN1()
+    //createPoolTKN1()
     deployerListBNB()
     deployerChangeSecondsPerYear(10)
     depositBNB(acc2)
     claimLPAndLock(acc2, 2000) 
-    attackerListAsset()
-    depositNONEListedAsset()
-    deployerListTKN()
-    depositTKN(acc2)
-    claimLPAndLockTNK(acc2, 1000) // claim after 1 second
-    deployerBurnBaseBalance()
-    claimAfterPeriod(acc2, 10000)
-    deployerMintBond()
-    checkLockSupply2()
-    burnLock2()
-    deployerBurnBaseBalance()
-    deployerMintBond()
-    checkLockSupply2()
-    burnLock2()
-    depositTKN(acc2)
-    deployerBurnBaseBalance()
-    addLiquidityTKN1(acc1)
-    addLiquidityTKN1(acc2)
-    addLiquidityTKN1(acc3)
-    lockTKN(acc1, _.BN2Str(_.one * 10)) // 25% <33%
-    lockTKN(acc2, _.BN2Str(_.one * 10)) // 25% +1 >33% <50%
-    lockTKN(acc3, _.BN2Str(_.one * 15)) // 37% +1 >50%
-    changeCoolPeriod()
-    deployerBurnBaseBalance()
-    mintBond()
-    burnLock2()
-    voteList()
+    // attackerListAsset()
+    // depositNONEListedAsset()
+    // deployerListTKN()
+    // depositTKN(acc2)
+    // claimLPAndLockTNK(acc2, 1000) // claim after 1 second
+    // deployerBurnBaseBalance()
+    // claimAfterPeriod(acc2, 10000)
+    // deployerMintBond()
+    // checkLockSupply2()
+    // burnLock2()
+    // deployerBurnBaseBalance()
+    // deployerMintBond()
+    // checkLockSupply2()
+    // burnLock2()
+    // depositTKN(acc2)
+    // deployerBurnBaseBalance()
+    // addLiquidityTKN1(acc1)
+    // addLiquidityTKN1(acc2)
+    // addLiquidityTKN1(acc3)
+    // lockTKN(acc1, _.BN2Str(_.one * 10)) // 25% <33%
+    // lockTKN(acc2, _.BN2Str(_.one * 10)) // 25% +1 >33% <50%
+    // lockTKN(acc3, _.BN2Str(_.one * 15)) // 37% +1 >50%
+    // changeCoolPeriod()
+    // deployerBurnBaseBalance()
+    // mintBond()
+    // burnLock2()
+    // voteList()
   
 })
 
@@ -81,6 +82,7 @@ function constructor(accounts) {
         utils = await UTILS.new(base.address)
         Dao = await DAO.new(base.address)
         router = await ROUTER.new(base.address, wbnb.address)
+        routerv1 = await ROUTER.new(base.address, wbnb.address)
         bond = await BOND.new(base.address)
         bondtwo = await BONDv.new(base.address)
         token1 = await TOKEN1.new();
@@ -91,15 +93,16 @@ function constructor(accounts) {
         await base.listAsset(token1.address, _.BN2Str(500000 * _.one),_.BN2Str(3*_.one) ) //list token 1
       
         await base.changeDAO(Dao.address)
-        await Dao.setGenesisAddresses(router.address, utils.address)
+        await Dao.setGenesisAddresses(routerv1.address, utils.address)
 
         let supply = await token1.totalSupply()
         await token1.transfer(acc1, _.getBN(_.BN2Int(supply)/4)) // give acc1 token1 to burn
         await token1.transfer(acc2, _.getBN(_.BN2Int(supply)/4))
         await token1.transfer(acc3, _.getBN(_.BN2Int(supply)/4))
+        await token1.transfer(acc0, _.getBN(_.BN2Int(supply)/4))
 
-        await token1.approve(base.address, supply, {from:acc1})//approve base to burn token1 from acc1
-        await base.claim(token1.address, _.BN2Str(_.one), {from: acc1}) // burn 1 token1 to get sparta
+        await token1.approve(base.address, supply, {from:acc0})//approve base to burn token1 from acc1
+        await base.claim(token1.address, _.BN2Str(_.one), {from: acc0}) // burn 1 token1 to get sparta
         //console.log(_.BN2Str(await base.balanceOf(acc1))/_.one)
 
         await wbnb.approve(router.address, supply, {from:acc1}) // approve router to add token1
@@ -170,9 +173,9 @@ async function burnLock(){
 async function createPoolTKN1() {
     it("It should deploy TKN1 Pool", async () => {
         //console.log(" before" + _.BN2Str(await poolTKN1.balanceOf(acc1)/_.one));
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 1000), _.BN2Str(10*_.one), token1.address, {from:acc1})
-        await router.createPool(_.BN2Str(_.one * 1000), _.BN2Str(10*_.one), token1.address, {from:acc1})
-        poolTKN1 = await POOL.at(_pool,{from:acc1})
+        var _pool = await router.createPool.call(_.BN2Str(_.one * 1000), _.BN2Str(10*_.one), token1.address, {from:acc0})
+        await router.createPool(_.BN2Str(_.one * 1000), _.BN2Str(10*_.one), token1.address, {from:acc0})
+        poolTKN1 = await POOL.at(_pool,{from:acc0})
         //console.log(`Pools: ${poolTKN1.address}`)
        
         poolUnits = _.getBN((await poolTKN1.totalSupply()))
@@ -189,8 +192,8 @@ async function createPoolTKN1() {
 }
 async function createPoolBNB() {
     it("It should deploy BNB Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.BN2Str(_.one), _.BNB, {from: acc1,value:_.BN2Str(_.one)})
-        await router.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one), _.BNB, {from: acc1, value:_.BN2Str(_.one)})
+        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.BN2Str(_.one), _.BNB, {from: acc0,value:_.BN2Str(_.one)})
+        await router.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one), _.BNB, {from: acc0, value:_.BN2Str(_.one)})
         poolBNB = await POOL.at(_pool)
 
         //console.log(`Pools: ${poolWBNB.address}`)
