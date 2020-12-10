@@ -39,12 +39,10 @@ contract Pool is iBEP20 {
     constructor (address _base, address _token) public payable {
         BASE = _base;
         TOKEN = _token;
-
         string memory poolName = "SpartanPoolV2-";
-        string memory poolSymbol = "SPT1-";
+        string memory poolSymbol = "SPT2-";
         _name = string(abi.encodePacked(poolName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
-        
         decimals = 18;
         genesis = now;
     }
@@ -226,6 +224,9 @@ contract Pool is iBEP20 {
         _addPoolMetrics(_y+_fee, _fee, true);
         return (_y, _fee);
     }
+    function swapSynth()public payable returns(uint256 outputAmount, uint256 fee){
+
+    }
 
     //==================================================================================//
     // Data Model
@@ -279,13 +280,20 @@ contract Router {
     uint public removeLiquidityTx;
     uint public addLiquidityTx;
     uint public swapTx;
+
+    uint public secondsPerEra;
+    uint public nextEraTime;
+    bool public emitting;
+    address public incentiveAddress;
+    uint256 private BP = 10000;
+    uint public daoReward;
    
     uint public maxTrades;
     uint public eraLength;
     uint public normalAverageFee;
     uint public arrayFeeSize;
     uint public curatedPoolSize;
-    uint256 [] public feeArray;
+    uint [] public feeArray;
 
     address[] public arrayTokens;
     address[] public curatedPools;
@@ -310,6 +318,10 @@ contract Router {
         WBNB = _wbnb;
         arrayFeeSize = 20;
         curatedPoolSize =10;
+        emitting = false;
+        secondsPerEra = 86400;
+        daoReward = 500;
+        nextEraTime = now + secondsPerEra;
         eraLength = 30;
         maxTrades = 100;
         DEPLOYER = msg.sender;
@@ -325,7 +337,10 @@ contract Router {
     function migrateRouterData(address payable oldRouter) public onlyDAO {
         totalPooled = Router(oldRouter).totalPooled();
         totalVolume = Router(oldRouter).totalVolume();
-        totalFees = Router(oldRouter).totalFees();
+        address pool = Router(oldRouter).getPool(0xdD1755e883a39C0D4643733E02003044a3B2D7A7);
+        uint recFees = iPOOL(pool).fees();
+        uint tFees = Router(oldRouter).totalFees();
+        totalFees = tFees.sub(recFees);//remove recovery pool fees 
         normalAverageFee = Router(oldRouter).normalAverageFee();
         removeLiquidityTx = Router(oldRouter).removeLiquidityTx();
         addLiquidityTx = Router(oldRouter).addLiquidityTx();
@@ -476,7 +491,6 @@ contract Router {
         swapTx += 1;
         return (outputAmount, fee);
     }
-
     function sell(uint amount, address token) public payable returns (uint outputAmount, uint fee){
         return sellTo(amount, token, msg.sender);
     }
@@ -494,30 +508,38 @@ contract Router {
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
         return swapTo(inputAmount, fromToken, toToken, msg.sender);
     }
-
     function swapTo(uint256 inputAmount, address fromToken, address toToken, address member) public payable returns (uint256 outputAmount, uint256 fee) {
         require(fromToken != toToken, "TokenTypeErr");
+        _checkEmission();
         uint256 _transferAmount = 0;
         if(fromToken == BASE){
             (outputAmount, fee) = buyTo(inputAmount, toToken, member);
-           
+           if(isCuratedPool[toToken]){
             addTradeFee(fee);//add fee to feeArray
             addDividend(toToken, fee); //add dividend
+           }
+           
         } else if(toToken == BASE) {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
+            if(isCuratedPool[fromToken]){
             addTradeFee(fee);//add fee to feeArray
             addDividend(fromToken, fee);
+            }
         } else {
             address _poolTo = getPool(toToken);
             (uint256 _yy, uint256 _feey) = sellTo(inputAmount, fromToken, _poolTo);
             totalVolume += _yy; totalFees += _feey;
             address _toToken = toToken;
+            if(isCuratedPool[fromToken]){
             addTradeFee(_feey);//add fee to feeArray
             addDividend(fromToken, _feey);
+            }
             if(toToken == address(0)){_toToken = WBNB;} // Handle BNB
             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
+            if(isCuratedPool[_toToken]){
             addTradeFee(_feez);//add fee to feeArray
             addDividend(_toToken,  _feez);
+            }
             _handleTransferOut(toToken, _zz, member);
             totalFees += _DAO().UTILS().calcValueInBase(toToken, _feez);
             _transferAmount = _yy; outputAmount = _zz; 
@@ -526,10 +548,12 @@ contract Router {
         emit Swapped(fromToken, toToken, inputAmount, _transferAmount, outputAmount, fee, member);
         return (outputAmount, fee);
     }
+    function swapSynth()public payable returns(uint256 outputAmount, uint256 fee){
+
+    }
 
     //==================================================================================//
     // Token Transfer Functions
-
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
         if(_amount > 0) {
             if(_token == address(0)){
@@ -545,7 +569,6 @@ contract Router {
             }
         }
     }
-
     function _handleTransferOut(address _token, uint256 _amount, address _recipient) internal {
         if(_amount > 0) {
             if (_token == address(0)) {
@@ -557,9 +580,9 @@ contract Router {
             }
         }
     }
-
+    //==================================================================================//
+    //Token Dividends / Curated Pools
     function addDividend(address _token, uint256 _fees) internal returns (bool){
-       
         if(!(normalAverageFee == 0)){
              uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance
             if(!(reserve == 0)){
@@ -595,7 +618,6 @@ contract Router {
          feeArray[0] = fee;
         return true;
     }
-
     function sortDescCuratedPoolsByDepth() internal returns (bool){
          for (uint i = 0; i < curatedPools.length; ++i) 
         {
@@ -613,7 +635,6 @@ contract Router {
         }
         return true;
     }
-
     function challengLowestCuratedPool(address _pool) public {
          sortDescCuratedPoolsByDepth();
          uint challenger = iUTILS(_DAO().UTILS()).getDepth(_pool);
@@ -627,6 +648,17 @@ contract Router {
             isCuratedPool[loser] = false;
         }
     }
+    //======================================EMISSION========================================//
+    // Internal - Update emission function
+    function _checkEmission() private {
+        if ((now >= nextEraTime) && emitting) {                                            // If new Era and allowed to emit                                                           // Increment Era
+            nextEraTime = now + secondsPerEra; 
+            uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance                                            // Set next Era time
+            uint256 _emission = reserve.mul(daoReward).div(BP);                                        // Get Daily Dmission
+            iBEP20(BASE).transfer(incentiveAddress, _emission);                                            // Mint to the Incentive Address
+        }
+    }
+
     //=================================onlyDAO=====================================//
     function changeArrayFeeSize(uint _size) public onlyDAO returns(bool){
         arrayFeeSize = _size;
@@ -636,13 +668,30 @@ contract Router {
         maxTrades = _maxtrades;
         return true;
     }
-     function changeEraLength(uint _eraLength) public onlyDAO returns(bool){
+    function changeEraLength(uint _eraLength) public onlyDAO returns(bool){
         eraLength = _eraLength;
         return true;
     }
     function forwardRouterFunds(address newRouterAddress ) public onlyDAO returns(bool){
         uint balanceBase = iBEP20(BASE).balanceOf(address(this)); // get base balance
         iBEP20(BASE).transfer(newRouterAddress, balanceBase);
+        return true;
+    }
+    function startEmissions() public onlyDAO returns(bool){
+        emitting = true;
+        return true;
+    }
+    function stopEmissions() public onlyDAO returns(bool){
+        emitting = false;
+        return true;
+    }
+     function changeDaoReward(uint doaBP) public onlyDAO returns(bool){
+        daoReward = doaBP;
+        return true;
+    }
+    // Can change Incentive Address
+    function changeIncentiveAddress(address newIncentiveAddress) public onlyDAO returns(bool) {
+        incentiveAddress = newIncentiveAddress;
         return true;
     }
 
@@ -670,9 +719,7 @@ contract Router {
     function getCuratedPoolsLength() public view returns(uint256){
         return curatedPools.length;
     }
-    function getBootstrapPoolsLength() public view returns(uint256){
-        return bootstrapPools.length;
-    }
+   
 
 
 }
