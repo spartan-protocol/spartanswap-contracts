@@ -71,6 +71,7 @@ interface iROUTER {
     function totalPooled() external view returns (uint);
     function totalVolume() external view returns (uint);
     function totalFees() external view returns (uint);
+    function isCuratedPool(address) external view returns (bool);
     function removeLiquidityTx() external view returns (uint);
     function addLiquidityTx() external view returns (uint);
     function swapTx() external view returns (uint);
@@ -100,6 +101,8 @@ interface iUTILS {
     function calcTokenPPinBase(address pool, uint256 amount) external view returns (uint256 value);
     function getPool(address token)external view returns (address value);
     function getDepth(address pool) external view returns (uint depth);
+    function calcAsymmetricShare(uint _actualInputCollateral, uint _baseAmount, uint _lpTotalSupply) external view returns(uint amount);
+    function calcBasePPinTokenWithPool(address pool, uint amount) external view returns (uint _output);
 }
 interface iDAO {
     function ROUTER() external view returns(address);

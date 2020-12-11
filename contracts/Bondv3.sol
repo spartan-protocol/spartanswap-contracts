@@ -267,7 +267,11 @@ contract BondV3 is iBEP20 {
         coolOffPeriod = coolOff;
         return true;
     }
-    
+    function movetoNewBond(address bond) public onlyDeployer returns(bool){
+         uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
+         iBEP20(BASE).transfer(bond, baseBal);
+         return true;
+    }
      //================================ BOND Feature ==================================//
     function burnBond() public returns (bool success){
         require(totalSupply > 0, 'burnt already');

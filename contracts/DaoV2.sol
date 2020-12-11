@@ -101,7 +101,6 @@ contract Dao {
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
-
     //============================== USER - DEPOSIT/WITHDRAW ================================//
 
     // Member deposits some LP tokens
@@ -202,6 +201,7 @@ contract Dao {
         emit NewProposal(msg.sender, proposalCount, typeStr);
         return proposalCount;
     }
+    
 
 //============================== VOTE && FINALISE ================================//
 
@@ -251,10 +251,6 @@ contract Dao {
             moveUtils(proposalID);
         } else if (isEqual(_type, 'INCENTIVE')){
             moveIncentiveAddress(proposalID);
-        } else if (isEqual(_type, 'LIST')){
-            listAsset(proposalID);
-        } else if (isEqual(_type, 'DELIST')){
-            delistAsset(proposalID);
         } else if (isEqual(_type, 'CURVE')){
             changeCurve(proposalID);
         } else if (isEqual(_type, 'DURATION')){
@@ -269,6 +265,12 @@ contract Dao {
             changeEras(proposalID);
         } else if (isEqual(_type, 'GRANT')){
             grantFunds(proposalID);
+        } if (isEqual(_type, 'LIST')){
+            _listBondAsset(proposalID);
+        } else if (isEqual(_type, 'DELIST')){
+            _delistBondAsset(proposalID);
+        }else if (isEqual(_type, 'MINT')){
+            _mintBond(proposalID);
         }
     }
     function moveDao(uint _proposalID) internal {
@@ -345,6 +347,29 @@ contract Dao {
         mapPID_finalised[_proposalID] = true;
         mapPID_finalising[_proposalID] = false;
     }
+    function _mintBond(uint _proposalID) internal {
+        require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "Must not mint if sparta already available");
+        require(totalSupply <= 0, 'BOND asset already available for burn');
+        uint256 amount = 1*one;
+        _mint(address(this), amount);
+        completeProposal(_proposalID);
+    }
+    function _listBondAsset(uint _proposalID) internal {
+         address _proposedAddress = mapPID_address[_proposalID];
+        if(!isListed[_proposedAddress]){
+            isListed[_proposedAddress] = true;
+            listedBondAssets.push(_proposedAddress);
+        }
+        emit ListedAsset(msg.sender, _proposedAddress);
+        completeProposal(_proposalID);
+    }
+    function _delistBondAsset(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID];
+        require(_proposedAddress != address(0), "No address proposed");
+            isListed[_proposedAddress] = false;
+        emit DelistedAsset(msg.sender, _proposedAddress);
+        completeProposal(_proposalID);
+    }
     
 
     //============================== CONSENSUS ================================//
@@ -358,7 +383,7 @@ contract Dao {
     }
     function hasMajority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-        uint consensus = totalWeight.div(2); // >50%
+        uint consensus = totalWeight.div(2); 
         if(votes > consensus){
             return true;
         } else {

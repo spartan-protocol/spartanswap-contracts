@@ -256,7 +256,6 @@ contract BondV2 is iBEP20 {
     //============================== CLAIM LP TOKENS ================================//
 
     function claim(address asset) public returns(bool){
-        console.log(msg.sender);
         require(mapAddress_listedAssets[asset].bondedLP[msg.sender] > 0, 'must have bonded lps');
         require(mapAddress_listedAssets[asset].isMember[msg.sender], 'must have deposited first');
         uint256 claimable = calcClaimBondedLP(msg.sender, asset); 
