@@ -364,7 +364,7 @@ contract Router {
                 uint challengedPD = iUTILS(_DAO().UTILS()).getDepth(curatedPools[curatedPoolSize - 1]);
                 if(challangerPD > challengedPD){
                     curatedPools.pop();
-                    curatedPools.push(pool);
+                    curatedPools.push(pool); 
                 }
             }
             mapToken_Pool[token] = pool;
