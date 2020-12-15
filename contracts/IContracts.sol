@@ -78,6 +78,7 @@ interface iROUTER {
     function tokenCount() external view returns(uint);
     function getToken(uint) external view returns(address);
     function getPool(address) external view returns(address payable);
+    function grantFunds(uint, address) external view returns (bool);
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) external payable returns (uint units);
     function isPool(address) external view returns(bool);
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
@@ -95,18 +96,20 @@ interface iUTILS {
     function getPoolShareWeight(address token, uint units)external view returns(uint weight);
     function getPoolShare(address token, uint units) external view returns(uint baseAmount, uint tokenAmount);
     function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmount, uint tokenAmount, uint outputAmt);
-    function calcValueInBase(address token, uint amount) external view returns (uint value);
-    function calcValueInToken(address token, uint amount) external view returns (uint value);
-    function calcValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
-    function calcTokenPPinBase(address pool, uint256 amount) external view returns (uint256 value);
+    function calcSpotValueInBase(address token, uint amount) external view returns (uint value);
+    function calcSpotValueInToken(address token, uint amount) external view returns (uint value);
+    function calcSpotValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
+    function calcSwapValueInBase(address pool, uint256 amount) external view returns (uint256 value);
     function getPool(address token)external view returns (address value);
     function getDepth(address pool) external view returns (uint depth);
     function calcAsymmetricShare(uint _actualInputCollateral, uint _baseAmount, uint _lpTotalSupply) external view returns(uint amount);
-    function calcBasePPinTokenWithPool(address pool, uint amount) external view returns (uint _output);
+    function calcSwapValueInTokenWithPool(address pool, uint amount) external view returns (uint _output);
 }
 interface iDAO {
     function ROUTER() external view returns(address);
     function UTILS() external view returns(iUTILS);
+    function SYNTHS() external view returns(address);
+    function BOND() external view returns(address);
     function DAO() external view returns (address);
     function depositForMember(address pool, uint256 amount, address member) external;
     function deposit(address pool, uint256 amount) external;
@@ -126,10 +129,15 @@ interface iPOOL {
     function txCount() external view returns(uint);
     function getBaseAmtPooled(address) external view returns(uint);
     function getTokenAmtPooled(address) external view returns(uint);
-    function calcValueInBase(uint) external view returns (uint);
-    function calcValueInToken(uint) external view returns (uint);
-    function calcTokenPPinBase(uint) external view returns (uint);
-    function calcBasePPinToken(uint) external view returns (uint);
 }
+interface iBOND {
+function mintBond() external view returns (bool);
+function listBondAsset(address) external view returns (bool);
+function delistBondAsset(address) external view returns (bool);
+}
+interface iSYNTHS {
+
+}
+
 
 

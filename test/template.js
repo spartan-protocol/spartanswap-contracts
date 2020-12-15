@@ -43,7 +43,20 @@ function constructor(accounts) {
         router = await ROUTER.new(base.address, wbnb.address)
         await base.changeDAO(Dao.address)
         await Dao.setGenesisAddresses(router.address, utils.address)
-  
+
+        let supply = await token1.totalSupply()
+        await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(router.address, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+
+        await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+        await token1.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
+        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
     });
 }
 

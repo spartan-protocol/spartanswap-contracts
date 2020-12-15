@@ -170,8 +170,9 @@ contract Utils {
         weight = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
         return (weight);
     }
-    function getDepth(address _pool) public view returns (uint depth){
-          return iPOOL(_pool).baseAmount();
+    function getDepth(address _pool) public view returns (uint _baseAmount){
+        _baseAmount = iPOOL(_pool).baseAmount();
+          return _baseAmount;
     }
 
 
@@ -238,45 +239,45 @@ contract Utils {
 
     //====================================PRICING====================================//
 
-    function calcValueInBase(address token, uint amount) public view returns (uint value){
+    function calcSpotValueInBase(address token, uint amount) public view returns (uint value){
        address pool = getPool(token);
-       return calcValueInBaseWithPool(pool, amount);
+       return calcSpotValueInBaseWithPool(pool, amount);
     }
 
-    function calcValueInToken(address token, uint amount) public view returns (uint value){
+    function calcSpotValueInToken(address token, uint amount) public view returns (uint value){
         address pool = getPool(token);
-        return calcValueInTokenWithPool(pool, amount);
+        return calcSpotValueInTokenWithPool(pool, amount);
     }
 
-    function calcTokenPPinBase(address token, uint amount) public view returns (uint _output){
+    function calcSwapValueInBase(address token, uint amount) public view returns (uint _output){
         address pool = getPool(token);
-        return  calcTokenPPinBaseWithPool(pool, amount);
+        return  calcSwapValueInBaseWithPool(pool, amount);
    }
 
-    function calcBasePPinToken(address token, uint amount) public view returns (uint _output){
+    function calcSwapValueInToken(address token, uint amount) public view returns (uint _output){
         address pool = getPool(token);
-        return  calcValueInBaseWithPool(pool, amount);
+        return  calcSwapValueInTokenWithPool(pool, amount);
     }
 
-    function calcValueInBaseWithPool(address pool, uint amount) public view returns (uint value){
+    function calcSpotValueInBaseWithPool(address pool, uint amount) public view returns (uint value){
        uint _baseAmount = iPOOL(pool).baseAmount();
        uint _tokenAmount = iPOOL(pool).tokenAmount();
        return (amount.mul(_baseAmount)).div(_tokenAmount);
     }
 
-    function calcValueInTokenWithPool(address pool, uint amount) public view returns (uint value){
+    function calcSpotValueInTokenWithPool(address pool, uint amount) public view returns (uint value){
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
         return (amount.mul(_tokenAmount)).div(_baseAmount);
     }
 
-    function calcTokenPPinBaseWithPool(address pool, uint amount) public view returns (uint _output){
+    function calcSwapValueInBaseWithPool(address pool, uint amount) public view returns (uint _output){
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
         return  calcSwapOutput(amount, _tokenAmount, _baseAmount);
    }
 
-    function calcBasePPinTokenWithPool(address pool, uint amount) public view returns (uint _output){
+    function calcSwapValueInTokenWithPool(address pool, uint amount) public view returns (uint _output){
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
         return  calcSwapOutput(amount, _baseAmount, _tokenAmount);

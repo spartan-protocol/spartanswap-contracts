@@ -2,7 +2,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./IContracts.sol";
-
+import "@nomiclabs/buidler/console.sol";
 
 contract Pool is iBEP20 {
     using SafeMath for uint256;
@@ -141,7 +141,7 @@ contract Pool is iBEP20 {
         uint256 _actualInputToken = _getAddedTokenAmount();
         liquidityUnits = _DAO().UTILS().calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply);
         _incrementPoolBalances(_actualInputBase, _actualInputToken);
-        _mint(member, liquidityUnits);
+        _mint(member, liquidityUnits); 
         emit AddLiquidity(member, _actualInputBase, _actualInputToken, liquidityUnits);
         return liquidityUnits;
     }
@@ -259,8 +259,8 @@ contract Pool is iBEP20 {
             volume += _volume;
             fees += _fee;
         } else {
-            volume += _DAO().UTILS().calcValueInBaseWithPool(address(this), _volume);
-            fees += _DAO().UTILS().calcValueInBaseWithPool(address(this), _fee);
+            volume += _DAO().UTILS().calcSpotValueInBaseWithPool(address(this), _volume);
+            fees += _DAO().UTILS().calcSpotValueInBaseWithPool(address(this), _fee); 
         }
         txCount += 1;
     }
@@ -317,7 +317,7 @@ contract Router {
         BASE = _base;
         WBNB = _wbnb;
         arrayFeeSize = 20;
-        curatedPoolSize =10;
+        curatedPoolSize = 10;
         emitting = false;
         secondsPerEra = 86400;
         daoReward = 500;
@@ -382,6 +382,7 @@ contract Router {
         require(getPool(token) == address(0), "CreateErr");
         require(token != BASE, "Must not be Base");
         require((inputToken > 0 && inputBase > 0), "Must get tokens for both");
+        require(iBEP20(token).decimals() == 18, 'its just not your day');
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         newPool = new Pool(BASE, _token); 
@@ -394,7 +395,6 @@ contract Router {
         totalPooled += _actualInputBase;
         addLiquidityTx += 1;
         Pool(pool).addLiquidityForMember(msg.sender);
-        challengLowestCuratedPool(token);
         emit NewPool(token, pool, now);
         return pool;
     }
@@ -464,7 +464,7 @@ contract Router {
             // buy to TOKEN
             iBEP20(BASE).transfer(_pool, _outputToken);
             (uint _tokenBought, uint _fee) = Pool(_pool).swap(BASE);
-            totalFees += _DAO().UTILS().calcValueInBase(token, _fee);
+            totalFees += _DAO().UTILS().calcSpotValueInBase(token, _fee);
             outputAmount = _tokenBought.add(_outputToken);
             _handleTransferOut(token, outputAmount, msg.sender);
         }
@@ -487,7 +487,7 @@ contract Router {
         _handleTransferOut(token, outputAmount, member);
         totalPooled += _actualAmount;
         totalVolume += _actualAmount;
-        totalFees += _DAO().UTILS().calcValueInBase(token, fee);
+        totalFees += _DAO().UTILS().calcSpotValueInBase(token, fee);
         swapTx += 1;
         return (outputAmount, fee);
     }
@@ -541,9 +541,9 @@ contract Router {
             addDividend(_toToken,  _feez);
             }
             _handleTransferOut(toToken, _zz, member);
-            totalFees += _DAO().UTILS().calcValueInBase(toToken, _feez);
+            totalFees += _DAO().UTILS().calcSpotValueInBase(toToken, _feez);
             _transferAmount = _yy; outputAmount = _zz; 
-            fee = _feez + _DAO().UTILS().calcValueInToken(toToken, _feey);
+            fee = _feez + _DAO().UTILS().calcSpotValueInToken(toToken, _feey);
         }
         emit Swapped(fromToken, toToken, inputAmount, _transferAmount, outputAmount, fee, member);
         return (outputAmount, fee);
@@ -635,10 +635,12 @@ contract Router {
         }
         return true;
     }
-    function challengLowestCuratedPool(address _pool) public {
+    function challengLowestCuratedPool(address token) public {
+         address _pool = getPool(token);
+         require(isPool[_pool] == true, 'not pool');
          sortDescCuratedPoolsByDepth();
          uint challenger = iUTILS(_DAO().UTILS()).getDepth(_pool);
-         uint lowestCurated = iUTILS(_DAO().UTILS()).getDepth(curatedPools[curatedPoolSize - 1]);
+         uint lowestCurated = iUTILS(_DAO().UTILS()).getDepth(curatedPools[curatedPools.length - 1]);
         if(challenger > lowestCurated){
             address loser = curatedPools[curatedPools.length - 1];
             address winner = _pool;
@@ -689,6 +691,25 @@ contract Router {
         daoReward = doaBP;
         return true;
     }
+
+    function grantFunds(uint amount, address grantee) public onlyDAO returns (bool){
+        require(amount <= iBEP20(BASE).balanceOf(address(this)), "Not more than balance");
+        require(grantee != address(0), 'GrantERR');
+        iBEP20(BASE).transfer(grantee, amount);
+        return true;
+    }
+
+    function curatePool(address token) public onlyDAO returns (bool){
+        require(token != BASE, 'not base');
+        address _pool = getPool(token);
+        require(isPool[_pool] == true, 'not pool');
+        if(!isCuratedPool[_pool]){
+            isCuratedPool[_pool] = true;
+            curatedPools.push(_pool);
+        }
+        return true;
+    }
+
     // Can change Incentive Address
     function changeIncentiveAddress(address newIncentiveAddress) public onlyDAO returns(bool) {
         incentiveAddress = newIncentiveAddress;

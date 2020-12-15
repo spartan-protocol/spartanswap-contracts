@@ -8,14 +8,20 @@ contract Synth is iBEP20 {
     address public BASE;
     uint256 public one = 10**18;
 
+    uint public totalCollateral;
+    uint public totalDebt;
+
     // ERC-20 Parameters
     string _name; string _symbol;
     uint256 public override decimals; uint256 public override totalSupply;
+
     // ERC-20 Mappings
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 
-    mapping(address => uint) public totalLPCollateral;
+    mapping(address => mapping(address => uint)) collateralAmount; //member > lp token > colAmount
+    mapping(address => uint) debtAmount; //member > debtAmount
+   
 
     event AddLPCollateral(address member, uint inputLPToken, uint synthsIssued);
 
@@ -100,7 +106,6 @@ contract Synth is iBEP20 {
         return true;
     }
 
-
     function swapSynth()public payable returns(uint256 outputAmount, uint256 fee){
 
     }
@@ -111,9 +116,8 @@ contract Synth is iBEP20 {
     }
     function _getAddedCollateralAmount(address _lptoken) internal view returns(uint256 _actual){
         uint _lpCollateralBalance = iBEP20(_lptoken).balanceOf(address(this)); 
-        uint _totalLPCollateral = totalLPCollateral[_lptoken];
-        if(_lpCollateralBalance > _totalLPCollateral){
-            _actual = _lpCollateralBalance.sub(_totalLPCollateral);
+        if(_lpCollateralBalance > totalCollateral){
+            _actual = _lpCollateralBalance.sub(totalCollateral);
         } else {
             _actual = 0;
         }
@@ -121,13 +125,17 @@ contract Synth is iBEP20 {
     }
     // add collateral for member
     function addCollateralForMember(address lptoken, address member) public returns(uint synths){
-        uint256 _actualInputCollateral = _getAddedCollateralAmount(lptoken);
-        uint _baseAmount = iPOOL(lptoken).baseAmount();
-        uint _lpTotalSupply = iPOOL(lptoken).baseAmount();
-        uint baseValue = _DAO().UTILS().calcAsymmetricShare(_actualInputCollateral, _baseAmount, _lpTotalSupply);
-         synths = _DAO().UTILS().calcBasePPinTokenWithPool(lptoken, baseValue);
-         _mint(member, synths);
-         emit AddLPCollateral(member, _actualInputCollateral, synths);
+        uint256 _actualInputCollateral = _getAddedCollateralAmount(lptoken);// get the added collateral to LP CDP
+        uint _baseAmount = iPOOL(lptoken).baseAmount(); //used to calc assymetricalShare
+        uint _lpTotalSupply = iPOOL(lptoken).baseAmount(); //used to calc assymetricalShare
+        uint baseValue = _DAO().UTILS().calcAsymmetricShare(_actualInputCollateral, _baseAmount, _lpTotalSupply);//get asym share in sparta
+         synths = _DAO().UTILS().calcSwapValueInTokenWithPool(lptoken, baseValue); //get swap value with sparta
+         totalDebt = totalDebt.add(synths); // map total debt
+         totalCollateral = totalCollateral.add(_actualInputCollateral); // map total collateral
+         collateralAmount[member][lptoken] = collateralAmount[member][lptoken].add(_actualInputCollateral);//member collateral lptoken > amount
+         debtAmount[member]= debtAmount[member].add(synths); //member debt lptoken > amount
+         _mint(member, synths); // mint synth to member
+         emit AddLPCollateral(member, _actualInputCollateral, synths); 
         return synths;
     }
 
@@ -142,16 +150,14 @@ contract synthRouter {
     iROUTER private _ROUTER;
     iUTILS private _UTILS;
 
-    uint public totalCollateral;
-    uint public totalDebt;
     uint public addCollateralTx;
 
     address[] public arraySynths;
 
-
-    mapping(address=>address) private mapToken_Synth;
-    mapping(address=>bool) public isSynth;
-
+    mapping(address => mapping(address => uint)) public totalCDPCollateral;
+    mapping(address => uint) public totalCDPDebt;
+    mapping(address => address) private mapToken_Synth;
+    mapping(address => bool) public isSynth;
 
     event NewSynth(address token, address pool, uint genesis);
     // Only DAO can execute
@@ -160,7 +166,8 @@ contract synthRouter {
         _;
     }
 
-    constructor () public payable {
+    constructor (address _base) public payable {
+        BASE = _base;
         DEPLOYER = msg.sender;
     }
 
@@ -186,22 +193,23 @@ contract synthRouter {
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
-    
+    //Create a synth asset - only from curated pools
     function createSynth(address lpToken, address token, uint256 inputLPToken) public returns(address synth){
         require(getSynth(token) == address(0), "CreateErr");
         require(lpToken != BASE, "Must not be Base");
-        require((inputLPToken > 0), "Must get token");
+        require((inputLPToken > 0), "Must get lp token");
         require(ROUTER().isCuratedPool(lpToken) == true, "Must be Curated");
         Synth newSynth; 
         newSynth = new Synth(token); 
         synth = address(newSynth);
         uint actualInputCollateral = _handleTransferIn(lpToken, inputLPToken, synth);
-        totalCollateral = totalCollateral.add(actualInputCollateral);
+        totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].add(actualInputCollateral);
         mapToken_Synth[token] = synth;
         arraySynths.push(synth); 
         isSynth[synth] = true;
         addCollateralTx += 1;
-        Synth(synth).addCollateralForMember(msg.sender);
+        uint synthMinted = Synth(synth).addCollateralForMember(lpToken, msg.sender);
+        totalCDPDebt[synth]= totalCDPDebt[synth].add(synthMinted);
         emit NewSynth(token, synth, now);
         return synth;
         }
@@ -211,18 +219,18 @@ contract synthRouter {
         synths = addCollateralForMember(inputLPToken, lpToken, msg.sender, synth);
         return synths;
     }
-
     // Add collateral for member
-    function addCollateralForMember(uint inputLPToken, address lpToken, address member, address synth) public payable returns (uint synthetics) {
+    function addCollateralForMember(uint inputLPToken, address lpToken, address member, address synth) public payable returns (uint synthMinted) {
         require(isSynth[synth], "Synth must exist");
-        require(ROUTER().isCuratedPool(lpToken) == true, "Must be Curated");
+        require(ROUTER().isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
         uint _actualInputCollateral = _handleTransferIn(lpToken, inputLPToken, synth);
-        totalCollateral = totalCollateral.add(_actualInputCollateral);
+        totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].add(_actualInputCollateral);
         addCollateralTx += 1;
-        synthetics = Synth(synth).addCollateralForMember(member);
-        return synthetics;
+        synthMinted = Synth(synth).addCollateralForMember(lpToken, member);
+        totalCDPDebt[synth]= totalCDPDebt[synth].add(synthMinted);
+        return synthMinted;
     }
-
+    // handle input LP transfers 
     function _handleTransferIn(address _lptoken, uint256 _amount, address _synth) internal returns(uint256 actual){
         if(_amount > 0) {
                 uint startBal = iBEP20(_lptoken).balanceOf(_synth); 
@@ -230,11 +238,10 @@ contract synthRouter {
                 actual = iBEP20(_lptoken).balanceOf(_synth).sub(startBal);
         }
     }
-
+    // handle output transfers
     function _handleTransferOut(address _token, uint256 _amount, address _recipient) internal {
         if(_amount > 0) {
             iBEP20(_token).transfer(_recipient, _amount);
-            
         }
     }
    

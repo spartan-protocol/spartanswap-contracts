@@ -37,14 +37,16 @@ contract Dao {
         bool finalised;
         uint param;
         address proposedAddress;
-        ListDetails list;
     }
+    
 
     bool public daoHasMoved;
     address public DAO;
 
     iROUTER private _ROUTER;
     iUTILS private _UTILS;
+    iSYNTHS private _SYNTHS;
+    iBOND private _BOND;
 
     address[] public arrayMembers;
     
@@ -54,6 +56,7 @@ contract Dao {
     mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of weight for pool
     mapping(address => uint256) public mapMember_lastTime;
     mapping(address => address[]) public mapMember_poolArray;
+    mapping(address => bool) public isListed;
 
     mapping(uint256 => uint256) public mapPID_param;
     mapping(uint256 => address) public mapPID_address;
@@ -78,7 +81,7 @@ contract Dao {
     // Only Deployer can execute
      // Only DAO can execute
     modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "Must be DAO");
+        require(msg.sender == DEPLOYER, "Must be DAO");
         _;
     }
 
@@ -89,15 +92,16 @@ contract Dao {
         erasToEarn = 30;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
-    function setGenesisAddresses(address _router, address _utils) public onlyDAO {
+    function setGenesisAddresses(address _router, address _utils, address _synths, address _bond) public onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
+        _SYNTHS = iSYNTHS(_synths);
+        _BOND = iBOND(_bond);
     }
     function setGenesisFactors(uint _coolOff, uint _daysToEarn) public onlyDAO {
         coolOffPeriod = _coolOff;
         erasToEarn = _daysToEarn;
     }
-
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
@@ -336,9 +340,8 @@ contract Dao {
     }
     function grantFunds(uint _proposalID) internal {
         GrantDetails memory _grant = mapPID_grant[_proposalID];
-        require(_grant.amount <= iBEP20(BASE).balanceOf(address(this)), "Not more than balance");
         completeProposal(_proposalID);
-        iBEP20(BASE).transfer(_grant.recipient, _grant.amount);
+        _ROUTER.grantFunds(_grant.amount, _grant.recipient);
     }
     function completeProposal(uint _proposalID) internal {
         string memory _typeStr = mapPID_type[_proposalID];
@@ -348,26 +351,18 @@ contract Dao {
         mapPID_finalising[_proposalID] = false;
     }
     function _mintBond(uint _proposalID) internal {
-        require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "Must not mint if sparta already available");
-        require(totalSupply <= 0, 'BOND asset already available for burn');
-        uint256 amount = 1*one;
-        _mint(address(this), amount);
+        _BOND.mintBond(); 
         completeProposal(_proposalID);
     }
     function _listBondAsset(uint _proposalID) internal {
          address _proposedAddress = mapPID_address[_proposalID];
-        if(!isListed[_proposedAddress]){
-            isListed[_proposedAddress] = true;
-            listedBondAssets.push(_proposedAddress);
-        }
-        emit ListedAsset(msg.sender, _proposedAddress);
+        _BOND.listBondAsset(_proposedAddress);
         completeProposal(_proposalID);
     }
     function _delistBondAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-            isListed[_proposedAddress] = false;
-        emit DelistedAsset(msg.sender, _proposedAddress);
+        _BOND.delistBondAsset(_proposedAddress); 
         completeProposal(_proposalID);
     }
     
@@ -418,12 +413,25 @@ contract Dao {
             return _ROUTER;
         }
     }
-
     function UTILS() public view returns(iUTILS){
         if(daoHasMoved){
             return Dao(DAO).UTILS();
         } else {
             return _UTILS;
+        }
+    }
+    function SYNTHS() public view returns(iSYNTHS){
+        if(daoHasMoved){
+            return Dao(DAO).SYNTHS();
+        } else {
+            return _SYNTHS;
+        }
+    }
+    function BOND() public view returns(iBOND){
+        if(daoHasMoved){
+            return Dao(DAO).BOND();
+        } else {
+            return _BOND;
         }
     }
 
@@ -448,7 +456,6 @@ contract Dao {
         proposalDetails.finalised = mapPID_finalised[proposalID];
         proposalDetails.param = mapPID_param[proposalID];
         proposalDetails.proposedAddress = mapPID_address[proposalID];
-        proposalDetails.list = mapPID_list[proposalID];
         return proposalDetails;
     }
     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
