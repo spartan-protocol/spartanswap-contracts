@@ -48,7 +48,6 @@ contract Bond is iBEP20 {
     address public DEPLOYER;
     uint public one = 10**18;
     address [] listedBondAssets;
-    uint256 baseSupply;
     uint256 public bondingPeriodSeconds = 31536000;
     uint256 private basisPoints = 10000;
     uint public proposalCount;
@@ -169,7 +168,7 @@ contract Bond is iBEP20 {
     }
 
 
-    //====================================DEPLOYER================================//
+    //====================================ONLY DAO================================//
     function listBondAsset(address asset) public onlyDAO returns (bool){
          if(!isListed[asset]){
             isListed[asset] = true;
@@ -199,10 +198,15 @@ contract Bond is iBEP20 {
         _mint(address(this), amount);
        return true;
     }
-    function movetoNewBond(address bond) public onlyDAO returns(bool){
+    function moveBond(address bond) public onlyDAO returns(bool){
          uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
          iBEP20(BASE).transfer(bond, baseBal);
          return true;
+    }
+    function approveRouter() public onlyDAO returns (bool){
+       uint256 baseSupply = iBEP20(BASE).balanceOf(address(this));
+        iBEP20(BASE).approve(_DAO().ROUTER(), baseSupply);
+        return true;
     }
 
      //================================ BOND Feature ==================================//
@@ -211,8 +215,6 @@ contract Bond is iBEP20 {
         _approve(address(this), BASE, totalSupply);
         iBASE(BASE).claim(address(this), totalSupply);
         totalSupply = totalSupply.sub(totalSupply);
-        baseSupply = iBEP20(BASE).balanceOf(address(this));
-        iBEP20(BASE).approve(_DAO().ROUTER(), baseSupply);
         return true;
     }
     function deposit(address asset, uint256 amount) public payable returns (bool success) {
@@ -231,7 +233,7 @@ contract Bond is iBEP20 {
         return true;
     }
     function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
-        uint256 spartaAllocation = _DAO().UTILS().calcSwapValueInBase(_token, _amount); 
+        uint256 spartaAllocation = iUTILS(_DAO().UTILS()).calcSwapValueInBase(_token, _amount); 
         if(_token == address(0)){
                 require((_amount == msg.value), "InputErr");
                 LPunits = iROUTER(_DAO().ROUTER()).addLiquidity{value:_amount}(spartaAllocation, _amount, _token);
@@ -251,7 +253,7 @@ contract Bond is iBEP20 {
         require(mapAddress_listedAssets[asset].bondedLP[member] > 0, 'must have bonded lps');
         require(mapAddress_listedAssets[asset].isMember[member], 'must have deposited first');
         uint256 claimable = calcClaimBondedLP(member, asset); 
-        address _pool = _DAO().UTILS().getPool(asset);
+        address _pool = iUTILS(_DAO().UTILS()).getPool(asset);
         require(claimable <= mapAddress_listedAssets[asset].bondedLP[member],'attempted to overclaim');
         mapAddress_listedAssets[asset].lastBlockTime[member] = now;
         mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].sub(claimable);

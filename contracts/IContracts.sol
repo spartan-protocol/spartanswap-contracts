@@ -72,6 +72,8 @@ interface iROUTER {
     function totalVolume() external view returns (uint);
     function totalFees() external view returns (uint);
     function isCuratedPool(address) external view returns (bool);
+    function addCuratedPool(address) external view returns (bool);
+    function removeCuratedPool(address) external view returns (bool);
     function removeLiquidityTx() external view returns (uint);
     function addLiquidityTx() external view returns (uint);
     function swapTx() external view returns (uint);
@@ -81,6 +83,7 @@ interface iROUTER {
     function grantFunds(uint, address) external view returns (bool);
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) external payable returns (uint units);
     function isPool(address) external view returns(bool);
+    function challengLowestCuratedPool(address) external view returns (bool); 
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
 }
 interface iWBNB {
@@ -107,7 +110,7 @@ interface iUTILS {
 }
 interface iDAO {
     function ROUTER() external view returns(address);
-    function UTILS() external view returns(iUTILS);
+    function UTILS() external view returns(address);
     function SYNTHS() external view returns(address);
     function BOND() external view returns(address);
     function DAO() external view returns (address);
@@ -134,6 +137,7 @@ interface iBOND {
 function mintBond() external view returns (bool);
 function listBondAsset(address) external view returns (bool);
 function delistBondAsset(address) external view returns (bool);
+function changeBondingPeriod(uint) external view returns (bool);
 }
 interface iSYNTHS {
 

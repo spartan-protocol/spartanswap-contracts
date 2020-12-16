@@ -128,8 +128,8 @@ contract Synth is iBEP20 {
         uint256 _actualInputCollateral = _getAddedCollateralAmount(lptoken);// get the added collateral to LP CDP
         uint _baseAmount = iPOOL(lptoken).baseAmount(); //used to calc assymetricalShare
         uint _lpTotalSupply = iPOOL(lptoken).baseAmount(); //used to calc assymetricalShare
-        uint baseValue = _DAO().UTILS().calcAsymmetricShare(_actualInputCollateral, _baseAmount, _lpTotalSupply);//get asym share in sparta
-         synths = _DAO().UTILS().calcSwapValueInTokenWithPool(lptoken, baseValue); //get swap value with sparta
+        uint baseValue = iUTILS(_DAO().UTILS()).calcAsymmetricShare(_actualInputCollateral, _baseAmount, _lpTotalSupply);//get asym share in sparta
+         synths = iUTILS(_DAO().UTILS()).calcSwapValueInTokenWithPool(lptoken, baseValue); //get swap value with sparta
          totalDebt = totalDebt.add(synths); // map total debt
          totalCollateral = totalCollateral.add(_actualInputCollateral); // map total collateral
          collateralAmount[member][lptoken] = collateralAmount[member][lptoken].add(_actualInputCollateral);//member collateral lptoken > amount
@@ -147,8 +147,6 @@ contract synthRouter {
     using SafeMath for uint256;
     address public BASE;
     address public DEPLOYER;
-    iROUTER private _ROUTER;
-    iUTILS private _UTILS;
 
     uint public addCollateralTx;
 
@@ -174,10 +172,6 @@ contract synthRouter {
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
     }
-    function setGenesisAddresses(address _router, address _utils) public onlyDAO {
-        _ROUTER = iROUTER(_router);
-        _UTILS = iUTILS(_utils);
-    }
 
     receive() external payable {}
 
@@ -198,9 +192,9 @@ contract synthRouter {
         require(getSynth(token) == address(0), "CreateErr");
         require(lpToken != BASE, "Must not be Base");
         require((inputLPToken > 0), "Must get lp token");
-        require(ROUTER().isCuratedPool(lpToken) == true, "Must be Curated");
+        require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "Must be Curated");
         Synth newSynth; 
-        newSynth = new Synth(token); 
+        newSynth = new Synth(token);  
         synth = address(newSynth);
         uint actualInputCollateral = _handleTransferIn(lpToken, inputLPToken, synth);
         totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].add(actualInputCollateral);
@@ -222,7 +216,7 @@ contract synthRouter {
     // Add collateral for member
     function addCollateralForMember(uint inputLPToken, address lpToken, address member, address synth) public payable returns (uint synthMinted) {
         require(isSynth[synth], "Synth must exist");
-        require(ROUTER().isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
+        require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
         uint _actualInputCollateral = _handleTransferIn(lpToken, inputLPToken, synth);
         totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].add(_actualInputCollateral);
         addCollateralTx += 1;
@@ -245,13 +239,6 @@ contract synthRouter {
         }
     }
    
-    function ROUTER() public view returns(iROUTER){
-        return iROUTER(_DAO().ROUTER());
-    }
-
-    function UTILS() public view returns(iUTILS){
-        return iUTILS(_DAO().UTILS());
-    }
     function getSynth(address token) public view returns(address synth){
         return mapToken_Synth[token];
     }

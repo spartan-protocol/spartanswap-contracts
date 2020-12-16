@@ -286,7 +286,6 @@ contract Router {
     bool public emitting;
     address public incentiveAddress;
     uint256 private BP = 10000;
-    uint public daoReward;
    
     uint public maxTrades;
     uint public eraLength;
@@ -318,10 +317,6 @@ contract Router {
         WBNB = _wbnb;
         arrayFeeSize = 20;
         curatedPoolSize = 10;
-        emitting = false;
-        secondsPerEra = 86400;
-        daoReward = 500;
-        nextEraTime = now + secondsPerEra;
         eraLength = 30;
         maxTrades = 100;
         DEPLOYER = msg.sender;
@@ -355,22 +350,7 @@ contract Router {
             isPool[pool] = true;
             arrayTokens.push(token);
             arrayPools.push(pool);
-            if(curatedPools.length < curatedPoolSize){
-                curatedPools.push(pool);
-                sortDescCuratedPoolsByDepth();
-            }else{
-                sortDescCuratedPoolsByDepth();
-                uint challangerPD = iUTILS(_DAO().UTILS()).getDepth(pool);
-                uint challengedPD = iUTILS(_DAO().UTILS()).getDepth(curatedPools[curatedPoolSize - 1]);
-                if(challangerPD > challengedPD){
-                    curatedPools.pop();
-                    curatedPools.push(pool); 
-                }
-            }
             mapToken_Pool[token] = pool;
-        }
-        for(uint i = 0; i <= curatedPools.length; i++){
-            isCuratedPool[curatedPools[i]] = true;
         }
     }
 
@@ -464,7 +444,7 @@ contract Router {
             // buy to TOKEN
             iBEP20(BASE).transfer(_pool, _outputToken);
             (uint _tokenBought, uint _fee) = Pool(_pool).swap(BASE);
-            totalFees += _DAO().UTILS().calcSpotValueInBase(token, _fee);
+            totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, _fee);
             outputAmount = _tokenBought.add(_outputToken);
             _handleTransferOut(token, outputAmount, msg.sender);
         }
@@ -487,7 +467,7 @@ contract Router {
         _handleTransferOut(token, outputAmount, member);
         totalPooled += _actualAmount;
         totalVolume += _actualAmount;
-        totalFees += _DAO().UTILS().calcSpotValueInBase(token, fee);
+        totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, fee);
         swapTx += 1;
         return (outputAmount, fee);
     }
@@ -509,19 +489,20 @@ contract Router {
         return swapTo(inputAmount, fromToken, toToken, msg.sender);
     }
     function swapTo(uint256 inputAmount, address fromToken, address toToken, address member) public payable returns (uint256 outputAmount, uint256 fee) {
-        require(fromToken != toToken, "TokenTypeErr");
-        _checkEmission();
+        require(fromToken != toToken, "TokenTypeErr"); address _pool;
         uint256 _transferAmount = 0;
         if(fromToken == BASE){
             (outputAmount, fee) = buyTo(inputAmount, toToken, member);
-           if(isCuratedPool[toToken]){
+            _pool = getPool(toToken);
+           if(isCuratedPool[_pool]){
             addTradeFee(fee);//add fee to feeArray
             addDividend(toToken, fee); //add dividend
            }
            
         } else if(toToken == BASE) {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
-            if(isCuratedPool[fromToken]){
+            _pool = getPool(fromToken);
+            if(isCuratedPool[_pool]){
             addTradeFee(fee);//add fee to feeArray
             addDividend(fromToken, fee);
             }
@@ -530,20 +511,22 @@ contract Router {
             (uint256 _yy, uint256 _feey) = sellTo(inputAmount, fromToken, _poolTo);
             totalVolume += _yy; totalFees += _feey;
             address _toToken = toToken;
-            if(isCuratedPool[fromToken]){
+             _pool = getPool(fromToken);
+            if(isCuratedPool[_pool]){
             addTradeFee(_feey);//add fee to feeArray
             addDividend(fromToken, _feey);
             }
             if(toToken == address(0)){_toToken = WBNB;} // Handle BNB
             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
-            if(isCuratedPool[_toToken]){
+            _pool = getPool(_toToken);
+            if(isCuratedPool[_pool]){
             addTradeFee(_feez);//add fee to feeArray
             addDividend(_toToken,  _feez);
             }
             _handleTransferOut(toToken, _zz, member);
-            totalFees += _DAO().UTILS().calcSpotValueInBase(toToken, _feez);
+            totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(toToken, _feez);
             _transferAmount = _yy; outputAmount = _zz; 
-            fee = _feez + _DAO().UTILS().calcSpotValueInToken(toToken, _feey);
+            fee = _feez + iUTILS(_DAO().UTILS()).calcSpotValueInToken(toToken, _feey);
         }
         emit Swapped(fromToken, toToken, inputAmount, _transferAmount, outputAmount, fee, member);
         return (outputAmount, fee);
@@ -635,7 +618,7 @@ contract Router {
         }
         return true;
     }
-    function challengLowestCuratedPool(address token) public {
+    function challengLowestCuratedPool(address token) public onlyDAO returns (bool) {
          address _pool = getPool(token);
          require(isPool[_pool] == true, 'not pool');
          sortDescCuratedPoolsByDepth();
@@ -649,18 +632,8 @@ contract Router {
             curatedPools.push(winner);
             isCuratedPool[loser] = false;
         }
+        return true;
     }
-    //======================================EMISSION========================================//
-    // Internal - Update emission function
-    function _checkEmission() private {
-        if ((now >= nextEraTime) && emitting) {                                            // If new Era and allowed to emit                                                           // Increment Era
-            nextEraTime = now + secondsPerEra; 
-            uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance                                            // Set next Era time
-            uint256 _emission = reserve.mul(daoReward).div(BP);                                        // Get Daily Dmission
-            iBEP20(BASE).transfer(incentiveAddress, _emission);                                            // Mint to the Incentive Address
-        }
-    }
-
     //=================================onlyDAO=====================================//
     function changeArrayFeeSize(uint _size) public onlyDAO returns(bool){
         arrayFeeSize = _size;
@@ -670,52 +643,32 @@ contract Router {
         maxTrades = _maxtrades;
         return true;
     }
-    function changeEraLength(uint _eraLength) public onlyDAO returns(bool){
-        eraLength = _eraLength;
-        return true;
-    }
     function forwardRouterFunds(address newRouterAddress ) public onlyDAO returns(bool){
         uint balanceBase = iBEP20(BASE).balanceOf(address(this)); // get base balance
         iBEP20(BASE).transfer(newRouterAddress, balanceBase);
         return true;
     }
-    function startEmissions() public onlyDAO returns(bool){
-        emitting = true;
-        return true;
-    }
-    function stopEmissions() public onlyDAO returns(bool){
-        emitting = false;
-        return true;
-    }
-     function changeDaoReward(uint doaBP) public onlyDAO returns(bool){
-        daoReward = doaBP;
-        return true;
-    }
-
     function grantFunds(uint amount, address grantee) public onlyDAO returns (bool){
-        require(amount <= iBEP20(BASE).balanceOf(address(this)), "Not more than balance");
+        require(amount < iBEP20(BASE).balanceOf(address(this)), "Not more than balance");
         require(grantee != address(0), 'GrantERR');
         iBEP20(BASE).transfer(grantee, amount);
         return true;
     }
-
-    function curatePool(address token) public onlyDAO returns (bool){
+    function addCuratedPool(address token) public onlyDAO returns (bool){
         require(token != BASE, 'not base');
         address _pool = getPool(token);
-        require(isPool[_pool] == true, 'not pool');
-        if(!isCuratedPool[_pool]){
-            isCuratedPool[_pool] = true;
-            curatedPools.push(_pool);
-        }
+        require(isPool[_pool] == true, 'not a pool :/');
+        isCuratedPool[_pool] = true;
+        curatedPools.push(_pool);
         return true;
     }
-
-    // Can change Incentive Address
-    function changeIncentiveAddress(address newIncentiveAddress) public onlyDAO returns(bool) {
-        incentiveAddress = newIncentiveAddress;
+    function removeCuratedPool(address token) public onlyDAO returns (bool){
+        require(token != BASE, 'not base');
+        address _pool = getPool(token);
+        require(isCuratedPool[_pool] == true, 'no need ');
+        isCuratedPool[_pool] = false;
         return true;
     }
-
 
     //======================================HELPERS========================================//
     // Helper Functions

@@ -128,7 +128,7 @@ contract Dao {
     // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
     function increaseWeight(address pool, address member) public returns(uint){
         require(isMember[member], "Must be member");
-         require(_ROUTER.isCuratedPool(pool) == true, "Must be Curated");
+        require(_ROUTER.isCuratedPool(pool) == true, "Must be Curated");
         if(mapMemberPool_weight[member][pool] > 0){ // Remove previous weights
             totalWeight = totalWeight.sub(mapMemberPool_weight[member][pool]);
             mapMember_weight[member] = mapMember_weight[member].sub(mapMemberPool_weight[member][pool]);
@@ -154,7 +154,6 @@ contract Dao {
     }
 
     function decreaseWeight(address pool, address member) internal {
-         require(_ROUTER.isCuratedPool(pool) == true, "Must be Curated");
         uint weight = mapMemberPool_weight[member][pool];
         mapMemberPool_balance[member][pool] = 0; // Zero out balance
         mapMemberPool_weight[member][pool] = 0; // Zero out weight
@@ -269,13 +268,20 @@ contract Dao {
             changeEras(proposalID);
         } else if (isEqual(_type, 'GRANT')){
             grantFunds(proposalID);
-        } if (isEqual(_type, 'LIST')){
-            _listBondAsset(proposalID);
-        } else if (isEqual(_type, 'DELIST')){
-            _delistBondAsset(proposalID);
-        }else if (isEqual(_type, 'MINT')){
+        } else if (isEqual(_type, 'MINT')){
             _mintBond(proposalID);
+        } else if (isEqual(_type, 'LIST_BOND')){
+            _listBondAsset(proposalID);
+        } else if (isEqual(_type, 'DELIST_BOND')){
+            _delistBondAsset(proposalID);
+        } else if (isEqual(_type, 'ADD_CURATED_POOL')){
+            _addCuratedPool(proposalID);
+        } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
+            _removeCuratedPool(proposalID);
+        } else if (isEqual(_type, 'CHALLENGE_CURATED_POOL')){
+            _challengLowestCuratedPool(proposalID);
         }
+        
     }
     function moveDao(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
@@ -340,15 +346,8 @@ contract Dao {
     }
     function grantFunds(uint _proposalID) internal {
         GrantDetails memory _grant = mapPID_grant[_proposalID];
-        completeProposal(_proposalID);
         _ROUTER.grantFunds(_grant.amount, _grant.recipient);
-    }
-    function completeProposal(uint _proposalID) internal {
-        string memory _typeStr = mapPID_type[_proposalID];
-        emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID], totalWeight, _typeStr);
-        mapPID_votes[_proposalID] = 0;
-        mapPID_finalised[_proposalID] = true;
-        mapPID_finalising[_proposalID] = false;
+        completeProposal(_proposalID);
     }
     function _mintBond(uint _proposalID) internal {
         _BOND.mintBond(); 
@@ -365,7 +364,32 @@ contract Dao {
         _BOND.delistBondAsset(_proposedAddress); 
         completeProposal(_proposalID);
     }
+    function _addCuratedPool(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID];
+        require(_proposedAddress != address(0), "No address proposed");
+        _ROUTER.addCuratedPool(_proposedAddress); 
+        completeProposal(_proposalID);
+    }
+    function _removeCuratedPool(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID];
+        require(_proposedAddress != address(0), "No address proposed");
+        _ROUTER.removeCuratedPool(_proposedAddress); 
+        completeProposal(_proposalID);
+    }
+    function _challengLowestCuratedPool(uint _proposalID) internal {
+         address _proposedAddress = mapPID_address[_proposalID];
+        require(_proposedAddress != address(0), "No address proposed");
+        _ROUTER.challengLowestCuratedPool(_proposedAddress); 
+        completeProposal(_proposalID); 
+    }
     
+    function completeProposal(uint _proposalID) internal {
+        string memory _typeStr = mapPID_type[_proposalID];
+        emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID], totalWeight, _typeStr);
+        mapPID_votes[_proposalID] = 0;
+        mapPID_finalised[_proposalID] = true;
+        mapPID_finalising[_proposalID] = false;
+    }
 
     //============================== CONSENSUS ================================//
 

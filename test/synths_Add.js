@@ -30,6 +30,7 @@ contract('DAO', function (accounts) {
     createPoolTKN1(10*_.one, 60*_.one)
     createPoolTKN2(40*_.one, 13*_.one)
     curatePools()
+    createSynth()
 
 })
 
@@ -146,6 +147,13 @@ async function curatePools() {
         let curatedP = await router.curatedPools(0);
         // console.log(curatedP)
         // //assert.equal()
+       
+    })
+}
+async function createSynthetic() {
+    it("Create Synth", async () => {
+       await synths.createSynth()
+       
        
     })
 }
