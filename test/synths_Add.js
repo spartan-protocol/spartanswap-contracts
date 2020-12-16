@@ -22,9 +22,6 @@ var utils; var utils2; var router; var router2; var Dao; var Dao2;
 var poolWBNB; var poolTKN1;
 var acc0; var acc1; var acc2; var acc3;
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 
 contract('DAO', function (accounts) {
     constructor(accounts)
