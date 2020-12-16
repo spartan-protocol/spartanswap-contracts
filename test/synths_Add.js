@@ -36,7 +36,6 @@ contract('DAO', function (accounts) {
 
 })
 
-
 //################################################################
 // CONSTRUCTION
 function constructor(accounts) {
