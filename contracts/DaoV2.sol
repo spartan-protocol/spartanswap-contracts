@@ -2,6 +2,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./IContracts.sol";
+import "./DaoVault.sol";
 
 contract Dao {
     using SafeMath for uint;
@@ -16,7 +17,6 @@ contract Dao {
     uint public secondsPerEra;
     uint public erasToEarn;
     uint public proposalCount;
-
 
     struct GrantDetails{
         address recipient;
@@ -38,7 +38,6 @@ contract Dao {
         uint param;
         address proposedAddress;
     }
-    
 
     bool public daoHasMoved;
     address public DAO;
@@ -47,6 +46,7 @@ contract Dao {
     iUTILS private _UTILS;
     iSYNTHS private _SYNTHS;
     iBOND private _BOND;
+    iDAOVAULT private _DAOVAULT;
 
     address[] public arrayMembers;
     
@@ -84,8 +84,7 @@ contract Dao {
         require(msg.sender == DEPLOYER, "Must be DAO");
         _;
     }
-
-    constructor (address _base) public payable {
+    constructor (address _base) public {
         BASE = _base;
         DEPLOYER = msg.sender;
         coolOffPeriod = 1;
@@ -97,6 +96,9 @@ contract Dao {
         _UTILS = iUTILS(_utils);
         _SYNTHS = iSYNTHS(_synths);
         _BOND = iBOND(_bond);
+    }
+    function setDaoVault(address _daoVault) public onlyDAO {
+        _DAOVault = iDAOVAULT(_daoVault);
     }
     function setGenesisFactors(uint _coolOff, uint _daysToEarn) public onlyDAO {
         coolOffPeriod = _coolOff;
@@ -119,7 +121,8 @@ contract Dao {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
-        require(iPOOL(pool).transferTo(address(this), amount),"Must transfer"); // LP tokens return bool
+        //require(iPOOL(pool).transferTo(DAOVAULT(), amount),"Must transfer"); // LP tokens return bool
+        require(_DAOVAULT.deposit(pool,amount), "must Transfer");
         mapMember_lastTime[member] = now;
         mapMemberPool_balance[member][pool] = mapMemberPool_balance[member][pool].add(amount); // Record total pool balance for member
         uint weight = increaseWeight(pool, member);
@@ -149,7 +152,7 @@ contract Dao {
         uint256 balance = mapMemberPool_balance[msg.sender][pool];
         require(balance > 0, "Must have a balance");
         decreaseWeight(pool, msg.sender);
-        require(iBEP20(pool).transfer(msg.sender, balance), "Must transfer"); // Then transfer
+        require(_DAOVAULT.withdraw(pool, balance), "Must transfer"); // Then transfer
         emit MemberWithdraws(msg.sender, pool, balance);
     }
 
@@ -456,6 +459,13 @@ contract Dao {
             return Dao(DAO).BOND();
         } else {
             return _BOND;
+        }
+    }
+    function DAOVAULT() public view returns(iDAOVAULT){
+        if(daoHasMoved){
+            return Dao(DAO).DAOVAULT();
+        } else {
+            return _DAOVAULT;
         }
     }
 

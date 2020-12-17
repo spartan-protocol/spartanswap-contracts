@@ -31,16 +31,6 @@ contract Bond is iBEP20 {
         uint256 claimRate;
         uint256 lastBlockTime;
     }
-    struct ProposalDetails {
-        uint id;
-        string proposalType;
-        uint votes;
-        uint timeStart;
-        bool finalising;
-        bool finalised;
-        uint param;
-        address proposedAddress;
-    }
 
   // Parameters
     address public BASE;
@@ -50,33 +40,17 @@ contract Bond is iBEP20 {
     address [] listedBondAssets;
     uint256 public bondingPeriodSeconds = 31536000;
     uint256 private basisPoints = 10000;
-    uint public proposalCount;
+
     uint256 public totalWeight;
-    uint256 public coolOffPeriod;
-    uint256 public majorityFactor = 2;
-    uint256 public daoFee = 100*one;
+
 
     mapping(address => ListedAssets) public mapAddress_listedAssets;
     mapping(address => bool) public isListed;
 
-    mapping(uint256 => string) public mapPID_type;
-    mapping(uint256 => uint256) public mapPID_param;
-    mapping(uint256 => uint256) public mapPID_votes;
-    mapping(uint256 => uint256) public mapPID_timeStart;
-    mapping(uint256 => bool) public mapPID_finalising;
-    mapping(uint256 => bool) public mapPID_finalised;
-    mapping(uint256 => address) public mapPID_address;
-    mapping(uint256 => mapping(address => uint256)) public mapPIDMember_votes;
-    
-
     event ListedAsset(address indexed DAO, address indexed asset);
     event DelistedAsset(address indexed DAO, address indexed asset);
     event DepositAsset(address indexed owner, uint256 indexed depositAmount, uint256 indexed bondedLP);
-    event NewProposal(address indexed member, uint indexed proposalID, string proposalType);
-    event NewVote(address indexed member, uint indexed proposalID, uint voteWeight, uint totalVotes, string proposalType);
-    event ProposalFinalising(address indexed member,uint indexed proposalID, uint timeFinalised, string proposalType);
-    event CancelProposal(address indexed member, uint indexed oldProposalID, uint oldVotes, uint newVotes, uint totalWeight);
-    event FinalisedProposal(address indexed member,uint indexed proposalID, uint votesCast, uint totalWeight, string proposalType);
+    
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "Must be DAO");
         _;
@@ -89,7 +63,6 @@ contract Bond is iBEP20 {
         name = "SpartanBondTokenV3";
         symbol  = "SPT-BOND-V3";
         decimals = 18;
-        coolOffPeriod = 259200;
         DEPLOYER = msg.sender;
         totalSupply = 1 * (10 ** 18);
         _balances[address(this)] = totalSupply;
@@ -198,7 +171,7 @@ contract Bond is iBEP20 {
         _mint(address(this), amount);
        return true;
     }
-    function moveBond(address bond) public onlyDAO returns(bool){
+    function moveBondBalance(address bond) public onlyDAO returns(bool){
          uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
          iBEP20(BASE).transfer(bond, baseBal);
          return true;
@@ -275,8 +248,6 @@ contract Bond is iBEP20 {
         }
         return claimAmount;
     }
-
-
 
     //============================== HELPERS ================================//
     function assetListedCount() public view returns (uint256 count){

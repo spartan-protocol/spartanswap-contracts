@@ -142,6 +142,9 @@ function changeBondingPeriod(uint) external view returns (bool);
 interface iSYNTHS {
 
 }
-
+interface iDAOVAULT {
+    function deposit(address, uint) external;
+    function withdraw(address, uint) external;
+}
 
 
