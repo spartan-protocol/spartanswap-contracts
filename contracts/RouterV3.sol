@@ -141,7 +141,7 @@ contract Router {
     // Remove % for self
     function removeLiquidity(uint basisPoints, address token) public returns (uint outputBase, uint outputToken) {
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
-        uint _units = _DAO().UTILS().calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
+        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
         return removeLiquidityExact(_units, token);
     }
 
@@ -160,7 +160,7 @@ contract Router {
 
        // Remove % Asymmetrically
     function removeLiquidityAndSwap(uint basisPoints, bool toBase, address token) public returns (uint outputAmount){
-        uint _units = _DAO().UTILS().calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
+        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
         outputAmount = removeLiquidityExactAndSwap(_units, toBase, token);
         return outputAmount;
     }

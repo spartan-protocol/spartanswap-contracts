@@ -1,15 +1,20 @@
 {
-  "contractName": "iBOND",
+  "contractName": "iDAOVAULT",
   "abi": [
     {
       "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
         {
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
         }
       ],
-      "name": "changeBondingPeriod",
+      "name": "deposit",
       "outputs": [
         {
           "internalType": "bool",
@@ -26,41 +31,14 @@
           "internalType": "address",
           "name": "",
           "type": "address"
-        }
-      ],
-      "name": "delistBondAsset",
-      "outputs": [
+        },
         {
-          "internalType": "bool",
+          "internalType": "uint256",
           "name": "",
-          "type": "bool"
+          "type": "uint256"
         }
       ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "listBondAsset",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "mintBond",
+      "name": "withdraw",
       "outputs": [
         {
           "internalType": "bool",

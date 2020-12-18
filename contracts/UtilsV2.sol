@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 import "./IContracts.sol";
 contract Utils {
 
@@ -291,6 +291,12 @@ contract Utils {
         return calcShare(bp, 10000, total);
     }
 
+    // function calcCDPShare(uint bp, uint total) public pure returns (uint part){
+    //     // 10,000 basis points = 100.00%
+    //     require((bp <= 10000) && (bp > 0), "Must be correct BP");
+    //     return calcShare(bp, 10000, total);
+    // }
+
     function calcLiquidityShare(uint units, address token, address pool, address member) public view returns (uint share){
         // share = amount * part/total
         // address pool = getPool(token);
@@ -350,17 +356,25 @@ contract Utils {
         return one.sub((numerator.mul(one)).div(denominator)); // Multiply by 10**18
     }
 
-    function calcAsymmetricShare(uint u, uint U, uint A) public pure returns (uint share){
-        // share = (u * U * (2 * A^2 - 2 * U * u + U^2))/U^3
+    function calcAsymmetricShare(uint256 u, uint256 U, uint256 A) public view returns (uint256 share){
         // share = (u * A * (2 * U^2 - 2 * U * u + u^2))/U^3
         // (part1 * (part2 - part3 + part4)) / part5
-        uint part1 = u.mul(A);
-        uint part2 = U.mul(U).mul(2);
-        uint part3 = U.mul(u).mul(2);
-        uint part4 = u.mul(u);
-        uint numerator = part1.mul(part2.sub(part3).add(part4));
-        uint part5 = U.mul(U).mul(U);
-        return numerator.div(part5);
+        console.log(u);
+        console.log(U);
+        console.log(A);
+        uint256 part1 = u.mul(A);
+        console.log("part 1 ",part1);
+        uint256 part2 = U.mul(U).mul(2);
+        console.log("part 2 ",part2);
+        uint256 part3 = U.mul(u).mul(2);
+        console.log("part 3 ",part3);
+        uint256 part4 = u.mul(u);
+        console.log("part 4 ",part4);
+        uint256 numerator1 = part2.sub(part3).add(part4);
+        console.log("numerator before mul ",numerator1);
+        uint256 numerator2 = part1.mul(numerator1);
+        uint256 part5 = U.mul(U).mul(U);
+        return numerator2.div(part5);
     }
 
 }

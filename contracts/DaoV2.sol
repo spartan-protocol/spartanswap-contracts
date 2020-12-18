@@ -91,15 +91,14 @@ contract Dao {
         erasToEarn = 30;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
-    function setGenesisAddresses(address _router, address _utils, address _synths, address _bond) public onlyDAO {
+    function setGenesisAddresses(address _router, address _utils, address _synths, address _bond, address _daoVault) public onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
         _SYNTHS = iSYNTHS(_synths);
         _BOND = iBOND(_bond);
+        _DAOVAULT = iDAOVAULT(_daoVault);
     }
-    function setDaoVault(address _daoVault) public onlyDAO {
-        _DAOVault = iDAOVAULT(_daoVault);
-    }
+
     function setGenesisFactors(uint _coolOff, uint _daysToEarn) public onlyDAO {
         coolOffPeriod = _coolOff;
         erasToEarn = _daysToEarn;
@@ -122,7 +121,7 @@ contract Dao {
             isMember[member] = true;
         }
         //require(iPOOL(pool).transferTo(DAOVAULT(), amount),"Must transfer"); // LP tokens return bool
-        require(_DAOVAULT.deposit(pool,amount), "must Transfer");
+        require(_DAOVAULT.deposit(pool,amount), "must Transfer");  
         mapMember_lastTime[member] = now;
         mapMemberPool_balance[member][pool] = mapMemberPool_balance[member][pool].add(amount); // Record total pool balance for member
         uint weight = increaseWeight(pool, member);

@@ -16,6 +16,7 @@ var BOND = artifacts.require("./Bond.sol");
 var TOKEN = artifacts.require("./Token1.sol");
 var TOKEN2 = artifacts.require("./Token2.sol");
 var WBNB = artifacts.require("./WBNB");
+var DAOVAULT = artifacts.require("./DaoVault.sol");
 
 var base; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
@@ -30,7 +31,9 @@ contract('DAO', function (accounts) {
     createPoolTKN1(10*_.one, 60*_.one)
     createPoolTKN2(40*_.one, 13*_.one)
     curatePools()
-    createSynth()
+    createFailSynthTKN1()
+
+    createSyntheticTKN2()
 
 })
 
@@ -44,12 +47,15 @@ function constructor(accounts) {
         utils = await UTILS.new(base.address) // deploy utilsV2
         Dao = await DAO.new(base.address)     // deploy daoV2
         router = await ROUTER.new(base.address, wbnb.address) //deploy router
+        daoVault = await DAOVAULT.new(base.address);
         await base.changeDAO(Dao.address)     
         synths = await SYNTHS.new(base.address) //deploy synths
         bond = await BOND.new(base.address)     //deploy new bond
         token1 = await TOKEN.new()             //deploy token
         token2 = await TOKEN2.new() 
-        await Dao.setGenesisAddresses(router.address, utils.address, synths.address, bond.address);
+
+        await Dao.setGenesisAddresses(router.address, utils.address, synths.address, bond.address, daoVault.address);
+    
 
         let supply = await token1.totalSupply()
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -137,9 +143,9 @@ async function createPoolTKN2(SPT, token) {
 }
 async function curatePools() {
     it("Curate POOls", async () => {
-        await router.curatePool(wbnb.address);
-        await router.curatePool(token1.address);
-        await router.curatePool(token2.address);
+        await router.addCuratedPool(wbnb.address);
+        //await router.addCuratedPool(token1.address);
+        await router.addCuratedPool(token2.address);
         // console.log(poolWBNB.address)
         // console.log(poolTKN1.address)
         // console.log(poolTKN2.address)
@@ -150,9 +156,23 @@ async function curatePools() {
        
     })
 }
-async function createSynthetic() {
-    it("Create Synth", async () => {
-       await synths.createSynth()
+async function createFailSynthTKN1() {
+it('should fail to create synth', async () =>{
+    let inputLPToken = _.BN2Str(1*_.one)
+    try {
+        await synths.createSynth(poolTKN1.address,token1.address, inputLPToken);
+        assert.fail("Expected fail");
+    }
+    catch (err) {
+        assert.include(err.message, "revert", "Must be Curated");
+    }
+
+})
+}
+async function createSyntheticTKN2() {
+    it("It should Create Synthetic ", async () => {
+        let inputLPToken = _.BN2Str(1*_.one)
+       await synths.createSynth(poolTKN2.address,wbnb.address, inputLPToken);
        
        
     })

@@ -2,7 +2,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./IContracts.sol";
-
+import "@nomiclabs/buidler/console.sol";
 contract Synth is iBEP20 {
     using SafeMath for uint256;
     address public BASE;
@@ -19,8 +19,8 @@ contract Synth is iBEP20 {
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 
-    mapping(address => mapping(address => uint)) collateralAmount; //member > lp token > colAmount
-    mapping(address => uint) debtAmount; //member > debtAmount
+    mapping(address => mapping(address => uint)) public collateralAmount; //member > lp token > colAmount
+    mapping(address => uint) public debtAmount; //member > synth > debtAmount
    
 
     event AddLPCollateral(address member, uint inputLPToken, uint synthsIssued);
@@ -29,7 +29,8 @@ contract Synth is iBEP20 {
         return iBASE(BASE).DAO();
     }
 
-    constructor (address _token) public payable {
+    constructor (address _base,address _token) public payable {
+         BASE = _base;
         string memory synthName = "SpartanSynthV1-";
         string memory synthSymbol = "SSTV1-";
         _name = string(abi.encodePacked(synthName, iBEP20(_token).name()));
@@ -109,6 +110,7 @@ contract Synth is iBEP20 {
     function swapSynth()public payable returns(uint256 outputAmount, uint256 fee){
 
     }
+
     // Add collateral for self
     function addCollateral(address lpToken) public returns(uint synths){
         synths = addCollateralForMember(lpToken, msg.sender);
@@ -138,7 +140,23 @@ contract Synth is iBEP20 {
          emit AddLPCollateral(member, _actualInputCollateral, synths); 
         return synths;
     }
+    
+    // Remove Collateral
+    function removeCollateral() public returns (uint outputToken) {
+        return removeCollateralForMember(msg.sender);
+    } 
 
+    // Remove Collateral for a member
+    // function removeCollateralForMember(address member) public returns ( uint outputToken) {
+    //     uint units = balanceOf(member);
+    //     outputToken = iUTILS(_DAO().UTILS()).calcShare(units, TOKEN, address(this), member);
+    //     _decrementPoolBalances(outputBase, outputToken);
+    //     _burn(address(this), units);
+    //     iBEP20(BASE).transfer(member, outputBase);
+    //     iBEP20(TOKEN).transfer(member, outputToken);
+    //     emit RemoveLiquidity(member, outputBase, outputToken, units);
+    //     return (outputBase, outputToken);
+    // }
 
 }
 
@@ -191,10 +209,10 @@ contract synthRouter {
     function createSynth(address lpToken, address token, uint256 inputLPToken) public returns(address synth){
         require(getSynth(token) == address(0), "CreateErr");
         require(lpToken != BASE, "Must not be Base");
-        require((inputLPToken > 0), "Must get lp token");
+        require(inputLPToken > 0, "Must get lp token");
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "Must be Curated");
         Synth newSynth; 
-        newSynth = new Synth(token);  
+        newSynth = new Synth(BASE,token);  
         synth = address(newSynth);
         uint actualInputCollateral = _handleTransferIn(lpToken, inputLPToken, synth);
         totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].add(actualInputCollateral);
@@ -224,11 +242,24 @@ contract synthRouter {
         totalCDPDebt[synth]= totalCDPDebt[synth].add(synthMinted);
         return synthMinted;
     }
+
+    function removeCollateral(uint basisPoints, address synth) public returns (uint lpTokens){
+        require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
+        uint _synths = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(getSynth(synth)).balanceOf(msg.sender));
+        lpTokens = removeCollateralForMember(_synths, synth, msg.sender);
+        return lpTokens;
+    }
+    function removeCollateralForMember(uint synthUnits, address synth, address member ) public returns (uint lpCollateral){
+        require(isSynth[synth], "Synth must exist");
+        require(synthUnits > 0, 'need synths');
+        Synth(synth).transferTo(synth, synthUnits);
+        lpCollateral = Synth(synth).removeCollateral();
+    }
     // handle input LP transfers 
     function _handleTransferIn(address _lptoken, uint256 _amount, address _synth) internal returns(uint256 actual){
         if(_amount > 0) {
                 uint startBal = iBEP20(_lptoken).balanceOf(_synth); 
-                iBEP20(_lptoken).transferFrom(msg.sender, _synth, _amount); 
+                iPOOL(_lptoken).transferTo(_synth, _amount); 
                 actual = iBEP20(_lptoken).balanceOf(_synth).sub(startBal);
         }
     }

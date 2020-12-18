@@ -58,7 +58,7 @@
       "name": "UTILS",
       "outputs": [
         {
-          "internalType": "contract iUTILS",
+          "internalType": "address",
           "name": "",
           "type": "address"
         }
