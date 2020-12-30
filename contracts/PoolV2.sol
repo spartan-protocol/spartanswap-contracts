@@ -148,6 +148,7 @@ contract Pool is iBEP20 {
     // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
         uint units = balanceOf(member);
+        transferTo(address(this), units); // this needs testing
         outputBase = iUTILS(_DAO().UTILS()).calcLiquidityShare(units, BASE, address(this), member);
         outputToken = iUTILS(_DAO().UTILS()).calcLiquidityShare(units, TOKEN, address(this), member);
         _decrementPoolBalances(outputBase, outputToken);

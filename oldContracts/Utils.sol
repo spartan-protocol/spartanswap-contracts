@@ -271,15 +271,15 @@ contract Utils {
         return calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
     }
 
-    function getPoolShareAssym(address token, uint units, bool toBase) public view returns(uint baseAmount, uint tokenAmount, uint outputAmt){
+    function getPoolShareAssym(address token, address member, bool toBase) public view returns(uint baseAmount, uint tokenAmount, uint outputAmt){
         address pool = getPool(token);
         if(toBase){
-            baseAmount = calcAsymmetricShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
+            baseAmount = calcAsymmetricShare(token, member);
             tokenAmount = 0;
             outputAmt = baseAmount;
         } else {
             baseAmount = 0;
-            tokenAmount = calcAsymmetricShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
+            tokenAmount = calcAsymmetricShare(token, member);
             outputAmt = tokenAmount;
         }
         return (baseAmount, tokenAmount, outputAmt);
@@ -434,17 +434,11 @@ contract Utils {
         return one.sub((numerator.mul(one)).div(denominator)); // Multiply by 10**18
     }
 
-    function calcAsymmetricShare(uint u, uint U, uint A) public pure returns (uint share){
-        // share = (u * U * (2 * A^2 - 2 * U * u + U^2))/U^3
-        // share = (u * A * (2 * U^2 - 2 * U * u + u^2))/U^3
-        // (part1 * (part2 - part3 + part4)) / part5
-        uint part1 = u.mul(A);
-        uint part2 = U.mul(U).mul(2);
-        uint part3 = U.mul(u).mul(2);
-        uint part4 = u.mul(u);
-        uint numerator = part1.mul(part2.sub(part3).add(part4));
-        uint part5 = U.mul(U).mul(U);
-        return numerator.div(part5);
+    function calcAsymmetricShare(address token, address member) public view returns (uint share){
+       (uint baseAmount, uint tokenAmount) = getMemberShare(token, member);
+        uint tokenSwapped = calcTokenPPinBase(token, tokenAmount);
+        share = baseAmount.add(tokenSwapped);
+        return share;
     }
 
 }

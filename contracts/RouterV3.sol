@@ -101,7 +101,7 @@ contract Router {
         require(getPool(token) == address(0), "CreateErr");
         require(token != BASE, "Must not be Base");
         require((inputToken > 0 && inputBase > 0), "Must get tokens for both");
-        require(iBEP20(token).decimals() == 18, 'its just not your day');
+        require(iBEP20(token).decimals() == 18, 'Only 18 decimals buddy');
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         newPool = new Pool(BASE, _token); 
@@ -149,7 +149,6 @@ contract Router {
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
         address _pool = getPool(token);
         address _member = msg.sender;
-        Pool(_pool).transferTo(_pool, units);
         (outputBase, outputToken) = Pool(_pool).removeLiquidity();
         _handleTransferOut(token, outputToken, _member);
         _handleTransferOut(BASE, outputBase, _member);

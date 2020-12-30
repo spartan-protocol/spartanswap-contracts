@@ -105,7 +105,7 @@ interface iUTILS {
     function calcSwapValueInBase(address pool, uint256 amount) external view returns (uint256 value);
     function getPool(address token)external view returns (address value);
     function getDepth(address pool) external view returns (uint depth);
-    function calcAsymmetricShare(uint _actualInputCollateral, uint _baseAmount, uint _lpTotalSupply) external view returns(uint amount);
+    function calcAsymmetricShare(address token, address member) external view returns(uint amount);
     function calcSwapValueInTokenWithPool(address pool, uint amount) external view returns (uint _output);
     function calcCDPPart(uint, address) external view returns (uint unitSynths);
 }

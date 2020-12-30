@@ -130,7 +130,7 @@ contract Synth is iBEP20 {
         uint256 _actualInputCollateral = _getAddedCollateralAmount(lptoken);// get the added collateral to LP CDP
         uint _baseAmount = iPOOL(lptoken).baseAmount(); //used to calc assymetricalShare
         uint _lpTotalSupply = iPOOL(lptoken).baseAmount(); //used to calc assymetricalShare
-        uint baseValue = iUTILS(_DAO().UTILS()).calcAsymmetricShare(_actualInputCollateral, _baseAmount, _lpTotalSupply);//get asym share in sparta
+        uint baseValue = iUTILS(_DAO().UTILS()).calcAsymmetricShare(lptoken, member);//get asym share in sparta
          synths = iUTILS(_DAO().UTILS()).calcSwapValueInTokenWithPool(lptoken, baseValue); //get swap value with sparta
          totalDebt = totalDebt.add(synths); // map total debt
          totalCollateral = totalCollateral.add(_actualInputCollateral); // map total collateral
