@@ -44,7 +44,7 @@ contract Dao {
 
     iROUTER private _ROUTER;
     iUTILS private _UTILS;
-    iSYNTHS private _SYNTHS;
+    iSYNTHROUTER private _SYNTHROUTER;
     iBOND private _BOND;
     iDAOVAULT private _DAOVAULT;
 
@@ -91,10 +91,10 @@ contract Dao {
         erasToEarn = 30;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
-    function setGenesisAddresses(address _router, address _utils, address _synths, address _bond, address _daoVault) public onlyDAO {
+    function setGenesisAddresses(address _router, address _utils, address _synthrouter, address _bond, address _daoVault) public onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
-        _SYNTHS = iSYNTHS(_synths);
+        _SYNTHROUTER = iSYNTHROUTER(_synthrouter);
         _BOND = iBOND(_bond);
         _DAOVAULT = iDAOVAULT(_daoVault);
     }
@@ -446,11 +446,11 @@ contract Dao {
             return _UTILS;
         }
     }
-    function SYNTHS() public view returns(iSYNTHS){
+    function SYNTHROUTER() public view returns(iSYNTHROUTER){
         if(daoHasMoved){
-            return Dao(DAO).SYNTHS();
+            return Dao(DAO).SYNTHROUTER();
         } else {
-            return _SYNTHS;
+            return _SYNTHROUTER;
         }
     }
     function BOND() public view returns(iBOND){

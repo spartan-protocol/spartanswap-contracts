@@ -42,7 +42,7 @@
     },
     {
       "inputs": [],
-      "name": "SYNTHS",
+      "name": "SYNTHROUTER",
       "outputs": [
         {
           "internalType": "address",

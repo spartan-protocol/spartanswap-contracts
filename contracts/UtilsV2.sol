@@ -54,6 +54,14 @@ contract Utils {
         uint poolUnits;
     }
 
+    struct SynthDataStruct {
+        address tokenAddress;
+        address synthAddress;
+        uint genesis;
+        uint totalDebt;
+        uint totalCollateral;
+    }
+    
     // Only Deployer can execute
     modifier onlyDeployer() {
         require(msg.sender == DEPLOYER, "DeployerErr");
@@ -165,6 +173,14 @@ contract Utils {
         tokenAmount = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
         return (baseAmount, tokenAmount);
     }
+    function getMemberPoolShare(address pool, address member ) public view returns (uint baseAmount, uint tokenAmount){
+        uint units = iBEP20(pool).balanceOf(member);
+        baseAmount = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
+        tokenAmount = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
+        return (baseAmount, tokenAmount);
+    }
+
+
     function getPoolShareWeight(address token, uint units) public view returns(uint weight){
         address pool = getPool(token);
         weight = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
@@ -187,15 +203,15 @@ contract Utils {
         return calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
     }
 
-    function getPoolShareAssym(address token, uint units, bool toBase) public view returns(uint baseAmount, uint tokenAmount, uint outputAmt){
+    function getPoolShareAssym(address token, address member, bool toBase) public view returns(uint baseAmount, uint tokenAmount, uint outputAmt){
         address pool = getPool(token);
         if(toBase){
-            baseAmount = calcAsymmetricShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
+            baseAmount = calcAsymmetricShare(token, member);
             tokenAmount = 0;
             outputAmt = baseAmount;
         } else {
             baseAmount = 0;
-            tokenAmount = calcAsymmetricShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
+            tokenAmount = calcAsymmetricShare(token, member);
             outputAmt = tokenAmount;
         }
         return (baseAmount, tokenAmount, outputAmt);
@@ -235,6 +251,23 @@ contract Utils {
         } else {
             return false;
         }
+    }
+
+
+    //=================================== SYNTH DATA =================================//
+
+     function getSynth(address token) public view returns(address synth){
+        return iSYNTHROUTER(_DAO().SYNTHROUTER()).getSynth(token);
+    }
+    
+    function getSynthData(address token) public view returns(SynthDataStruct memory synthData){
+        address synth = getSynth(token);
+        synthData.synthAddress = synth;
+        synthData.tokenAddress = token;
+        synthData.genesis = iSYNTH(synth).genesis();
+        synthData.totalDebt = iSYNTH(synth).totalDebt();
+        synthData.totalCollateral = iSYNTH(synth).totalCollateral();
+        return synthData;
     }
 
     //====================================PRICING====================================//
@@ -356,25 +389,11 @@ contract Utils {
         return one.sub((numerator.mul(one)).div(denominator)); // Multiply by 10**18
     }
 
-    function calcAsymmetricShare(uint256 u, uint256 U, uint256 A) public view returns (uint256 share){
-        // share = (u * A * (2 * U^2 - 2 * U * u + u^2))/U^3
-        // (part1 * (part2 - part3 + part4)) / part5
-        console.log(u);
-        console.log(U);
-        console.log(A);
-        uint256 part1 = u.mul(A);
-        console.log("part 1 ",part1);
-        uint256 part2 = U.mul(U).mul(2);
-        console.log("part 2 ",part2);
-        uint256 part3 = U.mul(u).mul(2);
-        console.log("part 3 ",part3);
-        uint256 part4 = u.mul(u);
-        console.log("part 4 ",part4);
-        uint256 numerator1 = part2.sub(part3).add(part4);
-        console.log("numerator before mul ",numerator1);
-        uint256 numerator2 = part1.mul(numerator1);
-        uint256 part5 = U.mul(U).mul(U);
-        return numerator2.div(part5);
+     function calcAsymmetricShare(address pool, address member) public view returns (uint share){
+       (uint baseAmount, uint tokenAmount) = getMemberPoolShare(pool, member);
+        uint tokenSwapped = calcSwapValueInBaseWithPool(pool, tokenAmount);
+        share = baseAmount.add(tokenSwapped);
+        return share;
     }
 
 }

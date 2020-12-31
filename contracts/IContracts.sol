@@ -112,7 +112,7 @@ interface iUTILS {
 interface iDAO {
     function ROUTER() external view returns(address);
     function UTILS() external view returns(address);
-    function SYNTHS() external view returns(address);
+    function SYNTHROUTER() external view returns(address);
     function BOND() external view returns(address);
     function DAO() external view returns (address);
     function depositForMember(address pool, uint256 amount, address member) external;
@@ -140,9 +140,18 @@ function listBondAsset(address) external view returns (bool);
 function delistBondAsset(address) external view returns (bool);
 function changeBondingPeriod(uint) external view returns (bool);
 }
-interface iSYNTHS {
 
+interface iSYNTHROUTER {
+    function getSynth(address) external view returns(address);
 }
+interface iSYNTH {
+    function TOKEN() external view returns(address);
+    function transferTo(address, uint) external returns (bool);
+    function genesis() external view returns(uint);
+    function totalDebt() external view returns(uint);
+    function totalCollateral() external view returns(uint);
+}
+
 interface iDAOVAULT {
     function deposit(address, uint) external view returns (bool);
     function withdraw(address, uint) external view returns (bool);

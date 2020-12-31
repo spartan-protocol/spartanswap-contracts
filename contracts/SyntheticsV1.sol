@@ -8,6 +8,8 @@ contract Synth is iBEP20 {
     address public BASE;
     uint256 public one = 10**18;
 
+    address public TOKEN;
+    uint public genesis;
     uint public totalCollateral;
     uint public totalDebt;
 
@@ -31,11 +33,14 @@ contract Synth is iBEP20 {
 
     constructor (address _base,address _token) public payable {
          BASE = _base;
+         TOKEN = _token;
         string memory synthName = "SpartanSynthV1-";
         string memory synthSymbol = "SSTV1-";
         _name = string(abi.encodePacked(synthName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(synthSymbol, iBEP20(_token).symbol()));
         decimals = 18;
+        genesis = now;
+        
      
     }
 
@@ -143,7 +148,7 @@ contract Synth is iBEP20 {
     
     // Remove Collateral
     function removeCollateral() public returns (uint outputToken) {
-        return removeCollateralForMember(msg.sender);
+        //return removeCollateralForMember(msg.sender);
     } 
 
     // Remove Collateral for a member
@@ -157,7 +162,7 @@ contract Synth is iBEP20 {
     //     emit RemoveLiquidity(member, outputBase, outputToken, units);
     //     return (outputBase, outputToken);
     // }
-
+  
 }
 
 contract synthRouter {

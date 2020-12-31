@@ -4,19 +4,14 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "_actualInputCollateral",
-          "type": "uint256"
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
         },
         {
-          "internalType": "uint256",
-          "name": "_baseAmount",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_lpTotalSupply",
-          "type": "uint256"
+          "internalType": "address",
+          "name": "member",
+          "type": "address"
         }
       ],
       "name": "calcAsymmetricShare",
@@ -24,6 +19,30 @@
         {
           "internalType": "uint256",
           "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "calcCDPPart",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "unitSynths",
           "type": "uint256"
         }
       ],

@@ -11,7 +11,8 @@ var DAO = artifacts.require("./Dao.sol");
 var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
-var SYNTHS = artifacts.require("./synthRouter.sol");
+var synthRouter = artifacts.require("./synthRouter.sol");
+var SYNTH = artifacts.require("./synth.sol");
 var BOND = artifacts.require("./Bond.sol");
 var TOKEN = artifacts.require("./Token1.sol");
 var TOKEN2 = artifacts.require("./Token2.sol");
@@ -49,12 +50,12 @@ function constructor(accounts) {
         router = await ROUTER.new(base.address, wbnb.address) //deploy router
         daoVault = await DAOVAULT.new(base.address);
         await base.changeDAO(Dao.address)     
-        synths = await SYNTHS.new(base.address) //deploy synths
+        synthRouter = await synthRouter.new(base.address) //deploy synthRouter
         bond = await BOND.new(base.address)     //deploy new bond
         token1 = await TOKEN.new()             //deploy token
         token2 = await TOKEN2.new() 
 
-        await Dao.setGenesisAddresses(router.address, utils.address, synths.address, bond.address, daoVault.address);
+        await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address);
     
 
         let supply = await token1.totalSupply()
@@ -160,7 +161,7 @@ async function createFailSynthTKN1() {
 it('should fail to create synth', async () =>{
     let inputLPToken = _.BN2Str(1*_.one)
     try {
-        await synths.createSynth(poolTKN1.address,token1.address, inputLPToken);
+        await synthRouter.createSynth(poolTKN1.address,token1.address, inputLPToken);
         assert.fail("Expected fail");
     }
     catch (err) {
@@ -172,7 +173,21 @@ it('should fail to create synth', async () =>{
 async function createSyntheticTKN2() {
     it("It should Create Synthetic ", async () => {
         let inputLPToken = _.BN2Str(1*_.one)
-       await synths.createSynth(poolTKN2.address,wbnb.address, inputLPToken);
+        await synthRouter.createSynth(poolTKN2.address,wbnb.address, inputLPToken);
+        let synthData = await utils.getSynthData(wbnb.address);
+        console.log(_.BN2Str(synthData.totalDebt))
+        // let totalDeptBefore  = _.BN2Str(await synthTKN2.getTotalDebt());
+        // console.log(totalDeptBefore)
+        // let totalCollateralBefore  = _.BN2Str(await synthTKN2.totalCollateral());
+        // console.log(totalCollateralBefore)
+        // let memberCollateralBefore = _.BN2Str((await synthTKN2.collateralAmount(member))(lptoken));
+        // console.log(memberCollateralBefore)
+    
+
+    //    let synthBalAfter = _.BN2Str(await synthRouter.balanceOf(acc0));
+    //     let totalDeptAfter  = _.BN2Str(await synthRouter.totalDept());
+    //     let totalCollateralAfter  = _.BN2Str(await synthRouter.totalCollateral());
+    //     let memberCollateralAfter = _.BN2Str((await synthRouter.collateralAmount(member))(lptoken));
        
        
     })
