@@ -17,6 +17,7 @@ contract Dao {
     uint public secondsPerEra;
     uint public erasToEarn;
     uint public proposalCount;
+    uint public majorityFactor;
 
     struct GrantDetails{
         address recipient;
@@ -87,8 +88,9 @@ contract Dao {
     constructor (address _base) public {
         BASE = _base;
         DEPLOYER = msg.sender;
-        coolOffPeriod = 1;
+        coolOffPeriod = 1; 
         erasToEarn = 30;
+        majorityFactor = 6666;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
     function setGenesisAddresses(address _router, address _utils, address _synthrouter, address _bond, address _daoVault) public onlyDAO {
@@ -99,9 +101,10 @@ contract Dao {
         _DAOVAULT = iDAOVAULT(_daoVault);
     }
 
-    function setGenesisFactors(uint _coolOff, uint _daysToEarn) public onlyDAO {
+    function setGenesisFactors(uint _coolOff, uint _daysToEarn, uint _majorityFactor) public onlyDAO {
         coolOffPeriod = _coolOff;
         erasToEarn = _daysToEarn;
+        majorityFactor = _majorityFactor;
     }
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
@@ -120,7 +123,6 @@ contract Dao {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
-        //require(iPOOL(pool).transferTo(DAOVAULT(), amount),"Must transfer"); // LP tokens return bool
         require(_DAOVAULT.deposit(pool,amount), "must Transfer");  
         mapMember_lastTime[member] = now;
         mapMemberPool_balance[member][pool] = mapMemberPool_balance[member][pool].add(amount); // Record total pool balance for member
@@ -162,6 +164,33 @@ contract Dao {
         totalWeight = totalWeight.sub(weight); // Remove that weight
         mapMember_weight[member] = mapMember_weight[member].sub(weight); // Reduce weight
         emit WeightChange(member, weight, totalWeight);
+    }
+
+    //============================== REWARDS ================================//
+    // Rewards
+
+    function harvest() public {
+        uint reward = calcCurrentReward(msg.sender);
+        mapMember_lastTime[msg.sender] = now;
+        _ROUTER.grantFunds(reward, msg.sender);
+    }
+
+    function calcCurrentReward(address member) public view returns(uint){
+        uint secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
+        uint share = calcReward(member);    // get share of rewards for member
+        uint reward = share.mul(secondsSinceClaim).div(secondsPerEra);    // Get owed amount, based on per-day rates
+        uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER));
+        uint daoReward = reserve.div(1000);
+        if(reward >= daoReward) {
+            reward = daoReward; // Send full reserve if the last person
+        }
+        return daoReward;
+    }
+
+    function calcReward(address member) public view returns(uint){
+        uint weight = mapMember_weight[member];
+        uint reserve = iBEP20(BASE).balanceOf(address(this)).div(erasToEarn); // Aim to deplete reserve over a number of days
+        return _UTILS.calcShare(weight, totalWeight, reserve); // Get member's share of that
     }
 
     //============================== CREATE PROPOSALS ================================//
@@ -404,7 +433,7 @@ contract Dao {
     }
     function hasMajority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-        uint consensus = totalWeight.div(2); 
+        uint consensus = totalWeight.mul(majorityFactor).div(10000); // > 66.66%
         if(votes > consensus){
             return true;
         } else {
