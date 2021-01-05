@@ -270,6 +270,38 @@ contract Utils {
         return synthData;
     }
 
+     function calcCDPShare(uint units, uint amount, address synth) public view returns (uint share){
+        // share = amount * part/total
+        // address synth = getSynth(token);
+        uint totalSupply = iBEP20(synth).totalSupply();
+        return(amount.mul(units)).div(totalSupply);
+    }
+
+    function getCDPValue(uint synth) public view returns (uint CDPLPValue){
+        
+    }
+    function getCDPLPValue(uint synth,address lpToken ) public view returns (uint CDPLPValue){
+
+    }
+    function curatedPoolCount() public view returns(uint count){
+        return iROUTER(_DAO().ROUTER()).getCuratedPoolsLength();
+    }
+
+    function allCuratedPools() public view returns (address[] memory _allCuratedPools){
+        return curatedPoolsInRange(0, curatedPoolCount());
+    }
+    function curatedPoolsInRange(uint start, uint count) public view returns (address[] memory someCuratedPools){
+        if(start.add(count) > curatedPoolCount()){
+            count = curatedPoolCount().sub(start);
+        }
+        address[] memory result = new address[](count);
+        for (uint i = 0; i<count; i++){
+            result[i] = iROUTER(_DAO().ROUTER()).getCuratedPool(i);
+        }
+        return result;
+    }
+
+
     //====================================PRICING====================================//
 
     function calcSpotValueInBase(address token, uint amount) public view returns (uint value){
@@ -330,14 +362,13 @@ contract Utils {
     //     return calcShare(bp, 10000, total);
     // }
 
-    function calcLiquidityShare(uint units, address token, address pool, address member) public view returns (uint share){
+    function calcLiquidityShare(uint units, address token, address pool) public view returns (uint share){
         // share = amount * part/total
         // address pool = getPool(token);
         uint amount = iBEP20(token).balanceOf(pool);
         uint totalSupply = iBEP20(pool).totalSupply();
         return(amount.mul(units)).div(totalSupply);
     }
-
     function calcShare(uint part, uint total, uint amount) public pure returns (uint share){
         // share = amount * part/total
         return(amount.mul(part)).div(total);

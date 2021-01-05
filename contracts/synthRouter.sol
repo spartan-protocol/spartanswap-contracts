@@ -96,8 +96,7 @@ contract synthRouter {
     function removeCollateralForMember(uint synthUnits, address synth, address member) public returns (uint lpCollateral){
         require(isSynth[synth] == true, "Synth must exist");
         require(synthUnits > 0, 'need synths');
-        Synth(synth).transferTo(synth, synthUnits);
-        lpCollateral = Synth(synth).removeCollateral();
+        lpCollateral = Synth(synth).removeCollateral(synthUnits);
     }
     // handle input LP transfers 
     function _handleTransferIn(address _lptoken, uint256 _amount, address _synth) internal returns(uint256 actual){

@@ -77,7 +77,9 @@ interface iROUTER {
     function removeLiquidityTx() external view returns (uint);
     function addLiquidityTx() external view returns (uint);
     function swapTx() external view returns (uint);
+    function getCuratedPoolsLength() external view returns (uint);
     function tokenCount() external view returns(uint);
+    function getCuratedPool(uint) external view returns(address);
     function getToken(uint) external view returns(address);
     function getPool(address) external view returns(address payable);
     function grantFunds(uint, address) external view returns (bool);

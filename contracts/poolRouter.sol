@@ -425,6 +425,9 @@ contract Router {
     function getToken(uint256 i) public view returns(address){
         return arrayTokens[i];
     }
+    function getCuratedPool(uint256 i) public view returns(address){
+        return curatedPools[i];
+    }
     function getTradeLength() public view returns(uint256){
         return feeArray.length;
     }

@@ -31,10 +31,12 @@ contract('DAO', function (accounts) {
     createPoolWBNB(20*_.one, 10*_.one)
     createPoolTKN1(10*_.one, 60*_.one)
     createPoolTKN2(40*_.one, 13*_.one)
+    addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
     createFailSynthTKN1()
     createSyntheticBNB()
-    addCollateralForSyntheticBNB()
+    addCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one))
+    addCollateralForSyntheticBNB(acc1, _.BN2Str(2*_.one))
 
 })
 
@@ -131,7 +133,6 @@ async function createPoolTKN2(SPT, token) {
         var _pool = await router.createPool.call(_.BN2Str(SPT), _.BN2Str(token), token2.address)
         await router.createPool(_.BN2Str(SPT), _.BN2Str(token), token2.address)
         poolTKN2 = await POOL.at(_pool)
-        //console.log(`Pools: ${poolTKN1.address}`)
         const baseAddr = await poolTKN2.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
         assert.equal(_.BN2Str(await base.balanceOf(poolTKN2.address)), _.BN2Str(SPT), 'base balance')
@@ -140,6 +141,18 @@ async function createPoolTKN2(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolTKN2.address, supply, { from: acc0 })
         await base.approve(poolTKN2.address, supply, { from: acc1 })
+    })
+}
+async function addLiquidityBNB(acc, b, t) {
+    it(`It should addLiquidity BNB from ${acc}`, async () => {
+        let token = wbnb.address
+        let tx = await router.addLiquidity(b, t, token, { from: acc})
+    })
+}
+async function addLiquidityTKN2(acc, b, t) {
+    it(`It should addLiquidity TKN2 from ${acc}`, async () => {
+        let token = token2.address
+        let tx = await router.addLiquidity(b, t, token, { from: acc})
     })
 }
 async function curatePools() {
@@ -179,27 +192,24 @@ async function createSyntheticBNB() {
         synthBNB = await SYNTH.at(_synth)
         let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
         let colACC0 = _.BN2Str(await synthBNB.collateralAmount(acc0, poolTKN2.address));
-        let debtACC0 = _.BN2Str(await synthBNB.debtAmount(acc0));
-        assert.equal(colACC0, _.BN2Str(1*_.one),'col do not match' )
-       // console.log(debtACC0);
-        assert.equal(synthData.totalDebt,synthBNBBAL,'synth matches' )
-        
+        assert.equal(colACC0, _.BN2Str(1*_.one),'col do not match')
+       //console.log(debtACC0);
+        assert.equal(synthData.totalDebt,synthBNBBAL,'synth matches')
+    })
+}
+async function addCollateralForSyntheticBNB(acc, lpToken) {
+    it("It should add collateral for Synthetic BNB", async () => {
+        let inputLPToken = lpToken
+        let colACC0B = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
+        await synthRouter.addCollateral(inputLPToken,poolTKN2.address, synthBNB.address,{from:acc});
+        let synthData = await utils.getSynthData(wbnb.address);
+        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
+        //console.log(synthBNBBAL);
+        let colACC0 = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
+        let debtACC0 = _.BN2Str(await synthBNB.debtAmount(acc));
+        assert.equal(debtACC0,synthBNBBAL,'synth do not match' )
+        assert.equal(colACC0, +lpToken + +colACC0B,'col do not match')
        
     })
 }
 
-async function addCollateralForSyntheticBNB() {
-    it("It should add collateral for Synthetic BNB", async () => {
-        let inputLPToken = _.BN2Str(1*_.one)
-        await synthRouter.addCollateral(inputLPToken,poolTKN2.address, synthBNB.address);
-        let synthData = await utils.getSynthData(wbnb.address);
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
-        //console.log(synthBNBBAL);
-        let colACC0 = _.BN2Str(await synthBNB.collateralAmount(acc0, poolTKN2.address));
-        let debtACC0 = _.BN2Str(await synthBNB.debtAmount(acc0));
-        assert.equal(synthData.totalDebt,synthBNBBAL,'synth do not match' )
-        assert.equal(colACC0, _.BN2Str(2*_.one),'col do not match')
-        assert.equal(debtACC0, synthData.totalDebt,'debt do not match')
-       
-    })
-}
