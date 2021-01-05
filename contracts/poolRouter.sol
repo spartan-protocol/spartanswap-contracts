@@ -2,7 +2,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./IContracts.sol";
-import "./PoolV2.sol";
+import "./poolFactory.sol";
 import "@nomiclabs/buidler/console.sol";
 
 contract Router {

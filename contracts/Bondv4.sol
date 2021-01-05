@@ -40,7 +40,6 @@ contract Bond is iBEP20 {
     address [] listedBondAssets;
     uint256 public bondingPeriodSeconds = 31536000;
     uint256 private basisPoints = 10000;
-
     uint256 public totalWeight;
 
 
