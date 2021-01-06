@@ -111,7 +111,7 @@ interface iUTILS {
     function getDepth(address pool) external view returns (uint depth);
     function calcAsymmetricShare(address token, address member) external view returns(uint amount);
     function calcSwapValueInTokenWithPool(address pool, uint amount) external view returns (uint _output);
-    function calcCDPPart(uint, address) external view returns (uint unitSynths);
+    function calcCDPShare(uint units, uint amount, address synth) external view returns (uint unitSynths);
     
 }
 interface iDAO {
@@ -154,7 +154,7 @@ interface iSYNTH {
     function transferTo(address, uint) external returns (bool);
     function genesis() external view returns(uint);
     function totalDebt() external view returns(uint);
-    function totalCollateral() external view returns(uint);
+    function totalCollateralValue() external view returns(uint);
 }
 
 interface iDAOVAULT {

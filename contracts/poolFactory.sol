@@ -19,6 +19,7 @@ contract Pool is iBEP20 {
 
     uint public genesis;
     uint public baseAmount;
+    uint public unitsAmount;
     uint public tokenAmount;
     uint public baseAmountPooled;
     uint public tokenAmountPooled;
@@ -121,7 +122,9 @@ contract Pool is iBEP20 {
     function sync() public {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
+        unitsAmount = balanceOf(address(this));
     }
+   
 
     // Add liquidity for self
     function addLiquidity() public returns(uint liquidityUnits){
@@ -147,16 +150,25 @@ contract Pool is iBEP20 {
 
     // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
-        uint units = balanceOf(member);
-        transferTo(address(this), units); // this needs testing
-        outputBase = iUTILS(_DAO().UTILS()).calcLiquidityShare(units, BASE, address(this), member);
-        outputToken = iUTILS(_DAO().UTILS()).calcLiquidityShare(units, TOKEN, address(this), member);
+        uint256 _actualInputUnits = _getAddedUnitsAmount();
+        outputBase = iUTILS(_DAO().UTILS()).calcLiquidityShare(_actualInputUnits, BASE, address(this), member);
+        outputToken = iUTILS(_DAO().UTILS()).calcLiquidityShare(_actualInputUnits, TOKEN, address(this), member);
         _decrementPoolBalances(outputBase, outputToken);
-        _burn(address(this), units);
+        _burn(address(this), _actualInputUnits);
         iBEP20(BASE).transfer(member, outputBase);
         iBEP20(TOKEN).transfer(member, outputToken);
-        emit RemoveLiquidity(member, outputBase, outputToken, units);
+        emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
+    }
+
+    function _getAddedUnitsAmount() internal view returns(uint256 _actual){
+         uint _unitsBalance = balanceOf(address(this)); 
+        if(_unitsBalance > unitsAmount){
+            _actual = _unitsBalance.sub(unitsAmount);
+        } else {
+            _actual = 0;
+        }
+        return _actual;
     }
 
     function swap(address token) public returns (uint outputAmount, uint fee){

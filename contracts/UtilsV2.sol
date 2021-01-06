@@ -59,8 +59,10 @@ contract Utils {
         address synthAddress;
         uint genesis;
         uint totalDebt;
-        uint totalCollateral;
+        uint totalCollateralValue; 
     }
+
+    
     
     // Only Deployer can execute
     modifier onlyDeployer() {
@@ -266,7 +268,8 @@ contract Utils {
         synthData.tokenAddress = token;
         synthData.genesis = iSYNTH(synth).genesis();
         synthData.totalDebt = iSYNTH(synth).totalDebt();
-        synthData.totalCollateral = iSYNTH(synth).totalCollateral();
+        synthData.totalCollateralValue = calcCDPValue(token); 
+
         return synthData;
     }
 
@@ -426,5 +429,17 @@ contract Utils {
         share = baseAmount.add(tokenSwapped);
         return share;
     }
+     function calcCDPValue(address token) public view returns (uint cdpValue){
+         address synth = getSynth(token);
+         address [] memory getCuratedPools =  allCuratedPools();
+         for(uint i=0;i<getCuratedPools.length;i++){
+             uint lpTokenBalance = iBEP20(getCuratedPools[i]).balanceOf(synth);
+             uint baseAmount = calcShare(lpTokenBalance, iBEP20(getCuratedPools[i]).totalSupply(), iPOOL(getCuratedPools[i]).baseAmount());
+             uint tokenAmount = calcShare(lpTokenBalance, iBEP20(getCuratedPools[i]).totalSupply(), iPOOL(getCuratedPools[i]).tokenAmount());
+             uint tokenSwapped = calcSwapValueInBaseWithPool(getCuratedPools[i], tokenAmount);
+             cdpValue = cdpValue.add(baseAmount.add(tokenSwapped));
+         }
+         return cdpValue;
+     }
 
 }

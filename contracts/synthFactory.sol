@@ -11,6 +11,7 @@ contract Synth is iBEP20 {
     address public TOKEN;
     uint public genesis;
     uint public totalDebt;
+    uint public synthsAmount;
 
     // ERC-20 Parameters
     string _name; string _symbol;
@@ -27,6 +28,7 @@ contract Synth is iBEP20 {
    
 
     event AddLPCollateral(address member, uint inputLPToken, uint synthsIssued, address collateralType);
+    event RemoveCollateral(address member, uint outputLPToken, uint synthsBurnt, address collateralType);
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
@@ -41,8 +43,6 @@ contract Synth is iBEP20 {
         _symbol = string(abi.encodePacked(synthSymbol, iBEP20(_token).symbol()));
         decimals = 18;
         genesis = now;
-        
-     
     }
 
     //========================================iBEP20=========================================//
@@ -116,29 +116,22 @@ contract Synth is iBEP20 {
     function swapSynth()public payable returns(uint256 outputAmount, uint256 fee){
 
     }
+    function sync() public {
+        synthsAmount = balanceOf(address(this));
+    }
 
     // Add collateral for self
     function addCollateral(address lpToken) public returns(uint synths){
         synths = addCollateralForMember(lpToken, msg.sender);
         return synths;
     }
-    function _getAddedCollateralAmount(address _lptoken) internal view returns(uint256 _actual){
-        uint _lpCollateralBalance = iBEP20(_lptoken).balanceOf(address(this)); 
-        if(_lpCollateralBalance > totalCollateral){
-            _actual = _lpCollateralBalance.sub(totalCollateral);
-        } else {
-            _actual = 0;
-        }
-        return _actual;
-    }
+    
     // add collateral for member
     function addCollateralForMember(address lptoken, address member) public returns(uint synths){
         uint256 _actualInputCollateral = _getAddedCollateralAmount(lptoken);// get the added collateral to LP CDP
-        uint _baseAmount = iPOOL(lptoken).baseAmount(); //used to calc assymetricalShare
-        uint _lpTotalSupply = iPOOL(lptoken).baseAmount(); //used to calc assymetricalShare
         uint baseValue = iUTILS(_DAO().UTILS()).calcAsymmetricShare(lptoken, member);//get asym share in sparta
          synths = iUTILS(_DAO().UTILS()).calcSwapValueInTokenWithPool(lptoken, baseValue); //get swap value with sparta
-        _incrementCDP(synths, _actualInputCollateral, lptoken); //update CDP 
+        _incrementCDP(synths, _actualInputCollateral, lptoken); //update CDP details
          collateralAmount[member][lptoken] = collateralAmount[member][lptoken].add(_actualInputCollateral);//member collateral lptoken > amount
          debtAmount[member]= debtAmount[member].add(synths); //member debt lptoken > amount
          _mint(member, synths); // mint synth to member
@@ -147,32 +140,48 @@ contract Synth is iBEP20 {
     }
     
     // Remove Collateral
-    function removeCollateral(uint basisPoints) public returns (uint outputToken) {
-         outputToken = removeCollateralForMember(basisPoints, msg.sender);
-        return outputToken;
+    function removeCollateral(address lptoken) public returns (uint outputCollateral, uint burntDebt) {
+         (outputCollateral, burntDebt )= removeCollateralForMember(lptoken,msg.sender);
+        return (outputCollateral, burntDebt);
     } 
 
     // Remove Collateral for a member
-    function removeCollateralForMember(address lptoken, uint basisPoints, address member) public returns (uint outputCollateral) {
-        require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
-        uint _synths = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(address(this)).balanceOf(member));
-        transferTo(address(this), _synths); // get synth from user
-        outputCollateral = iUTILS(_DAO().UTILS()).calcCDPShare(_synths, totalCollateral, address(this));
-        _decrementCDP(outputCollateral, _synths);
-        collateralAmount[member][lptoken] = collateralAmount[member][lptoken].add(_actualInputCollateral);//member collateral lptoken > amount
-        debtAmount[member]= debtAmount[member].add(synths); //member debt lptoken > amount
-        _burn(address(this), _synths);
-        iBEP20(BASE).transfer(member, outputBase);
-
-
-        emit RemoveCollateral(member, outputBase, outputToken, units);
-        return (outputBase, outputToken);
+    function removeCollateralForMember(address lptoken, address member) public returns (uint outputCollateral, uint debtBurnt) {
+        uint256 _actualInputSynths = _getAddedSynthsAmount();
+        outputCollateral = iUTILS(_DAO().UTILS()).calcCDPShare(_actualInputSynths, totalCollateral[lptoken], address(this)); 
+        _decrementCDP(_actualInputSynths, outputCollateral, lptoken); // update cdp details
+        collateralAmount[member][lptoken] = collateralAmount[member][lptoken].sub(outputCollateral);//member collateral lptoken > amount
+        debtAmount[member] = debtAmount[member].sub(_actualInputSynths); //member debt lptoken > amount
+        _burn(address(this), _actualInputSynths);
+        iBEP20(BASE).transfer(member, outputCollateral); // return their collateral
+        emit RemoveCollateral(member, outputCollateral, _actualInputSynths, lptoken);
+        return (outputCollateral, _actualInputSynths);
     }
+
+    function _getAddedSynthsAmount() internal view returns(uint256 _actual){
+         uint _synthsBalance = balanceOf(address(this)); 
+        if(_synthsBalance > synthsAmount){
+            _actual = _synthsBalance.sub(synthsAmount);
+        } else {
+            _actual = 0;
+        }
+        return _actual;
+    }
+    function _getAddedCollateralAmount(address _lptoken) internal view returns(uint256 _actual){
+        uint _lpCollateralBalance = iBEP20(_lptoken).balanceOf(address(this)); 
+        if(_lpCollateralBalance > totalCollateral[_lptoken]){
+            _actual = _lpCollateralBalance.sub(totalCollateral[_lptoken]);
+        } else {
+            _actual = 0;
+        }
+        return _actual;
+    }
+
 
     // Decrement CDP 
     function _decrementCDP(uint _debt, uint _collateral, address _lpToken) internal  {
           totalDebt = totalDebt.sub(_debt); // map total debt
-           totalCollateral[_lpToken] = totalCollateral[_lpToken].sub(_collateral); // map total collateral per LPTOKEN
+          totalCollateral[_lpToken] = totalCollateral[_lpToken].sub(_collateral); // map total collateral per LPTOKEN
     }
     // Increment CDP 
     function _incrementCDP(uint _debt, uint _collateral, address _lpToken) internal  {

@@ -11,6 +11,7 @@ contract synthRouter {
     address public DEPLOYER;
 
     uint public addCollateralTx;
+    uint public removeCollateralTx;
 
     address[] public arraySynths;
 
@@ -87,17 +88,23 @@ contract synthRouter {
         return synthMinted;
     }
 
-    function removeCollateral(uint basisPoints, address synth) public returns (uint lpTokens){
-        require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
-        uint _synths = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(getSynth(synth)).balanceOf(msg.sender));
-        lpTokens = removeCollateralForMember(_synths, synth, msg.sender);
-        return lpTokens;
+    function removeCollateral(address lpToken, uint basisPoints,address synth) public returns (uint lpCollateral, uint synthBurnt){
+        (lpCollateral, synthBurnt) = removeCollateralForMember(lpToken, basisPoints, synth, msg.sender);
+        return (lpCollateral, synthBurnt);
     }
-    function removeCollateralForMember(uint synthUnits, address synth, address member) public returns (uint lpCollateral){
+    function removeCollateralForMember(address lpToken, uint basisPoints, address synth, address member) public returns (uint lpCollateral, uint synthBurnt){
         require(isSynth[synth] == true, "Synth must exist");
-        require(synthUnits > 0, 'need synths');
-        lpCollateral = Synth(synth).removeCollateral(synthUnits);
+        require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
+        require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
+        uint _synths = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(address(this)).balanceOf(member));
+        _handleTransferIn(lpToken, _synths, synth);
+        (lpCollateral, synthBurnt) = Synth(synth).removeCollateralForMember(lpToken, member);
+        totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].sub(lpCollateral);
+        removeCollateralTx +=1;
+        totalCDPDebt[synth]= totalCDPDebt[synth].sub(synthBurnt);
+        return (lpCollateral, synthBurnt);
     }
+
     // handle input LP transfers 
     function _handleTransferIn(address _lptoken, uint256 _amount, address _synth) internal returns(uint256 actual){
         if(_amount > 0) {
@@ -106,13 +113,7 @@ contract synthRouter {
                 actual = iBEP20(_lptoken).balanceOf(_synth).sub(startBal);
         }
     }
-    // handle output transfers
-    function _handleTransferOut(address _token, uint256 _amount, address _recipient) internal {
-        if(_amount > 0) {
-            iBEP20(_token).transfer(_recipient, _amount);
-        }
-    }
-   
+    
     function getSynth(address token) public view returns(address synth){
         return mapToken_Synth[token];
     }

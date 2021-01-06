@@ -148,10 +148,10 @@ contract Router {
     // Remove an exact qty of units
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
         address _pool = getPool(token);
+        require(isPool[_pool] = true, 'must be a pool');
         address _member = msg.sender;
-        (outputBase, outputToken) = Pool(_pool).removeLiquidity();
-        _handleTransferOut(token, outputToken, _member);
-        _handleTransferOut(BASE, outputBase, _member);
+        _handleTransferIn(_pool, units, _pool);
+        (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
         totalPooled = totalPooled.sub(outputBase);
         removeLiquidityTx += 1;
         return (outputBase, outputToken);
