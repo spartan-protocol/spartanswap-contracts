@@ -87,6 +87,8 @@ interface iROUTER {
     function isPool(address) external view returns(bool);
     function challengLowestCuratedPool(address) external view returns (bool); 
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
+    function changeArrayFeeSize(uint) external view returns(bool);
+    function changeMaxTrades(uint) external view returns(bool);
 }
 interface iWBNB {
     function withdraw(uint256) external;
@@ -110,6 +112,7 @@ interface iUTILS {
     function calcAsymmetricShare(address token, address member) external view returns(uint amount);
     function calcSwapValueInTokenWithPool(address pool, uint amount) external view returns (uint _output);
     function calcCDPPart(uint, address) external view returns (uint unitSynths);
+    
 }
 interface iDAO {
     function ROUTER() external view returns(address);

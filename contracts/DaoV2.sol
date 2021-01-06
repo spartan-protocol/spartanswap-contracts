@@ -18,6 +18,8 @@ contract Dao {
     uint public erasToEarn;
     uint public proposalCount;
     uint public majorityFactor;
+    uint public daoClaim;
+    uint public daoFee;
 
     struct GrantDetails{
         address recipient;
@@ -91,6 +93,8 @@ contract Dao {
         coolOffPeriod = 1; 
         erasToEarn = 30;
         majorityFactor = 6666;
+        daoClaim = 1000;
+        daoFee = 100;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
     function setGenesisAddresses(address _router, address _utils, address _synthrouter, address _bond, address _daoVault) public onlyDAO {
@@ -101,10 +105,12 @@ contract Dao {
         _DAOVAULT = iDAOVAULT(_daoVault);
     }
 
-    function setGenesisFactors(uint _coolOff, uint _daysToEarn, uint _majorityFactor) public onlyDAO {
+    function setGenesisFactors(uint _coolOff, uint _daysToEarn, uint _majorityFactor, uint _daoClaim, uint _daoFee) public onlyDAO {
         coolOffPeriod = _coolOff;
         erasToEarn = _daysToEarn;
         majorityFactor = _majorityFactor;
+        daoClaim = _daoClaim;
+        daoFee = _daoFee;
     }
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
@@ -175,22 +181,30 @@ contract Dao {
         _ROUTER.grantFunds(reward, msg.sender);
     }
 
-    function calcCurrentReward(address member) public view returns(uint){
+    function calcCurrentReward(address member) public returns(uint){
         uint secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
         uint reward = share.mul(secondsSinceClaim).div(secondsPerEra);    // Get owed amount, based on per-day rates
         uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER));
-        uint daoReward = reserve.div(1000);
+        uint daoReward = reserve.mul(daoClaim).div(10000);
         if(reward >= daoReward) {
             reward = daoReward; // Send full reserve if the last person
         }
-        return daoReward;
+        return reward;
     }
 
-    function calcReward(address member) public view returns(uint){
+    function calcReward(address member) public returns(uint){
+        updateWeight(member);
         uint weight = mapMember_weight[member];
         uint reserve = iBEP20(BASE).balanceOf(address(this)).div(erasToEarn); // Aim to deplete reserve over a number of days
         return _UTILS.calcShare(weight, totalWeight, reserve); // Get member's share of that
+    }
+
+    function updateWeight(address member) public returns(uint){
+       uint memberPool =  mapMember_poolArray[member].length;
+       for(uint i = 0; i < memberPool; i++){
+           increaseWeight(mapMember_poolArray[member][i], member);
+       }
     }
 
     //============================== CREATE PROPOSALS ================================//
@@ -202,6 +216,7 @@ contract Dao {
 
     // Simple Action Call
     function newActionProposal(string memory typeStr) public returns(uint) {
+        require(payFee(),'get dao fee first');
         proposalCount += 1;
         mapPID_type[proposalCount] = typeStr;
         emit NewProposal(msg.sender, proposalCount, typeStr);
@@ -209,6 +224,7 @@ contract Dao {
     }
     // Action with uint parameter
     function newParamProposal(uint param, string memory typeStr) public returns(uint) {
+        require(payFee(),'get dao fee first');
         proposalCount += 1;
         mapPID_param[proposalCount] = param;
         mapPID_type[proposalCount] = typeStr;
@@ -217,6 +233,7 @@ contract Dao {
     }
     // Action with address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
+        require(payFee(),'get dao fee first');
         proposalCount += 1;
         mapPID_address[proposalCount] = proposedAddress;
         mapPID_type[proposalCount] = typeStr;
@@ -225,6 +242,7 @@ contract Dao {
     }
     // Action with funding
     function newGrantProposal(address recipient, uint amount) public returns(uint) {
+        require(payFee(),'get dao fee first');
         string memory typeStr = "GRANT";
         proposalCount += 1;
         mapPID_type[proposalCount] = typeStr;
@@ -236,6 +254,11 @@ contract Dao {
         return proposalCount;
     }
     
+    function payFee() internal returns(bool){
+        uint _amount = daoFee*one;
+        require(iBEP20(BASE).transferFrom(msg.sender, address(_ROUTER), _amount), 'must get fee' );
+        return true;
+    }
 
 //============================== VOTE && FINALISE ================================//
 
@@ -273,7 +296,7 @@ contract Dao {
     function finaliseProposal(uint proposalID) public  {
         require((now - mapPID_timeStart[proposalID]) > coolOffPeriod, "Must be after cool off");
         require(mapPID_finalising[proposalID] == true, "Must be finalising");
-        if(!hasQuorum(proposalID)){
+        if(!hasMajority(proposalID)){
             mapPID_finalising[proposalID] = false;
         }
         bytes memory _type = bytes(mapPID_type[proposalID]);
@@ -311,6 +334,10 @@ contract Dao {
             _removeCuratedPool(proposalID);
         } else if (isEqual(_type, 'CHALLENGE_CURATED_POOL')){
             _challengLowestCuratedPool(proposalID);
+        } else if (isEqual(_type, 'FEE_ARRAY_SIZE')){
+            _changeArrayFeeSize(proposalID);
+        } else if (isEqual(_type, 'MAX_TRADES')){
+            _changeMaxTrades(proposalID);
         }
         
     }
@@ -383,6 +410,16 @@ contract Dao {
     function _mintBond(uint _proposalID) internal {
         _BOND.mintBond(); 
         completeProposal(_proposalID);
+    }
+    function _changeArrayFeeSize(uint _proposalID) internal {
+        uint _proposedParam = mapPID_param[_proposalID];
+        _ROUTER.changeArrayFeeSize(_proposedParam); 
+        completeProposal(_proposalID);
+    }
+    function _changeMaxTrades(uint _proposalID) internal {
+        uint _proposedParam = mapPID_param[_proposalID];
+        _ROUTER.changeMaxTrades(_proposedParam); 
+        completeProposal(_proposalID); 
     }
     function _listBondAsset(uint _proposalID) internal {
          address _proposedAddress = mapPID_address[_proposalID];
