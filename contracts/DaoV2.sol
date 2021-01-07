@@ -3,7 +3,7 @@ pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./IContracts.sol";
 import "./DaoVault.sol";
-
+import "@nomiclabs/buidler/console.sol";
 contract Dao {
     using SafeMath for uint;
 
@@ -91,6 +91,7 @@ contract Dao {
         BASE = _base;
         DEPLOYER = msg.sender;
         coolOffPeriod = 1; 
+        DAO = address(this);
         erasToEarn = 30;
         majorityFactor = 6666;
         daoClaim = 1000;
@@ -129,7 +130,7 @@ contract Dao {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
-        require(_DAOVAULT.deposit(pool,amount), "must Transfer");  
+        require(iPOOL(pool).transferTo(pool, amount), 'send lps');
         mapMember_lastTime[member] = now;
         mapMemberPool_balance[member][pool] = mapMemberPool_balance[member][pool].add(amount); // Record total pool balance for member
         uint weight = increaseWeight(pool, member);
@@ -216,7 +217,7 @@ contract Dao {
 
     // Simple Action Call
     function newActionProposal(string memory typeStr) public returns(uint) {
-        require(payFee(),'get dao fee first');
+        payFee();
         proposalCount += 1;
         mapPID_type[proposalCount] = typeStr;
         emit NewProposal(msg.sender, proposalCount, typeStr);
@@ -224,7 +225,7 @@ contract Dao {
     }
     // Action with uint parameter
     function newParamProposal(uint param, string memory typeStr) public returns(uint) {
-        require(payFee(),'get dao fee first');
+        payFee();
         proposalCount += 1;
         mapPID_param[proposalCount] = param;
         mapPID_type[proposalCount] = typeStr;
@@ -233,7 +234,7 @@ contract Dao {
     }
     // Action with address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
-        require(payFee(),'get dao fee first');
+        payFee();
         proposalCount += 1;
         mapPID_address[proposalCount] = proposedAddress;
         mapPID_type[proposalCount] = typeStr;
@@ -242,7 +243,7 @@ contract Dao {
     }
     // Action with funding
     function newGrantProposal(address recipient, uint amount) public returns(uint) {
-        require(payFee(),'get dao fee first');
+        payFee();
         string memory typeStr = "GRANT";
         proposalCount += 1;
         mapPID_type[proposalCount] = typeStr;
@@ -256,9 +257,9 @@ contract Dao {
     
     function payFee() internal returns(bool){
         uint _amount = daoFee*one;
-        require(iBEP20(BASE).transferFrom(msg.sender, address(_ROUTER), _amount), 'must get fee' );
+        require(iBASE(BASE).transferTo(address(_ROUTER), _amount), 'must get fee' );
         return true;
-    }
+    } 
 
 //============================== VOTE && FINALISE ================================//
 
@@ -463,6 +464,7 @@ contract Dao {
 
     function countVotes(uint _proposalID) internal returns (uint voteWeight){
         mapPID_votes[_proposalID] = mapPID_votes[_proposalID].sub(mapPIDMember_votes[_proposalID][msg.sender]);
+        updateWeight(msg.sender);
         voteWeight = mapMember_weight[msg.sender];
         mapPID_votes[_proposalID] += voteWeight;
         mapPIDMember_votes[_proposalID][msg.sender] = voteWeight;

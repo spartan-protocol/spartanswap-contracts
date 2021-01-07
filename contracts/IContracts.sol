@@ -66,6 +66,7 @@ interface iBASE {
     function delistAsset(address) external returns(bool);
     function startEmissions() external returns(bool);
     function stopEmissions() external returns(bool);
+    function transferTo(address, uint256) external payable returns(bool);
 }
 interface iROUTER {
     function totalPooled() external view returns (uint);

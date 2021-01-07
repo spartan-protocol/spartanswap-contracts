@@ -11,12 +11,17 @@ var DAO = artifacts.require("./Dao.sol");
 var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
-var TOKEN1 = artifacts.require("./Token1.sol");
+var synthRouter = artifacts.require("./synthRouter.sol");
+var SYNTH = artifacts.require("./synth.sol");
+var BOND = artifacts.require("./Bond.sol");
+var TOKEN = artifacts.require("./Token1.sol");
+var TOKEN2 = artifacts.require("./Token2.sol");
 var WBNB = artifacts.require("./WBNB");
+var DAOVAULT = artifacts.require("./DaoVault.sol");
 
 var base; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
-var poolWBNB; var poolTKN1;
+var poolWBNB; var poolTKN1; var synthTNK2; var synthBNB;
 var acc0; var acc1; var acc2; var acc3;
 
 function sleep(ms) {
@@ -27,38 +32,41 @@ contract('DAO', function (accounts) {
 
     constructor(accounts)
     wrapBNB()
-    createPools()
-    addLiquidityTKN1(acc1)
-    addLiquidityTKN1(acc2)
-    addLiquidityTKN1(acc3)
-
+    createPoolWBNB(20*_.one, 10*_.one)
+    createPoolTKN1(20*_.one, 10*_.one)
+    createPoolTKN2(20*_.one, 10*_.one)
+    addLiquidityBNB(acc0,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+    addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+    addLiquidityTKN2(acc2,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+    addLiquidityTKN1(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+    addLiquidityTKN1(acc2,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     swapPassR1(acc0, _.BN2Str(_.one * 10))
-
+    curatePools()
     lockFail()
-    lockWBNB(acc0, _.BN2Str(_.one * 5)) // 13% >16%
-    lockTKN(acc1, _.BN2Str(_.one * 10)) // 25% <33%
-    lockTKN(acc2, _.BN2Str(_.one * 10)) // 25% +1 >33% <50%
-    lockTKN(acc3, _.BN2Str(_.one * 15)) // 37% +1 >50%
-    // rate()
+    lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
+    lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
+    lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
+
+     rate()
 
     voteParam()
-    voteIncentive()
-    voteAction()
-    voteList()
-    voteGrant()
+    // voteIncentive()
+    // voteAction()
+    // voteList()
+    // voteGrant()
 
-    voteRouter(acc0)
-    swapPassR2(acc0, _.BN2Str(_.one * 10))
+    // voteRouter(acc0)
+    // swapPassR2(acc0, _.BN2Str(_.one * 10))
 
-    voteUtils(acc0)
-    swapPassR2(acc0, _.BN2Str(_.one * 10))
+    // voteUtils(acc0)
+    // swapPassR2(acc0, _.BN2Str(_.one * 10))
 
-    voteDao(acc0)
-    swapPassR2(acc0, _.BN2Str(_.one * 10))
+    // voteDao(acc0)
+    // swapPassR2(acc0, _.BN2Str(_.one * 10))
 
-    harvest()
-    withdrawBNB(acc0)
-    withdrawTKN1(acc1)
+    // harvest()
+    // withdrawBNB(acc0)
+    // withdrawTKN1(acc1)
 
 })
 
@@ -68,45 +76,44 @@ contract('DAO', function (accounts) {
 function constructor(accounts) {
     acc0 = accounts[0]; acc1 = accounts[1]; acc2 = accounts[2]; acc3 = accounts[3]
     it("constructor events", async () => {
-        base = await BASE.new()
-        wbnb = await WBNB.new()
-        utils = await UTILS.new(base.address)
-        Dao = await DAO.new(base.address)
-        router = await ROUTER.new(base.address, wbnb.address)
-        await base.changeDAO(Dao.address)
-        await Dao.setGenesisAddresses(router.address, utils.address)
-        // await Dao.purgeDeployer()
-        // assert.equal(await Dao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
-        //console.log(await utils.BASE())
-        //console.log(await Dao.ROUTER())
+        base = await BASE.new() // deploy base
+        wbnb = await WBNB.new() // deploy wBNB
+        utils = await UTILS.new(base.address) // deploy utilsV2
+        Dao = await DAO.new(base.address)     // deploy daoV2
+        router = await ROUTER.new(base.address, wbnb.address) //deploy router
+        daoVault = await DAOVAULT.new(base.address);
+        await base.changeDAO(Dao.address)   
+        synthRouter = await synthRouter.new(base.address) //deploy synthRouter
+        bond = await BOND.new(base.address)     //deploy new bond
+        token1 = await TOKEN.new()             //deploy token
+        token2 = await TOKEN2.new()
+        //console.log(router.address); 
 
-        token1 = await TOKEN1.new();
-        token2 = await TOKEN1.new();
-        //console.log(`Acc0: ${acc0}`)
-        //console.log(`base: ${base.address}`)
-        //console.log(`dao: ${Dao.address}`)
-        //console.log(`utils: ${utils.address}`)
-        //console.log(`router: ${router.address}`)
-        //console.log(`token1: ${token1.address}`)
+        await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address);
+    
 
         let supply = await token1.totalSupply()
-        await base.transfer(acc1, _.getBN(_.BN2Str(10000 * _.one)))
-        await base.transfer(acc2, _.getBN(_.BN2Str(10000 * _.one)))
-        await base.transfer(acc3, _.getBN(_.BN2Str(10000 * _.one)))
-
+        await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(router.address, _.getBN(_.BN2Str(100000 * _.one)))
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc3 })
 
-        await token1.transfer(acc1, _.getBN(_.BN2Int(supply)/4))
-        await token1.transfer(acc2, _.getBN(_.BN2Int(supply)/4))
-        await token1.transfer(acc3, _.getBN(_.BN2Int(supply)/4))
-
+        await token1.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
+        await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+        await token1.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc3 })
+
+        await token2.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
+        await token2.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+        await token2.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
+        await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
     });
 }
 
@@ -120,45 +127,71 @@ async function wrapBNB() {
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
-
-async function createPools() {
-    it("It should deploy WBNB Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, wbnb.address)
-        await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, wbnb.address)
+async function createPoolWBNB(SPT, token) {
+    it("It should deploy BNB Pool", async () => {
+        var _pool = await router.createPool.call(_.BN2Str(SPT),_.BN2Str(token), wbnb.address)
+        await router.createPool(_.BN2Str(SPT), _.BN2Str(token), wbnb.address)
         poolWBNB = await POOL.at(_pool)
         //console.log(`Pools: ${poolWBNB.address}`)
         const baseAddr = await poolWBNB.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(_.one * 10), 'base balance')
-        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.dot1BN, 'wbnb balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(SPT), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(token), 'wbnb balance')
 
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
         await base.approve(poolWBNB.address, supply, { from: acc1 })
     })
-
+}
+async function createPoolTKN1(SPT, token) {
     it("It should deploy TKN1 Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(_.one * 10), _.BN2Str(_.one * 100), token1.address)
-        await router.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one * 100), token1.address)
+        var _pool = await router.createPool.call(_.BN2Str(SPT), _.BN2Str(token), token1.address)
+        await router.createPool(_.BN2Str(SPT), _.BN2Str(token), token1.address)
         poolTKN1 = await POOL.at(_pool)
         //console.log(`Pools: ${poolTKN1.address}`)
         const baseAddr = await poolTKN1.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(_.one * 10), 'base balance')
-        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(_.one * 100), 'token1 balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(SPT), 'base balance')
+        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(token), 'token1 balance')
 
         let supply = await base.totalSupply()
         await base.approve(poolTKN1.address, supply, { from: acc0 })
         await base.approve(poolTKN1.address, supply, { from: acc1 })
     })
 }
-
-async function addLiquidityTKN1(acc) {
-    it("It should deposit", async () => {
-        await router.addLiquidity(_.BN2Str(_.one * 15), _.BN2Str(_.one * 200), token1.address, { from: acc})
+async function createPoolTKN2(SPT, token) {
+    it("It should deploy TKN2 Pool", async () => {
+        var _pool = await router.createPool.call(_.BN2Str(SPT), _.BN2Str(token), token2.address)
+        await router.createPool(_.BN2Str(SPT), _.BN2Str(token), token2.address)
+        poolTKN2 = await POOL.at(_pool)
+        const baseAddr = await poolTKN2.BASE()
+        assert.equal(baseAddr, base.address, "address is correct")
+        assert.equal(_.BN2Str(await base.balanceOf(poolTKN2.address)), _.BN2Str(SPT), 'base balance')
+        assert.equal(_.BN2Str(await token2.balanceOf(poolTKN2.address)), _.BN2Str(token), 'token1 balance')
+        
+        let supply = await base.totalSupply()
+        await base.approve(poolTKN2.address, supply, { from: acc0 })
+        await base.approve(poolTKN2.address, supply, { from: acc1 })
     })
 }
-
+async function addLiquidityTKN2(acc, b, t) {
+    it(`It should addLiquidity TKN2 from ${acc}`, async () => {
+        let token = token2.address
+        let tx = await router.addLiquidity(b, t, token, { from: acc})
+    })
+}
+async function addLiquidityTKN1(acc, b, t) {
+    it(`It should addLiquidity TKN2 from ${acc}`, async () => {
+        let token = token1.address
+        let tx = await router.addLiquidity(b, t, token, { from: acc})
+    })
+}
+async function addLiquidityBNB(acc, b, t) {
+    it(`It should addLiquidity BNB from ${acc}`, async () => {
+        let token = wbnb.address
+        let tx = await router.addLiquidity(b, t, token, { from: acc})
+    })
+}
 async function lockFail() {
     it("It should revert for not pool", async () => {
         let balance = await token1.balanceOf(acc0)
@@ -183,7 +216,17 @@ async function lockWBNB(acc, amount) {
         //console.log(`mapMember_weight: ${await Dao.mapMember_weight(acc)}`)
     })
 }
-
+async function curatePools() {
+    it("Curate POOls", async () => {
+        await router.addCuratedPool(wbnb.address);
+        await router.addCuratedPool(token1.address);
+        await router.addCuratedPool(token2.address);
+        //await router.challengLowestCuratedPool(token2.address);
+        // let curatedP = await router.curatedPools(0);
+        // // console.log(curatedP)
+       
+    })
+}
 async function lockTKN(acc, amount) {
     it("It should deposit", async () => {
         // let balance = await poolTKN1.balanceOf(acc)
@@ -202,7 +245,7 @@ async function rate() {
         console.log(`acc0 rate: ${await Dao.mapMember_weight(acc0)} ${_.getBN(await Dao.mapMember_weight(acc0)).div(_.getBN(await Dao.totalWeight()))}`)
         console.log(`acc1 rate: ${await Dao.mapMember_weight(acc1)} ${_.getBN(await Dao.mapMember_weight(acc1)).div(_.getBN(await Dao.totalWeight()))}`)
         console.log(`acc2 rate: ${await Dao.mapMember_weight(acc2)} ${_.getBN(await Dao.mapMember_weight(acc2)).div(_.getBN(await Dao.totalWeight()))}`)
-        console.log(`acc3 rate: ${await Dao.mapMember_weight(acc3)} ${_.getBN(await Dao.mapMember_weight(acc3)).div(_.getBN(await Dao.totalWeight()))}`)
+        //console.log(`acc3 rate: ${await Dao.mapMember_weight(acc3)} ${_.getBN(await Dao.mapMember_weight(acc3)).div(_.getBN(await Dao.totalWeight()))}`)
 
     })
 }
@@ -254,11 +297,12 @@ async function voteParam() {
         assert.equal(await Dao.mapPID_finalised(proposalID2), true)
     })
     it("It should vote, finalise COOL_OFF", async () => {
-        await Dao.newParamProposal('1', 'COOL_OFF', { from: acc1 })
+        await Dao.newParamProposal('2', 'COOL_OFF', { from: acc0 })
         let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc1 })
-        assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), _.BN2Str(await Dao.mapPIDMember_votes(proposalCount, acc1)))
-        assert.equal(await Dao.mapPID_param(proposalCount), '1')
+        await Dao.voteProposal(proposalCount, { from: acc0 })
+        await sleep(1100)
+        assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), _.BN2Str(await Dao.mapPIDMember_votes(proposalCount, acc0)))
+        assert.equal(await Dao.mapPID_param(proposalCount), '2')
         await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "Must be finalising");
         await Dao.voteProposal(proposalCount, { from: acc2 })
         assert.equal(await Dao.hasQuorum(proposalCount), true)
@@ -266,7 +310,7 @@ async function voteParam() {
         await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "Must be after cool off");
         await sleep(1100)
         await Dao.finaliseProposal(proposalCount)
-        assert.equal(await Dao.coolOffPeriod(), '1')
+        assert.equal(await Dao.coolOffPeriod(), '2')
         assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), '0')
         assert.equal(await Dao.mapPID_finalising(proposalCount), false)
         assert.equal(await Dao.mapPID_finalised(proposalCount), true)
