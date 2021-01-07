@@ -439,7 +439,7 @@ contract Utils {
              uint tokenSwapped = calcSwapValueInBaseWithPool(getCuratedPools[i], tokenAmount);
              cdpValue = cdpValue.add(baseAmount.add(tokenSwapped));
          }
-         return cdpValue;//this should work
+         return cdpValue;
      }
 
 }
