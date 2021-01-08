@@ -421,14 +421,14 @@ contract Router {
         if(toBase){
             // sell to BASE
             iBEP20(token).transfer(_pool, _outputToken);
-            (uint _baseBought, uint _fee) = Pool(_pool).swap(token);
+            (uint _baseBought, uint _fee) = Pool(_pool).swap(token); //this is not counted in totalPooled calcs
             totalFees += _fee;
             outputAmount = _baseBought.add(_outputBase);
             _handleTransferOut(BASE, outputAmount, msg.sender);
         } else {
             // buy to TOKEN
             iBEP20(BASE).transfer(_pool, _outputToken);
-            (uint _tokenBought, uint _fee) = Pool(_pool).swap(BASE);
+            (uint _tokenBought, uint _fee) = Pool(_pool).swap(BASE); //this is not counted in totalPooled calcs
             totalFees += _DAO().UTILS().calcValueInBase(token, _fee);
             outputAmount = _tokenBought.add(_outputToken);
             _handleTransferOut(token, outputAmount, msg.sender);
@@ -546,7 +546,7 @@ contract Router {
             uint dailyAllocation = reserve.div(eraLength).div(maxTrades); // get max dividend for reserve/30/100 
             uint numerator = _fees.mul(dailyAllocation);
             uint feeDividend = numerator.div(_fees.add(normalAverageFee));
-            iBEP20(BASE).transfer(_pool,feeDividend);   
+            iBEP20(BASE).transfer(_pool,feeDividend);    //This not added to total pooled
             Pool(_pool).sync();
             }
         return true;

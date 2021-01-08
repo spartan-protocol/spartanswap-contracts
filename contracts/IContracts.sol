@@ -83,7 +83,7 @@ interface iROUTER {
     function getCuratedPool(uint) external view returns(address);
     function getToken(uint) external view returns(address);
     function getPool(address) external view returns(address payable);
-    function grantFunds(uint, address) external view returns (bool);
+    function grantFunds(uint, address) external returns (bool);
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) external payable returns (uint units);
     function isPool(address) external view returns(bool);
     function challengLowestCuratedPool(address) external view returns (bool); 
@@ -159,8 +159,8 @@ interface iSYNTH {
 }
 
 interface iDAOVAULT {
-    function deposit(address, uint) external view returns (bool);
-    function withdraw(address, uint) external view returns (bool);
+    function deposit(address, uint) external  returns (bool);
+    function withdraw(address, uint) external  returns (bool);
 }
 
 

@@ -96,7 +96,8 @@ contract Dao {
         majorityFactor = 6666;
         daoClaim = 1000;
         daoFee = 100;
-        secondsPerEra = iBASE(BASE).secondsPerEra();
+        //secondsPerEra = iBASE(BASE).secondsPerEra();
+        secondsPerEra = 2;
     }
     function setGenesisAddresses(address _router, address _utils, address _synthrouter, address _bond, address _daoVault) public onlyDAO {
         _ROUTER = iROUTER(_router);
@@ -130,7 +131,7 @@ contract Dao {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
-        require(iPOOL(pool).transferTo(pool, amount), 'send lps');
+        require(iPOOL(pool).transferTo(address(_DAOVAULT), amount), 'send lps');
         mapMember_lastTime[member] = now;
         mapMemberPool_balance[member][pool] = mapMemberPool_balance[member][pool].add(amount); // Record total pool balance for member
         uint weight = increaseWeight(pool, member);
@@ -183,6 +184,7 @@ contract Dao {
     }
 
     function calcCurrentReward(address member) public returns(uint){
+        require(isMember[member], "Must be member");
         uint secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
         uint reward = share.mul(secondsSinceClaim).div(secondsPerEra);    // Get owed amount, based on per-day rates
@@ -197,7 +199,7 @@ contract Dao {
     function calcReward(address member) public returns(uint){
         updateWeight(member);
         uint weight = mapMember_weight[member];
-        uint reserve = iBEP20(BASE).balanceOf(address(this)).div(erasToEarn); // Aim to deplete reserve over a number of days
+        uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER)).div(erasToEarn); // Aim to deplete reserve over a number of days
         return _UTILS.calcShare(weight, totalWeight, reserve); // Get member's share of that
     }
 
@@ -300,6 +302,7 @@ contract Dao {
         if(!hasMajority(proposalID)){
             mapPID_finalising[proposalID] = false;
         }
+        else {
         bytes memory _type = bytes(mapPID_type[proposalID]);
         if(isEqual(_type, 'DAO')){
             moveDao(proposalID);
@@ -339,6 +342,8 @@ contract Dao {
             _changeArrayFeeSize(proposalID);
         } else if (isEqual(_type, 'MAX_TRADES')){
             _changeMaxTrades(proposalID);
+        }
+        
         }
         
     }

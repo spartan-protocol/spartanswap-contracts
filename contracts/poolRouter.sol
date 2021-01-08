@@ -71,10 +71,10 @@ contract Router {
     function migrateRouterData(address payable oldRouter) public onlyDAO {
         totalPooled = Router(oldRouter).totalPooled();
         totalVolume = Router(oldRouter).totalVolume();
-        address pool = Router(oldRouter).getPool(0xdD1755e883a39C0D4643733E02003044a3B2D7A7);
-        uint recFees = iPOOL(pool).fees();
-        uint tFees = Router(oldRouter).totalFees();
-        totalFees = tFees.sub(recFees);//remove recovery pool fees 
+        // address pool = Router(oldRouter).getPool(0xdD1755e883a39C0D4643733E02003044a3B2D7A7);
+        // uint recFees = iPOOL(pool).fees();
+        // uint tFees = Router(oldRouter).totalFees();
+        // totalFees = tFees.sub(recFees);//remove recovery pool fees 
         normalAverageFee = Router(oldRouter).normalAverageFee();
         removeLiquidityTx = Router(oldRouter).removeLiquidityTx();
         addLiquidityTx = Router(oldRouter).addLiquidityTx();
