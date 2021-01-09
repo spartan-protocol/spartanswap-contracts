@@ -562,6 +562,7 @@ contract Dao {
         proposalDetails.finalised = mapPID_finalised[proposalID];
         proposalDetails.param = mapPID_param[proposalID];
         proposalDetails.proposedAddress = mapPID_address[proposalID];
+        proposalDetails.grant = mapPID_grant[proposalID];
         return proposalDetails;
     }
     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
