@@ -46,7 +46,7 @@ contract('DAO', function (accounts) {
     // voteParam()
     // voteIncentive()
      //voteAction()
-    // voteGrant()
+    voteGrant()
     // voteRouter(acc0)
    // swapPassR2(acc0, _.BN2Str(_.one * 10))
 
@@ -56,8 +56,8 @@ contract('DAO', function (accounts) {
     //voteDao(acc0)
     //swapPassR2(acc0, _.BN2Str(_.one * 10))
 
-    harvest()
-    withdrawBNB(acc0)
+    // harvest()
+    // withdrawBNB(acc0)
     //withdrawTKN1(acc1)
 
 })
@@ -366,6 +366,7 @@ async function voteGrant() {
         let proposalCount = _.BN2Str(await Dao.proposalCount())
         await Dao.voteProposal(proposalCount, { from: acc1 })
         await Dao.voteProposal(proposalCount, { from: acc2 })
+        let grantDetails = await Dao.getGrantDetails(proposalCount)
         await sleep(3100)
         let balanceBefore = _.getBN(await base.balanceOf(acc0))
         await Dao.finaliseProposal(proposalCount)

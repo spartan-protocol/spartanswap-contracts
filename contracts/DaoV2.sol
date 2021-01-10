@@ -564,6 +564,11 @@ contract Dao {
         proposalDetails.proposedAddress = mapPID_address[proposalID];
         return proposalDetails;
     }
+    function getGrantDetails(uint proposalID) public view returns (GrantDetails memory grantDetails){
+        grantDetails.recipient = mapPID_grant[proposalID].recipient;
+        grantDetails.amount = mapPID_grant[proposalID].amount;
+        return grantDetails;
+    }
     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
         if(sha256(part1) == sha256(part2)){
             return true;
