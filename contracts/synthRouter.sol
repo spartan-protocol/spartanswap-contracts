@@ -10,9 +10,6 @@ contract synthRouter {
     address public BASE;
     address public DEPLOYER;
 
-    uint public addCollateralTx;
-    uint public removeCollateralTx;
-
     address[] public arraySynths;
 
     mapping(address => mapping(address => uint)) public totalCDPCollateral;
@@ -59,12 +56,11 @@ contract synthRouter {
         Synth newSynth; 
         newSynth = new Synth(BASE,token);  
         synth = address(newSynth);
-        uint actualInputCollateral = _handleTransferIn(lpToken, inputLPToken, synth);
+        uint actualInputCollateral = _handleLPTransfer(lpToken, inputLPToken, synth);
         totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].add(actualInputCollateral);
         mapToken_Synth[token] = synth;
         arraySynths.push(synth); 
         isSynth[synth] = true;
-        addCollateralTx += 1;
         uint synthMinted = Synth(synth).addCollateralForMember(lpToken, msg.sender);
         totalCDPDebt[synth]= totalCDPDebt[synth].add(synthMinted);
         emit NewSynth(token, synth, now);
@@ -80,9 +76,8 @@ contract synthRouter {
     function addCollateralForMember(uint inputLPToken, address lpToken, address member, address synth) public payable returns (uint synthMinted) {
         require(isSynth[synth] == true, "Synth must exist");
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
-        uint _actualInputCollateral = _handleTransferIn(lpToken, inputLPToken, synth);
+        uint _actualInputCollateral = _handleLPTransfer(lpToken, inputLPToken, synth);
         totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].add(_actualInputCollateral);
-        addCollateralTx += 1;
         synthMinted = Synth(synth).addCollateralForMember(lpToken, member);
         totalCDPDebt[synth]= totalCDPDebt[synth].add(synthMinted);
         return synthMinted;
@@ -96,23 +91,24 @@ contract synthRouter {
         require(isSynth[synth] == true, "Synth must exist");
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
-        uint _synths = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(address(this)).balanceOf(member));
-        _handleTransferIn(lpToken, _synths, synth);
+        uint _synths = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(synth).balanceOf(member));
+        iSYNTH(synth).transferTo(synth, _synths); 
         (lpCollateral, synthBurnt) = Synth(synth).removeCollateralForMember(lpToken, member);
         totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].sub(lpCollateral);
-        removeCollateralTx +=1;
         totalCDPDebt[synth]= totalCDPDebt[synth].sub(synthBurnt);
         return (lpCollateral, synthBurnt);
     }
 
     // handle input LP transfers 
-    function _handleTransferIn(address _lptoken, uint256 _amount, address _synth) internal returns(uint256 actual){
+    function _handleLPTransfer(address _lptoken, uint256 _amount, address _synth) internal returns(uint256 actual){
         if(_amount > 0) {
                 uint startBal = iBEP20(_lptoken).balanceOf(_synth); 
                 iPOOL(_lptoken).transferTo(_synth, _amount); 
                 actual = iBEP20(_lptoken).balanceOf(_synth).sub(startBal);
         }
     }
+
+    
     
     function getSynth(address token) public view returns(address synth){
         return mapToken_Synth[token];

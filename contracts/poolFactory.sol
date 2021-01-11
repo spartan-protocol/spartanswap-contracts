@@ -8,8 +8,6 @@ contract Pool is iBEP20 {
     address public BASE;
     address public TOKEN;
 
-    uint256 public one = 10**18;
-
     // ERC-20 Parameters
     string _name; string _symbol;
     uint256 public override decimals; uint256 public override totalSupply;
@@ -17,15 +15,12 @@ contract Pool is iBEP20 {
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 
-    uint public genesis;
-    uint public baseAmount;
-    uint public unitsAmount;
-    uint public tokenAmount;
-    uint public baseAmountPooled;
-    uint public tokenAmountPooled;
-    uint public fees;
-    uint public volume;
-    uint public txCount;
+    uint256 public genesis;
+    uint256 public baseAmount;
+    uint256 public unitsAmount;
+    uint256 public tokenAmount;
+    uint256 public fees;
+    uint256 public volume;
 
     event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
@@ -161,16 +156,6 @@ contract Pool is iBEP20 {
         return (outputBase, outputToken);
     }
 
-    function _getAddedUnitsAmount() internal view returns(uint256 _actual){
-         uint _unitsBalance = balanceOf(address(this)); 
-        if(_unitsBalance > unitsAmount){
-            _actual = _unitsBalance.sub(unitsAmount);
-        } else {
-            _actual = 0;
-        }
-        return _actual;
-    }
-
     function swap(address token) public returns (uint outputAmount, uint fee){
         (outputAmount, fee) = swapTo(token, msg.sender);
         return (outputAmount, fee);
@@ -211,6 +196,15 @@ contract Pool is iBEP20 {
         }
         return _actual;
     }
+    function _getAddedUnitsAmount() internal view returns(uint256 _actual){
+         uint _unitsBalance = balanceOf(address(this)); 
+        if(_unitsBalance > unitsAmount){
+            _actual = _unitsBalance.sub(unitsAmount);
+        } else {
+            _actual = 0;
+        }
+        return _actual;
+    }
 
     function _swapBaseToToken(uint256 _x) internal returns (uint256 _y, uint256 _fee){
         uint256 _X = baseAmount;
@@ -243,8 +237,6 @@ contract Pool is iBEP20 {
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount += _baseAmount;
         tokenAmount += _tokenAmount;
-        baseAmountPooled += _baseAmount;
-        tokenAmountPooled += _tokenAmount; 
     }
     function _setPoolAmounts(uint256 _baseAmount, uint256 _tokenAmount) internal  {
         baseAmount = _baseAmount;
@@ -253,10 +245,6 @@ contract Pool is iBEP20 {
 
     // Decrement internal balances
     function _decrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
-        uint _removedBase = iUTILS(_DAO().UTILS()).calcShare(_baseAmount, baseAmount, baseAmountPooled);
-        uint _removedToken = iUTILS(_DAO().UTILS()).calcShare(_tokenAmount, tokenAmount, tokenAmountPooled);
-        baseAmountPooled = baseAmountPooled.sub(_removedBase);
-        tokenAmountPooled = tokenAmountPooled.sub(_removedToken); 
         baseAmount = baseAmount.sub(_baseAmount);
         tokenAmount = tokenAmount.sub(_tokenAmount); 
     }
@@ -269,6 +257,5 @@ contract Pool is iBEP20 {
             volume += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithPool(address(this), _volume);
             fees += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithPool(address(this), _fee); 
         }
-        txCount += 1;
     }
 }

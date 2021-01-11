@@ -11,15 +11,14 @@ contract Dao {
     address public BASE;
 
     uint256 public totalWeight;
-    uint public one = 10**18;
-
-    uint public coolOffPeriod;
-    uint public secondsPerEra;
-    uint public erasToEarn;
-    uint public proposalCount;
-    uint public majorityFactor;
-    uint public daoClaim;
-    uint public daoFee;
+    uint256 public secondsPerEra;
+    uint32 public coolOffPeriod;
+    uint32 public proposalCount;
+    uint32 public majorityFactor;
+    uint128 public erasToEarn;
+    uint32 public daoClaim;
+    uint32 public daoFee;
+    
 
     struct GrantDetails{
         address recipient;
@@ -61,7 +60,7 @@ contract Dao {
     mapping(address => address[]) public mapMember_poolArray;
     mapping(address => bool) public isListed;
 
-    mapping(uint256 => uint256) public mapPID_param;
+    mapping(uint256 => uint32) public mapPID_param;
     mapping(uint256 => address) public mapPID_address;
     mapping(uint256 => GrantDetails) public mapPID_grant;
     mapping(uint256 => string) public mapPID_type;
@@ -107,7 +106,7 @@ contract Dao {
         _DAOVAULT = iDAOVAULT(_daoVault);
     }
 
-    function setGenesisFactors(uint _coolOff, uint _daysToEarn, uint _majorityFactor, uint _daoClaim, uint _daoFee) public onlyDAO {
+    function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) public onlyDAO {
         coolOffPeriod = _coolOff;
         erasToEarn = _daysToEarn;
         majorityFactor = _majorityFactor;
@@ -226,7 +225,7 @@ contract Dao {
         return proposalCount;
     }
     // Action with uint parameter
-    function newParamProposal(uint param, string memory typeStr) public returns(uint) {
+    function newParamProposal(uint32 param, string memory typeStr) public returns(uint) {
         payFee();
         proposalCount += 1;
         mapPID_param[proposalCount] = param;
@@ -258,7 +257,7 @@ contract Dao {
     }
     
     function payFee() internal returns(bool){
-        uint _amount = daoFee*one;
+        uint _amount = daoFee*10**18;
         require(iBASE(BASE).transferTo(address(_ROUTER), _amount), 'must get fee' );
         return true;
     } 
@@ -397,13 +396,13 @@ contract Dao {
         completeProposal(_proposalID);
     }
     function changeCooloff(uint _proposalID) internal {
-        uint _proposedParam = mapPID_param[_proposalID];
+        uint32 _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
         coolOffPeriod = _proposedParam;
         completeProposal(_proposalID);
     }
     function changeEras(uint _proposalID) internal {
-        uint _proposedParam = mapPID_param[_proposalID];
+        uint32 _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
         erasToEarn = _proposedParam;
         completeProposal(_proposalID);

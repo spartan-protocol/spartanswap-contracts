@@ -37,6 +37,7 @@ contract('DAO', function (accounts) {
     createSyntheticBNB()
     addCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one))
     addCollateralForSyntheticBNB(acc1, _.BN2Str(2*_.one))
+    removeCollateralForSyntheticBNB(acc0);
 
 })
 
@@ -206,10 +207,30 @@ async function addCollateralForSyntheticBNB(acc, lpToken) {
         let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
         //console.log(synthBNBBAL);
         let colACC0 = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
-        let debtACC0 = _.BN2Str(await synthBNB.debtAmount(acc));
+        console.log(colACC0);
+        let debtACC0 = _.BN2Str(await synthBNB.debtAmount(acc, poolTKN2.address));
         assert.equal(debtACC0,synthBNBBAL,'synth do not match' )
         assert.equal(colACC0, +lpToken + +colACC0B,'col do not match')
        
     })
 }
+async function removeCollateralForSyntheticBNB(acc) {
+    it("It should remove collateral for Synthetic BNB", async () => {
+        let syntheticBNB = synthBNB.address
+        let bp = 10000;
+        let lpToken = poolTKN2.address;
+        let colACC0B = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
+        await synthRouter.removeCollateral(lpToken, bp, syntheticBNB, {from:acc})
+        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
+        console.log(synthBNBBAL);
+        let colACC0 = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
+        console.log(colACC0)
+        let debtACC0 = _.BN2Str(await synthBNB.debtAmount(acc, poolTKN2.address));
+        assert.equal(debtACC0,synthBNBBAL,'synth do not match' )
+       
+        
+       
+    })
+}
+
 

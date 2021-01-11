@@ -16,15 +16,13 @@ contract Router {
     uint public totalPooled; 
     uint public totalVolume;
     uint public totalFees;
-    uint public removeLiquidityTx;
-    uint public addLiquidityTx;
-    uint public swapTx;
+
 
     uint public secondsPerEra;
     uint public nextEraTime;
     bool public emitting;
     address public incentiveAddress;
-    uint256 private BP = 10000;
+    uint32 private BP = 10000;
    
     uint public maxTrades;
     uint public eraLength;
@@ -76,9 +74,6 @@ contract Router {
         // uint tFees = Router(oldRouter).totalFees();
         // totalFees = tFees.sub(recFees);//remove recovery pool fees 
         normalAverageFee = Router(oldRouter).normalAverageFee();
-        removeLiquidityTx = Router(oldRouter).removeLiquidityTx();
-        addLiquidityTx = Router(oldRouter).addLiquidityTx();
-        swapTx = Router(oldRouter).swapTx();
     }
 
     function migrateTokenData(address payable oldRouter) public onlyDAO {
@@ -112,7 +107,6 @@ contract Router {
         arrayTokens.push(_token); 
         isPool[pool] = true;
         totalPooled += _actualInputBase;
-        addLiquidityTx += 1;
         Pool(pool).addLiquidityForMember(msg.sender);
         emit NewPool(token, pool, now);
         return pool;
@@ -131,10 +125,10 @@ contract Router {
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
         address pool = getPool(token);
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
-        _handleTransferIn(token, inputToken, pool);
+        uint256 _actualInputtoken =  _handleTransferIn(token, inputToken, pool);
         totalPooled += _actualInputBase;
-        addLiquidityTx += 1;
         units = Pool(pool).addLiquidityForMember(member);
+        emit AddLiquidity(member, _actualInputBase,_actualInputtoken, units );
         return units;
     }
 
@@ -153,7 +147,7 @@ contract Router {
         _handleTransferIn(_pool, units, _pool);
         (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
         totalPooled = totalPooled.sub(outputBase);
-        removeLiquidityTx += 1;
+        emit RemoveLiquidity(_member,outputBase, outputToken,units);
         return (outputBase, outputToken);
     }
 
@@ -170,7 +164,6 @@ contract Router {
         Pool(_pool).transferTo(_pool, units);
         (uint _outputBase, uint _outputToken) = Pool(_pool).removeLiquidity();
         totalPooled = totalPooled.sub(_outputBase);
-        removeLiquidityTx += 1;
         if(toBase){
             // sell to BASE
             iBEP20(token).transfer(_pool, _outputToken);
@@ -206,7 +199,6 @@ contract Router {
         totalPooled += _actualAmount;
         totalVolume += _actualAmount;
         totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, fee);
-        swapTx += 1;
         return (outputAmount, fee);
     }
     function sell(uint amount, address token) public payable returns (uint outputAmount, uint fee){
@@ -220,7 +212,6 @@ contract Router {
         totalPooled = totalPooled.sub(outputAmount);
         totalVolume += outputAmount;
         totalFees += fee;
-        swapTx += 1;
         return (outputAmount, fee);
     }
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
@@ -312,6 +303,7 @@ contract Router {
             uint numerator = _fees.mul(dailyAllocation);
             uint feeDividend = numerator.div(_fees.add(normalAverageFee));
             iBEP20(BASE).transfer(_pool,feeDividend);   
+            totalFees = totalFees.add(feeDividend);
             Pool(_pool).sync();
             }
         return true;

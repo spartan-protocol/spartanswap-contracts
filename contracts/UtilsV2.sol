@@ -59,7 +59,7 @@ contract Utils {
         address synthAddress;
         uint genesis;
         uint totalDebt;
-        uint totalCollateralValue; 
+        uint totalCollateral; 
     }
 
     
@@ -268,12 +268,11 @@ contract Utils {
         synthData.tokenAddress = token;
         synthData.genesis = iSYNTH(synth).genesis();
         synthData.totalDebt = iSYNTH(synth).totalDebt();
-        synthData.totalCollateralValue = calcCDPValue(token); 
-
+        synthData.totalCollateral = iSYNTH(synth).totalCollateral();
         return synthData;
     }
 
-     function calcCDPShare(uint units, uint amount, address synth) public view returns (uint share){
+     function calcDEBTShare(uint units, uint amount, address synth) public view returns (uint share){
         // share = amount * part/total
         // address synth = getSynth(token);
         uint totalSupply = iBEP20(synth).totalSupply();
@@ -286,6 +285,9 @@ contract Utils {
     function getCDPLPValue(uint synth,address lpToken ) public view returns (uint CDPLPValue){
 
     }
+
+
+
     function curatedPoolCount() public view returns(uint count){
         return iROUTER(_DAO().ROUTER()).getCuratedPoolsLength();
     }
@@ -428,6 +430,14 @@ contract Utils {
         uint tokenSwapped = calcSwapValueInBaseWithPool(pool, tokenAmount);
         share = baseAmount.add(tokenSwapped);
         return share;
+    }
+
+    function calcAsymmetricValue(address pool, uint amount) public view returns (uint baseValue){
+        uint baseAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
+        uint tokenAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
+        uint tokenSwapped = calcSwapValueInBaseWithPool(pool, tokenAmount);
+        baseValue = baseAmount.add(tokenSwapped);
+        return baseValue;
     }
      function calcCDPValue(address token) public view returns (uint cdpValue){
          address synth = getSynth(token);

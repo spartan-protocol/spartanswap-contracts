@@ -58,7 +58,7 @@ contract('DAO', function (accounts) {
 
     // harvest()
     // withdrawBNB(acc0)
-    //withdrawTKN1(acc1)
+    // withdrawTKN1(acc1)
 
 })
 
