@@ -29,7 +29,7 @@
     },
     {
       "inputs": [],
-      "name": "totalCollateralValue",
+      "name": "totalCollateral",
       "outputs": [
         {
           "internalType": "uint256",

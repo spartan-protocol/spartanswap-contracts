@@ -31,13 +31,14 @@ contract('DAO', function (accounts) {
     createPoolWBNB(20*_.one, 10*_.one)
     createPoolTKN1(10*_.one, 60*_.one)
     createPoolTKN2(40*_.one, 13*_.one)
+    addLiquidityBNB(acc1,_.BN2Str(20*_.one),  _.BN2Str(10*_.one));
     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
     createFailSynthTKN1()
     createSyntheticBNB()
-    addCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one))
-    addCollateralForSyntheticBNB(acc1, _.BN2Str(2*_.one))
-    removeCollateralForSyntheticBNB(acc0);
+    addCollateralTKN2ForSyntheticBNB(acc0, _.BN2Str(1*_.one))
+    addCollateralSPTBNBForSyntheticBNB(acc1, _.BN2Str(2*_.one))
+    // removeCollateralForSyntheticBNB(acc0);
 
 })
 
@@ -159,7 +160,7 @@ async function addLiquidityTKN2(acc, b, t) {
 async function curatePools() {
     it("Curate POOls", async () => {
         await router.addCuratedPool(wbnb.address);
-        //await router.addCuratedPool(token1.address);
+        await router.addCuratedPool(token1.address);
         await router.addCuratedPool(token2.address);
         // console.log(poolWBNB.address)
         // console.log(poolTKN1.address)
@@ -187,31 +188,52 @@ it('should fail to create synth', async () =>{
 async function createSyntheticBNB() {
     it("It should Create Synthetic BNB ", async () => {
         let inputLPToken = _.BN2Str(1*_.one)
-        var _synth =  await synthRouter.createSynth.call(poolTKN2.address,wbnb.address, inputLPToken);
-        await synthRouter.createSynth(poolTKN2.address,wbnb.address, inputLPToken);
+        let lpToken = poolTKN2.address;
+        var _synth =  await synthRouter.createSynth.call(lpToken,wbnb.address, inputLPToken);
+        await synthRouter.createSynth(lpToken,wbnb.address,inputLPToken);
         let synthData = await utils.getSynthData(wbnb.address);
         synthBNB = await SYNTH.at(_synth)
         let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
-        let colACC0 = _.BN2Str(await synthBNB.collateralAmount(acc0, poolTKN2.address));
-        assert.equal(colACC0, _.BN2Str(1*_.one),'col do not match')
-       //console.log(debtACC0);
-        assert.equal(synthData.totalDebt,synthBNBBAL,'synth matches')
+        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
+        let memberDeets = await synthBNB.getMemberDetails(acc0, lpToken);
+        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
+        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
+        assert.equal(synthBNBBAL,_.BN2Str(memberDeets.synthDebt))
+        assert.equal(synthTotalSupply,synthBNBBAL);
+        assert.equal(totalLPCollateral,_.BN2Str(memberDeets.lpTokenCollateral) );
+        assert.equal(totalLPDebt,_.BN2Str(memberDeets.synthDebt) );
+
+       
     })
 }
-async function addCollateralForSyntheticBNB(acc, lpToken) {
+async function addCollateralTKN2ForSyntheticBNB(acc, inputLP) {
     it("It should add collateral for Synthetic BNB", async () => {
-        let inputLPToken = lpToken
-        let colACC0B = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
-        await synthRouter.addCollateral(inputLPToken,poolTKN2.address, synthBNB.address,{from:acc});
-        let synthData = await utils.getSynthData(wbnb.address);
+        let inputLPToken = inputLP
+        let lpToken = poolTKN2.address;
+        let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
+        await synthRouter.addCollateral(inputLPToken,lpToken, synthBNB.address,{from:acc});
+        let memberDeetsA = await synthBNB.getMemberDetails(acc, lpToken);
         let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
-        //console.log(synthBNBBAL);
-        let colACC0 = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
-        console.log(colACC0);
-        let debtACC0 = _.BN2Str(await synthBNB.debtAmount(acc, poolTKN2.address));
-        assert.equal(debtACC0,synthBNBBAL,'synth do not match' )
-        assert.equal(colACC0, +lpToken + +colACC0B,'col do not match')
-       
+        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
+        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
+        assert.equal(synthBNBBAL,_.BN2Str(memberDeetsA.synthDebt))
+        assert.equal(totalLPCollateral,_.BN2Str(memberDeetsA.lpTokenCollateral) );
+        assert.equal(totalLPDebt,_.BN2Str(memberDeetsA.synthDebt) );
+    })
+}
+async function addCollateralSPTBNBForSyntheticBNB(acc, inputLP) {
+    it("It should add collateral for Synthetic BNB", async () => {
+        let inputLPToken = inputLP
+        let lpToken = poolWBNB.address;
+        let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
+        await synthRouter.addCollateral(inputLPToken,lpToken, synthBNB.address,{from:acc});
+        let memberDeetsA = await synthBNB.getMemberDetails(acc, lpToken);
+        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
+        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
+        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
+        assert.equal(synthBNBBAL,_.BN2Str(memberDeetsA.synthDebt))
+        assert.equal(totalLPCollateral,_.BN2Str(memberDeetsA.lpTokenCollateral) );
+        assert.equal(totalLPDebt,_.BN2Str(memberDeetsA.synthDebt) );
     })
 }
 async function removeCollateralForSyntheticBNB(acc) {
@@ -219,12 +241,12 @@ async function removeCollateralForSyntheticBNB(acc) {
         let syntheticBNB = synthBNB.address
         let bp = 10000;
         let lpToken = poolTKN2.address;
-        let colACC0B = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
+        let memberDeetsB = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
         await synthRouter.removeCollateral(lpToken, bp, syntheticBNB, {from:acc})
         let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
         console.log(synthBNBBAL);
-        let colACC0 = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
-        console.log(colACC0)
+        let memberDeets = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
+        console.log(memberDeets)
         let debtACC0 = _.BN2Str(await synthBNB.debtAmount(acc, poolTKN2.address));
         assert.equal(debtACC0,synthBNBBAL,'synth do not match' )
        

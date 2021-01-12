@@ -112,8 +112,8 @@ interface iUTILS {
     function getDepth(address pool) external view returns (uint depth);
     function calcAsymmetricValue(address token, uint units) external view returns(uint amount);
     function calcSwapValueInTokenWithPool(address pool, uint amount) external view returns (uint _output);
-    function calcCollateralShare(uint units, uint amount, address synth) external view returns (uint unitSynths);
-    
+    function calcCollateralShare(uint units, uint amount, address, address synth) external view returns (uint unitSynths);
+    function calcSwapValueInToken(address token, uint units) external view returns (uint amount);
 }
 interface iDAO {
     function ROUTER() external view returns(address);

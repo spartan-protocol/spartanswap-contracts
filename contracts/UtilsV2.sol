@@ -274,7 +274,6 @@ contract Utils {
 
      function calcCollateralShare(uint units, uint totalSupply, address lpToken, address synth) public view returns (uint share){
         // share = amount * part/total
-        // address synth = getSynth(token);
         uint amount = iBEP20(lpToken).balanceOf(synth);
         return(amount.mul(units)).div(totalSupply);
     }
