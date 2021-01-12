@@ -112,7 +112,7 @@ interface iUTILS {
     function getDepth(address pool) external view returns (uint depth);
     function calcAsymmetricValue(address token, uint units) external view returns(uint amount);
     function calcSwapValueInTokenWithPool(address pool, uint amount) external view returns (uint _output);
-    function calcDEBTShare(uint units, uint amount, address synth) external view returns (uint unitSynths);
+    function calcCollateralShare(uint units, uint amount, address synth) external view returns (uint unitSynths);
     
 }
 interface iDAO {
@@ -141,7 +141,8 @@ interface iPOOL {
     function getTokenAmtPooled(address) external view returns(uint);
 }
 interface iBOND {
-function mintBond() external view returns (bool);
+function mintBond() external returns (bool);
+function burnBond() external returns (bool);
 function listBondAsset(address) external view returns (bool);
 function delistBondAsset(address) external view returns (bool);
 function changeBondingPeriod(uint) external view returns (bool);

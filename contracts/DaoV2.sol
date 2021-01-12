@@ -325,8 +325,8 @@ contract Dao {
             changeEras(proposalID);
         } else if (isEqual(_type, 'GRANT')){
             grantFunds(proposalID);
-        } else if (isEqual(_type, 'MINT')){
-            _mintBond(proposalID);
+        } else if (isEqual(_type, 'GET_SPARTA')){
+            _increaseSpartaAllocation(proposalID);
         } else if (isEqual(_type, 'LIST_BOND')){
             _listBondAsset(proposalID);
         } else if (isEqual(_type, 'DELIST_BOND')){
@@ -412,8 +412,9 @@ contract Dao {
         _ROUTER.grantFunds(_grant.amount, _grant.recipient);
         completeProposal(_proposalID);
     }
-    function _mintBond(uint _proposalID) internal {
+    function _increaseSpartaAllocation(uint _proposalID) internal {
         _BOND.mintBond(); 
+        _BOND.burnBond();
         completeProposal(_proposalID);
     }
     function _changeArrayFeeSize(uint _proposalID) internal {

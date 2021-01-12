@@ -272,10 +272,10 @@ contract Utils {
         return synthData;
     }
 
-     function calcDEBTShare(uint units, uint amount, address synth) public view returns (uint share){
+     function calcCollateralShare(uint units, uint totalSupply, address lpToken, address synth) public view returns (uint share){
         // share = amount * part/total
         // address synth = getSynth(token);
-        uint totalSupply = iBEP20(synth).totalSupply();
+        uint amount = iBEP20(lpToken).balanceOf(synth);
         return(amount.mul(units)).div(totalSupply);
     }
 
@@ -374,6 +374,7 @@ contract Utils {
         uint totalSupply = iBEP20(pool).totalSupply();
         return(amount.mul(units)).div(totalSupply);
     }
+
     function calcShare(uint part, uint total, uint amount) public pure returns (uint share){
         // share = amount * part/total
         return(amount.mul(part)).div(total);
@@ -441,14 +442,16 @@ contract Utils {
     }
      function calcCDPValue(address token) public view returns (uint cdpValue){
          address synth = getSynth(token);
+         uint cdpBase = 0;
          address [] memory getCuratedPools =  allCuratedPools();
          for(uint i=0;i<getCuratedPools.length;i++){
              uint lpTokenBalance = iBEP20(getCuratedPools[i]).balanceOf(synth);
              uint baseAmount = calcShare(lpTokenBalance, iBEP20(getCuratedPools[i]).totalSupply(), iPOOL(getCuratedPools[i]).baseAmount());
              uint tokenAmount = calcShare(lpTokenBalance, iBEP20(getCuratedPools[i]).totalSupply(), iPOOL(getCuratedPools[i]).tokenAmount());
              uint tokenSwapped = calcSwapValueInBaseWithPool(getCuratedPools[i], tokenAmount);
-             cdpValue = cdpValue.add(baseAmount.add(tokenSwapped));
+             cdpBase = cdpBase.add(baseAmount.add(tokenSwapped));
          }
+         cdpValue = cdpBase;
          return cdpValue;
      }
 

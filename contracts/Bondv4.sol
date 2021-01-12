@@ -175,18 +175,19 @@ contract Bond is iBEP20 {
          iBEP20(BASE).transfer(bond, baseBal);
          return true;
     }
-    function approveRouter() public onlyDAO returns (bool){
+    function approveRouter() public returns (bool){
        uint256 baseSupply = iBEP20(BASE).balanceOf(address(this));
         iBEP20(BASE).approve(_DAO().ROUTER(), baseSupply);
         return true;
     }
 
      //================================ BOND Feature ==================================//
-    function burnBond() public returns (bool success){
+    function burnBond() public onlyDAO returns (bool success){
         require(totalSupply > 0, 'burnt already');
         _approve(address(this), BASE, totalSupply);
         iBASE(BASE).claim(address(this), totalSupply);
         totalSupply = totalSupply.sub(totalSupply);
+        approveRouter();
         return true;
     }
     function deposit(address asset, uint256 amount) public payable returns (bool success) {
