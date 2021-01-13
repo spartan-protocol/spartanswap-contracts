@@ -1,14 +1,12 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./IContracts.sol";
-
+import "@nomiclabs/buidler/console.sol";
 contract Pool is iBEP20 {
     using SafeMath for uint256;
 
     address public BASE;
     address public TOKEN;
-
-    uint256 public one = 10**18;
 
     // ERC-20 Parameters
     string _name; string _symbol;
@@ -17,14 +15,12 @@ contract Pool is iBEP20 {
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 
-    uint public genesis;
-    uint public baseAmount;
-    uint public tokenAmount;
-    uint public baseAmountPooled;
-    uint public tokenAmountPooled;
-    uint public fees;
-    uint public volume;
-    uint public txCount;
+    uint256 public genesis;
+    uint256 public baseAmount;
+    uint256 public unitsAmount;
+    uint256 public tokenAmount;
+    uint256 public fees;
+    uint256 public volume;
 
     event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
@@ -37,8 +33,8 @@ contract Pool is iBEP20 {
     constructor (address _base, address _token) public payable {
         BASE = _base;
         TOKEN = _token;
-        string memory poolName = "SpartanPoolV1-";
-        string memory poolSymbol = "SPT1-";
+        string memory poolName = "SpartanPoolV2-";
+        string memory poolSymbol = "SPT2-";
         _name = string(abi.encodePacked(poolName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
         decimals = 18;
@@ -111,10 +107,6 @@ contract Pool is iBEP20 {
         emit Transfer(account, address(0), amount);
     }
 
-
-    //==================================================================================//
-    // Asset Movement Functions
-
     // TransferTo function
     function transferTo(address recipient, uint256 amount) public returns (bool) {
                 _transfer(tx.origin, recipient, amount);
@@ -125,7 +117,9 @@ contract Pool is iBEP20 {
     function sync() public {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
+        unitsAmount = balanceOf(address(this));
     }
+   
 
     // Add liquidity for self
     function addLiquidity() public returns(uint liquidityUnits){
@@ -139,7 +133,7 @@ contract Pool is iBEP20 {
         uint256 _actualInputToken = _getAddedTokenAmount();
         liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply);
         _incrementPoolBalances(_actualInputBase, _actualInputToken);
-        _mint(member, liquidityUnits);
+        _mint(member, liquidityUnits); 
         emit AddLiquidity(member, _actualInputBase, _actualInputToken, liquidityUnits);
         return liquidityUnits;
     }
@@ -151,14 +145,14 @@ contract Pool is iBEP20 {
 
     // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
-        uint units = balanceOf(member);
-        outputBase = iUTILS(_DAO().UTILS()).calcLiquidityShare(units, BASE, address(this), member);
-        outputToken = iUTILS(_DAO().UTILS()).calcLiquidityShare(units, TOKEN, address(this), member);
+        uint256 _actualInputUnits = _getAddedUnitsAmount();
+        outputBase = iUTILS(_DAO().UTILS()).calcLiquidityShare(_actualInputUnits, BASE, address(this), member);
+        outputToken = iUTILS(_DAO().UTILS()).calcLiquidityShare(_actualInputUnits, TOKEN, address(this), member);
         _decrementPoolBalances(outputBase, outputToken);
-        _burn(address(this), units);
+        _burn(address(this), _actualInputUnits);
         iBEP20(BASE).transfer(member, outputBase);
         iBEP20(TOKEN).transfer(member, outputToken);
-        emit RemoveLiquidity(member, outputBase, outputToken, units);
+        emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
 
@@ -202,6 +196,15 @@ contract Pool is iBEP20 {
         }
         return _actual;
     }
+    function _getAddedUnitsAmount() internal view returns(uint256 _actual){
+         uint _unitsBalance = balanceOf(address(this)); 
+        if(_unitsBalance > unitsAmount){
+            _actual = _unitsBalance.sub(unitsAmount);
+        } else {
+            _actual = 0;
+        }
+        return _actual;
+    }
 
     function _swapBaseToToken(uint256 _x) internal returns (uint256 _y, uint256 _fee){
         uint256 _X = baseAmount;
@@ -222,6 +225,9 @@ contract Pool is iBEP20 {
         _addPoolMetrics(_y+_fee, _fee, true);
         return (_y, _fee);
     }
+    function swapSynth()public payable returns(uint256 outputAmount, uint256 fee){
+
+    }
 
     //==================================================================================//
     // Data Model
@@ -231,8 +237,6 @@ contract Pool is iBEP20 {
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount += _baseAmount;
         tokenAmount += _tokenAmount;
-        baseAmountPooled += _baseAmount;
-        tokenAmountPooled += _tokenAmount; 
     }
     function _setPoolAmounts(uint256 _baseAmount, uint256 _tokenAmount) internal  {
         baseAmount = _baseAmount;
@@ -241,10 +245,6 @@ contract Pool is iBEP20 {
 
     // Decrement internal balances
     function _decrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
-        uint _removedBase = iUTILS(_DAO().UTILS()).calcShare(_baseAmount, baseAmount, baseAmountPooled);
-        uint _removedToken = iUTILS(_DAO().UTILS()).calcShare(_tokenAmount, tokenAmount, tokenAmountPooled);
-        baseAmountPooled = baseAmountPooled.sub(_removedBase);
-        tokenAmountPooled = tokenAmountPooled.sub(_removedToken); 
         baseAmount = baseAmount.sub(_baseAmount);
         tokenAmount = tokenAmount.sub(_tokenAmount); 
     }
@@ -255,8 +255,7 @@ contract Pool is iBEP20 {
             fees += _fee;
         } else {
             volume += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithPool(address(this), _volume);
-            fees += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithPool(address(this), _fee);
+            fees += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithPool(address(this), _fee); 
         }
-        txCount += 1;
     }
 }
