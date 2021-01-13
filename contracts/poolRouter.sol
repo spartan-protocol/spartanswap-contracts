@@ -302,6 +302,7 @@ contract Router {
             uint dailyAllocation = reserve.div(eraLength).div(maxTrades); // get max dividend for reserve/30/100 
             uint numerator = _fees.mul(dailyAllocation);
             uint feeDividend = numerator.div(_fees.add(normalAverageFee));
+            totalFees = totalFees.add(feeDividend);
             iBEP20(BASE).transfer(_pool,feeDividend);   
             totalFees = totalFees.add(feeDividend);
             Pool(_pool).sync();
