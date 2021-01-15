@@ -127,13 +127,35 @@ contract Router {
         return units;
     }
 
+    function addLiquidityAsym(uint inputToken, bool fromBase, address token, address SR, address member) public payable returns (uint units) {
+        address _pool = getPool(token);
+        if(fromBase){
+            uint halfInput = inputToken.mul(5000).div(10000);
+            iBASE(BASE).transferTo(_pool, halfInput);
+            (uint _tokenBought, uint _fee) = Pool(_pool).swapTo(token, SR);
+            totalFees += _fee;
+        } else {
+           uint halfInput = inputToken.mul(5000).div(10000);
+            iBEP20(token).transferFrom(member,_pool, halfInput);
+            (uint _baseBought, uint _fee) = Pool(_pool).swapTo(BASE, SR);
+            totalFees += _fee;
+        }
+       
+        //if toBase true > swap 5000bp into token else swap 5000 into base
+        //stake two assets into pool
+        //send lp tokens to synth Contract - addCollateralForMember
+        //get synths from synth contract - forward to user
+        return units;
+
+    }
+
+
     // Remove % for self
     function removeLiquidity(uint basisPoints, address token) public returns (uint outputBase, uint outputToken) {
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
         uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
         return removeLiquidityExact(_units, token);
     }
-
     // Remove an exact qty of units
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
         address _pool = getPool(token);
@@ -146,7 +168,6 @@ contract Router {
         return (outputBase, outputToken);
     }
 
-       // Remove % Asymmetrically
     function removeLiquidityAndSwap(uint basisPoints, bool toBase, address token) public returns (uint outputAmount){
         uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
         outputAmount = removeLiquidityExactAndSwap(_units, toBase, token);
@@ -252,9 +273,6 @@ contract Router {
         }
         emit Swapped(fromToken, toToken, inputAmount, _transferAmount, outputAmount, fee, member);
         return (outputAmount, fee);
-    }
-    function swapSynth()public payable returns(uint256 outputAmount, uint256 fee){
-
     }
 
     //==================================================================================//

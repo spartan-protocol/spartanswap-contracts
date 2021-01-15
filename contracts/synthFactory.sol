@@ -2,6 +2,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./IContracts.sol";
+
 import "@nomiclabs/buidler/console.sol";
 contract Synth is iBEP20 {
     using SafeMath for uint256;
@@ -128,6 +129,8 @@ contract Synth is iBEP20 {
     function swapSynth()public payable returns(uint256 outputAmount, uint256 fee){
 
     }
+
+
     function sync() public {
         synthsAmount = balanceOf(address(this));
     }
@@ -193,15 +196,6 @@ contract Synth is iBEP20 {
         return _actual;
     }
 
-
-    // Decrement CDP 
-    function _decrementCDP(uint _collateral) internal  {
-         
-    }
-    // Increment CDP 
-    function _incrementCDP(uint _collateral) internal  {
-         totalCollateral = totalCollateral.add(_collateral); // map total collateral in BASE
-    }
     function _incrementCDPCollateral(uint _inputLP, uint _synthDebt, address lpToken) internal  {
          totalLPDebt[lpToken] = totalLPDebt[lpToken].add(_synthDebt);
          totalLPCollateral[lpToken] = totalLPCollateral[lpToken].add(_inputLP);
@@ -219,7 +213,7 @@ contract Synth is iBEP20 {
        mapMember_Details[_member].lpTokenCollateral[_lpToken] = mapMember_Details[_member].lpTokenCollateral[_lpToken].sub(_lpReturnedCollateral);
        mapMember_Details[_member].synthDebt[_lpToken] = mapMember_Details[_member].synthDebt[_lpToken].sub(_synthPaid);
     }
-
+//=========================================HELPERS===============================================
     function getMemberDetails(address member, address lpToken) public view returns (MemberDetails memory memberDetails){
         memberDetails.isMember = mapMember_Details[member].isMember;
         memberDetails.lpTokenCollateral = mapMember_Details[member].lpTokenCollateral[lpToken];

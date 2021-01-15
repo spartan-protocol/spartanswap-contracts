@@ -137,7 +137,7 @@ contract Pool is iBEP20 {
         emit AddLiquidity(member, _actualInputBase, _actualInputToken, liquidityUnits);
         return liquidityUnits;
     }
-
+    
     // Remove Liquidity
     function removeLiquidity() public returns (uint outputBase, uint outputToken) {
         return removeLiquidityForMember(msg.sender);
@@ -224,9 +224,6 @@ contract Pool is iBEP20 {
         _setPoolAmounts(_Y.sub(_y), _X.add(_x));
         _addPoolMetrics(_y+_fee, _fee, true);
         return (_y, _fee);
-    }
-    function swapSynth()public payable returns(uint256 outputAmount, uint256 fee){
-
     }
 
     //==================================================================================//

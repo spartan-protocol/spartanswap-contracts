@@ -99,6 +99,13 @@ contract synthRouter {
         return (lpCollateral, synthBurnt);
     }
 
+    function swapSynth(uint inputLPToken, address token, address synth) public returns (uint amount){
+        require(isSynth[synth] == true, "Synth must exist");
+        //call assymAdd into pool token
+
+
+    }
+
     // handle input LP transfers 
     function _handleLPTransfer(address _lptoken, uint256 _amount, address _synth) internal returns(uint256 actual){
         if(_amount > 0) {
@@ -108,17 +115,12 @@ contract synthRouter {
         }
     }
 
-    
+
     
     function getSynth(address token) public view returns(address synth){
         return mapToken_Synth[token];
     }
 
-
- 
-
-    //==================================================================================//
-    // Swapping Functions
     
     //=================================onlyDAO=====================================//
 

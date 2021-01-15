@@ -25,7 +25,7 @@ var poolWBNB; var poolTKN1; var synthTNK2; var synthBNB;
 var acc0; var acc1; var acc2; var acc3;
 
 
-contract('Synths', function (accounts) {
+contract('SynthsSwap', function (accounts) {
     constructor(accounts)
     wrapBNB()
     createPoolWBNB(20*_.one, 10*_.one)
@@ -34,12 +34,7 @@ contract('Synths', function (accounts) {
     addLiquidityBNB(acc1,_.BN2Str(20*_.one),  _.BN2Str(10*_.one));
     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
-    createFailSynthTKN1()
-    createSyntheticBNB()
-    addCollateralSPTTKN2ForSyntheticBNB(acc0, _.BN2Str(1*_.one))
-    addCollateralSPTBNBForSyntheticBNB(acc1, _.BN2Str(2*_.one))
-    removeSPTBNBCollateralForSyntheticBNB(acc0);
-    removeSPTTNKCollateralForSyntheticBNB(acc0);
+
 
 })
 
@@ -173,101 +168,3 @@ async function curatePools() {
        
     })
 }
-async function createFailSynthTKN1() {
-it('should fail to create synth', async () =>{
-    let inputLPToken = _.BN2Str(1*_.one)
-    try {
-        await synthRouter.createSynth(poolTKN1.address,token1.address, inputLPToken);
-        assert.fail("Expected fail");
-    }
-    catch (err) {
-        assert.include(err.message, "revert", "Must be Curated");
-    }
-
-})
-}
-async function createSyntheticBNB() {
-    it("It should Create Synthetic BNB ", async () => {
-        let inputLPToken = _.BN2Str(1*_.one)
-        let lpToken = poolTKN2.address;
-        var _synth =  await synthRouter.createSynth.call(lpToken,wbnb.address, inputLPToken);
-        await synthRouter.createSynth(lpToken,wbnb.address,inputLPToken);
-        let synthData = await utils.getSynthData(wbnb.address);
-        synthBNB = await SYNTH.at(_synth)
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
-        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
-        let memberDeets = await synthBNB.getMemberDetails(acc0, lpToken);
-        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
-        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
-        assert.equal(synthBNBBAL,_.BN2Str(memberDeets.synthDebt))
-        assert.equal(synthTotalSupply,synthBNBBAL);
-        assert.equal(totalLPCollateral,_.BN2Str(memberDeets.lpTokenCollateral) );
-        assert.equal(totalLPDebt,_.BN2Str(memberDeets.synthDebt) );
-
-       
-    })
-}
-async function addCollateralSPTTKN2ForSyntheticBNB(acc, inputLP) {
-    it("It should add SPT1-TKN2 collateral for Synthetic BNB", async () => {
-        let inputLPToken = inputLP
-        let lpToken = poolTKN2.address;
-        let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
-        await synthRouter.addCollateral(inputLPToken,lpToken, synthBNB.address,{from:acc});
-        let memberDeetsA = await synthBNB.getMemberDetails(acc, lpToken);
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
-        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
-        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
-        assert.equal(synthBNBBAL,_.BN2Str(memberDeetsA.synthDebt))
-        assert.equal(totalLPCollateral,_.BN2Str(memberDeetsA.lpTokenCollateral) );
-        assert.equal(totalLPDebt,_.BN2Str(memberDeetsA.synthDebt) );
-    })
-}
-async function addCollateralSPTBNBForSyntheticBNB(acc, inputLP) {
-    it("It should add SPT1-WBNB collateral for Synthetic BNB", async () => {
-        let inputLPToken = inputLP
-        let lpToken = poolWBNB.address;
-        let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
-        await synthRouter.addCollateral(inputLPToken,lpToken, synthBNB.address,{from:acc});
-        let memberDeetsA = await synthBNB.getMemberDetails(acc, lpToken);
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
-        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
-        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
-        assert.equal(synthBNBBAL,_.BN2Str(memberDeetsA.synthDebt))
-        assert.equal(totalLPCollateral,_.BN2Str(memberDeetsA.lpTokenCollateral) );
-        assert.equal(totalLPDebt,_.BN2Str(memberDeetsA.synthDebt) );
-    })
-}
-async function removeSPTTNKCollateralForSyntheticBNB(acc) {
-    it("It should remove SPT1-TKN2 collateral for Synthetic BNB", async () => {
-        let syntheticBNB = synthBNB.address
-        let bp = 10000;
-        let lpToken = poolWBNB.address;
-        let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
-        await synthRouter.removeCollateral(lpToken, bp, syntheticBNB, {from:acc})
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
-        let memberDeets = await synthBNB.getMemberDetails(acc, lpToken);
-        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
-        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
-        assert.equal(synthBNBBAL,_.BN2Str(memberDeets.synthDebt))
-        assert.equal(totalLPCollateral - 2*10**18,_.BN2Str(memberDeets.lpTokenCollateral) );
-        assert.equal(totalLPDebt- 1589462962099683997,_.BN2Str(memberDeets.synthDebt) );
-    })
-}
-async function removeSPTBNBCollateralForSyntheticBNB(acc) {
-    it("It should remove SPT1-BNB collateral for Synthetic BNB", async () => {
-        let syntheticBNB = synthBNB.address
-        let bp = 10000;
-        let lpToken = poolTKN2.address;
-        let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
-        await synthRouter.removeCollateral(lpToken, bp, syntheticBNB, {from:acc})
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
-        let memberDeets = await synthBNB.getMemberDetails(acc, lpToken);
-        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
-        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
-        assert.equal(synthBNBBAL,_.BN2Str(memberDeets.synthDebt))
-        assert.equal(totalLPCollateral,_.BN2Str(memberDeets.lpTokenCollateral) );
-        assert.equal(totalLPDebt,_.BN2Str(memberDeets.synthDebt) );
-    })
-}
-
-
