@@ -161,8 +161,8 @@ contract Synth is iBEP20 {
     // Remove Collateral for a member
     function removeCollateralForMember(address lpToken, address member) public returns (uint outputCollateral, uint debtBurnt) {
         uint256 _actualInputSynths = _getAddedSynthsAmount();
-        require(mapMember_Details[member].synthDebt[lpToken] >= _actualInputSynths, 'INPUT ERR');
-        outputCollateral = iUTILS(_DAO().UTILS()).calcCollateralShare(_actualInputSynths, totalLPDebt[lpToken], address(lpToken), address(this)); 
+        require(mapMember_Details[member].synthDebt[lpToken] >= _actualInputSynths, 'INPUTERR');
+        outputCollateral = iUTILS(_DAO().UTILS()).calcDebtShare(_actualInputSynths, totalLPDebt[lpToken], address(lpToken), address(this)); 
         uint baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(lpToken, outputCollateral);//get asym share in sparta
         totalCollateral = totalCollateral.sub(baseValueCollateral); // map total collateral in BASE
         totalDebt = totalDebt.sub(_actualInputSynths); //map synthetic debt

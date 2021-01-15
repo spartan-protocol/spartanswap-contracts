@@ -57,7 +57,7 @@ contract synthRouter {
         newSynth = new Synth(BASE,token);  
         synth = address(newSynth);
         uint actualInputCollateral = _handleLPTransfer(lpToken, inputLPToken, synth);
-        totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].add(actualInputCollateral);
+        totalCDPCollateral[lpToken][synth] = totalCDPCollateral[lpToken][synth].add(actualInputCollateral);
         mapToken_Synth[token] = synth;
         arraySynths.push(synth); 
         isSynth[synth] = true;
@@ -77,7 +77,7 @@ contract synthRouter {
         require(isSynth[synth] == true, "Synth must exist");
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
         uint _actualInputCollateral = _handleLPTransfer(lpToken, inputLPToken, synth);
-        totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].add(_actualInputCollateral);
+        totalCDPCollateral[lpToken][synth] = totalCDPCollateral[lpToken][synth].add(_actualInputCollateral);
         synthMinted = Synth(synth).addCollateralForMember(lpToken, member);
         totalCDPDebt[synth]= totalCDPDebt[synth].add(synthMinted);
         return synthMinted;
@@ -92,9 +92,9 @@ contract synthRouter {
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
         uint _synths = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(synth).balanceOf(member));
-        iSYNTH(synth).transferTo(synth, _synths); 
+        Synth(synth).transferTo(synth, _synths); 
         (lpCollateral, synthBurnt) = Synth(synth).removeCollateralForMember(lpToken, member);
-        totalCDPCollateral[synth][lpToken] = totalCDPCollateral[lpToken][synth].sub(lpCollateral);
+        totalCDPCollateral[lpToken][synth] = totalCDPCollateral[lpToken][synth].sub(lpCollateral);
         totalCDPDebt[synth]= totalCDPDebt[synth].sub(synthBurnt);
         return (lpCollateral, synthBurnt);
     }

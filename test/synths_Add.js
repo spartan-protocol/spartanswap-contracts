@@ -25,7 +25,7 @@ var poolWBNB; var poolTKN1; var synthTNK2; var synthBNB;
 var acc0; var acc1; var acc2; var acc3;
 
 
-contract('DAO', function (accounts) {
+contract('Synths', function (accounts) {
     constructor(accounts)
     wrapBNB()
     createPoolWBNB(20*_.one, 10*_.one)
@@ -36,9 +36,10 @@ contract('DAO', function (accounts) {
     curatePools()
     createFailSynthTKN1()
     createSyntheticBNB()
-    addCollateralTKN2ForSyntheticBNB(acc0, _.BN2Str(1*_.one))
+    addCollateralSPTTKN2ForSyntheticBNB(acc0, _.BN2Str(1*_.one))
     addCollateralSPTBNBForSyntheticBNB(acc1, _.BN2Str(2*_.one))
-    // removeCollateralForSyntheticBNB(acc0);
+    removeSPTBNBCollateralForSyntheticBNB(acc0);
+    removeSPTTNKCollateralForSyntheticBNB(acc0);
 
 })
 
@@ -206,8 +207,8 @@ async function createSyntheticBNB() {
        
     })
 }
-async function addCollateralTKN2ForSyntheticBNB(acc, inputLP) {
-    it("It should add collateral for Synthetic BNB", async () => {
+async function addCollateralSPTTKN2ForSyntheticBNB(acc, inputLP) {
+    it("It should add SPT1-TKN2 collateral for Synthetic BNB", async () => {
         let inputLPToken = inputLP
         let lpToken = poolTKN2.address;
         let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
@@ -222,7 +223,7 @@ async function addCollateralTKN2ForSyntheticBNB(acc, inputLP) {
     })
 }
 async function addCollateralSPTBNBForSyntheticBNB(acc, inputLP) {
-    it("It should add collateral for Synthetic BNB", async () => {
+    it("It should add SPT1-WBNB collateral for Synthetic BNB", async () => {
         let inputLPToken = inputLP
         let lpToken = poolWBNB.address;
         let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
@@ -236,22 +237,37 @@ async function addCollateralSPTBNBForSyntheticBNB(acc, inputLP) {
         assert.equal(totalLPDebt,_.BN2Str(memberDeetsA.synthDebt) );
     })
 }
-async function removeCollateralForSyntheticBNB(acc) {
-    it("It should remove collateral for Synthetic BNB", async () => {
+async function removeSPTTNKCollateralForSyntheticBNB(acc) {
+    it("It should remove SPT1-TKN2 collateral for Synthetic BNB", async () => {
+        let syntheticBNB = synthBNB.address
+        let bp = 10000;
+        let lpToken = poolWBNB.address;
+        let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
+        await synthRouter.removeCollateral(lpToken, bp, syntheticBNB, {from:acc})
+        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
+        let memberDeets = await synthBNB.getMemberDetails(acc, lpToken);
+        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
+        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
+        assert.equal(synthBNBBAL,_.BN2Str(memberDeets.synthDebt))
+        assert.equal(totalLPCollateral - 2*10**18,_.BN2Str(memberDeets.lpTokenCollateral) );
+        assert.equal(totalLPDebt- 1589462962099683997,_.BN2Str(memberDeets.synthDebt) );
+    })
+}
+
+async function removeSPTBNBCollateralForSyntheticBNB(acc) {
+    it("It should remove SPT1-BNB collateral for Synthetic BNB", async () => {
         let syntheticBNB = synthBNB.address
         let bp = 10000;
         let lpToken = poolTKN2.address;
-        let memberDeetsB = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
+        let memberDeetsB = await synthBNB.getMemberDetails(acc, lpToken);
         await synthRouter.removeCollateral(lpToken, bp, syntheticBNB, {from:acc})
         let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc));
-        console.log(synthBNBBAL);
-        let memberDeets = _.BN2Str(await synthBNB.collateralAmount(acc, poolTKN2.address));
-        console.log(memberDeets)
-        let debtACC0 = _.BN2Str(await synthBNB.debtAmount(acc, poolTKN2.address));
-        assert.equal(debtACC0,synthBNBBAL,'synth do not match' )
-       
-        
-       
+        let memberDeets = await synthBNB.getMemberDetails(acc, lpToken);
+        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
+        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
+        assert.equal(synthBNBBAL,_.BN2Str(memberDeets.synthDebt))
+        assert.equal(totalLPCollateral,_.BN2Str(memberDeets.lpTokenCollateral) );
+        assert.equal(totalLPDebt,_.BN2Str(memberDeets.synthDebt) );
     })
 }
 

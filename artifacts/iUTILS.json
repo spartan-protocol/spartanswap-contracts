@@ -48,7 +48,7 @@
           "type": "address"
         }
       ],
-      "name": "calcCollateralShare",
+      "name": "calcDebtShare",
       "outputs": [
         {
           "internalType": "uint256",

@@ -17,7 +17,6 @@ contract Router {
     uint public totalVolume;
     uint public totalFees;
 
-
     uint public secondsPerEra;
     uint public nextEraTime;
     bool public emitting;
@@ -45,7 +44,7 @@ contract Router {
 
     // Only DAO can execute
     modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "Must be DAO");
+        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "!DAO");
         _;
     }
 
@@ -69,10 +68,6 @@ contract Router {
     function migrateRouterData(address payable oldRouter) public onlyDAO {
         totalPooled = Router(oldRouter).totalPooled();
         totalVolume = Router(oldRouter).totalVolume();
-        // address pool = Router(oldRouter).getPool(0xdD1755e883a39C0D4643733E02003044a3B2D7A7);
-        // uint recFees = iPOOL(pool).fees();
-        // uint tFees = Router(oldRouter).totalFees();
-        // totalFees = tFees.sub(recFees);//remove recovery pool fees 
         normalAverageFee = Router(oldRouter).normalAverageFee();
     }
 
@@ -94,9 +89,9 @@ contract Router {
 
     function createPool(uint256 inputBase, uint256 inputToken, address token) public payable returns(address pool){
         require(getPool(token) == address(0), "CreateErr");
-        require(token != BASE, "Must not be Base");
-        require((inputToken > 0 && inputBase > 0), "Must get tokens for both");
-        require(iBEP20(token).decimals() == 18, 'Only 18 decimals buddy');
+        require(token != BASE, "Base");
+        require((inputToken > 0 && inputBase > 0), "GetTokens");
+        require(iBEP20(token).decimals() == 18, '!18D');
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         newPool = new Pool(BASE, _token); 
@@ -142,7 +137,7 @@ contract Router {
     // Remove an exact qty of units
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
         address _pool = getPool(token);
-        require(isPool[_pool] = true, 'must be a pool');
+        require(isPool[_pool] = true, '!pool');
         address _member = msg.sender;
         _handleTransferIn(_pool, units, _pool);
         (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
@@ -227,7 +222,6 @@ contract Router {
             addTradeFee(fee);//add fee to feeArray
             addDividend(toToken, fee); //add dividend
            }
-           
         } else if(toToken == BASE) {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
             _pool = getPool(fromToken);
@@ -247,8 +241,7 @@ contract Router {
             }
             if(toToken == address(0)){_toToken = WBNB;} // Handle BNB
             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
-            _pool = getPool(_toToken);
-            if(isCuratedPool[_pool]){
+            if(isCuratedPool[_poolTo]){
             addTradeFee(_feez);//add fee to feeArray
             addDividend(_toToken,  _feez);
             }
@@ -304,7 +297,6 @@ contract Router {
             uint feeDividend = numerator.div(_fees.add(normalAverageFee));
             totalFees = totalFees.add(feeDividend);
             iBEP20(BASE).transfer(_pool,feeDividend);   
-            totalFees = totalFees.add(feeDividend);
             Pool(_pool).sync();
             }
         return true;
@@ -351,7 +343,7 @@ contract Router {
     }
     function challengLowestCuratedPool(address token) public onlyDAO returns (bool) {
          address _pool = getPool(token);
-         require(isPool[_pool] == true, 'not pool');
+         require(isPool[_pool] == true, '!pool');
          sortDescCuratedPoolsByDepth();
          uint challenger = iUTILS(_DAO().UTILS()).getDepth(_pool);
          uint lowestCurated = iUTILS(_DAO().UTILS()).getDepth(curatedPools[curatedPools.length - 1]);
@@ -380,23 +372,23 @@ contract Router {
         return true;
     }
     function grantFunds(uint amount, address grantee) public onlyDAO returns (bool){
-        require(amount < iBEP20(BASE).balanceOf(address(this)), "Not more than balance");
+        require(amount < iBEP20(BASE).balanceOf(address(this)), "!Balance");
         require(grantee != address(0), 'GrantERR');
         iBEP20(BASE).transfer(grantee, amount);
         return true;
     }
     function addCuratedPool(address token) public onlyDAO returns (bool){
-        require(token != BASE, 'not base');
+        require(token != BASE, 'Base');
         address _pool = getPool(token);
-        require(isPool[_pool] == true, 'not a pool :/');
+        require(isPool[_pool] == true, '!Pool');
         isCuratedPool[_pool] = true;
         curatedPools.push(_pool);
         return true;
     }
     function removeCuratedPool(address token) public onlyDAO returns (bool){
-        require(token != BASE, 'not base');
+        require(token != BASE, 'Base');
         address _pool = getPool(token);
-        require(isCuratedPool[_pool] == true, 'no need ');
+        require(isCuratedPool[_pool] == true, '!Pool');
         isCuratedPool[_pool] = false;
         return true;
     }
