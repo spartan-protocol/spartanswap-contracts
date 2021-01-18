@@ -126,27 +126,28 @@ contract Router {
         emit AddLiquidity(member, _actualInputBase,_actualInputtoken, units );
         return units;
     }
+    function addLiquidityAsym(uint inputToken, bool fromBase, address token)public payable returns (uint units) {
+       return addLiquidityAsymForMember(inputToken,fromBase,token, msg.sender);
+    }
 
-    function addLiquidityAsym(uint inputToken, bool fromBase, address token, address SR, address member) public payable returns (uint units) {
-        address _pool = getPool(token);
+    function addLiquidityAsymForMember(uint inputToken, bool fromBase, address token, address member) public payable returns (uint units) {
+        address pool = getPool(token); //get Pool adding liq to
         if(fromBase){
             uint halfInput = inputToken.mul(5000).div(10000);
-            iBASE(BASE).transferTo(_pool, halfInput);
-            (uint _tokenBought, uint _fee) = Pool(_pool).swapTo(token, SR);
+            iBEP20(BASE).transferFrom(member,pool,halfInput); // get base from synthRouter > send to pool
+            (uint _tokenBought, uint _fee) = Pool(pool).swap(token); //swap base to token
+            iBEP20(token).transfer(member, _tokenBought); //send token back to synthRouter
             totalFees += _fee;
+            units = addLiquidityForMember(halfInput, _tokenBought, token, member); //add liquidity member is synthRouter
         } else {
            uint halfInput = inputToken.mul(5000).div(10000);
-            iBEP20(token).transferFrom(member,_pool, halfInput);
-            (uint _baseBought, uint _fee) = Pool(_pool).swapTo(BASE, SR);
+            iBEP20(token).transferFrom(member,pool,halfInput);
+            (uint _baseBought, uint _fee) = Pool(pool).swap(BASE);
+            iBEP20(token).transfer(member, _baseBought);
             totalFees += _fee;
+            units = addLiquidityForMember(_baseBought, halfInput, token, member); //add liquidity member is synthRouter
         }
-       
-        //if toBase true > swap 5000bp into token else swap 5000 into base
-        //stake two assets into pool
-        //send lp tokens to synth Contract - addCollateralForMember
-        //get synths from synth contract - forward to user
         return units;
-
     }
 
 
@@ -175,22 +176,21 @@ contract Router {
     }
     // Remove Exact Asymmetrically
     function removeLiquidityExactAndSwap(uint units, bool toBase, address token) public returns (uint outputAmount){
-        address _pool = getPool(token);
-        require(units < iBEP20(_pool).totalSupply(), "InputErr");
-        Pool(_pool).transferTo(_pool, units);
-        (uint _outputBase, uint _outputToken) = Pool(_pool).removeLiquidity();
-        totalPooled = totalPooled.sub(_outputBase);
+        address pool = getPool(token);
+        require(units < iBEP20(pool).totalSupply(), "InputErr");
+        Pool(pool).transferFrom(msg.sender, pool, units);
+        (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidity();
         if(toBase){
             // sell to BASE
-            iBEP20(token).transfer(_pool, _outputToken);
-            (uint _baseBought, uint _fee) = Pool(_pool).swap(token);
+            iBEP20(token).transfer(pool, _outputToken);
+            (uint _baseBought, uint _fee) = Pool(pool).swap(token);
             totalFees += _fee;
             outputAmount = _baseBought.add(_outputBase);
             _handleTransferOut(BASE, outputAmount, msg.sender);
         } else {
             // buy to TOKEN
-            iBEP20(BASE).transfer(_pool, _outputToken);
-            (uint _tokenBought, uint _fee) = Pool(_pool).swap(BASE);
+            iBEP20(BASE).transfer(pool, _outputToken);
+            (uint _tokenBought, uint _fee) = Pool(pool).swap(BASE);
             totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, _fee);
             outputAmount = _tokenBought.add(_outputToken);
             _handleTransferOut(token, outputAmount, msg.sender);

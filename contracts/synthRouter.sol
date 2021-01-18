@@ -18,6 +18,10 @@ contract synthRouter {
     mapping(address => bool) public isSynth;
 
     event NewSynth(address token, address pool, uint genesis);
+    event SwapSynth(address token, uint inputToken, address synth, uint outPutSynth);
+    event AddCollateral(uint inputLPToken, address lpToken, address synth, uint synthMinted);
+    event RemoveCollateral(uint outPutLPToken, address lpToken, address synth, uint synthDeleted);
+
     // Only DAO can execute
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "Must be DAO");
@@ -56,7 +60,7 @@ contract synthRouter {
         Synth newSynth; 
         newSynth = new Synth(BASE,token);  
         synth = address(newSynth);
-        uint actualInputCollateral = _handleLPTransfer(lpToken, inputLPToken, synth);
+        uint actualInputCollateral = _handleLPTransfer(lpToken, inputLPToken, msg.sender, synth);
         totalCDPCollateral[lpToken][synth] = totalCDPCollateral[lpToken][synth].add(actualInputCollateral);
         mapToken_Synth[token] = synth;
         arraySynths.push(synth); 
@@ -76,41 +80,70 @@ contract synthRouter {
     function addCollateralForMember(uint inputLPToken, address lpToken, address member, address synth) public payable returns (uint synthMinted) {
         require(isSynth[synth] == true, "Synth must exist");
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
-        uint _actualInputCollateral = _handleLPTransfer(lpToken, inputLPToken, synth);
+        uint _actualInputCollateral = _handleLPTransfer(lpToken, inputLPToken, member, synth);
         totalCDPCollateral[lpToken][synth] = totalCDPCollateral[lpToken][synth].add(_actualInputCollateral);
         synthMinted = Synth(synth).addCollateralForMember(lpToken, member);
         totalCDPDebt[synth]= totalCDPDebt[synth].add(synthMinted);
+        emit AddCollateral(inputLPToken, lpToken, synth, synthMinted);
         return synthMinted;
     }
 
-    function removeCollateral(address lpToken, uint basisPoints,address synth) public returns (uint lpCollateral, uint synthBurnt){
-        (lpCollateral, synthBurnt) = removeCollateralForMember(lpToken, basisPoints, synth, msg.sender);
-        return (lpCollateral, synthBurnt);
+    function removeCollateral(address lpToken, uint basisPoints,address synth) public returns (uint lpCollateral){
+        (lpCollateral) = removeCollateralForMember(lpToken, basisPoints, synth, msg.sender);
+        return (lpCollateral);
     }
-    function removeCollateralForMember(address lpToken, uint basisPoints, address synth, address member) public returns (uint lpCollateral, uint synthBurnt){
+    function removeCollateralForMember(address lpToken, uint basisPoints, address synth, address member) public returns (uint lpCollateral){
         require(isSynth[synth] == true, "Synth must exist");
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
-        require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
+        require((basisPoints > 0 && basisPoints <= 10000), "InputErr"); uint synthBurnt;
         uint _synths = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(synth).balanceOf(member));
         Synth(synth).transferTo(synth, _synths); 
         (lpCollateral, synthBurnt) = Synth(synth).removeCollateralForMember(lpToken, member);
         totalCDPCollateral[lpToken][synth] = totalCDPCollateral[lpToken][synth].sub(lpCollateral);
         totalCDPDebt[synth]= totalCDPDebt[synth].sub(synthBurnt);
-        return (lpCollateral, synthBurnt);
+        emit RemoveCollateral(lpCollateral, lpToken, synth, synthBurnt);
+        return (lpCollateral);
     }
 
-    function swapSynth(uint inputLPToken, address token, address synth) public returns (uint amount){
+    function swapLayerOneToSynth(uint inputToken, address token, address synth) internal returns (uint amount){
         require(isSynth[synth] == true, "Synth must exist");
-        //call assymAdd into pool token
+        require(iBEP20(token).transferFrom(msg.sender,address(this), inputToken), "INPUTERR");
+        iBEP20(token).approve(_DAO().ROUTER(),inputToken);
+        uint lpUnits; address pool;
+        if(token != BASE){
+           lpUnits = iROUTER(_DAO().ROUTER()).addLiquidityAsym(inputToken, false, token);
+           pool = iUTILS(_DAO().UTILS()).getPool(token);
+        }else{
+            address _token = Synth(synth).LayerONE();
+           lpUnits = iROUTER(_DAO().ROUTER()).addLiquidityAsym(inputToken, true, _token);
+           pool = iUTILS(_DAO().UTILS()).getPool(_token);
+        }
+         amount = addCollateralForMember(lpUnits,pool,address(this),synth);
+         emit SwapSynth(token, inputToken, synth, amount);
+         return amount;
+    }
 
-
+    function swapSynthToLayerOne(uint inputSynth, address synth, address token) internal returns (uint amount){
+          require(isSynth[synth] == true, "Synth must exist");
+          address pool = iUTILS(_DAO().UTILS()).getPool(token);//what happens if token = base
+          uint basisPoints = iUTILS(_DAO().UTILS()).calcBasisPoints(inputSynth, synth, address(this));
+          uint lpCollateral = removeCollateralForMember(pool, basisPoints, synth, address(this));
+          if(token!=BASE){
+           amount= iROUTER(_DAO().ROUTER()).removeLiquidityExactAndSwap(lpCollateral, false, token); 
+        }else{
+           amount = iROUTER(_DAO().ROUTER()).removeLiquidityExactAndSwap(lpCollateral, true, token);
+        //    address _token = Synth(synth).LayerONE();
+        //    pool = iUTILS(_DAO().UTILS()).getPool(_token);
+        }
+          emit SwapSynth(synth, inputSynth, token, amount);
+          return amount;
     }
 
     // handle input LP transfers 
-    function _handleLPTransfer(address _lptoken, uint256 _amount, address _synth) internal returns(uint256 actual){
+    function _handleLPTransfer(address _lptoken, uint256 _amount, address _synth, address member) internal returns(uint256 actual){
         if(_amount > 0) {
                 uint startBal = iBEP20(_lptoken).balanceOf(_synth); 
-                iPOOL(_lptoken).transferTo(_synth, _amount); 
+                iBEP20(_lptoken).transferFrom(member, _synth, _amount); 
                 actual = iBEP20(_lptoken).balanceOf(_synth).sub(startBal);
         }
     }
