@@ -91,7 +91,7 @@ interface iROUTER {
     function changeArrayFeeSize(uint) external view returns(bool);
     function changeMaxTrades(uint) external view returns(bool);
     function addLiquidityAsym(uint, bool, address) external returns(uint);
-    function removeLiquidityExactAndSwap(uint, bool, address ) external returns(uint);
+    function removeLiquidityAsym(uint, bool, address) external returns(uint);
 }
 interface iWBNB {
     function withdraw(uint256) external;
@@ -99,7 +99,7 @@ interface iWBNB {
 interface iUTILS {
     function calcPart(uint bp, uint total) external pure returns (uint part);
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
-    function calcLiquidityShare(uint units, address token, address pool, address member) external pure returns (uint share);
+    function calcLiquidityShare(uint units, address token, address pool) external pure returns (uint share);
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
     function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units);

@@ -29,6 +29,35 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "calcBasisPoints",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "units",
           "type": "uint256"
         },
@@ -74,11 +103,6 @@
         {
           "internalType": "address",
           "name": "pool",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "member",
           "type": "address"
         }
       ],

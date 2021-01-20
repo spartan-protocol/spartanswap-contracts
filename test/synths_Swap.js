@@ -34,7 +34,9 @@ contract('SynthsSwap', function (accounts) {
     addLiquidityBNB(acc1,_.BN2Str(20*_.one),  _.BN2Str(10*_.one));
     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
-
+    createSyntheticBNB()
+    swapLayer1ToSynth(_.BN2Str(20*_.one))
+    swapSynthToLayer1(_.BN2Str(1*_.one))
 
 })
 
@@ -50,15 +52,13 @@ function constructor(accounts) {
         router = await ROUTER.new(base.address, wbnb.address) //deploy router
         daoVault = await DAOVAULT.new(base.address);
         await base.changeDAO(Dao.address)     
-        synthRouter = await synthRouter.new(base.address) //deploy synthRouter
+        synthRouter = await synthRouter.new(base.address, wbnb.address) //deploy synthRouter
         bond = await BOND.new(base.address)     //deploy new bond
         token1 = await TOKEN.new()             //deploy token
         token2 = await TOKEN2.new() 
 
         await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address);
-    
 
-        let supply = await token1.totalSupply()
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
@@ -66,6 +66,9 @@ function constructor(accounts) {
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
         await token1.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
         await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -73,6 +76,9 @@ function constructor(accounts) {
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
         await token2.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
         await token2.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -80,6 +86,9 @@ function constructor(accounts) {
         await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
     });
 }
@@ -108,6 +117,9 @@ async function createPoolWBNB(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
         await base.approve(poolWBNB.address, supply, { from: acc1 })
+        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function createPoolTKN1(SPT, token) {
@@ -124,6 +136,10 @@ async function createPoolTKN1(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolTKN1.address, supply, { from: acc0 })
         await base.approve(poolTKN1.address, supply, { from: acc1 })
+        await poolTKN1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await poolTKN1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await poolTKN1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+
     })
 }
 async function createPoolTKN2(SPT, token) {
@@ -139,6 +155,9 @@ async function createPoolTKN2(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolTKN2.address, supply, { from: acc0 })
         await base.approve(poolTKN2.address, supply, { from: acc1 })
+        await poolTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await poolTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await poolTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function addLiquidityBNB(acc, b, t) {
@@ -158,13 +177,59 @@ async function curatePools() {
         await router.addCuratedPool(wbnb.address);
         await router.addCuratedPool(token1.address);
         await router.addCuratedPool(token2.address);
-        // console.log(poolWBNB.address)
-        // console.log(poolTKN1.address)
-        // console.log(poolTKN2.address)
-        await router.challengLowestCuratedPool(token2.address);
-        let curatedP = await router.curatedPools(0);
-        // console.log(curatedP)
-        // //assert.equal()
        
     })
 }
+async function createSyntheticBNB() {
+    it("It should Create Synthetic BNB ", async () => {
+        let inputLPToken = _.BN2Str(1*_.one)
+        let lpToken = poolTKN2.address;
+        var _synth =  await synthRouter.createSynth.call(lpToken,wbnb.address, inputLPToken);
+        await synthRouter.createSynth(lpToken,wbnb.address,inputLPToken);
+        let synthData = await utils.getSynthData(wbnb.address);
+        synthBNB = await SYNTH.at(_synth)
+        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
+        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
+        let memberDeets = await synthBNB.getMemberDetails(acc0, lpToken);
+        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
+        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
+        assert.equal(synthBNBBAL,_.BN2Str(memberDeets.synthDebt))
+        assert.equal(synthTotalSupply,synthBNBBAL);
+        assert.equal(totalLPCollateral,_.BN2Str(memberDeets.lpTokenCollateral) );
+        assert.equal(totalLPDebt,_.BN2Str(memberDeets.synthDebt));
+        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+    })
+}
+async function swapLayer1ToSynth(input) {
+    it("Swap Layer one to Synthetic BNB", async () => {
+        let inputToken =  input;
+        let fromToken = base.address;
+        let toToken = synthBNB.address;
+        await synthRouter.approveSynthRouter();
+        let memberDeetsB = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
+        await synthRouter.swapSynth(inputToken, fromToken,toToken);
+        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
+        //console.log(synthBNBBAL/_.one)
+        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
+        let memberDeets = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
+        assert.equal(synthTotalSupply,synthBNBBAL);
+    })
+}
+async function swapSynthToLayer1(input) {
+    it("Swap Synthetic BNB To Layer One", async () => {
+        let inputToken =  input;
+        let fromToken = synthBNB.address;
+        let toToken = base.address;
+        let memberDeetsB = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
+        let synthTotalSupplyB = _.BN2Str(await synthBNB.totalSupply()); 
+        await synthRouter.swapSynth(inputToken, fromToken,toToken);
+        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply()); 
+
+    })
+}
+
+
+
+

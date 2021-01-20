@@ -296,7 +296,6 @@ contract BaseMinted is iBEP20 {
         if(mapAsset_claimed[asset].add(amount) > mapAsset_allocation[asset]){
             _claim = mapAsset_allocation[asset].sub(mapAsset_claimed[asset]);
         }
-
         if(asset == address(0)){
             require(amount == msg.value, "Must get BNB");
             payable(burnAddress).call{value:_claim}("");

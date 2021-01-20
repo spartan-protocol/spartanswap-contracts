@@ -55,7 +55,7 @@ function constructor(accounts) {
         router = await ROUTER.new(base.address, wbnb.address) //deploy router
         daoVault = await DAOVAULT.new(base.address);
         await base.changeDAO(Dao.address)     
-        synthRouter = await synthRouter.new(base.address) //deploy synthRouter
+        synthRouter = await synthRouter.new(base.address, wbnb.address) //deploy synthRouter
         bond = await BOND.new(base.address)     //deploy new bond
         token1 = await TOKEN.new()             //deploy token
         token2 = await TOKEN2.new() 
@@ -113,6 +113,9 @@ async function createPoolWBNB(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
         await base.approve(poolWBNB.address, supply, { from: acc1 })
+        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function createPoolTKN1(SPT, token) {
@@ -129,6 +132,9 @@ async function createPoolTKN1(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolTKN1.address, supply, { from: acc0 })
         await base.approve(poolTKN1.address, supply, { from: acc1 })
+        await poolTKN1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await poolTKN1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await poolTKN1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function createPoolTKN2(SPT, token) {
@@ -144,6 +150,9 @@ async function createPoolTKN2(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolTKN2.address, supply, { from: acc0 })
         await base.approve(poolTKN2.address, supply, { from: acc1 })
+        await poolTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await poolTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await poolTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function addLiquidityBNB(acc, b, t) {
@@ -190,7 +199,7 @@ async function createSyntheticBNB() {
     it("It should Create Synthetic BNB ", async () => {
         let inputLPToken = _.BN2Str(1*_.one)
         let lpToken = poolTKN2.address;
-        var _synth =  await synthRouter.createSynth.call(lpToken,wbnb.address, inputLPToken);
+        var _synth =  await synthRouter.createSynth.call(lpToken, wbnb.address, inputLPToken);
         await synthRouter.createSynth(lpToken,wbnb.address,inputLPToken);
         let synthData = await utils.getSynthData(wbnb.address);
         synthBNB = await SYNTH.at(_synth)
