@@ -28,15 +28,15 @@ var acc0; var acc1; var acc2; var acc3;
 contract('SynthsSwap', function (accounts) {
     constructor(accounts)
     wrapBNB()
-    createPoolWBNB(20*_.one, 10*_.one)
+    createPoolWBNB(100*_.one, 10*_.one)
     createPoolTKN1(10*_.one, 60*_.one)
     createPoolTKN2(40*_.one, 13*_.one)
     addLiquidityBNB(acc1,_.BN2Str(20*_.one),  _.BN2Str(10*_.one));
     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
     createSyntheticBNB()
-    swapLayer1ToSynth(_.BN2Str(20*_.one))
-    swapSynthToLayer1(_.BN2Str(1*_.one))
+    swapLayer1ToSynth(_.BN2Str(10*_.one))
+    swapSynthToLayer1(_.BN2Str(1.284*_.one))
 
 })
 
@@ -209,9 +209,15 @@ async function swapLayer1ToSynth(input) {
         let toToken = synthBNB.address;
         await synthRouter.approveSynthRouter();
         let memberDeetsB = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
+        let synthBNBBALB = _.BN2Str(await synthBNB.balanceOf(acc0));
+        console.log("Start Synths",synthBNBBALB/_.one)
+        let baseBAl = _.BN2Str(await base.balanceOf(acc0));
+        console.log("base Bal",baseBAl/_.one)
         await synthRouter.swapSynth(inputToken, fromToken,toToken);
+        let baseBAlA = _.BN2Str(await base.balanceOf(acc0));
+        console.log("new base Bal",baseBAlA/_.one)
         let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
-        //console.log(synthBNBBAL/_.one)
+        console.log("got Synths",synthBNBBAL/_.one)
         let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
         let memberDeets = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
         assert.equal(synthTotalSupply,synthBNBBAL);
@@ -225,6 +231,10 @@ async function swapSynthToLayer1(input) {
         let memberDeetsB = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
         let synthTotalSupplyB = _.BN2Str(await synthBNB.totalSupply()); 
         await synthRouter.swapSynth(inputToken, fromToken,toToken);
+        let baseBAlA = _.BN2Str(await base.balanceOf(acc0));
+        console.log("synths to base",baseBAlA/_.one)
+        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
+        console.log("Synths bal",synthBNBBAL/_.one)
         let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply()); 
 
     })
