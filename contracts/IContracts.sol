@@ -117,7 +117,7 @@ interface iUTILS {
     function calcDebtShare(uint units, uint amount, address, address synth) external view returns (uint unitSynths);
     function calcSwapValueInToken(address token, uint units) external view returns (uint amount);
     function calcBasisPoints(uint, address, address) external view returns(uint amount);
-    function calcSymmetricValue(address, uint) external view returns(uint units);
+    function calcSynthsValue(address, uint) external view returns(uint units);
 }
 interface iDAO {
     function ROUTER() external view returns(address);

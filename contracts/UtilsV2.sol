@@ -445,13 +445,13 @@ contract Utils {
         baseValue = baseAmount.add(tokenSwapped);
         return baseValue;
     }
-    function calcSymmetricValue(address pool, uint amount) public view returns (uint units){
-        uint amountInput = amount.div(2);
-        uint tokenSwapped = calcSwapValueInBaseWithPool(pool, amountInput);
+    function calcSynthsValue(address pool, uint amount) public view returns (uint units){
+        uint amountHalved = amount.div(2);
+        uint baseSwapped = calcSwapValueInBaseWithPool(pool, amountHalved);
         uint baseAmount = iPOOL(pool).baseAmount();
         uint tokenAmount = iPOOL(pool).tokenAmount();
         uint totalSupply = iBEP20(pool).totalSupply();
-         units = calcLiquidityUnits(tokenSwapped, baseAmount, amountInput, tokenAmount, totalSupply);
+         units = calcLiquidityUnits(baseSwapped, baseAmount, amountHalved, tokenAmount, totalSupply);
         return units;
     }
      function calcCDPValue(address token) public view returns (uint cdpValue){

@@ -100,11 +100,7 @@ contract synthRouter {
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr"); uint synthBurnt;
         uint _synths = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(synth).balanceOf(member));
-        if(member!= address(this)){
-          Synth(synth).transferTo(synth, _synths); 
-        }else{
-          iBEP20(synth).transfer(synth, _synths); 
-        }
+        if(member!= address(this)){Synth(synth).transferTo(synth, _synths); }else{iBEP20(synth).transfer(synth, _synths); }
         (lpCollateral, synthBurnt) = Synth(synth).removeCollateralForMember(lpToken, member);
         totalCDPCollateral[lpToken][synth] = totalCDPCollateral[lpToken][synth].sub(lpCollateral);
         totalCDPDebt[synth]= totalCDPDebt[synth].sub(synthBurnt);
@@ -212,7 +208,7 @@ contract synthRouter {
     }
 
     function globalSettleMent() public returns(bool){
-        
+
     }
 
     
