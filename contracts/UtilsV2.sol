@@ -46,8 +46,6 @@ contract Utils {
         uint genesis;
         uint baseAmount;
         uint tokenAmount;
-        uint baseAmountPooled;
-        uint tokenAmountPooled;
         uint fees;
         uint volume;
         uint txCount;
@@ -59,11 +57,8 @@ contract Utils {
         address synthAddress;
         uint genesis;
         uint totalDebt;
-        uint totalCollateral; 
     }
 
-    
-    
     // Only Deployer can execute
     modifier onlyDeployer() {
         require(msg.sender == DEPLOYER, "DeployerErr");
@@ -154,8 +149,6 @@ contract Utils {
         poolData.genesis = iPOOL(pool).genesis();
         poolData.baseAmount = iPOOL(pool).baseAmount();
         poolData.tokenAmount = iPOOL(pool).tokenAmount();
-        poolData.baseAmountPooled = iPOOL(pool).baseAmountPooled();
-        poolData.tokenAmountPooled = iPOOL(pool).tokenAmountPooled();
         poolData.fees = iPOOL(pool).fees();
         poolData.volume = iPOOL(pool).volume();
         poolData.txCount = iPOOL(pool).txCount();
@@ -229,22 +222,22 @@ contract Utils {
         }
     }
 
-    function getPoolROI(address token) public view returns (uint roi){
-        address pool = getPool(token);
-        uint _baseStart = iPOOL(pool).baseAmountPooled().mul(2);
-        uint _baseEnd = iPOOL(pool).baseAmount().mul(2);
-        uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
-        uint _tokenStart = iPOOL(pool).tokenAmountPooled().mul(2);
-        uint _tokenEnd = iPOOL(pool).tokenAmount().mul(2);
-        uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
-        return (_ROIS + _ROIA).div(2);
-   }
+//     function getPoolROI(address token) public view returns (uint roi){
+//         address pool = getPool(token);
+//         uint _baseStart = iPOOL(pool).baseAmountPooled().mul(2);
+//         uint _baseEnd = iPOOL(pool).baseAmount().mul(2);
+//         uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
+//         uint _tokenStart = iPOOL(pool).tokenAmountPooled().mul(2);
+//         uint _tokenEnd = iPOOL(pool).tokenAmount().mul(2);
+//         uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
+//         return (_ROIS + _ROIA).div(2);
+//    }
 
-   function getPoolAPY(address token) public view returns (uint apy){
-        uint avgROI = getPoolROI(token);
-        uint poolAge = getPoolAge(token);
-        return (avgROI.mul(365)).div(poolAge);
-   }
+//    function getPoolAPY(address token) public view returns (uint apy){
+//         uint avgROI = getPoolROI(token);
+//         uint poolAge = getPoolAge(token);
+//         return (avgROI.mul(365)).div(poolAge);
+//    }
 
     function isMember(address token, address member) public view returns(bool){
         address pool = getPool(token);
@@ -267,8 +260,7 @@ contract Utils {
         synthData.synthAddress = synth;
         synthData.tokenAddress = token;
         synthData.genesis = iSYNTH(synth).genesis();
-        synthData.totalDebt = iSYNTH(synth).totalDebt();
-        synthData.totalCollateral = iSYNTH(synth).totalCollateral();
+        synthData.totalDebt = iSYNTH(synth).totalMinted(); 
         return synthData;
     }
 
@@ -278,12 +270,6 @@ contract Utils {
         return(amount.mul(units)).div(totalSupply);
     }
 
-    function getCDPValue(uint synth) public view returns (uint CDPLPValue){
-        
-    }
-    function getCDPLPValue(uint synth,address lpToken ) public view returns (uint CDPLPValue){
-
-    }
 
 
 
@@ -451,11 +437,10 @@ contract Utils {
         uint baseAmount = iPOOL(pool).baseAmount();
         uint tokenAmount = iPOOL(pool).tokenAmount();
         uint totalSupply = iBEP20(pool).totalSupply();
-         units = calcLiquidityUnits(baseSwapped, baseAmount, amountHalved, tokenAmount, totalSupply);
+        units = calcLiquidityUnits(baseSwapped, baseAmount, amountHalved, tokenAmount, totalSupply);
         return units;
     }
-     function calcCDPValue(address token) public view returns (uint cdpValue){
-         address synth = getSynth(token);
+     function calcCDPValue(address synth) public view returns (uint cdpValue){
          uint cdpBase = 0;
          address [] memory getCuratedPools =  allCuratedPools();
          for(uint i=0;i<getCuratedPools.length;i++){
@@ -468,5 +453,6 @@ contract Utils {
          cdpValue = cdpBase;
          return cdpValue;
      }
+     
 
 }

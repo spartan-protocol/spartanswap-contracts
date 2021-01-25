@@ -83,6 +83,7 @@ contract Pool is iBEP20 {
         require(_balances[_to] + _value >= _balances[_to], 'BalanceErr');
         _balances[_from] -= _value;
         _balances[_to] += _value;
+        _checkLiquidate();
         emit Transfer(_from, _to, _value);
     }
 
@@ -142,6 +143,13 @@ contract Pool is iBEP20 {
     function removeLiquidity() public returns (uint outputBase, uint outputToken) {
         return removeLiquidityForMember(msg.sender);
     } 
+
+    function _checkLiquidate() internal {
+        address synth = iSYNTHROUTER(_DAO().SYNTHROUTER()).getSynth(address(this));
+        if(!(synth == address(0))){
+            iSYNTH(synth)._liquidate(address(this));
+        }
+    }
 
     // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {

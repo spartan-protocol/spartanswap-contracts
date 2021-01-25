@@ -190,13 +190,10 @@ async function createSyntheticBNB() {
         synthBNB = await SYNTH.at(_synth)
         let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
         let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
-        let memberDeets = await synthBNB.getMemberDetails(acc0, lpToken);
-        let totalLPCollateral = _.BN2Str(await synthBNB.totalLPCollateral(lpToken));
+        let MemberDebt = await synthBNB.getMemberDetails(acc0, lpToken);
         let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
-        assert.equal(synthBNBBAL,_.BN2Str(memberDeets.synthDebt))
+        assert.equal(synthBNBBAL,_.BN2Str(MemberDebt))
         assert.equal(synthTotalSupply,synthBNBBAL);
-        assert.equal(totalLPCollateral,_.BN2Str(memberDeets.lpTokenCollateral) );
-        assert.equal(totalLPDebt,_.BN2Str(memberDeets.synthDebt));
         await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
         await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })

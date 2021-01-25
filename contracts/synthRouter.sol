@@ -207,9 +207,12 @@ contract synthRouter {
         return mapToken_Synth[token];
     }
 
-    function globalSettleMent() public returns(bool){
+    function globalSettlement() public returns(bool){
+       //require less than 10 members
+       //1:1 remainder lptokens
 
     }
+    
 
     
     //=================================onlyDAO=====================================//

@@ -164,7 +164,7 @@ contract Bond is iBEP20 {
         return true;
     }
     function mintBond() public onlyDAO returns (bool) {
-        require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "sparta already available");
+        require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "!SPARTA");
         require(totalSupply <= 0, 'mintBONDerr');
         uint256 amount =1*10**18;
         _mint(address(this), amount);
@@ -183,7 +183,7 @@ contract Bond is iBEP20 {
 
      //================================ BOND Feature ==================================//
     function burnBond() public onlyDAO returns (bool success){
-        require(totalSupply > 0, 'burnt already');
+        require(totalSupply > 0, '!Available');
         _approve(address(this), BASE, totalSupply);
         iBASE(BASE).claim(address(this), totalSupply);
         totalSupply = totalSupply.sub(totalSupply);
@@ -191,13 +191,16 @@ contract Bond is iBEP20 {
         return true;
     }
     function deposit(address asset, uint256 amount) public payable returns (bool success) {
-        require(amount > 0, 'must get asset');
-        require(isListed[asset], 'must be listed');
+        require(amount > 0, '!asset');
+        require(isListed[asset], '!listed');
         uint256 liquidityUnits = handleTransferIn(asset, amount);
         if(!mapAddress_listedAssets[asset].isMember[msg.sender]){
           mapAddress_listedAssets[asset].isMember[msg.sender] = true;
           arrayMembers.push(msg.sender);
           mapAddress_listedAssets[asset].members.push(msg.sender);
+        }
+        if(mapAddress_listedAssets[asset].bondedLP[msg.sender] > 0){
+            claimAndLockForMember(asset, msg.sender);
         }
         mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(liquidityUnits);
         mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
@@ -219,12 +222,20 @@ contract Bond is iBEP20 {
                 LPunits = iROUTER(_DAO().ROUTER()).addLiquidity(spartaAllocation, _amount, _token);
             }
     }
-    function claimAndLock(address asset) public returns (bool){
-          claimAndLockForMember(asset, msg.sender);
+
+    function claimAndLock(address [] memory asset) public returns (bool){
+        require(asset.length > 0, '!array');
+            for(uint i = 0; i < asset.length; i++){
+                if(calcClaimBondedLP(asset[i], msg.sender) > 0){
+                    claimAndLockForMember(asset[i], msg.sender);
+                }
+            }
     }
+
+    
     function claimAndLockForMember(address asset, address member) public returns (bool){
-        require(mapAddress_listedAssets[asset].bondedLP[member] > 0, 'must have bonded lps');
-        require(mapAddress_listedAssets[asset].isMember[member], 'must have deposited first');
+        require(mapAddress_listedAssets[asset].bondedLP[member] > 0, '!bondedlps');
+        require(mapAddress_listedAssets[asset].isMember[member], '!deposited');
         uint256 claimable = calcClaimBondedLP(member, asset); 
         address _pool = iUTILS(_DAO().UTILS()).getPool(asset);
         require(claimable <= mapAddress_listedAssets[asset].bondedLP[member],'attempted to overclaim');
@@ -236,7 +247,7 @@ contract Bond is iBEP20 {
         return true;
     }
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
-        require(isListed[asset], 'asset must be listed');
+        require(isListed[asset], '!listed');
         uint256 secondsSinceClaim = now.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
         uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
         uint claimAmount;

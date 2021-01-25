@@ -45,14 +45,6 @@ library SafeMath {
         return c;
     }
 }
-interface iBONDv2{
-    function calcClaimBondedLP(address member, address asset) external returns (uint256);
-    function claim(address asset) external returns (bool);
-}
-interface iBONDv3{
-    function calcClaimBondedLP(address member, address asset) external returns (uint256);
-    function claimAndLock(address asset) external returns (bool);
-}
 interface iBASE {
     function claim(address asset, uint256 amount) external payable;  
     function secondsPerEra() external view returns (uint256);
@@ -118,6 +110,7 @@ interface iUTILS {
     function calcSwapValueInToken(address token, uint units) external view returns (uint amount);
     function calcBasisPoints(uint, address, address) external view returns(uint amount);
     function calcSynthsValue(address, uint) external view returns(uint units);
+    function calcCDPValue(address) external view returns (uint);
 }
 interface iDAO {
     function ROUTER() external view returns(address);
@@ -136,9 +129,8 @@ interface iPOOL {
     function genesis() external view returns(uint);
     function baseAmount() external view returns(uint);
     function tokenAmount() external view returns(uint);
-    function baseAmountPooled() external view returns(uint);
-    function tokenAmountPooled() external view returns(uint);
     function fees() external view returns(uint);
+    function sync() external;
     function volume() external view returns(uint);
     function txCount() external view returns(uint);
     function getBaseAmtPooled(address) external view returns(uint);
@@ -147,6 +139,8 @@ interface iPOOL {
 interface iBOND {
 function mintBond() external returns (bool);
 function burnBond() external returns (bool);
+function calcClaimBondedLP(address member, address asset) external returns (uint256);
+function claimAndLock(address asset) external returns (bool);
 function listBondAsset(address) external view returns (bool);
 function delistBondAsset(address) external view returns (bool);
 function changeBondingPeriod(uint) external view returns (bool);
@@ -155,11 +149,11 @@ interface iSYNTHROUTER {
     function getSynth(address) external view returns(address);
 }
 interface iSYNTH {
-    function TOKEN() external view returns(address);
+    function LayerOne() external view returns(address);
     function transferTo(address, uint) external returns (bool);
     function genesis() external view returns(uint);
-    function totalDebt() external view returns(uint);
-    function totalCollateral() external view returns(uint);
+    function totalMinted() external view returns(uint);
+    function _liquidate(address) external;
 }
 interface iDAOVAULT {
     function deposit(address, uint) external  returns (bool);
