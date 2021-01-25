@@ -7,10 +7,10 @@ import "@nomiclabs/buidler/console.sol";
 contract Synth is iBEP20 {
     using SafeMath for uint256;
     address public BASE;
-
     address public LayerONE;
     uint public genesis;
     uint256 public synthsAmount;
+
     uint256 public totalMinted;
 
     struct CollateralDetails {
@@ -32,6 +32,7 @@ contract Synth is iBEP20 {
 
     event AddLPCollateral(address member, uint inputLPToken, uint synthsIssued, address collateralType);
     event RemoveCollateral(address member, uint outputLPToken, uint synthsBurnt, address collateralType);
+    event Liquidated(address pool, uint units);
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
@@ -205,6 +206,7 @@ contract Synth is iBEP20 {
             uint baseLiquidated = iROUTER(_DAO().ROUTER()).removeLiquidityAsym(liqAmount, true, token); 
             iBEP20(BASE).transfer(pool, baseLiquidated); // send base to pool for arb
             iPOOL(pool).sync(); //sync balances for pool
+            emit Liquidated(pool, liqAmount);
         }
     }
 

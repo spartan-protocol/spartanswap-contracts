@@ -126,7 +126,7 @@ contract Router {
         emit AddLiquidity(member, _actualInputBase,_actualInputtoken, units );
         return units;
     }
-    function addLiquidityAsym(uint inputToken, bool toBase, address token)public payable returns (uint units) {
+    function addLiquidityAsym(uint inputToken, bool toBase, address token) public payable returns (uint units) {
        return addLiquidityAsymForMember(inputToken,toBase,token, msg.sender);
     }
 
@@ -143,8 +143,11 @@ contract Router {
             uint halfInput = inputToken.mul(5000).div(10000);
             iBEP20(BASE).transferFrom(member,pool,halfInput);
             (uint _tokenBought, uint _fee) = Pool(pool).swapTo(token, member);
+            console.log(_tokenBought);
+            console.log(halfInput);
             totalFees += _fee;
             units = addLiquidityForMember(halfInput, _tokenBought, token, member); //add liquidity member is synthRouter
+            console.log(units);
         }
         return units;
     }

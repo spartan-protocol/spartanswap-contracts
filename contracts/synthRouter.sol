@@ -109,7 +109,6 @@ contract synthRouter {
     }
 
     function swapSynth(uint inputToken, address fromToken, address toToken) public returns (uint amount ){
-        address synth; 
         if(isSynth[toToken]==true){
             amount = swapLayerOneToSynth(inputToken, fromToken, toToken);
         }else{
