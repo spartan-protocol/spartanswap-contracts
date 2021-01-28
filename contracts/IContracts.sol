@@ -78,12 +78,14 @@ interface iROUTER {
     function grantFunds(uint, address) external returns (bool);
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) external payable returns (uint units);
     function isPool(address) external view returns(bool);
+    function swap(uint, address, address) external returns(uint, uint);
     function challengLowestCuratedPool(address) external view returns (bool); 
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
     function changeArrayFeeSize(uint) external view returns(bool);
     function changeMaxTrades(uint) external view returns(bool);
     function addLiquidityAsym(uint, bool, address) external returns(uint);
     function removeLiquidityAsym(uint, bool, address) external returns(uint);
+    function removeLiquidityExact(uint, address) external returns(uint, uint);
 }
 interface iWBNB {
     function withdraw(uint256) external;
@@ -102,6 +104,7 @@ interface iUTILS {
     function calcSpotValueInToken(address token, uint amount) external view returns (uint value);
     function calcSpotValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
     function calcSwapValueInBase(address pool, uint256 amount) external view returns (uint256 value);
+    function calcSwapValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
     function getPool(address token)external view returns (address value);
     function getDepth(address pool) external view returns (uint depth);
     function calcAsymmetricValue(address token, uint units) external view returns(uint amount);

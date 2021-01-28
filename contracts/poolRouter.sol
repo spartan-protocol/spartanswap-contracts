@@ -126,28 +126,20 @@ contract Router {
         emit AddLiquidity(member, _actualInputBase,_actualInputtoken, units );
         return units;
     }
-    function addLiquidityAsym(uint inputToken, bool toBase, address token) public payable returns (uint units) {
-       return addLiquidityAsymForMember(inputToken,toBase,token, msg.sender);
+    function addLiquidityAsym(uint inputToken, bool fromBase, address token) public payable returns (uint units) {
+       return addLiquidityAsymForMember(inputToken,fromBase, token, msg.sender);
     }
 
-    function addLiquidityAsymForMember(uint inputToken, bool toBase, address token, address member) public payable returns (uint units) {
-        address pool = getPool(token); //get Pool adding liq to
-        require(isCuratedPool[pool] == true, '!POOl');
-        if(toBase){
+    function addLiquidityAsymForMember(uint inputToken, bool fromBase, address token, address member) public payable returns (uint units) {
+        require(inputToken > 0, "InputErr");
+        if(!fromBase){
             uint halfInput = inputToken.mul(5000).div(10000);
-            iBEP20(token).transferFrom(member,pool,halfInput); // get base from synthRouter > send to pool
-            (uint _baseBought, uint _fee) = Pool(pool).swapTo(BASE, member); //swap base to token
-            totalFees += _fee;
+            (uint _baseBought, uint _fee) = swapTo(inputToken, token, BASE, member);
             units = addLiquidityForMember(_baseBought, halfInput, token, member); //add liquidity member is synthRouter
         } else {
             uint halfInput = inputToken.mul(5000).div(10000);
-            iBEP20(BASE).transferFrom(member,pool,halfInput);
-            (uint _tokenBought, uint _fee) = Pool(pool).swapTo(token, member);
-            console.log(_tokenBought);
-            console.log(halfInput);
-            totalFees += _fee;
+            (uint _tokenBought, uint _fee) = swapTo(inputToken, BASE, token,  member);
             units = addLiquidityForMember(halfInput, _tokenBought, token, member); //add liquidity member is synthRouter
-            console.log(units);
         }
         return units;
     }
@@ -178,21 +170,16 @@ contract Router {
     // Remove Exact Asymmetrically
     function removeLiquidityAsymForMember(uint units, bool toBase, address token, address member) public returns (uint outputAmount){
         address pool = getPool(token);
+        require(isPool[pool] = true, '!pool');
         require(units < iBEP20(pool).totalSupply(), "InputErr");
-        Pool(pool).transferTo(pool, units);
-        (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidity();
+        _handleTransferIn(pool, units, pool);
+        (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidityForMember(member);
         if(toBase){
-            iBEP20(token).transfer(pool, _outputToken);
-            (uint _baseBought, uint _fee) = Pool(pool).swap(BASE);
-            totalFees += _fee;
+            (uint _baseBought, uint _fee) = swapTo(_outputToken,token, BASE, member);
             outputAmount = _baseBought.add(_outputBase);
-            _handleTransferOut(BASE, outputAmount, member);
         } else {
-            iBEP20(BASE).transfer(pool, _outputBase);
-            (uint _tokenBought, uint _fee) = Pool(pool).swap(token);
-            totalFees += _fee;
+            (uint _tokenBought, uint _fee) = swapTo(_outputBase, BASE,token, member);
             outputAmount = _tokenBought.add(_outputToken);
-            _handleTransferOut(token, outputAmount, member);
         }
         return outputAmount;
     }
