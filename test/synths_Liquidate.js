@@ -50,14 +50,14 @@ contract('SynthsLiquidate', function (accounts) {
     // Showlptkn2CDPDetails()
     // ShowlpBNBCDPDetails()
     // ShowGLOBALCDP()
-    swapSynthToLayer1(_.BN2Str(1*_.one))
+     swapSynthToLayer1(_.BN2Str(10*_.one))
     ShowAccBal(acc0)
     ShowBNBPool()
     Showlptkn2CDPDetails()
     ShowlpBNBCDPDetails()
      ShowGLOBALCDP()
-    // removeSPTBNBCollateralForSyntheticBNB(acc0);
-     Liquidate()
+      removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
+     // Liquidate()
      ShowAccBal(acc0)
     ShowBNBPool()
     Showlptkn2CDPDetails()
@@ -268,12 +268,12 @@ function Liquidate() {
 })
 }
 
-async function removeSPTBNBCollateralForSyntheticBNB(acc) {
+async function removeSPTBNBCollateralForSyntheticBNB(acc, inputSynth) {
     it("It should remove SPT1-BNB collateral for sBNB", async () => {
         let syntheticBNB = synthBNB.address
-        let bp = 1000;
         let lpToken = poolWBNB.address;
-        await synthRouter.removeCollateral(lpToken, bp, syntheticBNB, {from:acc})
+      
+        await synthRouter.removeCollateral(inputSynth,lpToken, syntheticBNB, {from:acc})
     })
 }
 
