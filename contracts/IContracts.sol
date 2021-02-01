@@ -157,6 +157,7 @@ interface iSYNTH {
     function genesis() external view returns(uint);
     function totalMinted() external view returns(uint);
     function _liquidate(address) external;
+    function changeLiqFactor(uint) external;
 }
 interface iDAOVAULT {
     function deposit(address, uint) external  returns (bool);

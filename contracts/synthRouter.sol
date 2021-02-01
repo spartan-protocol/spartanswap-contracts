@@ -208,6 +208,10 @@ contract synthRouter {
         }
     }
 
+    function changeLiquidationFactor(address synth, uint liqFactor) public onlyDAO {
+        require(isSynth[synth] == true, "!SYNTH");
+        Synth(synth).changeLiqFactor(liqFactor); 
+    }
     
     function getSynth(address token) public view returns(address synth){
         return mapToken_Synth[token];

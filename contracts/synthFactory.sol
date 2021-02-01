@@ -9,7 +9,10 @@ contract Synth is iBEP20 {
     address public BASE;
     address public LayerONE;
     uint public genesis;
+    address public DEPLOYER;
+    uint liqFactor;
     uint256 public synthsAmount;
+    
 
     uint256 public totalMinted;
 
@@ -37,6 +40,10 @@ contract Synth is iBEP20 {
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
     }
+     modifier onlyDAO() {
+        require(msg.sender == DEPLOYER, "Must be DAO");
+        _;
+    }
 
     constructor (address _base,address _token) public payable {
          BASE = _base;
@@ -46,6 +53,8 @@ contract Synth is iBEP20 {
         _name = string(abi.encodePacked(synthName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(synthSymbol, iBEP20(_token).symbol()));
         decimals = 18;
+        DEPLOYER = msg.sender;
+        liqFactor = 1000;
         genesis = now;
     }
 
@@ -199,7 +208,7 @@ contract Synth is iBEP20 {
         uint256 baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, totalCollateral[pool]);
         uint256 baseValueDebt = iUTILS(_DAO().UTILS()).calcSwapValueInBaseWithPool(pool, totalDebt[pool]);//get asym share in sparta
         if(baseValueDebt < baseValueCollateral){
-            uint liqAmount = totalCollateral[pool].mul(1000).div(10000);
+            uint liqAmount = totalCollateral[pool].mul(liqFactor).div(10000);
             totalCollateral[pool] = totalCollateral[pool].sub(liqAmount);
             address token = iPOOL(pool).TOKEN();
             iBEP20(pool).approve(_DAO().ROUTER(),liqAmount);
@@ -211,6 +220,11 @@ contract Synth is iBEP20 {
             iPOOL(pool).sync(); //sync balances for pool
             emit Liquidated(pool, liqAmount);
         }
+    }
+
+    function changeLiqFactor(uint newliqFactor) public onlyDAO {
+          require(newliqFactor > 10 || newliqFactor < 10000);
+          liqFactor = newliqFactor;
     }
 
 //=========================================HELPERS===============================================
