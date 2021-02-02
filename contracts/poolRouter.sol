@@ -41,6 +41,7 @@ contract Router {
     event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
+    event SwappedSynth(address tokenFrom, address tokenTo, uint inputAmount, uint outputAmount, uint fee, address recipient)
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -129,17 +130,17 @@ contract Router {
     function addLiquidityAsym(uint inputToken, bool fromBase, address token) public payable returns (uint units) {
        return addLiquidityAsymForMember(inputToken,fromBase, token, msg.sender);
     }
-
+    // Add Asymmetrically
     function addLiquidityAsymForMember(uint inputToken, bool fromBase, address token, address member) public payable returns (uint units) {
         require(inputToken > 0, "InputErr");
         if(!fromBase){
             uint halfInput = inputToken.mul(5000).div(10000);
             (uint _baseBought, uint _fee) = swapTo(inputToken, token, BASE, member);
-            units = addLiquidityForMember(_baseBought, halfInput, token, member); //add liquidity member is synthRouter
+            units = addLiquidityForMember(_baseBought, halfInput, token, member); 
         } else {
             uint halfInput = inputToken.mul(5000).div(10000);
             (uint _tokenBought, uint _fee) = swapTo(inputToken, BASE, token,  member);
-            units = addLiquidityForMember(halfInput, _tokenBought, token, member); //add liquidity member is synthRouter
+            units = addLiquidityForMember(halfInput, _tokenBought, token, member); 
         }
         return units;
     }
@@ -167,7 +168,7 @@ contract Router {
         outputAmount = removeLiquidityAsymForMember(units, toBase, token, msg.sender);
         return outputAmount;
     }
-    // Remove Exact Asymmetrically
+    // Remove Asymmetrically
     function removeLiquidityAsymForMember(uint units, bool toBase, address token, address member) public returns (uint outputAmount){
         address pool = getPool(token);
         require(isPool[pool] = true, '!pool');
@@ -186,7 +187,6 @@ contract Router {
 
     //==================================================================================//
     // Swapping Functions
-
     function buy(uint256 amount, address token) public returns (uint256 outputAmount, uint256 fee){
         return buyTo(amount, token, msg.sender);
     }
@@ -289,6 +289,42 @@ contract Router {
             }
         }
     }
+
+    //=================================================================================//
+    //Swap Synths
+    function swapSynthToBase(uint inputAmount, address synthIN) internal returns (uint outPut){
+        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true, "!SYNTH");
+        address synthINLayer1 = iSYNTH(synthIN).LayerONE();
+        address _poolIN = mapToken_Pool[synthINLayer1];
+        _handleTransferIn(synthIN, inputAmount, _poolIN);
+        (uint outPutBase, uint fee) = Pool(_poolIN).swapSynthIn(synthIN, _pool);
+        totalPooled = totalPooled.sub(outputAmount);
+        totalVolume += outputAmount;
+        totalFees += fee;
+        _handleTransferOut(BASE, outPutBase, msg.sender);
+        emit SwappedSynth(synthIN, BASE, inputAmount, outPutBase, fee, msg.sender);
+        return outPut;
+    }
+    function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint outPut){
+        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true, "!SYNTH");
+        address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
+        address _poolOUT = mapToken_Pool[synthOUTLayer1];
+        require(iROUTER(_DAO().ROUTER()).isPool(_poolOUT) == true, "!SYNTH");
+        _handleTransferIn(BASE, inputAmount, _poolOUT);
+        (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(BASEIN, _poolOUT);
+        totalPooled = totalPooled.add(inputAmount);
+        totalVolume += inputAmount;
+        totalFees += fee;
+        _handleTransferOut(synthOUT,outputSynth,msg.sender);
+        emit SwappedSynth(synthIN, synthOUT, inputAmount, outPutBase, fee, msg.sender);
+        return outPut;
+    }
+
+
+
+
+
+
     //==================================================================================//
     //Token Dividends / Curated Pools
     function addDividend(address _token, uint256 _fees) internal returns (bool){
@@ -361,6 +397,7 @@ contract Router {
         }
         return true;
     }
+
     //=================================onlyDAO=====================================//
     function changeArrayFeeSize(uint _size) public onlyDAO returns(bool){
         arrayFeeSize = _size;
@@ -399,7 +436,6 @@ contract Router {
 
     //======================================HELPERS========================================//
     // Helper Functions
-
     function getPool(address token) public view returns(address pool){
         if(token == address(0)){
             pool = mapToken_Pool[WBNB];   // Handle BNB

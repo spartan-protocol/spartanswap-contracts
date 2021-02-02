@@ -8,12 +8,12 @@ contract Synth is iBEP20 {
     using SafeMath for uint256;
     address public BASE;
     address public LayerONE;
+    address public WBNB;
     uint public genesis;
     address public DEPLOYER;
     uint liqFactor;
     uint256 public synthsAmount;
     
-
     uint256 public totalMinted;
 
     struct CollateralDetails {
@@ -148,8 +148,36 @@ contract Synth is iBEP20 {
          emit AddLPCollateral(member, _actualInputCollateral, syntheticAmount, pool); 
         return syntheticAmount; 
     }
+
+    function swapIN(uint amount, address token, address member) public returns (uint syntheticAmount){
+        require(token != BASE, '!BASE');
+        require(iROUTER(_DAO().ROUTER()).isPool(msg.sender) == true, '!POOL');
+         syntheticAmount = _handleTransferIn(token, amount);
+         totalMinted = totalMinted.add(syntheticAmount); //map synthetic debt
+        _mint(member, syntheticAmount); // mint synths
+        iBEP20(token).transfer(token, syntheticAmount);
+        return syntheticAmount;
+    }
     
-    
+    function swapOUT(uint amount) public returns (uint syntheticAmount){
+        require(iROUTER(_DAO().ROUTER()).isPool(msg.sender) == true, '!POOL');
+         syntheticAmount = _handleTransferIn(address(this), amount);
+         totalMinted = totalMinted.sub(syntheticAmount); //map synthetic debt
+         _burn(address(this), syntheticAmount); // burn synths
+        return syntheticAmount;
+    }
+
+
+
+    // Token Transfer Functions
+    function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 actual){
+        if(_amount > 0) {
+                uint startBal = iBEP20(_token).balanceOf(address(this)); 
+                iBEP20(_token).transferFrom(msg.sender, address(this), _amount); 
+                actual = iBEP20(_token).balanceOf(address(this)).sub(startBal);
+        }
+    }
+
     // Remove Collateral
     function removeCollateral(address pool) public returns (uint outputCollateral, uint burntDebt) {
          (outputCollateral, burntDebt)= removeCollateralForMember(pool, msg.sender);
@@ -158,7 +186,7 @@ contract Synth is iBEP20 {
 
     // Remove Collateral for a member
     function removeCollateralForMember(address pool, address member) public returns (uint outputCollateral, uint debtBurnt) {
-        uint256 _actualInputSynths = _getAddedSynthsAmount();
+        uint256 _actualInputSynths = _getAddedSynthsAmount(address(this));
         require(mapMember_Details[member].synthDebt[pool] >= _actualInputSynths, 'INPUTERR');
         outputCollateral = iUTILS(_DAO().UTILS()).calcDebtShare(_actualInputSynths, totalDebt[pool], pool, address(this));  
         totalMinted = totalMinted.sub(_actualInputSynths); //map synthetic debt
@@ -170,8 +198,8 @@ contract Synth is iBEP20 {
         return (outputCollateral, _actualInputSynths);
     }
 
-    function _getAddedSynthsAmount() internal view returns(uint256 _actual){
-         uint _synthsBalance = balanceOf(address(this)); 
+    function _getAddedSynthsAmount(address synth) internal view returns(uint256 _actual){
+         uint _synthsBalance = iBEP20(synth).balanceOf(address(this)); 
         if(_synthsBalance > synthsAmount){
             _actual = _synthsBalance.sub(synthsAmount);
         } else {

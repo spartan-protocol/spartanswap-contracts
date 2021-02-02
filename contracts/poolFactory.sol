@@ -186,6 +186,28 @@ contract Pool is iBEP20 {
         return (outputAmount, fee);
     }
 
+    function swapSynthIn(address synthIn, address toPool) public returns(uint outputAmount, uint fee) {
+      require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIn) == true, "!SYNTH");
+      require(iROUTER(_DAO().ROUTER()).isPool(toPool) == true, "!SYNTH");
+      uint _amount = _getAddedSynthAmount(synthIn);
+      iBEP20(synthIn).approve(synthIn,_amount);
+      iSYNTH(synthIn).swapOUT(_amount);  
+      (outputAmount, fee) = _swapTokenToBase(_amount); //get swap value in BASE
+      iBEP20(BASE).transfer(toPool, outputAmount); //send BASE to pool
+      sync();
+      return (outputAmount, fee);
+    }
+
+    function swapSynthOut(address synthOut, address token) public returns(uint synthsOut, uint fee) {
+      require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOut) == true, "!SYNTH");
+      uint _amount = _getAddedBaseAmount(); uint outputAmount;
+      (outputAmount, fee) = _swapBaseToToken(_amount);//get token swapped out
+      iBEP20(token).approve(synthOut, outputAmount);
+      synthsOut = iSYNTH(synthOut).swapIN(outputAmount, token, msg.sender); 
+      sync();
+      return (synthsOut, fee);
+    }
+
     function _getAddedBaseAmount() internal view returns(uint256 _actual){
         uint _baseBalance = iBEP20(BASE).balanceOf(address(this)); 
         if(_baseBalance > baseAmount){
@@ -203,6 +225,9 @@ contract Pool is iBEP20 {
             _actual = 0;
         }
         return _actual;
+    }
+    function _getAddedSynthAmount(address synth) internal view returns(uint256 _synthBalance){
+        return _synthBalance = iBEP20(synth).balanceOf(address(this)); 
     }
     function _getAddedUnitsAmount() internal view returns(uint256 _actual){
          uint _unitsBalance = balanceOf(address(this)); 

@@ -20,6 +20,7 @@ contract synthRouter {
 
     event NewSynth(address token, address pool, uint genesis);
     event SwapToSynth(address token, uint inputToken, address toSynth, uint outPutSynth);
+    event SwapSynthToSynth(address synth, uint inputAmount, address toSynth, uint outPutSynth);
     event SwapFromSynth(address synth, uint inputSynth, address toToken, uint outPutToken);
     event AddCollateral(uint inputLPToken, address lpToken, address synth, uint synthMinted);
     event RemoveCollateral(uint outPutLPToken, address lpToken, address synth, uint synthDeleted);
@@ -106,16 +107,33 @@ contract synthRouter {
         emit RemoveCollateral(lpCollateral, lpToken, synth, synthBurnt);
         return (lpCollateral);
     }
-
-    function swapSynth(uint inputToken, address fromToken, address toToken) public returns (uint amount ){
-        if(isSynth[toToken]==true){
-            amount = swapLayerOneToSynth(inputToken, fromToken, toToken);
-        }else{
+    function swapSynth(uint amount, address fromToken, address toToken) public returns (uint outPut ){
+        if(isSynth[toToken]==true && isSynth[fromToken]==true){
+            outPut = swapSynthToSynth(amount, fromToken, toToken); //synth to synth
+        }else if(isSynth[toToken]==true) {
+            outPut = swapLayerOneToSynth(amount, fromToken, toToken); //layerOne to Synth
+        }else {
             require(isSynth[fromToken]==true,'SYNTHERR');
-            amount = swapSynthToLayerOne(inputToken,fromToken, toToken);
+            outPut = swapSynthToLayerOne(amount,fromToken, toToken); // synth to layer one
         }
-        return amount;
+        return outPut;
     }
+
+     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     function swapLayerOneToSynth(uint inputToken, address token, address synth) internal returns (uint amount){
         require(isSynth[synth] == true, "!SYNTH");

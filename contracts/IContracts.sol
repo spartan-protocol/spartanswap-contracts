@@ -150,6 +150,7 @@ function changeBondingPeriod(uint) external view returns (bool);
 }
 interface iSYNTHROUTER {
     function getSynth(address) external view returns(address);
+    function isSynth(address) external view returns(bool);
 }
 interface iSYNTH {
     function LayerOne() external view returns(address);
@@ -158,6 +159,9 @@ interface iSYNTH {
     function totalMinted() external view returns(uint);
     function _liquidate(address) external;
     function changeLiqFactor(uint) external;
+    function burnFrom(address, uint) external;
+    function swapIN(uint, address, address) external returns (uint);
+    function swapOUT(uint amount) external returns(uint);
 }
 interface iDAOVAULT {
     function deposit(address, uint) external  returns (bool);
