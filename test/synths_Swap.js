@@ -35,8 +35,9 @@ contract('SynthsSwap', function (accounts) {
     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
     createSyntheticBNB()
-    swapLayer1ToSynth(_.BN2Str(10*_.one))
-    swapSynthToLayer1(_.BN2Str(1.284*_.one))
+     swapSynthToLayer1()
+    swapLayer1ToSynth()
+    
 
 })
 
@@ -182,58 +183,30 @@ async function curatePools() {
 }
 async function createSyntheticBNB() {
     it("It should Create Synthetic BNB ", async () => {
-        let inputLPToken = _.BN2Str(1*_.one)
+        let inputLPToken = _.BN2Str(10*_.one)
         let lpToken = poolTKN2.address;
         var _synth =  await synthRouter.createSynth.call(lpToken,wbnb.address, inputLPToken);
         await synthRouter.createSynth(lpToken,wbnb.address,inputLPToken);
-        let synthData = await utils.getSynthData(wbnb.address);
         synthBNB = await SYNTH.at(_synth)
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
-        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
-        let MemberDebt = await synthBNB.getMemberDetails(acc0, lpToken);
-        let totalLPDebt = _.BN2Str(await synthBNB.totalLPDebt(lpToken));
-        assert.equal(synthBNBBAL,_.BN2Str(MemberDebt))
-        assert.equal(synthTotalSupply,synthBNBBAL);
-        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
-async function swapLayer1ToSynth(input) {
-    it("Swap Layer one to Synthetic BNB", async () => {
-        let inputToken =  input;
-        let fromToken = base.address;
-        let toToken = synthBNB.address;
-        await synthRouter.approveSynthRouter();
-        let memberDeetsB = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
-        let synthBNBBALB = _.BN2Str(await synthBNB.balanceOf(acc0));
-        console.log("Start Synths",synthBNBBALB/_.one)
-        let baseBAl = _.BN2Str(await base.balanceOf(acc0));
-        console.log("base Bal",baseBAl/_.one)
-        await synthRouter.swapSynth(inputToken, fromToken,toToken);
-        let baseBAlA = _.BN2Str(await base.balanceOf(acc0));
-        console.log("new base Bal",baseBAlA/_.one)
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
-        console.log("got Synths",synthBNBBAL/_.one)
-        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
-        let memberDeets = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
-        assert.equal(synthTotalSupply,synthBNBBAL);
+async function swapSynthToLayer1() {
+    it("Swap Synthetic BNB To BASE", async () => {
+        let input =  _.BN2Str(1*_.one);
+        let synthIN = synthBNB.address;
+        console.log(_.BN2Str(await synthBNB.balanceOf(acc0))/_.one)
+        await router.swapSynthToBase(input,synthIN);
     })
 }
-async function swapSynthToLayer1(input) {
-    it("Swap Synthetic BNB To Layer One", async () => {
-        let inputToken =  input;
-        let fromToken = synthBNB.address;
-        let toToken = base.address;
-        let memberDeetsB = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
-        let synthTotalSupplyB = _.BN2Str(await synthBNB.totalSupply()); 
-        await synthRouter.swapSynth(inputToken, fromToken,toToken);
-        let baseBAlA = _.BN2Str(await base.balanceOf(acc0));
-        console.log("synths to base",baseBAlA/_.one)
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
-        console.log("Synths bal",synthBNBBAL/_.one)
-        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply()); 
-
+async function swapLayer1ToSynth() {
+    it("Swap BASE to Synthetic BNB", async () => {
+        let input =  _.BN2Str(10*_.one);
+        let synthOUT = synthBNB.address;
+        await router.swapBaseToSynth(input,synthOUT);
+      
     })
 }
 

@@ -41,7 +41,7 @@ contract Router {
     event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
-    event SwappedSynth(address tokenFrom, address tokenTo, uint inputAmount, uint outputAmount, uint fee, address recipient)
+    event SwappedSynth(address tokenFrom, address tokenTo, uint inputAmount, uint outputAmount, uint fee, address recipient);
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -290,19 +290,24 @@ contract Router {
         }
     }
 
+
     //=================================================================================//
     //Swap Synths
-    function swapSynthToBase(uint inputAmount, address synthIN) internal returns (uint outPut){
+    function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true, "!SYNTH");
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
         address _poolIN = mapToken_Pool[synthINLayer1];
         _handleTransferIn(synthIN, inputAmount, _poolIN);
-        (uint outPutBase, uint fee) = Pool(_poolIN).swapSynthIn(synthIN, _pool);
-        totalPooled = totalPooled.sub(outputAmount);
-        totalVolume += outputAmount;
+        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN);
+        totalPooled = totalPooled.sub(outputBase);
+        totalVolume += outputBase;
         totalFees += fee;
-        _handleTransferOut(BASE, outPutBase, msg.sender);
-        emit SwappedSynth(synthIN, BASE, inputAmount, outPutBase, fee, msg.sender);
+        if(isCuratedPool[_poolIN]){
+            addTradeFee(fee);//add fee to feeArray
+            addDividend(synthINLayer1, fee); //add dividend
+           }
+        _handleTransferOut(BASE, outputBase, msg.sender);
+        emit SwappedSynth(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
         return outPut;
     }
     function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint outPut){
@@ -311,19 +316,18 @@ contract Router {
         address _poolOUT = mapToken_Pool[synthOUTLayer1];
         require(iROUTER(_DAO().ROUTER()).isPool(_poolOUT) == true, "!SYNTH");
         _handleTransferIn(BASE, inputAmount, _poolOUT);
-        (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(BASEIN, _poolOUT);
+        (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
         totalPooled = totalPooled.add(inputAmount);
         totalVolume += inputAmount;
         totalFees += fee;
+        if(isCuratedPool[_poolOUT]){
+            addTradeFee(fee);//add fee to feeArray
+            addDividend(synthOUTLayer1, fee); //add dividend
+        }
         _handleTransferOut(synthOUT,outputSynth,msg.sender);
-        emit SwappedSynth(synthIN, synthOUT, inputAmount, outPutBase, fee, msg.sender);
+        emit SwappedSynth(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
         return outPut;
     }
-
-
-
-
-
 
     //==================================================================================//
     //Token Dividends / Curated Pools

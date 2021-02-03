@@ -107,85 +107,6 @@ contract synthRouter {
         emit RemoveCollateral(lpCollateral, lpToken, synth, synthBurnt);
         return (lpCollateral);
     }
-    function swapSynth(uint amount, address fromToken, address toToken) public returns (uint outPut ){
-        if(isSynth[toToken]==true && isSynth[fromToken]==true){
-            outPut = swapSynthToSynth(amount, fromToken, toToken); //synth to synth
-        }else if(isSynth[toToken]==true) {
-            outPut = swapLayerOneToSynth(amount, fromToken, toToken); //layerOne to Synth
-        }else {
-            require(isSynth[fromToken]==true,'SYNTHERR');
-            outPut = swapSynthToLayerOne(amount,fromToken, toToken); // synth to layer one
-        }
-        return outPut;
-    }
-
-     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    function swapLayerOneToSynth(uint inputToken, address token, address synth) internal returns (uint amount){
-        require(isSynth[synth] == true, "!SYNTH");
-        _handleTransferIn(token, inputToken);
-        iBEP20(token).approve(_DAO().ROUTER(),inputToken);
-        uint halfInput = inputToken.mul(5000).div(10000);
-        uint lpUnits; address pool;
-        if(token != BASE){
-           (uint _baseBought, uint _fee) = iROUTER(_DAO().ROUTER()).swap(halfInput, token, BASE);
-           iBEP20(BASE).approve(_DAO().ROUTER(),_baseBought);
-           lpUnits = iROUTER(_DAO().ROUTER()).addLiquidity(_baseBought, halfInput, token);
-           pool = iUTILS(_DAO().UTILS()).getPool(token);
-        }else{
-            address _token = Synth(synth).LayerONE();
-            (uint _tokenBought, uint _fee) = iROUTER(_DAO().ROUTER()).swap(halfInput, BASE, _token);
-            iBEP20(_token).approve(_DAO().ROUTER(),_tokenBought);
-            lpUnits = iROUTER(_DAO().ROUTER()).addLiquidity(halfInput, _tokenBought, _token);
-            pool = iUTILS(_DAO().UTILS()).getPool(_token); 
-        }
-         amount = addCollateralForMember(lpUnits,pool,msg.sender,synth);
-        //  _handleTransferOut(synth,amount,msg.sender);
-         emit SwapToSynth(token, inputToken, synth, amount);
-         return amount;
-    }
-
-    function swapSynthToLayerOne(uint inputSynth, address synth, address toToken) internal returns (uint amount){
-          require(isSynth[synth] == true, "!SYNTH"); address pool;uint lpCollateral; uint outputAmount;
-          if(toToken == BASE){
-              address _token = Synth(synth).LayerONE();
-              pool = iUTILS(_DAO().UTILS()).getPool(_token);
-              lpCollateral = removeCollateralForMember(inputSynth, pool, msg.sender, synth );
-              _handleTransferIn(pool, lpCollateral);
-              iBEP20(pool).approve(_DAO().ROUTER(),lpCollateral);
-              (uint _outputBase, uint _outputToken) = iROUTER(_DAO().ROUTER()).removeLiquidityExact(lpCollateral,_token);
-              iBEP20(_token).approve(_DAO().ROUTER(),_outputToken);
-              iBEP20(BASE).approve(_DAO().ROUTER(),_outputBase); 
-              (uint _baseBought, uint _fee) = iROUTER(_DAO().ROUTER()).swap(_outputToken,_token,toToken);
-              outputAmount = _baseBought.add(_outputBase); 
-          }else{
-              pool = iUTILS(_DAO().UTILS()).getPool(toToken);
-              lpCollateral = removeCollateralForMember(inputSynth, pool, msg.sender, synth);
-              iBEP20(pool).approve(_DAO().ROUTER(),lpCollateral);
-              (uint _outputBase, uint _outputToken) = iROUTER(_DAO().ROUTER()).removeLiquidityExact(lpCollateral,toToken);
-              iBEP20(toToken).approve(_DAO().ROUTER(),_outputToken);
-              iBEP20(BASE).approve(_DAO().ROUTER(),_outputBase); 
-              (uint _tokenBought, uint _fee) = iROUTER(_DAO().ROUTER()).swap(_outputToken,BASE,toToken);
-               outputAmount = _tokenBought.add(_outputToken); 
-          }
-          _handleTransferOut(toToken,outputAmount,msg.sender); 
-          emit SwapFromSynth(synth, inputSynth, toToken, outputAmount);
-          return amount;
-    }
 
     // handle input LP transfers 
     function _handleLPTransfer(address _lptoken, uint256 _amount, address member,  address _synth) internal returns(uint256 actual){
@@ -197,32 +118,6 @@ contract synthRouter {
                     iBEP20(_lptoken).transfer(_synth, _amount); 
                 }
                 actual = iBEP20(_lptoken).balanceOf(_synth).sub(startBal);
-        }
-    }
-    function _handleTransferIn(address _token, uint256 _amount) internal returns (uint256 actual){
-        if(_amount > 0) {
-            uint startBal = iBEP20(_token).balanceOf(address(this));
-            if(_token == address(0)){
-                // If BNB, then send to WBNB contract, then forward WBNB to synth
-                require((_amount == msg.value), "InputErr");
-                payable(WBNB).call{value:_amount}(""); 
-               iBEP20(WBNB).transfer(address(this), _amount); 
-            } else {
-                iBEP20(_token).transferFrom(msg.sender, address(this), _amount); 
-            }
-              actual = iBEP20(_token).balanceOf(address(this)).sub(startBal);
-        }
-        return actual;
-    }
-    function _handleTransferOut(address _token, uint256 _amount, address _recipient) internal {
-        if(_amount > 0) {
-            if (_token == address(0)) {
-                // If BNB, then withdraw to BNB, then forward BNB to recipient
-                iWBNB(WBNB).withdraw(_amount);
-                payable(_recipient).call{value:_amount}(""); 
-            } else {
-                iBEP20(_token).transfer(_recipient, _amount);
-            }
         }
     }
 

@@ -153,7 +153,7 @@ interface iSYNTHROUTER {
     function isSynth(address) external view returns(bool);
 }
 interface iSYNTH {
-    function LayerOne() external view returns(address);
+    function LayerONE() external view returns(address);
     function transferTo(address, uint) external returns (bool);
     function genesis() external view returns(uint);
     function totalMinted() external view returns(uint);

@@ -186,24 +186,23 @@ contract Pool is iBEP20 {
         return (outputAmount, fee);
     }
 
-    function swapSynthIn(address synthIn, address toPool) public returns(uint outputAmount, uint fee) {
+    function swapSynthIN(address synthIn) public returns(uint outputAmount, uint fee) {
       require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIn) == true, "!SYNTH");
-      require(iROUTER(_DAO().ROUTER()).isPool(toPool) == true, "!SYNTH");
       uint _amount = _getAddedSynthAmount(synthIn);
       iBEP20(synthIn).approve(synthIn,_amount);
       iSYNTH(synthIn).swapOUT(_amount);  
       (outputAmount, fee) = _swapTokenToBase(_amount); //get swap value in BASE
-      iBEP20(BASE).transfer(toPool, outputAmount); //send BASE to pool
+      iBEP20(BASE).transfer(msg.sender, outputAmount); 
       sync();
       return (outputAmount, fee);
     }
 
-    function swapSynthOut(address synthOut, address token) public returns(uint synthsOut, uint fee) {
+    function swapSynthOUT(address synthOut) public returns(uint synthsOut, uint fee) {
       require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOut) == true, "!SYNTH");
       uint _amount = _getAddedBaseAmount(); uint outputAmount;
       (outputAmount, fee) = _swapBaseToToken(_amount);//get token swapped out
-      iBEP20(token).approve(synthOut, outputAmount);
-      synthsOut = iSYNTH(synthOut).swapIN(outputAmount, token, msg.sender); 
+      iBEP20(TOKEN).approve(synthOut, outputAmount);
+      synthsOut = iSYNTH(synthOut).swapIN(outputAmount, TOKEN, msg.sender); 
       sync();
       return (synthsOut, fee);
     }

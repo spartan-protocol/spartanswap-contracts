@@ -149,35 +149,6 @@ contract Synth is iBEP20 {
         return syntheticAmount; 
     }
 
-    function swapIN(uint amount, address token, address member) public returns (uint syntheticAmount){
-        require(token != BASE, '!BASE');
-        require(iROUTER(_DAO().ROUTER()).isPool(msg.sender) == true, '!POOL');
-         syntheticAmount = _handleTransferIn(token, amount);
-         totalMinted = totalMinted.add(syntheticAmount); //map synthetic debt
-        _mint(member, syntheticAmount); // mint synths
-        iBEP20(token).transfer(token, syntheticAmount);
-        return syntheticAmount;
-    }
-    
-    function swapOUT(uint amount) public returns (uint syntheticAmount){
-        require(iROUTER(_DAO().ROUTER()).isPool(msg.sender) == true, '!POOL');
-         syntheticAmount = _handleTransferIn(address(this), amount);
-         totalMinted = totalMinted.sub(syntheticAmount); //map synthetic debt
-         _burn(address(this), syntheticAmount); // burn synths
-        return syntheticAmount;
-    }
-
-
-
-    // Token Transfer Functions
-    function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 actual){
-        if(_amount > 0) {
-                uint startBal = iBEP20(_token).balanceOf(address(this)); 
-                iBEP20(_token).transferFrom(msg.sender, address(this), _amount); 
-                actual = iBEP20(_token).balanceOf(address(this)).sub(startBal);
-        }
-    }
-
     // Remove Collateral
     function removeCollateral(address pool) public returns (uint outputCollateral, uint burntDebt) {
          (outputCollateral, burntDebt)= removeCollateralForMember(pool, msg.sender);
@@ -196,6 +167,34 @@ contract Synth is iBEP20 {
         iBEP20(pool).transfer(member, outputCollateral); // return their collateral
         emit RemoveCollateral(member, outputCollateral, _actualInputSynths, pool);
         return (outputCollateral, _actualInputSynths);
+    }
+
+     function swapIN(uint amount, address token, address member) public returns (uint syntheticAmount){
+        require(token != BASE, '!BASE');
+        require(iROUTER(_DAO().ROUTER()).isCuratedPool(msg.sender) == true, '!POOL');
+         syntheticAmount = _handleTransferIn(token, amount);
+         totalMinted = totalMinted.add(syntheticAmount); //map synthetic debt
+        _mint(member, syntheticAmount); // mint synths
+        iBEP20(token).transfer(msg.sender, syntheticAmount);//return token back into pool
+        return syntheticAmount;
+    }
+    
+    function swapOUT(uint amount) public returns (uint syntheticAmount){
+        require(iROUTER(_DAO().ROUTER()).isCuratedPool(msg.sender) == true, '!POOL');
+         syntheticAmount = _handleTransferIn(address(this), amount);
+         totalMinted = totalMinted.sub(syntheticAmount); //map synthetic debt
+         _burn(address(this), syntheticAmount); // burn synths
+        return syntheticAmount;
+    }
+
+
+// Token Transfer Functions
+    function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 actual){
+        if(_amount > 0) {
+                uint startBal = iBEP20(_token).balanceOf(address(this)); 
+                iBEP20(_token).transferFrom(msg.sender, address(this), _amount); 
+                actual = iBEP20(_token).balanceOf(address(this)).sub(startBal);
+        }
     }
 
     function _getAddedSynthsAmount(address synth) internal view returns(uint256 _actual){

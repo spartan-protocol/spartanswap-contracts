@@ -35,34 +35,37 @@ contract('SynthsLiquidate', function (accounts) {
     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     addLiquidityTKN1(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
-    // ShowTKN1Pool()
-    // ShowTKN2Pool()
     createSyntheticBNB()
-    // ShowBNBPool()
-    // ShowAccBal(acc0)
+    ShowAddress()
+    ShowBNBPool()
+    ShowAccBal(acc0)
     swapLayer1ToSynth(_.BN2Str(10*_.one))
-    // ShowAccBal(acc0)
-    addCollateralSPTBNBForSyntheticBNB(acc0, _.BN2Str(100*_.one))
-    // ShowBNBPool()
+    ShowBNBPool()
+    ShowAccBal(acc0)
+    swapSynthToLayer1(_.BN2Str(10*_.one))
+    ShowBNBPool()
+    ShowAccBal(acc0)
+    // addCollateralSPTBNBForSyntheticBNB(acc0, _.BN2Str(100*_.one))
+    
     // ShowGLOBALCDP()
     // ShowAccBal(acc0)
     // ShowBNBPool()
     // Showlptkn2CDPDetails()
     // ShowlpBNBCDPDetails()
     // ShowGLOBALCDP()
-     swapSynthToLayer1(_.BN2Str(10*_.one))
-    ShowAccBal(acc0)
-    ShowBNBPool()
-    Showlptkn2CDPDetails()
-    ShowlpBNBCDPDetails()
-     ShowGLOBALCDP()
-    removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
-     // Liquidate()
-     ShowAccBal(acc0)
-    ShowBNBPool()
-    Showlptkn2CDPDetails()
-    ShowlpBNBCDPDetails()
-     ShowGLOBALCDP()
+    
+    // ShowAccBal(acc0)
+    // ShowBNBPool()
+    // Showlptkn2CDPDetails()
+    // ShowlpBNBCDPDetails()
+    //  ShowGLOBALCDP()
+    // removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
+    //  // Liquidate()
+    //  ShowAccBal(acc0)
+    // ShowBNBPool()
+    // Showlptkn2CDPDetails()
+    // ShowlpBNBCDPDetails()
+    //  ShowGLOBALCDP()
      
 
 })
@@ -221,18 +224,28 @@ async function createSyntheticBNB() {
         let lpToken = poolTKN2.address;
         var _synth =  await synthRouter.createSynth.call(lpToken,wbnb.address, inputLPToken);
         await synthRouter.createSynth(lpToken,wbnb.address,inputLPToken);
-        let synthData = await utils.getSynthData(wbnb.address);
         synthBNB = await SYNTH.at(_synth)
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
-        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
-        let MemberDebt = await synthBNB.getMemberDetails(acc0, lpToken);
-        assert.equal(synthBNBBAL,_.BN2Str(MemberDebt))
-        assert.equal(synthTotalSupply,synthBNBBAL);
-        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
+async function swapSynthToLayer1() {
+    it("Swap Synthetic BNB To BASE", async () => {
+        let input =  _.BN2Str(2*_.one);
+        let synthIN = synthBNB.address;
+        await router.swapSynthToBase(input,synthIN);
+    })
+}
+async function swapLayer1ToSynth() {
+    it("Swap BASE to Synthetic BNB", async () => {
+        let input =  _.BN2Str(10*_.one);
+        let synthOUT = synthBNB.address;
+        await router.swapBaseToSynth(input,synthOUT);
+      
+    })
+}
+
 async function addCollateralSPTBNBForSyntheticBNB(acc, inputLP) {
     it("It should add SPT1-WBNB collateral for sBNB", async () => {
         let inputLPToken = inputLP
@@ -241,27 +254,7 @@ async function addCollateralSPTBNBForSyntheticBNB(acc, inputLP) {
     })
 }
 
-async function swapLayer1ToSynth(input) {
-    it("Swap Layer one to Synthetic BNB", async () => {
-        let inputToken =  input;
-        let fromToken = base.address;
-        let toToken = synthBNB.address;
-        await synthRouter.swapSynth(inputToken, fromToken,toToken);
-        let baseBAlA = _.BN2Str(await base.balanceOf(acc0));
-        let synthBNBBAL = _.BN2Str(await synthBNB.balanceOf(acc0));
-        let synthTotalSupply = _.BN2Str(await synthBNB.totalSupply());
-        let memberDeets = await synthBNB.getMemberDetails(synthRouter.address, poolTKN2.address);
-        assert.equal(synthTotalSupply,synthBNBBAL);
-    })
-}
-async function swapSynthToLayer1(input) {
-    it("Swap Synthetic BNB To Layer One", async () => {
-        let inputToken =  input;
-        let fromToken = synthBNB.address;
-        let toToken = base.address;
-        await synthRouter.swapSynth(inputToken, fromToken,toToken);
-    })
-}
+
 function Liquidate() {
     it("Liquidate", async () => {
     let li = await synthBNB._liquidate(poolWBNB.address);
