@@ -18,6 +18,7 @@ var TOKEN = artifacts.require("./Token1.sol");
 var TOKEN2 = artifacts.require("./Token2.sol");
 var WBNB = artifacts.require("./WBNB");
 var DAOVAULT = artifacts.require("./DaoVault.sol");
+var LEVERAGE = artifacts.require("./Leverage.sol");
 
 var base; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
@@ -43,31 +44,32 @@ contract('SynthsLiquidate', function (accounts) {
      swapLayer1ToSynth(_.BN2Str(10*_.one))
     // ShowBNBPool()
     // ShowAccBal(acc0)
-     swapSynthToLayer1(_.BN2Str(10*_.one))
-    // ShowBNBPool()
-    // ShowAccBal(acc0)
+     //swapSynthToLayer1(_.BN2Str(10*_.one))
+    ShowBNBPool()
+    ShowAccBal(acc0)
 
+    LeverageUp(acc0)
    
-    addCollateralSPTBNBForSyntheticBNB(acc0, _.BN2Str(100*_.one))
+    // addCollateralSPTBNBForSyntheticBNB(acc0, _.BN2Str(100*_.one))
     ShowAccBal(acc0)
     ShowBNBPool()
     Showlptkn2CDPDetails()
     ShowlpBNBCDPDetails()
      ShowGLOBALCDP()
     
-    removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
-    Liquidate()
-     ShowAccBal(acc0)
-    ShowBNBPool()
-    Showlptkn2CDPDetails()
-    ShowlpBNBCDPDetails()
-     ShowGLOBALCDP()
-    globalSettleMent()
-    ShowAccBal(acc0)
-    ShowBNBPool()
-    Showlptkn2CDPDetails()
-    ShowlpBNBCDPDetails()
-     ShowGLOBALCDP()
+    // removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
+    // Liquidate()
+    //  ShowAccBal(acc0)
+    // ShowBNBPool()
+    // Showlptkn2CDPDetails()
+    // ShowlpBNBCDPDetails()
+    //  ShowGLOBALCDP()
+    // globalSettleMent()
+    // ShowAccBal(acc0)
+    // ShowBNBPool()
+    // Showlptkn2CDPDetails()
+    // ShowlpBNBCDPDetails()
+    //  ShowGLOBALCDP()
      
     
 })
@@ -87,6 +89,7 @@ function constructor(accounts) {
         bond = await BOND.new(base.address)     //deploy new bond
         token1 = await TOKEN.new()             //deploy token
         token2 = await TOKEN2.new() 
+        leverage = await LEVERAGE.new(base.address,wbnb.address );
 
         await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address);
 
@@ -233,6 +236,9 @@ async function createSyntheticBNB() {
         await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
         await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await synthBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function swapSynthToLayer1() {
@@ -279,6 +285,12 @@ async function removeSPTBNBCollateralForSyntheticBNB(acc, inputSynth) {
     })
 }
 
+function LeverageUp(acc) {
+    it("Leverage Up", async () => {
+        let sBNB = _.BN2Str(await synthBNB.balanceOf(acc));
+     await leverage.leverageUp(sBNB, synthBNB.address, {from:acc});
+})
+}
 
 //==========SHOW HELPERS==========
 function ShowAccBal(acc) {
@@ -373,6 +385,8 @@ function ShowAddress() {
     console.log(`SST1-BNB  ${synthBNB.address}`);
     console.log(`sRouter    ${synthRouter.address}`);
     console.log(`pRouter    ${router.address}`);
+    console.log(`bnb    ${wbnb.address}`);
+    console.log(`leverage    ${leverage.address}`);
 })
 }
 

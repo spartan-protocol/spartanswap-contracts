@@ -135,12 +135,12 @@ contract Router {
         require(inputToken > 0, "InputErr");
         if(!fromBase){
             uint halfInput = inputToken.mul(5000).div(10000);
-            (uint _baseBought, uint _fee) = swapTo(inputToken, token, BASE, member);
-            units = addLiquidityForMember(_baseBought, halfInput, token, member); 
+            (uint _baseBought, uint _fee) = swapTo(halfInput, token, BASE, member);
+            units = addLiquidity(_baseBought, halfInput, token); 
         } else {
             uint halfInput = inputToken.mul(5000).div(10000);
-            (uint _tokenBought, uint _fee) = swapTo(inputToken, BASE, token,  member);
-            units = addLiquidityForMember(halfInput, _tokenBought, token, member); 
+            (uint _tokenBought, uint _fee) = swapTo(halfInput, BASE, token,  member);
+            units = addLiquidity(halfInput, _tokenBought, token); 
         }
         return units;
     }
@@ -272,7 +272,7 @@ contract Router {
                 iBEP20(WBNB).transfer(_pool, _amount); 
                 actual = _amount;
             } else {
-                uint startBal = iBEP20(_token).balanceOf(_pool); 
+                uint startBal = iBEP20(_token).balanceOf(_pool);
                 iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
                 actual = iBEP20(_token).balanceOf(_pool).sub(startBal);
             }
@@ -308,7 +308,7 @@ contract Router {
            }
         _handleTransferOut(BASE, outputBase, msg.sender);
         emit SwappedSynth(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
-        return outPut;
+        return outputBase;
     }
     function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint outPut){
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true, "!SYNTH");
@@ -326,7 +326,7 @@ contract Router {
         }
         _handleTransferOut(synthOUT,outputSynth,msg.sender);
         emit SwappedSynth(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
-        return outPut;
+        return outputSynth;
     }
 
     //==================================================================================//

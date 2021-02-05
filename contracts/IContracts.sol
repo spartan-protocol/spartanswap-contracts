@@ -88,7 +88,7 @@ interface iROUTER {
     function removeLiquidityAsym(uint, bool, address) external returns(uint);
     function removeLiquidityExact(uint, address) external returns(uint, uint);
     function swapSynthToBase(uint inputAmount, address synthIN) external returns (uint outPut);
-    function swapBaseToSynth(uint inputAmount, address synthOUT) external returns (uint outPut)
+    function swapBaseToSynth(uint inputAmount, address synthOUT) external returns (uint outPut);
 }
 interface iWBNB {
     function withdraw(uint256) external;
