@@ -54,19 +54,20 @@ contract('SynthsLiquidate', function (accounts) {
     Showlptkn2CDPDetails()
     ShowlpBNBCDPDetails()
      ShowGLOBALCDP()
+    
+    removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
+    Liquidate()
+     ShowAccBal(acc0)
+    ShowBNBPool()
+    Showlptkn2CDPDetails()
+    ShowlpBNBCDPDetails()
+     ShowGLOBALCDP()
     globalSettleMent()
     ShowAccBal(acc0)
     ShowBNBPool()
     Showlptkn2CDPDetails()
     ShowlpBNBCDPDetails()
      ShowGLOBALCDP()
-    // removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
-    // Liquidate()
-    //  ShowAccBal(acc0)
-    // ShowBNBPool()
-    // Showlptkn2CDPDetails()
-    // ShowlpBNBCDPDetails()
-    //  ShowGLOBALCDP()
      
     
 })

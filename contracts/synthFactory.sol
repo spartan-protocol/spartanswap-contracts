@@ -180,7 +180,6 @@ contract Synth is iBEP20 {
         require(token != BASE, '!BASE');
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(msg.sender) == true, '!POOL');
          syntheticAmount = _handleTransferIn(token, amount);
-         //totalMinted = totalMinted.add(syntheticAmount); //map synthetic debt
         _mint(member, syntheticAmount); // mint synths
         iBEP20(token).transfer(msg.sender, syntheticAmount);//return token back into pool
         return syntheticAmount;
@@ -189,7 +188,6 @@ contract Synth is iBEP20 {
     function swapOUT(uint amount) public returns (uint syntheticAmount){
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(msg.sender) == true, '!POOL');
          syntheticAmount = _handleTransferIn(address(this), amount);
-        //  totalMinted = totalMinted.sub(syntheticAmount); //map synthetic debt
          _burn(address(this), syntheticAmount); // burn synths
         return syntheticAmount;
     }
