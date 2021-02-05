@@ -299,7 +299,7 @@ contract Router {
         address _poolIN = mapToken_Pool[synthINLayer1];
         _handleTransferIn(synthIN, inputAmount, _poolIN);
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN);
-        totalPooled = totalPooled.sub(outputBase);
+        totalPooled = totalPooled.sub(outputBase); 
         totalVolume += outputBase;
         totalFees += fee;
         if(isCuratedPool[_poolIN]){

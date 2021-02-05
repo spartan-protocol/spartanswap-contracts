@@ -114,7 +114,9 @@ interface iUTILS {
     function calcBasisPoints(uint, address, address) external view returns(uint amount);
     function calcSynthsValue(address, uint) external view returns(uint units);
     function calcCDPValue(address) external view returns (uint);
+    function allCuratedPools() external view returns (address [] memory);
 }
+
 interface iDAO {
     function ROUTER() external view returns(address);
     function UTILS() external view returns(address);
@@ -161,7 +163,10 @@ interface iSYNTH {
     function changeLiqFactor(uint) external;
     function burnFrom(address, uint) external;
     function swapIN(uint, address, address) external returns (uint);
-    function swapOUT(uint amount) external returns(uint);
+    function swapOUT(uint) external returns(uint);
+    function getMemberLength() external view returns (uint);
+    function getMemberDetails(address, address) external view returns (uint);
+    function members() external view returns (address [] memory);
 }
 interface iDAOVAULT {
     function deposit(address, uint) external  returns (bool);

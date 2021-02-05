@@ -36,38 +36,39 @@ contract('SynthsLiquidate', function (accounts) {
     addLiquidityTKN1(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
     createSyntheticBNB()
+   
     ShowAddress()
-    ShowBNBPool()
-    ShowAccBal(acc0)
-    swapLayer1ToSynth(_.BN2Str(10*_.one))
-    ShowBNBPool()
-    ShowAccBal(acc0)
-    swapSynthToLayer1(_.BN2Str(10*_.one))
-    ShowBNBPool()
-    ShowAccBal(acc0)
-    // addCollateralSPTBNBForSyntheticBNB(acc0, _.BN2Str(100*_.one))
-    
-    // ShowGLOBALCDP()
-    // ShowAccBal(acc0)
     // ShowBNBPool()
-    // Showlptkn2CDPDetails()
-    // ShowlpBNBCDPDetails()
-    // ShowGLOBALCDP()
-    
     // ShowAccBal(acc0)
+     swapLayer1ToSynth(_.BN2Str(10*_.one))
     // ShowBNBPool()
-    // Showlptkn2CDPDetails()
-    // ShowlpBNBCDPDetails()
-    //  ShowGLOBALCDP()
+    // ShowAccBal(acc0)
+     swapSynthToLayer1(_.BN2Str(10*_.one))
+    // ShowBNBPool()
+    // ShowAccBal(acc0)
+
+   
+    addCollateralSPTBNBForSyntheticBNB(acc0, _.BN2Str(100*_.one))
+    ShowAccBal(acc0)
+    ShowBNBPool()
+    Showlptkn2CDPDetails()
+    ShowlpBNBCDPDetails()
+     ShowGLOBALCDP()
+    globalSettleMent()
+    ShowAccBal(acc0)
+    ShowBNBPool()
+    Showlptkn2CDPDetails()
+    ShowlpBNBCDPDetails()
+     ShowGLOBALCDP()
     // removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
-    //  // Liquidate()
+    // Liquidate()
     //  ShowAccBal(acc0)
     // ShowBNBPool()
     // Showlptkn2CDPDetails()
     // ShowlpBNBCDPDetails()
     //  ShowGLOBALCDP()
      
-
+    
 })
 //################################################################
 // CONSTRUCTION
@@ -228,6 +229,9 @@ async function createSyntheticBNB() {
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function swapSynthToLayer1() {
@@ -260,12 +264,16 @@ function Liquidate() {
     let li = await synthBNB._liquidate(poolWBNB.address);
 })
 }
+function globalSettleMent() {
+    it("Perform Global Settlement", async () => {
+    await synthRouter.globalSettlement(synthBNB.address);
+})
+}
 
 async function removeSPTBNBCollateralForSyntheticBNB(acc, inputSynth) {
     it("It should remove SPT1-BNB collateral for sBNB", async () => {
         let syntheticBNB = synthBNB.address
         let lpToken = poolWBNB.address;
-      
         await synthRouter.removeCollateral(inputSynth,lpToken, syntheticBNB, {from:acc})
     })
 }
@@ -333,16 +341,26 @@ function ShowTKN2Pool() {
 }
 function ShowGLOBALCDP() {
     it("Show DEPT", async () => {
-        let totalCol = _.BN2Str(await utils.calcCDPValue(synthBNB.address));
         let totalColl = _.BN2Str(await synthBNB.totalCollateral(poolWBNB.address));
         let totalMinted = _.BN2Str(await synthBNB.totalDebt(poolWBNB.address));
         let baseColl = _.BN2Str(await utils.calcAsymmetricValue(poolWBNB.address, totalColl))
         let baseVal = _.BN2Str(await utils.calcSwapValueInBase(wbnb.address, totalMinted ))
         
-        console.log('================= SSTV1 - CDP ==================')
+        console.log('================= SST1 - SPT1-BNB - CDP =============')
         console.log(`totalDebt   ${totalMinted/_.one}`);
         console.log(`BASEDebt   ${baseVal/_.one}`);
         console.log(`BASECollateral   ${baseColl/_.one}`);
+
+        let totalColl1 = _.BN2Str(await synthBNB.totalCollateral(poolTKN2.address));
+        let totalMinted1 = _.BN2Str(await synthBNB.totalDebt(poolTKN2.address));
+        let baseColl1 = _.BN2Str(await utils.calcAsymmetricValue(poolTKN2.address, totalColl1))
+        let baseVal1 = _.BN2Str(await utils.calcSwapValueInBase(token2.address, totalMinted1 ))
+        
+        console.log('================= SST1 - SPT1-BNB - CDP =============')
+        console.log(`totalDebt   ${totalMinted1/_.one}`);
+        console.log(`BASEDebt   ${baseVal1/_.one}`);
+        console.log(`BASECollateral   ${baseColl1/_.one}`);
+
     })
 }
 function ShowAddress() {
@@ -350,7 +368,8 @@ function ShowAddress() {
     console.log(`BASE       ${base.address}`);
     console.log(`SPT1-BNB   ${poolWBNB.address}`);
     console.log(`SPT1-TKN1  ${poolTKN1.address}`);
-    console.log(`SSTV1-BNB  ${synthBNB.address}`);
+    console.log(`SPT1-TKN2  ${poolTKN2.address}`);
+    console.log(`SST1-BNB  ${synthBNB.address}`);
     console.log(`sRouter    ${synthRouter.address}`);
     console.log(`pRouter    ${router.address}`);
 })

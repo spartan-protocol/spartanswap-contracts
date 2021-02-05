@@ -6,6 +6,7 @@ import "./IContracts.sol";
 import "@nomiclabs/buidler/console.sol";
 contract Synth is iBEP20 {
     using SafeMath for uint256;
+    uint32 private membersActiveCount;
     address public BASE;
     address public LayerONE;
     address public WBNB;
@@ -15,9 +16,13 @@ contract Synth is iBEP20 {
     uint256 public synthsAmount;
     
     uint256 public totalMinted;
+    address [] public membersActive;
+    
+
 
     struct CollateralDetails {
-        uint id;
+        uint ID;
+        mapping(address => bool) isActiveMember;
         mapping(address => uint) synthDebt;
     }
 
@@ -33,9 +38,10 @@ contract Synth is iBEP20 {
     mapping(address => uint) public totalCollateral;
     mapping(address => uint) public totalDebt;
 
+
     event AddLPCollateral(address member, uint inputLPToken, uint synthsIssued, address collateralType);
     event RemoveCollateral(address member, uint outputLPToken, uint synthsBurnt, address collateralType);
-    event Liquidated(address pool, uint units);
+    event Liquidated(address pool, uint units, uint outputAmount);
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
@@ -49,7 +55,7 @@ contract Synth is iBEP20 {
          BASE = _base;
          LayerONE = _token;
         string memory synthName = "SpartanSynthV1-";
-        string memory synthSymbol = "SSTV1-";
+        string memory synthSymbol = "SST1-s";
         _name = string(abi.encodePacked(synthName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(synthSymbol, iBEP20(_token).symbol()));
         decimals = 18;
@@ -138,6 +144,7 @@ contract Synth is iBEP20 {
     
     // add collateral for member
     function addCollateralForMember(address pool, address member) public returns(uint syntheticAmount){
+        require(iROUTER(_DAO().ROUTER()).isCuratedPool(pool) == true, '!POOL');
         uint256 _actualInputCollateral = _getAddedLPAmount(pool);// get the added collateral to LP CDP
         uint baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, _actualInputCollateral);//get asym share in sparta
          syntheticAmount = iUTILS(_DAO().UTILS()).calcSwapValueInToken(LayerONE, baseValueCollateral); //get synthetic asset swap
@@ -173,7 +180,7 @@ contract Synth is iBEP20 {
         require(token != BASE, '!BASE');
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(msg.sender) == true, '!POOL');
          syntheticAmount = _handleTransferIn(token, amount);
-         totalMinted = totalMinted.add(syntheticAmount); //map synthetic debt
+         //totalMinted = totalMinted.add(syntheticAmount); //map synthetic debt
         _mint(member, syntheticAmount); // mint synths
         iBEP20(token).transfer(msg.sender, syntheticAmount);//return token back into pool
         return syntheticAmount;
@@ -182,13 +189,13 @@ contract Synth is iBEP20 {
     function swapOUT(uint amount) public returns (uint syntheticAmount){
         require(iROUTER(_DAO().ROUTER()).isCuratedPool(msg.sender) == true, '!POOL');
          syntheticAmount = _handleTransferIn(address(this), amount);
-         totalMinted = totalMinted.sub(syntheticAmount); //map synthetic debt
+        //  totalMinted = totalMinted.sub(syntheticAmount); //map synthetic debt
          _burn(address(this), syntheticAmount); // burn synths
         return syntheticAmount;
     }
 
 
-// Token Transfer Functions
+
     function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 actual){
         if(_amount > 0) {
                 uint startBal = iBEP20(_token).balanceOf(address(this)); 
@@ -226,15 +233,25 @@ contract Synth is iBEP20 {
     }
     function _incrementMemberDetails(address pool, address _member, uint _synthMinted) internal {
        mapMember_Details[_member].synthDebt[pool] = mapMember_Details[_member].synthDebt[pool].add(_synthMinted);
+       if(!mapMember_Details[_member].isActiveMember[pool]){
+           console.log(_member);
+           membersActive.push(_member);
+           membersActiveCount += 1;
+           mapMember_Details[_member].isActiveMember[pool] = true;
+       }
     }
     function _decrementMemberDetails(address pool, address _member, uint _synthBurnt) internal {
        mapMember_Details[_member].synthDebt[pool] = mapMember_Details[_member].synthDebt[pool].sub(_synthBurnt);
+       if(mapMember_Details[_member].synthDebt[pool] == 0){
+           mapMember_Details[_member].isActiveMember[pool] = false;
+           membersActiveCount -= 1;
+       }
     }
 
     function _liquidate(address pool) public {
         uint256 baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, totalCollateral[pool]);
         uint256 baseValueDebt = iUTILS(_DAO().UTILS()).calcSwapValueInBaseWithPool(pool, totalDebt[pool]);//get asym share in sparta
-        if(baseValueDebt < baseValueCollateral){
+        if(baseValueDebt > baseValueCollateral){
             uint liqAmount = totalCollateral[pool].mul(liqFactor).div(10000);
             totalCollateral[pool] = totalCollateral[pool].sub(liqAmount);
             address token = iPOOL(pool).TOKEN();
@@ -245,8 +262,28 @@ contract Synth is iBEP20 {
             uint outputAmount = _baseBought.add(_outputBase); 
             iBEP20(BASE).transfer(pool, outputAmount); // send base to pool for arb 
             iPOOL(pool).sync(); //sync balances for pool
-            emit Liquidated(pool, liqAmount);
+            emit Liquidated(pool, liqAmount, outputAmount);
         }
+    }
+
+    function globalSettleMent() public onlyDAO {
+        address [] memory getCuratedPools = iUTILS(_DAO().UTILS()).allCuratedPools(); 
+          if(membersActiveCount < 10){
+            for(uint x=0;x < membersActive.length;x++){
+            for(uint i=0;i < getCuratedPools.length;i++){
+                if(mapMember_Details[membersActive[x]].isActiveMember[getCuratedPools[i]] ){
+                    uint256 outputCollateral = iUTILS(_DAO().UTILS()).calcDebtShare(mapMember_Details[membersActive[x]].synthDebt[getCuratedPools[i]], totalDebt[getCuratedPools[i]], getCuratedPools[i], address(this)); 
+                    totalMinted = totalMinted.sub(mapMember_Details[membersActive[x]].synthDebt[getCuratedPools[i]]); //map synthetic debt
+                    _decrementCDPDebt(outputCollateral, mapMember_Details[membersActive[x]].synthDebt[getCuratedPools[i]], getCuratedPools[i] );
+                    _decrementMemberDetails(getCuratedPools[i], membersActive[x], mapMember_Details[membersActive[x]].synthDebt[getCuratedPools[i]]); //update member details
+                    iBEP20(getCuratedPools[i]).transfer(membersActive[x], outputCollateral); //return their collateral
+                    emit RemoveCollateral(membersActive[x], outputCollateral, mapMember_Details[membersActive[x]].synthDebt[getCuratedPools[i]], getCuratedPools[i]);
+                }
+              }
+              }
+            totalMinted = 0;
+            selfdestruct(msg.sender);
+    }
     }
 
     function changeLiqFactor(uint newliqFactor) public onlyDAO {
@@ -260,5 +297,9 @@ contract Synth is iBEP20 {
         return MemberDebt;
     }
 
+    function getMemberLength() public view returns (uint memberCount){
+        memberCount = membersActive.length;
+        return memberCount;
+    }
 
 }
