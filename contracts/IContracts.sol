@@ -118,6 +118,7 @@ interface iUTILS {
     function calcSynthsValue(address, uint) external view returns(uint units);
     function calcCDPValue(address) external view returns (uint);
     function allCuratedPools() external view returns (address [] memory);
+    function getShareOfTokenAmount(address, address) external view returns(uint);
 }
 
 interface iDAO {

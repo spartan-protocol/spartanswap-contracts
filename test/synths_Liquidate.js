@@ -22,7 +22,7 @@ var LEVERAGE = artifacts.require("./Leverage.sol");
 
 var base; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
-var poolWBNB; var poolTKN1; var synthTNK2; var synthBNB;
+var poolWBNB; var poolTKN1; var synthTNK2; var synthTKN2;
 var acc0; var acc1; var acc2; var acc3;
 
 
@@ -36,40 +36,47 @@ contract('SynthsLiquidate', function (accounts) {
     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     addLiquidityTKN1(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
+    
     createSyntheticBNB()
-   
+    ShowAccBal(acc0)
     ShowAddress()
     // ShowBNBPool()
-    // ShowAccBal(acc0)
-     swapLayer1ToSynth(_.BN2Str(10*_.one))
+    
+    //swapLayer1ToSynth(_.BN2Str(10*_.one))
     // ShowBNBPool()
     // ShowAccBal(acc0)
      //swapSynthToLayer1(_.BN2Str(10*_.one))
     ShowBNBPool()
+    ShowTKN2Pool()
+    ShowGLOBALCDP()
     ShowAccBal(acc0)
 
     LeverageUp(acc0)
-   
-    // addCollateralSPTBNBForSyntheticBNB(acc0, _.BN2Str(100*_.one))
+    // ShowBNBPool()
+    // ShowTKN2Pool()
+    // LeverageUp(acc0)
+    // ShowBNBPool()
+    // ShowTKN2Pool()
+    // ShowGLOBALCDP()
+    // LeverageUp(acc0)
+    
     ShowAccBal(acc0)
+    ShowBNBPool()
+    ShowTKN2Pool()
+
+    ShowlpBNBCDPDetails()
+     ShowGLOBALCDP()
+     LeverageDown(acc0)
+
+    // addCollateralSPTBNBForSyntheticBNB(acc0)
+     ShowAccBal(acc0)
     ShowBNBPool()
     Showlptkn2CDPDetails()
     ShowlpBNBCDPDetails()
      ShowGLOBALCDP()
-    
     // removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
     // Liquidate()
-    //  ShowAccBal(acc0)
-    // ShowBNBPool()
-    // Showlptkn2CDPDetails()
-    // ShowlpBNBCDPDetails()
-    //  ShowGLOBALCDP()
-    // globalSettleMent()
-    // ShowAccBal(acc0)
-    // ShowBNBPool()
-    // Showlptkn2CDPDetails()
-    // ShowlpBNBCDPDetails()
-    //  ShowGLOBALCDP()
+    
      
     
 })
@@ -157,6 +164,9 @@ async function createPoolWBNB(SPT, token) {
         await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
         await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await poolWBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await poolWBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await poolWBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function createPoolTKN1(SPT, token) {
@@ -224,62 +234,63 @@ async function curatePools() {
     })
 }
 async function createSyntheticBNB() {
-    it("It should Create Synthetic BNB ", async () => {
-        let inputLPToken = _.BN2Str(10*_.one)
-        let lpToken = poolTKN2.address;
-        var _synth =  await synthRouter.createSynth.call(lpToken,wbnb.address, inputLPToken);
-        await synthRouter.createSynth(lpToken,wbnb.address,inputLPToken);
-        synthBNB = await SYNTH.at(_synth)
-        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await synthBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await synthBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await synthBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await synthBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc2 })
+    it("It should Create Synthetic TKN2 ", async () => {
+        let inputLPToken = _.BN2Str(10*_.one);
+        let lpToken = poolWBNB.address;
+        var _synth =  await synthRouter.createSynth.call(lpToken,token2.address, inputLPToken);
+        await synthRouter.createSynth(lpToken,token2.address,inputLPToken);
+        synthTKN2 = await SYNTH.at(_synth)
+        await synthTKN2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthTKN2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthTKN2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await synthTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await synthTKN2.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthTKN2.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthTKN2.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function swapSynthToLayer1() {
     it("Swap Synthetic BNB To BASE", async () => {
         let input =  _.BN2Str(2*_.one);
-        let synthIN = synthBNB.address;
+        let synthIN = synthTKN2.address;
         await router.swapSynthToBase(input,synthIN);
     })
 }
 async function swapLayer1ToSynth() {
     it("Swap BASE to Synthetic BNB", async () => {
         let input =  _.BN2Str(10*_.one);
-        let synthOUT = synthBNB.address;
+        let synthOUT = synthTKN2.address;
         await router.swapBaseToSynth(input,synthOUT);
       
     })
 }
 
-async function addCollateralSPTBNBForSyntheticBNB(acc, inputLP) {
+async function addCollateralSPTBNBForSyntheticBNB(acc) {
     it("It should add SPT1-WBNB collateral for sBNB", async () => {
-        let inputLPToken = inputLP
+
         let lpToken = poolWBNB.address;
-        await synthRouter.addCollateral(inputLPToken,lpToken, synthBNB.address,{from:acc});
+        await synthRouter.addCollateral(units,lpToken, synthTKN2.address,{from:acc});
+        
     })
 }
 
 
 function Liquidate() {
     it("Liquidate", async () => {
-    let li = await synthBNB._liquidate(poolWBNB.address);
+    let li = await synthTKN2._liquidate(poolWBNB.address);
 })
 }
 function globalSettleMent() {
     it("Perform Global Settlement", async () => {
-    await synthRouter.globalSettlement(synthBNB.address);
+    await synthRouter.globalSettlement(synthTKN2.address);
 })
 }
 
 async function removeSPTBNBCollateralForSyntheticBNB(acc, inputSynth) {
     it("It should remove SPT1-BNB collateral for sBNB", async () => {
-        let syntheticBNB = synthBNB.address
+        let syntheticBNB = synthTKN2.address
         let lpToken = poolWBNB.address;
         await synthRouter.removeCollateral(inputSynth,lpToken, syntheticBNB, {from:acc})
     })
@@ -287,8 +298,26 @@ async function removeSPTBNBCollateralForSyntheticBNB(acc, inputSynth) {
 
 function LeverageUp(acc) {
     it("Leverage Up", async () => {
-        let sBNB = _.BN2Str(await synthBNB.balanceOf(acc));
-     await leverage.leverageUp(sBNB, synthBNB.address, {from:acc});
+        let lpToken = poolWBNB.address;
+        let sBNB = _.BN2Str(await synthTKN2.balanceOf(acc));
+        let tkn2 = _.BN2Str(await poolWBNB.balanceOf(acc));
+         await leverage.leverageUp(sBNB, synthTKN2.address, lpToken);
+         let tkn4 = _.getBN(await poolWBNB.balanceOf(acc));
+         let diff = tkn4.minus(tkn2);
+         console.log(_.BN2Str(diff));
+         await synthRouter.addCollateral(_.BN2Str(diff),lpToken, synthTKN2.address,{from:acc});
+})
+}
+
+function LeverageDown(acc) {
+    it("Leverage Down", async () => {
+        let lpToken = poolWBNB.address;
+        let tkn2 = _.BN2Str(9631929111382405901);
+        let sBNB = _.BN2Str(await synthTKN2.balanceOf(acc));
+         await leverage.leverageDown(tkn2, synthTKN2.address, lpToken);
+         let sBNBA = _.getBN(await synthTKN2.balanceOf(acc));
+         let diff = sBNBA.minus(sBNB);
+         await synthRouter.removeCollateral(diff,lpToken, synthTKN2.address,{from:acc});
 })
 }
 
@@ -299,19 +328,19 @@ function ShowAccBal(acc) {
         let acc0B = _.BN2Str(await poolWBNB.balanceOf(acc));
         let acc0T1 = _.BN2Str(await poolTKN1.balanceOf(acc));
         let acc0T2 = _.BN2Str(await poolTKN2.balanceOf(acc));
-        let sBNB = _.BN2Str(await synthBNB.balanceOf(acc));
+        let stkn = _.BN2Str(await synthTKN2.balanceOf(acc));
         console.log('================= BALANCES ==================')
         console.log(`Base  ${acc0S/_.one}`);
         console.log(`SPT1-BNB  ${acc0B/_.one}`);
         console.log(`SPT1-TKN1  ${acc0T1/_.one}`);
         console.log(`SPT1-TKN2  ${acc0T2/_.one}`);
-        console.log(`SSTV1-BNB  ${sBNB/_.one}`);
+        console.log(`SST1-sTKN  ${stkn/_.one}`);
     })
 }
 function Showlptkn2CDPDetails() {
     it("Show CDP", async () => {
-        let totalCol = _.BN2Str(await synthBNB.totalCollateral(poolTKN2.address));
-        let totalMinted = _.BN2Str(await synthBNB.totalDebt(poolTKN2.address));
+        let totalCol = _.BN2Str(await synthTKN2.totalCollateral(poolTKN2.address));
+        let totalMinted = _.BN2Str(await synthTKN2.totalDebt(poolTKN2.address));
         console.log('================= SPT1-TKN2 CDP ==================')
         console.log(`Collateral  ${totalCol/_.one}`);
         console.log(`Minted   ${totalMinted/_.one}`);
@@ -319,8 +348,8 @@ function Showlptkn2CDPDetails() {
 }
 function ShowlpBNBCDPDetails() {
     it("Show CDP", async () => {
-        let totalCol = _.BN2Str(await synthBNB.totalCollateral(poolWBNB.address));
-        let totalMinted = _.BN2Str(await synthBNB.totalDebt(poolWBNB.address));
+        let totalCol = _.BN2Str(await synthTKN2.totalCollateral(poolWBNB.address));
+        let totalMinted = _.BN2Str(await synthTKN2.totalDebt(poolWBNB.address));
         console.log('================= SPT1-BNB CDP ==================')
         console.log(`Collateral  ${totalCol/_.one}`);
         console.log(`Minted   ${totalMinted/_.one}`);
@@ -354,26 +383,15 @@ function ShowTKN2Pool() {
 }
 function ShowGLOBALCDP() {
     it("Show DEPT", async () => {
-        let totalColl = _.BN2Str(await synthBNB.totalCollateral(poolWBNB.address));
-        let totalMinted = _.BN2Str(await synthBNB.totalDebt(poolWBNB.address));
+        let totalColl = _.BN2Str(await synthTKN2.totalCollateral(poolWBNB.address));
+        let totalMinted = _.BN2Str(await synthTKN2.totalDebt(poolWBNB.address));
         let baseColl = _.BN2Str(await utils.calcAsymmetricValue(poolWBNB.address, totalColl))
         let baseVal = _.BN2Str(await utils.calcSwapValueInBase(wbnb.address, totalMinted ))
         
-        console.log('================= SST1 - SPT1-BNB - CDP =============')
+        console.log('================= SST1-sTKN - SPT1-BNB - CDP =============')
         console.log(`totalDebt   ${totalMinted/_.one}`);
         console.log(`BASEDebt   ${baseVal/_.one}`);
         console.log(`BASECollateral   ${baseColl/_.one}`);
-
-        let totalColl1 = _.BN2Str(await synthBNB.totalCollateral(poolTKN2.address));
-        let totalMinted1 = _.BN2Str(await synthBNB.totalDebt(poolTKN2.address));
-        let baseColl1 = _.BN2Str(await utils.calcAsymmetricValue(poolTKN2.address, totalColl1))
-        let baseVal1 = _.BN2Str(await utils.calcSwapValueInBase(token2.address, totalMinted1 ))
-        
-        console.log('================= SST1 - SPT1-BNB - CDP =============')
-        console.log(`totalDebt   ${totalMinted1/_.one}`);
-        console.log(`BASEDebt   ${baseVal1/_.one}`);
-        console.log(`BASECollateral   ${baseColl1/_.one}`);
-
     })
 }
 function ShowAddress() {
@@ -382,7 +400,7 @@ function ShowAddress() {
     console.log(`SPT1-BNB   ${poolWBNB.address}`);
     console.log(`SPT1-TKN1  ${poolTKN1.address}`);
     console.log(`SPT1-TKN2  ${poolTKN2.address}`);
-    console.log(`SST1-BNB  ${synthBNB.address}`);
+    console.log(`SST1-BNB  ${synthTKN2.address}`);
     console.log(`sRouter    ${synthRouter.address}`);
     console.log(`pRouter    ${router.address}`);
     console.log(`bnb    ${wbnb.address}`);
