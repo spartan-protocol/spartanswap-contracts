@@ -83,7 +83,6 @@ interface iROUTER {
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
     function changeArrayFeeSize(uint) external view returns(bool);
     function changeMaxTrades(uint) external view returns(bool);
-    function mapToken_Pool(address) external view returns (address);
     function addLiquidityAsym(uint, bool, address) external returns(uint);
     function removeLiquidityAsym(uint, bool, address) external returns(uint);
     function removeLiquidityExact(uint, address) external returns(uint, uint);
@@ -173,7 +172,6 @@ interface iSYNTH {
     function members() external view returns (address [] memory);
 }
 interface iDAOVAULT {
-    function deposit(address, uint) external  returns (bool);
     function withdraw(address, uint) external  returns (bool);
 }
 

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./IContracts.sol";
 import "@nomiclabs/buidler/console.sol";
 import "./synthFactory.sol";
 contract synthRouter {
@@ -26,7 +25,7 @@ contract synthRouter {
     // Only DAO can execute
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "Must be DAO");
-        _;
+        _; 
     }
 
     constructor (address _base, address _wbnb) public payable {

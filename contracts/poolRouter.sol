@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./IContracts.sol";
 import "./poolFactory.sol";
-import "@nomiclabs/buidler/console.sol";
+
+interface iWBNB {
+    function withdraw(uint256) external;
+}
 
 contract Router {
-
     using SafeMath for uint256;
 
     address public BASE;
@@ -314,7 +315,7 @@ contract Router {
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true, "!SYNTH");
         address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
         address _poolOUT = mapToken_Pool[synthOUTLayer1];
-        require(iROUTER(_DAO().ROUTER()).isPool(_poolOUT) == true, "!SYNTH");
+        require(isPool[_poolOUT] == true, "!POOL");
         _handleTransferIn(BASE, inputAmount, _poolOUT);
         (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
         totalPooled = totalPooled.add(inputAmount);

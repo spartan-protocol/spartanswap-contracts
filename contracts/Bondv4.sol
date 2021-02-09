@@ -1,7 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./IContracts.sol";
+import "./cInterfaces.sol";
+interface iBASE {
+    function DAO() external view returns (iDAO);
+    function burn(uint) external;
+    function claim(address asset, uint256 amount) external payable;  
+}
+interface iDAO {
+     function ROUTER() external view returns(address);
+     function UTILS() external view returns(address);
+     function DAO() external view returns (address);
+     function depositForMember(address pool, uint256 amount, address member) external;
+}
+interface iROUTER {
+     function getPool(address) external view returns(address payable);
+    function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
+}
+interface iUTILS {
+    function calcSwapValueInBase(address pool, uint256 amount) external view returns (uint256 value);
+     function getPool(address token)external view returns (address value);
+}
+
 
 
     //======================================SPARTA=========================================//
@@ -139,6 +159,15 @@ contract Bond is iBEP20 {
         emit Transfer(account, address(0), amount);
     }
 
+    //================================MIGRATION==============================//
+    function migrateMemberDetails(address asset, address member, MemberDetails memory memberDetails) public returns (bool){
+        mapAddress_listedAssets[asset].isMember[member] = memberDetails.isMember;
+        mapAddress_listedAssets[asset].bondedLP[member] = memberDetails.bondedLP;
+        mapAddress_listedAssets[asset].claimRate[member] = memberDetails.claimRate;
+        mapAddress_listedAssets[asset].lastBlockTime[member] = memberDetails.lastBlockTime;
+        return true;
+    }
+
 
     //====================================ONLY DAO================================//
     function listBondAsset(address asset) public onlyDAO returns (bool){
@@ -160,7 +189,7 @@ contract Bond is iBEP20 {
     }
     function burnBalance() public onlyDAO returns (bool){
         uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
-        iBASE(BASE).burn(baseBal);
+        iBASE(BASE).burn(baseBal); 
         return true;
     }
     function mintBond() public onlyDAO returns (bool) {
@@ -220,7 +249,7 @@ contract Bond is iBEP20 {
                     iBEP20(_token).approve(_DAO().ROUTER(), approvalTNK);  
                 }
                 LPunits = iROUTER(_DAO().ROUTER()).addLiquidity(spartaAllocation, _amount, _token);
-            }
+            } 
     }
 
     function claimAndLock(address [] memory asset) public returns (bool){
@@ -280,5 +309,7 @@ contract Bond is iBEP20 {
         memberDetails.lastBlockTime = mapAddress_listedAssets[asset].lastBlockTime[member];
         return memberDetails;
     }
+    
+    
     
 }

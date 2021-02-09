@@ -4,9 +4,6 @@
 			"path": "."
 		},
 		{
-			"path": "../spartanswapp-dapp"
-		},
-		{
 			"path": "../spartanpools-dapp"
 		}
 	],

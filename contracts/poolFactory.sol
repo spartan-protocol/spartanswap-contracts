@@ -1,7 +1,80 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./IContracts.sol";
-import "@nomiclabs/buidler/console.sol";
+interface iBEP20 {
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
+    function decimals() external view returns (uint256);
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address, uint256) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
+    function burnFrom(address, uint256) external;
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+library SafeMath {
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+        return c;
+    }
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath: subtraction overflow");
+    }
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+        return c;
+    }
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "SafeMath: division by zero");
+    }
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        return c;
+    }
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) {
+            return 0;
+        }
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+        return c;
+    }
+}
+interface iDAO {
+    function ROUTER() external view returns(address);
+    function UTILS() external view returns(address);
+    function SYNTHROUTER() external view returns(address);
+    function DAO() external view returns (address);
+}
+interface iBASE {
+    function DAO() external view returns (iDAO);
+}
+interface iUTILS {
+    function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units);
+    function calcLiquidityShare(uint units, address token, address pool) external pure returns (uint share);
+    function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
+    function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
+    function calcSpotValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
+    function calcPart(uint bp, uint total) external pure returns (uint part);
+    function calcSpotValueInBase(address token, uint amount) external view returns (uint value);
+    function calcSpotValueInToken(address token, uint amount) external view returns (uint value);
+    function getDepth(address pool) external view returns (uint depth);
+}
+interface iSYNTHROUTER {
+    function getSynth(address) external view returns(address);
+    function isSynth(address) external view returns(bool);
+}
+interface iSYNTH {
+    function LayerONE() external view returns(address);
+    function _liquidate(address) external;
+    function swapIN(uint, address, address) external returns (uint);
+    function swapOUT(uint) external returns(uint);
+}
 contract Pool is iBEP20 {
     using SafeMath for uint256;
 

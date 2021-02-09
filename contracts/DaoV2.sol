@@ -1,9 +1,42 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./IContracts.sol";
 import "./DaoVault.sol";
+import "./cInterfaces.sol"; 
+
 import "@nomiclabs/buidler/console.sol";
+interface iDAOVAULT {
+    function withdraw(address, uint) external  returns (bool);
+}
+interface iROUTER {
+    function isCuratedPool(address) external view returns (bool);
+    function challengLowestCuratedPool(address) external view returns (bool);
+    function grantFunds(uint, address) external payable returns (bool);
+    function addCuratedPool(address) external returns (bool);
+    function removeCuratedPool(address) external returns (bool); 
+    function changeArrayFeeSize(uint) external returns(bool);
+    function changeMaxTrades(uint) external returns(bool);
+}
+interface iUTILS {
+    function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
+    function getPoolShareWeight(address token, uint units)external view returns(uint weight);
+}
+interface iPOOL {
+    function TOKEN() external view returns(address);
+    function transferTo(address, uint) external payable returns(bool);
+}
+interface iBOND {
+    function mintBond() external payable returns (bool);
+    function burnBond() external payable returns (bool);
+    function listBondAsset(address) external returns (bool);
+    function delistBondAsset(address) external returns (bool);
+    function changeBondingPeriod(uint) external returns (bool);
+}
+interface iSYNTHROUTER {
+    function getSynth(address) external view returns(address);
+    function isSynth(address) external view returns(bool);
+}
+
 contract Dao {
     using SafeMath for uint;
 
@@ -260,7 +293,7 @@ contract Dao {
     
     function payFee() internal returns(bool){
         uint _amount = daoFee*10**18;
-        require(iBASE(BASE).transferTo(address(_ROUTER), _amount), '!fee' );
+        require(iBASE(BASE).transferTo(address(_ROUTER), _amount), '!fee' ); 
         return true;
     } 
 
@@ -366,7 +399,7 @@ contract Dao {
         iBASE(BASE).changeDAO(_proposedAddress);
         uint reserve = iBEP20(BASE).balanceOf(address(this));
         iBEP20(BASE).transfer(_proposedAddress, reserve);
-        daoHasMoved = true;
+        daoHasMoved = true; 
         completeProposal(_proposalID);
     }
     function moveRouter(uint _proposalID) internal {
@@ -397,7 +430,7 @@ contract Dao {
         uint _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
         iBASE(BASE).changeEraDuration(_proposedParam);
-        secondsPerEra = iBASE(BASE).secondsPerEra();
+        secondsPerEra = iBASE(BASE).secondsPerEra(); 
         completeProposal(_proposalID);
     }
     function startEmissions(uint _proposalID) internal {
@@ -407,7 +440,7 @@ contract Dao {
     function stopEmissions(uint _proposalID) internal {
         iBASE(BASE).stopEmissions();
         completeProposal(_proposalID);
-    }
+    } 
     function changeCooloff(uint _proposalID) internal {
         uint32 _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");

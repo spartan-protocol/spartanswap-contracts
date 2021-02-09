@@ -2,7 +2,44 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "@nomiclabs/buidler/console.sol";
-import "./IContracts.sol";
+import "./cInterfaces.sol";
+interface iBASE {
+    function DAO() external view returns (iDAO);
+}
+interface iROUTER {
+    function totalPooled() external view returns (uint);
+    function totalVolume() external view returns (uint);
+    function totalFees() external view returns (uint);
+    function removeLiquidityTx() external view returns (uint);
+    function addLiquidityTx() external view returns (uint);
+    function swapTx() external view returns (uint);
+    function getCuratedPoolsLength() external view returns (uint);
+    function tokenCount() external view returns(uint);
+    function getCuratedPool(uint) external view returns(address);
+    function getToken(uint) external view returns(address);
+    function getPool(address) external view returns(address payable);
+}
+interface iDAO {
+    function ROUTER() external view returns(address);
+    function SYNTHROUTER() external view returns(address);
+}
+interface iPOOL {
+    function genesis() external view returns(uint);
+    function baseAmount() external view returns(uint);
+    function tokenAmount() external view returns(uint);
+    function fees() external view returns(uint);
+    function volume() external view returns(uint);
+    function txCount() external view returns(uint);
+}
+interface iSYNTHROUTER {
+    function getSynth(address) external view returns(address);
+}
+interface iSYNTH {
+    function genesis() external view returns(uint);
+    function totalMinted() external view returns(uint);
+}
+
+
 contract Utils {
 
     using SafeMath for uint;
@@ -100,7 +137,7 @@ contract Utils {
 
     function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
         iDAO dao = _DAO();
-        globalDetails.totalPooled = iROUTER(dao.ROUTER()).totalPooled();
+        globalDetails.totalPooled = iROUTER(dao.ROUTER()).totalPooled(); 
         globalDetails.totalVolume = iROUTER(dao.ROUTER()).totalVolume();
         globalDetails.totalFees = iROUTER(dao.ROUTER()).totalFees();
         globalDetails.removeLiquidityTx = iROUTER(dao.ROUTER()).removeLiquidityTx();
@@ -221,23 +258,6 @@ contract Utils {
             return (now.sub(genesis)).div(86400);
         }
     }
-
-//     function getPoolROI(address token) public view returns (uint roi){
-//         address pool = getPool(token);
-//         uint _baseStart = iPOOL(pool).baseAmountPooled().mul(2);
-//         uint _baseEnd = iPOOL(pool).baseAmount().mul(2);
-//         uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
-//         uint _tokenStart = iPOOL(pool).tokenAmountPooled().mul(2);
-//         uint _tokenEnd = iPOOL(pool).tokenAmount().mul(2);
-//         uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
-//         return (_ROIS + _ROIA).div(2);
-//    }
-
-//    function getPoolAPY(address token) public view returns (uint apy){
-//         uint avgROI = getPoolROI(token);
-//         uint poolAge = getPoolAge(token);
-//         return (avgROI.mul(365)).div(poolAge);
-//    }
 
     function isMember(address token, address member) public view returns(bool){
         address pool = getPool(token);

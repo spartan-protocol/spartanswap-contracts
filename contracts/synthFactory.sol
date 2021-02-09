@@ -1,9 +1,36 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./IContracts.sol";
-
+import "./cInterfaces.sol";
 import "@nomiclabs/buidler/console.sol";
+interface iBASE {
+    function DAO() external view returns (iDAO);
+}
+interface iROUTER {
+    function isCuratedPool(address) external view returns (bool);
+    function swap(uint, address, address) external returns(uint, uint);
+    function removeLiquidityExact(uint, address) external returns(uint, uint);
+}
+interface iUTILS {
+   function calcSwapValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
+    function calcAsymmetricValue(address token, uint units) external view returns(uint amount);
+    function calcDebtShare(uint units, uint amount, address, address synth) external view returns (uint unitSynths);
+    function calcSwapValueInToken(address token, uint units) external view returns (uint amount);
+    function allCuratedPools() external view returns (address [] memory);
+   
+}
+interface iDAO {
+    function ROUTER() external view returns(address);
+    function UTILS() external view returns(address);
+    function DAO() external view returns (address);
+   
+}
+interface iPOOL {
+    function TOKEN() external view returns(address);
+    function sync() external;
+}
+
+
 contract Synth is iBEP20 {
     using SafeMath for uint256;
     uint32 private membersActiveCount;

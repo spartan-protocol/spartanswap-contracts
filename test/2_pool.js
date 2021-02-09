@@ -1,9 +1,3 @@
-/*
-################################################
-Members and Pools
-################################################
-*/
-
 const assert = require("chai").assert;
 const truffleAssert = require('truffle-assertions');
 var BigNumber = require('bignumber.js');
@@ -12,17 +6,25 @@ const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
 
-var BASE = artifacts.require("./BaseMinted");
-var DAO = artifacts.require("./Dao");
-var ROUTER = artifacts.require("./Router");
-var POOL = artifacts.require("./Pool");
-var UTILS = artifacts.require("./Utils");
-var TOKEN1 = artifacts.require("./Token1");
+var BASE = artifacts.require("./BaseMinted.sol");
+var DAO = artifacts.require("./Dao.sol");
+var ROUTER = artifacts.require("./Router.sol");
+var POOL = artifacts.require("./Pool.sol");
+var UTILS = artifacts.require("./Utils.sol");
+var synthRouter = artifacts.require("./synthRouter.sol");
+var SYNTH = artifacts.require("./synth.sol");
+var BOND = artifacts.require("./Bond.sol");
+var TOKEN = artifacts.require("./Token1.sol");
+var TOKEN2 = artifacts.require("./Token2.sol");
 var WBNB = artifacts.require("./WBNB");
+var DAOVAULT = artifacts.require("./DaoVault.sol");
+var LEVERAGE = artifacts.require("./Leverage.sol");
 
-var base; var poolWBNB;  var utils; var token1; var token2;
-var pool; var router; var Dao; var wbnb
+var base; var token1;  var token2; var wbnb;
+var utils; var utils2; var router; var router2; var Dao; var Dao2;
+var poolWBNB; var poolTKN1; var synthTNK2; var synthTKN2;
 var acc0; var acc1; var acc2; var acc3;
+
 
 contract('ADD LIQUIDITY', function (accounts) {
 
@@ -42,35 +44,52 @@ contract('ADD LIQUIDITY', function (accounts) {
 function constructor(accounts) {
     acc0 = accounts[0]; acc1 = accounts[1]; acc2 = accounts[2]; acc3 = accounts[3]
     it("constructor events", async () => {
-        base = await BASE.new()
-        wbnb = await WBNB.new()
-        utils = await UTILS.new(base.address)
-        Dao = await DAO.new(base.address)
-        router = await ROUTER.new(base.address, wbnb.address)
-        await base.changeDAO(Dao.address)
-        await Dao.setGenesisAddresses(router.address, utils.address)
-        // assert.equal(await Dao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
-        // //console.log(await utils.BASE())
-        // //console.log(await Dao.ROUTER())
+        base = await BASE.new() // deploy base
+        wbnb = await WBNB.new() // deploy wBNB
+        utils = await UTILS.new(base.address) // deploy utilsV2
+        Dao = await DAO.new(base.address)     // deploy daoV2
+        router = await ROUTER.new(base.address, wbnb.address) //deploy router
+        daoVault = await DAOVAULT.new(base.address);
+        await base.changeDAO(Dao.address)     
+        synthRouter = await synthRouter.new(base.address, wbnb.address) //deploy synthRouter
+        bond = await BOND.new(base.address)     //deploy new bond
+        token1 = await TOKEN.new()             //deploy token
+        token2 = await TOKEN2.new() 
+        leverage = await LEVERAGE.new(base.address,wbnb.address );
 
-        token1 = await TOKEN1.new();
-        token2 = await TOKEN1.new();
+        await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address);
 
-        //console.log(`Acc0: ${acc0}`)
-        //console.log(`base: ${base.address}`)
-        //console.log(`dao: ${Dao.address}`)
-        //console.log(`utils: ${utils.address}`)
-        //console.log(`router: ${router.address}`)
-        //console.log(`token1: ${token1.address}`)
-
-        let supply = await token1.totalSupply()
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(router.address, _.getBN(_.BN2Str(100000 * _.one)))
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
-        
+        await token1.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
+        await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+        await token1.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
+        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+
+        await token2.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
+        await token2.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+        await token2.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
+        await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+
     });
 }
 
