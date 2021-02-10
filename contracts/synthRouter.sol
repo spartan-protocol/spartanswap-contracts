@@ -3,6 +3,7 @@ pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "@nomiclabs/buidler/console.sol";
 import "./synthFactory.sol";
+
 contract synthRouter {
 
     using SafeMath for uint256;
@@ -57,7 +58,7 @@ contract synthRouter {
         require(getSynth(token) == address(0), "CreateErr");
         require(lpToken != BASE, "Must not be Base");
         require(inputLPToken > 0, "Must get lp token");
-        require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "Must be Curated");
+        require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(lpToken) == true, "Must be Curated");
         Synth newSynth; 
         newSynth = new Synth(BASE,token);  
         synth = address(newSynth);
@@ -78,7 +79,7 @@ contract synthRouter {
     // Add collateral for member
     function addCollateralForMember(uint inputLPToken, address lpToken, address member, address synth) public payable returns (uint synthMinted) {
         require(isSynth[synth] == true, "Synth must exist");
-        require(iROUTER(_DAO().ROUTER()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
+        require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
         _handleLPTransfer(lpToken, inputLPToken, member, synth);
         synthMinted = Synth(synth).addCollateralForMember(lpToken, member);
         emit AddCollateral(inputLPToken, lpToken, synth, synthMinted);
@@ -122,6 +123,14 @@ contract synthRouter {
          if(Synth(synth).totalMinted() == 0){
              isSynth[synth] == false;
          }
+        return true;
+    }
+    function destroySynth(address synth) public onlyDAO returns(bool){
+         Synth(synth).destroyMe(); 
+        return true;
+    }
+    function destroySynthRouter() public onlyDAO returns(bool){
+         selfdestruct(msg.sender);
         return true;
     }
     

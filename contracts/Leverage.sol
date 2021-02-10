@@ -1,7 +1,32 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./IContracts.sol";
+import "./cInterfaces.sol";
 import "@nomiclabs/buidler/console.sol";
+
+interface iBASE {
+    function DAO() external view returns (iDAO);
+}
+interface iDAO {
+     function ROUTER() external view returns(address);
+     function UTILS() external view returns(address);
+     function DAO() external view returns (address);
+}
+interface iROUTER {
+     function addLiquidityAsym(uint, bool, address) external returns(uint);
+     function removeLiquidityAsym(uint, bool, address) external returns(uint);
+     function swapSynthToBase(uint inputAmount, address synthIN) external returns (uint outPut);
+     function swapBaseToSynth(uint inputAmount, address synthOUT) external returns (uint outPut);
+}
+interface iPOOL {
+     function TOKEN() external view returns(address);
+     function sync() external;
+     function tokenAmount() external view returns(uint);
+}
+interface iUTILS {
+    function calcSwapValueInToken(address token, uint units) external view returns (uint amount);
+    function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
+  
+}
 
 contract Leverage {
     using SafeMath for uint256;

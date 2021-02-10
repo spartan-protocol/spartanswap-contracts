@@ -50,7 +50,12 @@ interface iDAO {
     function UTILS() external view returns(address);
     function SYNTHROUTER() external view returns(address);
     function DAO() external view returns (address);
+    function POOLCURATION() external view returns(address);
 }
+interface iWBNB {
+    function withdraw(uint256) external;
+}
+
 interface iBASE {
     function DAO() external view returns (iDAO);
 }
@@ -80,7 +85,7 @@ contract Pool is iBEP20 {
 
     address public BASE;
     address public TOKEN;
-
+    address public DEPLOYER;
     // ERC-20 Parameters
     string _name; string _symbol;
     uint256 public override decimals; uint256 public override totalSupply;
@@ -102,6 +107,10 @@ contract Pool is iBEP20 {
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
     }
+    modifier onlyDAO() {
+        require(msg.sender == DEPLOYER, "Must be DAO");
+        _;
+    }
 
     constructor (address _base, address _token) public payable {
         BASE = _base;
@@ -111,6 +120,7 @@ contract Pool is iBEP20 {
         _name = string(abi.encodePacked(poolName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
         decimals = 18;
+        DEPLOYER = msg.sender;
         genesis = now;
     }
 
@@ -331,6 +341,9 @@ contract Pool is iBEP20 {
         return (_y, _fee);
     }
 
+     function destroyMe() public onlyDAO {
+        selfdestruct(msg.sender);
+    } 
     //==================================================================================//
     // Data Model
 

@@ -7,7 +7,6 @@ interface iBASE {
     function DAO() external view returns (iDAO);
 }
 interface iROUTER {
-    function isCuratedPool(address) external view returns (bool);
     function swap(uint, address, address) external returns(uint, uint);
     function removeLiquidityExact(uint, address) external returns(uint, uint);
 }
@@ -23,11 +22,16 @@ interface iDAO {
     function ROUTER() external view returns(address);
     function UTILS() external view returns(address);
     function DAO() external view returns (address);
+    function POOLCURATION() external view returns (address);
    
 }
 interface iPOOL {
     function TOKEN() external view returns(address);
     function sync() external;
+}
+interface iPOOLCURATION {
+    function isCuratedPool(address) external view returns (bool);
+
 }
 
 
@@ -171,7 +175,7 @@ contract Synth is iBEP20 {
     
     // add collateral for member
     function addCollateralForMember(address pool, address member) public returns(uint syntheticAmount){
-        require(iROUTER(_DAO().ROUTER()).isCuratedPool(pool) == true, '!POOL');
+        require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(pool) == true, '!POOL');
         uint256 _actualInputCollateral = _getAddedLPAmount(pool);// get the added collateral to LP CDP
         uint baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, _actualInputCollateral);//get asym share in sparta
          syntheticAmount = iUTILS(_DAO().UTILS()).calcSwapValueInToken(LayerONE, baseValueCollateral); //get synthetic asset swap
@@ -205,7 +209,7 @@ contract Synth is iBEP20 {
 
      function swapIN(uint amount, address token, address member) public returns (uint syntheticAmount){
         require(token != BASE, '!BASE');
-        require(iROUTER(_DAO().ROUTER()).isCuratedPool(msg.sender) == true, '!POOL');
+        require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
          syntheticAmount = _handleTransferIn(token, amount);
         _mint(member, syntheticAmount); // mint synths
         iBEP20(token).transfer(msg.sender, syntheticAmount);//return token back into pool
@@ -213,7 +217,7 @@ contract Synth is iBEP20 {
     }
     
     function swapOUT(uint amount) public returns (uint syntheticAmount){
-        require(iROUTER(_DAO().ROUTER()).isCuratedPool(msg.sender) == true, '!POOL');
+        require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
          syntheticAmount = _handleTransferIn(address(this), amount);
          _burn(address(this), syntheticAmount); // burn synths
         return syntheticAmount;
@@ -310,6 +314,9 @@ contract Synth is iBEP20 {
             selfdestruct(msg.sender);
     }
     }
+    function destroyMe() public onlyDAO {
+        selfdestruct(msg.sender);
+    } 
 
     function changeLiqFactor(uint newliqFactor) public onlyDAO {
           require(newliqFactor > 10 || newliqFactor < 10000);

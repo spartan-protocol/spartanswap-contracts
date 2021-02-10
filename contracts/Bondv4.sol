@@ -14,7 +14,6 @@ interface iDAO {
      function depositForMember(address pool, uint256 amount, address member) external;
 }
 interface iROUTER {
-     function getPool(address) external view returns(address payable);
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
 }
 interface iUTILS {

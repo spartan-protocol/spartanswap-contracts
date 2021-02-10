@@ -2,9 +2,14 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./poolFactory.sol";
-
-interface iWBNB {
-    function withdraw(uint256) external;
+interface iPOOLCURATION {
+    function isCuratedPool(address) external view returns (bool);
+    function challengLowestCuratedPool(address) external  ;
+    function addCuratedPool(address) external ;
+    function removeCuratedPool(address) external  ;
+    function addPool(address, address) external ;
+    function isPool(address) external view returns (bool);
+    function getPool(address) external view returns(address payable);
 }
 
 contract Router {
@@ -28,16 +33,8 @@ contract Router {
     uint public eraLength;
     uint public normalAverageFee;
     uint public arrayFeeSize;
-    uint public curatedPoolSize;
     uint [] public feeArray;
-
-    address[] public arrayTokens;
-    address[] public curatedPools;
-    address[] public arrayPools;
-    mapping(address=>address) private mapToken_Pool;
-    mapping(address=>bool) public isPool;
-    mapping(address=>bool) public isCuratedPool;
-
+    
     event NewPool(address token, address pool, uint genesis);
     event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
@@ -46,7 +43,7 @@ contract Router {
 
     // Only DAO can execute
     modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "!DAO");
+        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER);
         _;
     }
 
@@ -54,7 +51,6 @@ contract Router {
         BASE = _base;
         WBNB = _wbnb;
         arrayFeeSize = 20;
-        curatedPoolSize = 10;
         eraLength = 30;
         maxTrades = 100;
         DEPLOYER = msg.sender;
@@ -73,36 +69,22 @@ contract Router {
         normalAverageFee = Router(oldRouter).normalAverageFee();
     }
 
-    function migrateTokenData(address payable oldRouter) public onlyDAO {
-        uint256 tokenCount = Router(oldRouter).tokenCount();
-        for(uint256 i = 0; i<tokenCount; i++){
-            address token = Router(oldRouter).getToken(i);
-            address pool = Router(oldRouter).getPool(token);
-            isPool[pool] = true;
-            arrayTokens.push(token);
-            arrayPools.push(pool);
-            mapToken_Pool[token] = pool;
-        }
-    }
-
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
 
     function createPool(uint256 inputBase, uint256 inputToken, address token) public payable returns(address pool){
-        require(getPool(token) == address(0), "CreateErr");
-        require(token != BASE, "Base");
-        require((inputToken > 0 && inputBase > 0), "GetTokens");
-        require(iBEP20(token).decimals() == 18, '!18D');
+        require(iPOOLCURATION(_DAO().POOLCURATION()).getPool(token) == address(0));
+        require(token != BASE);
+        require((inputToken > 0 && inputBase > 0));
+        require(iBEP20(token).decimals() == 18);
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         newPool = new Pool(BASE, _token); 
         pool = address(newPool);
-        mapToken_Pool[_token] = pool;
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         _handleTransferIn(token, inputToken, pool);
-        arrayTokens.push(_token); 
-        isPool[pool] = true;
+        iPOOLCURATION(_DAO().POOLCURATION()).addPool(_token, pool);
         totalPooled += _actualInputBase;
         Pool(pool).addLiquidityForMember(msg.sender);
         emit NewPool(token, pool, now);
@@ -120,7 +102,7 @@ contract Router {
 
     // Add liquidity for member
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
-        address pool = getPool(token);
+        address pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         uint256 _actualInputtoken =  _handleTransferIn(token, inputToken, pool);
         totalPooled += _actualInputBase;
@@ -133,13 +115,12 @@ contract Router {
     }
     // Add Asymmetrically
     function addLiquidityAsymForMember(uint inputToken, bool fromBase, address token, address member) public payable returns (uint units) {
-        require(inputToken > 0, "InputErr");
+        require(inputToken > 0);
+        uint halfInput = inputToken.mul(5000).div(10000);
         if(!fromBase){
-            uint halfInput = inputToken.mul(5000).div(10000);
             (uint _baseBought, uint _fee) = swapTo(halfInput, token, BASE, member);
             units = addLiquidity(_baseBought, halfInput, token); 
         } else {
-            uint halfInput = inputToken.mul(5000).div(10000);
             (uint _tokenBought, uint _fee) = swapTo(halfInput, BASE, token,  member);
             units = addLiquidity(halfInput, _tokenBought, token); 
         }
@@ -149,14 +130,14 @@ contract Router {
 
     // Remove % for self
     function removeLiquidity(uint basisPoints, address token) public returns (uint outputBase, uint outputToken) {
-        require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
-        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(getPool(token)).balanceOf(msg.sender));
+        require((basisPoints > 0 && basisPoints <= 10000));
+        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLCURATION(_DAO().POOLCURATION()).getPool(token)).balanceOf(msg.sender));
         return removeLiquidityExact(_units, token);
     }
     // Remove an exact qty of units
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
-        address _pool = getPool(token);
-        require(isPool[_pool] = true, '!pool');
+        address _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
+        require(iPOOLCURATION(_DAO().POOLCURATION()).isPool(_pool) == true);
         address _member = msg.sender;
         _handleTransferIn(_pool, units, _pool);
         (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
@@ -171,9 +152,9 @@ contract Router {
     }
     // Remove Asymmetrically
     function removeLiquidityAsymForMember(uint units, bool toBase, address token, address member) public returns (uint outputAmount){
-        address pool = getPool(token);
-        require(isPool[pool] = true, '!pool');
-        require(units < iBEP20(pool).totalSupply(), "InputErr");
+        address pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
+        require(iPOOLCURATION(_DAO().POOLCURATION()).isPool(pool) == true);
+        require(units < iBEP20(pool).totalSupply());
         _handleTransferIn(pool, units, pool);
         (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidityForMember(member);
         if(toBase){
@@ -192,10 +173,10 @@ contract Router {
         return buyTo(amount, token, msg.sender);
     }
     function buyTo(uint amount, address token, address member) public returns (uint outputAmount, uint fee) {
-        require(token != BASE, "TokenTypeErr");
+        require(token != BASE);
         address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
-        address _pool = getPool(token);
+        address _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
         uint _actualAmount = _handleTransferIn(BASE, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swap(_token);
         _handleTransferOut(token, outputAmount, member);
@@ -208,8 +189,8 @@ contract Router {
         return sellTo(amount, token, msg.sender);
     }
     function sellTo(uint amount, address token, address member) public payable returns (uint outputAmount, uint fee) {
-        require(token != BASE, "TokenTypeErr");
-        address _pool = getPool(token);
+        require(token != BASE);
+        address _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
         _handleTransferIn(token, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
         totalPooled = totalPooled.sub(outputAmount);
@@ -221,38 +202,26 @@ contract Router {
         return swapTo(inputAmount, fromToken, toToken, msg.sender);
     }
     function swapTo(uint256 inputAmount, address fromToken, address toToken, address member) public payable returns (uint256 outputAmount, uint256 fee) {
-        require(fromToken != toToken, "TokenTypeErr"); address _pool;
+        require(fromToken != toToken); address _pool;
         uint256 _transferAmount = 0;
         if(fromToken == BASE){
             (outputAmount, fee) = buyTo(inputAmount, toToken, member);
-            _pool = getPool(toToken);
-           if(isCuratedPool[_pool]){
-            addTradeFee(fee);//add fee to feeArray
-            addDividend(toToken, fee); //add dividend
-           }
+            _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(toToken);
+            getsDividend(_pool,toToken, fee);
         } else if(toToken == BASE) {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
-            _pool = getPool(fromToken);
-            if(isCuratedPool[_pool]){
-            addTradeFee(fee);//add fee to feeArray
-            addDividend(fromToken, fee);
-            }
+            _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(fromToken);
+            getsDividend(_pool,fromToken, fee);
         } else {
-            address _poolTo = getPool(toToken);
+            address _poolTo = iPOOLCURATION(_DAO().POOLCURATION()).getPool(toToken);
             (uint256 _yy, uint256 _feey) = sellTo(inputAmount, fromToken, _poolTo);
             totalVolume += _yy; totalFees += _feey;
             address _toToken = toToken;
-             _pool = getPool(fromToken);
-            if(isCuratedPool[_pool]){
-            addTradeFee(_feey);//add fee to feeArray
-            addDividend(fromToken, _feey);
-            }
-            if(toToken == address(0)){_toToken = WBNB;} // Handle BNB
+             _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(fromToken);
+             getsDividend(_pool,fromToken, _feey);
+            if(toToken == address(0)){_toToken = WBNB;} 
             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
-            if(isCuratedPool[_poolTo]){
-            addTradeFee(_feez);//add fee to feeArray
-            addDividend(_toToken,  _feez);
-            }
+            getsDividend(_poolTo,_toToken, _feez);
             _handleTransferOut(toToken, _zz, member);
             totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(toToken, _feez);
             _transferAmount = _yy; outputAmount = _zz; 
@@ -261,14 +230,18 @@ contract Router {
         emit Swapped(fromToken, toToken, inputAmount, _transferAmount, outputAmount, fee, member);
         return (outputAmount, fee);
     }
-
+    function getsDividend(address _pool, address _token, uint fee) internal {
+        if(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(_pool) == true){
+            addTradeFee(fee);
+            addDividend(_token, fee); 
+           }
+    }
     //==================================================================================//
     // Token Transfer Functions
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
         if(_amount > 0) {
             if(_token == address(0)){
-                // If BNB, then send to WBNB contract, then forward WBNB to pool
-                require((_amount == msg.value), "InputErr");
+                require((_amount == msg.value));
                 payable(WBNB).call{value:_amount}(""); 
                 iBEP20(WBNB).transfer(_pool, _amount); 
                 actual = _amount;
@@ -282,7 +255,6 @@ contract Router {
     function _handleTransferOut(address _token, uint256 _amount, address _recipient) internal {
         if(_amount > 0) {
             if (_token == address(0)) {
-                // If BNB, then withdraw to BNB, then forward BNB to recipient
                 iWBNB(WBNB).withdraw(_amount);
                 payable(_recipient).call{value:_amount}(""); 
             } else {
@@ -294,49 +266,44 @@ contract Router {
 
     //=================================================================================//
     //Swap Synths
+
     function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
-        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true, "!SYNTH");
+        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true);
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
-        address _poolIN = mapToken_Pool[synthINLayer1];
+        address _poolIN = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthINLayer1);
+       
         _handleTransferIn(synthIN, inputAmount, _poolIN);
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN);
         totalPooled = totalPooled.sub(outputBase); 
         totalVolume += outputBase;
         totalFees += fee;
-        if(isCuratedPool[_poolIN]){
-            addTradeFee(fee);//add fee to feeArray
-            addDividend(synthINLayer1, fee); //add dividend
-           }
+        getsDividend( _poolIN,  synthINLayer1,  fee);
         _handleTransferOut(BASE, outputBase, msg.sender);
         emit SwappedSynth(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
         return outputBase;
     }
     function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint outPut){
-        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true, "!SYNTH");
+        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true);
         address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
-        address _poolOUT = mapToken_Pool[synthOUTLayer1];
-        require(isPool[_poolOUT] == true, "!POOL");
+        address _poolOUT = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthOUTLayer1);
+        require(iPOOLCURATION(_DAO().POOLCURATION()).isPool(_poolOUT) == true);
         _handleTransferIn(BASE, inputAmount, _poolOUT);
         (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
         totalPooled = totalPooled.add(inputAmount);
         totalVolume += inputAmount;
         totalFees += fee;
-        if(isCuratedPool[_poolOUT]){
-            addTradeFee(fee);//add fee to feeArray
-            addDividend(synthOUTLayer1, fee); //add dividend
-        }
+        getsDividend( _poolOUT,  synthOUTLayer1,  fee);
         _handleTransferOut(synthOUT,outputSynth,msg.sender);
         emit SwappedSynth(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
         return outputSynth;
     }
-
     //==================================================================================//
     //Token Dividends / Curated Pools
-    function addDividend(address _token, uint256 _fees) internal returns (bool){
+    function addDividend(address _token, uint256 _fees) internal {
         if(!(normalAverageFee == 0)){
              uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance
             if(!(reserve == 0)){
-            address _pool = getPool(_token);
+            address _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(_token);
             uint dailyAllocation = reserve.div(eraLength).div(maxTrades); // get max dividend for reserve/30/100 
             uint numerator = _fees.mul(dailyAllocation);
             uint feeDividend = numerator.div(_fees.add(normalAverageFee));
@@ -344,7 +311,6 @@ contract Router {
             iBEP20(BASE).transfer(_pool,feeDividend);   
             Pool(_pool).sync();
             }
-        return true;
         }
        
     }
@@ -361,110 +327,45 @@ contract Router {
         }
         normalAverageFee = totalTradeFees.div(arrayFeeSize); 
     }
-    function addFee(uint fee) internal returns(bool) {
+    function addFee(uint fee) internal {
         uint n = feeArray.length;//20
         for (uint i = n - 1; i > 0; i--) {
         feeArray[i] = feeArray[i - 1];
         }
          feeArray[0] = fee;
-        return true;
-    }
-    function sortDescCuratedPoolsByDepth() internal returns (bool){
-         for (uint i = 0; i < curatedPools.length; ++i) 
-        {
-            for (uint j = i + 1; j < curatedPools.length; ++j) 
-            {
-                uint iDepth = iUTILS(_DAO().UTILS()).getDepth(curatedPools[i]);
-                uint jDepth = iUTILS(_DAO().UTILS()).getDepth(curatedPools[j]);
-                if (iDepth < jDepth) 
-                {
-                    address a = curatedPools[i];
-                    curatedPools[i] = curatedPools[j];
-                    curatedPools[j] = a;
-                }
-            }
-        }
-        return true;
-    }
-    function challengLowestCuratedPool(address token) public onlyDAO returns (bool) {
-         address _pool = getPool(token);
-         require(isPool[_pool] == true, '!pool');
-         sortDescCuratedPoolsByDepth();
-         uint challenger = iUTILS(_DAO().UTILS()).getDepth(_pool);
-         uint lowestCurated = iUTILS(_DAO().UTILS()).getDepth(curatedPools[curatedPools.length - 1]);
-        if(challenger > lowestCurated){
-            address loser = curatedPools[curatedPools.length - 1];
-            address winner = _pool;
-            curatedPools.pop();
-            isCuratedPool[winner] = true;
-            curatedPools.push(winner);
-            isCuratedPool[loser] = false;
-        }
-        return true;
     }
 
     //=================================onlyDAO=====================================//
-    function changeArrayFeeSize(uint _size) public onlyDAO returns(bool){
+    function changeArrayFeeSize(uint _size) public onlyDAO {
         arrayFeeSize = _size;
-        return true;
     }
-    function changeMaxTrades(uint _maxtrades) public onlyDAO returns(bool){
+    function changeMaxTrades(uint _maxtrades) public onlyDAO {
         maxTrades = _maxtrades;
-        return true;
     }
-    function forwardRouterFunds(address newRouterAddress ) public onlyDAO returns(bool){
+    function forwardRouterFunds(address newRouterAddress ) public onlyDAO {
         uint balanceBase = iBEP20(BASE).balanceOf(address(this)); // get base balance
         iBEP20(BASE).transfer(newRouterAddress, balanceBase);
-        return true;
     }
-    function grantFunds(uint amount, address grantee) public onlyDAO returns (bool){
-        require(amount < iBEP20(BASE).balanceOf(address(this)), "!Balance");
-        require(grantee != address(0), 'GrantERR');
+    function grantFunds(uint amount, address grantee) public onlyDAO {
+        require(amount < iBEP20(BASE).balanceOf(address(this)));
+        require(grantee != address(0));
         iBEP20(BASE).transfer(grantee, amount);
-        return true;
     }
-    function addCuratedPool(address token) public onlyDAO returns (bool){
-        require(token != BASE, 'Base');
-        address _pool = getPool(token);
-        require(isPool[_pool] == true, '!Pool');
-        isCuratedPool[_pool] = true;
-        curatedPools.push(_pool);
-        return true;
+
+    function destroyPool(address pool) public onlyDAO {
+         Pool(pool).destroyMe();  
     }
-    function removeCuratedPool(address token) public onlyDAO returns (bool){
-        require(token != BASE, 'Base');
-        address _pool = getPool(token);
-        require(isCuratedPool[_pool] == true, '!Pool');
-        isCuratedPool[_pool] = false;
-        return true;
+    function destroyRouter() public onlyDAO {
+         selfdestruct(msg.sender);
     }
 
     //======================================HELPERS========================================//
     // Helper Functions
-    function getPool(address token) public view returns(address pool){
-        if(token == address(0)){
-            pool = mapToken_Pool[WBNB];   // Handle BNB
-        } else {
-            pool = mapToken_Pool[token];  // Handle normal token
-        } 
-        return pool;
-    }
-    function tokenCount() public view returns(uint256){
-        return arrayTokens.length;
-    }
-    function getToken(uint256 i) public view returns(address){
-        return arrayTokens[i];
-    }
-    function getCuratedPool(uint256 i) public view returns(address){
-        return curatedPools[i];
-    }
+
     function getTradeLength() public view returns(uint256){
         return feeArray.length;
     }
-    function getCuratedPoolsLength() public view returns(uint256){
-        return curatedPools.length;
-    }
-   
+  
 
 
 }

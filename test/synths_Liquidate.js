@@ -19,6 +19,7 @@ var TOKEN2 = artifacts.require("./Token2.sol");
 var WBNB = artifacts.require("./WBNB");
 var DAOVAULT = artifacts.require("./DaoVault.sol");
 var LEVERAGE = artifacts.require("./Leverage.sol");
+var CURATED = artifacts.require("./Curated.sol");
 
 var base; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
@@ -46,36 +47,36 @@ contract('SynthsLiquidate', function (accounts) {
     // ShowBNBPool()
     // ShowAccBal(acc0)
      //swapSynthToLayer1(_.BN2Str(10*_.one))
-    ShowBNBPool()
-    ShowTKN2Pool()
-    ShowGLOBALCDP()
-    ShowAccBal(acc0)
-
-    LeverageUp(acc0)
-    // ShowBNBPool()
-    // ShowTKN2Pool()
-    // LeverageUp(acc0)
     // ShowBNBPool()
     // ShowTKN2Pool()
     // ShowGLOBALCDP()
+    // ShowAccBal(acc0)
+
     // LeverageUp(acc0)
+    // // ShowBNBPool()
+    // // ShowTKN2Pool()
+    // // LeverageUp(acc0)
+    // // ShowBNBPool()
+    // // ShowTKN2Pool()
+    // // ShowGLOBALCDP()
+    // // LeverageUp(acc0)
     
-    ShowAccBal(acc0)
-    ShowBNBPool()
-    ShowTKN2Pool()
+    // ShowAccBal(acc0)
+    // ShowBNBPool()
+    // ShowTKN2Pool()
 
-    ShowlpBNBCDPDetails()
-     ShowGLOBALCDP()
-     LeverageDown(acc0)
+    // ShowlpBNBCDPDetails()
+    //  ShowGLOBALCDP()
+    //  LeverageDown(acc0)
 
-    // addCollateralSPTBNBForSyntheticBNB(acc0)
-     ShowAccBal(acc0)
-    ShowBNBPool()
-    Showlptkn2CDPDetails()
-    ShowlpBNBCDPDetails()
-     ShowGLOBALCDP()
-    // removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
-    // Liquidate()
+    // // addCollateralSPTBNBForSyntheticBNB(acc0)
+    //  ShowAccBal(acc0)
+    // ShowBNBPool()
+    // Showlptkn2CDPDetails()
+    // ShowlpBNBCDPDetails()
+    //  ShowGLOBALCDP()
+    // // removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
+    // // Liquidate()
     
      
     
@@ -94,11 +95,12 @@ function constructor(accounts) {
         await base.changeDAO(Dao.address)     
         synthRouter = await synthRouter.new(base.address, wbnb.address) //deploy synthRouter
         bond = await BOND.new(base.address)     //deploy new bond
+        curate = await CURATED.new(base.address);
         token1 = await TOKEN.new()             //deploy token
         token2 = await TOKEN2.new() 
         leverage = await LEVERAGE.new(base.address,wbnb.address );
 
-        await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address);
+        await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address, curate.address);
 
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
@@ -227,9 +229,9 @@ async function addLiquidityTKN1(acc, b, t) {
 }
 async function curatePools() {
     it("Curate POOls", async () => {
-        await router.addCuratedPool(wbnb.address);
-        await router.addCuratedPool(token1.address);
-        await router.addCuratedPool(token2.address);
+        await curate.addCuratedPool(wbnb.address);
+        await curate.addCuratedPool(token1.address);
+        await curate.addCuratedPool(token2.address);
        
     })
 }

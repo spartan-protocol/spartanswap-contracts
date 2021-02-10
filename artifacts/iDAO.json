@@ -16,6 +16,19 @@
     },
     {
       "inputs": [],
+      "name": "POOLCURATION",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "ROUTER",
       "outputs": [
         {

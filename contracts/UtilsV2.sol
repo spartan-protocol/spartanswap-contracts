@@ -13,14 +13,19 @@ interface iROUTER {
     function removeLiquidityTx() external view returns (uint);
     function addLiquidityTx() external view returns (uint);
     function swapTx() external view returns (uint);
-    function getCuratedPoolsLength() external view returns (uint);
-    function tokenCount() external view returns(uint);
+    
+}
+interface iPOOLCURATION {
     function getCuratedPool(uint) external view returns(address);
-    function getToken(uint) external view returns(address);
     function getPool(address) external view returns(address payable);
+    function getToken(uint) external view returns(address);
+    function tokenCount() external view returns(uint);
+    function getCuratedPoolsLength() external view returns (uint);
+
 }
 interface iDAO {
     function ROUTER() external view returns(address);
+    function POOLCURATION() external view returns(address);
     function SYNTHROUTER() external view returns(address);
 }
 interface iPOOL {
@@ -147,13 +152,13 @@ contract Utils {
     }
 
     function getPool(address token) public view returns(address pool){
-        return iROUTER(_DAO().ROUTER()).getPool(token);
+        return iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
-        return iROUTER(_DAO().ROUTER()).tokenCount();
+        return iPOOLCURATION(_DAO().POOLCURATION()).tokenCount();
     }
     function allTokens() public view returns (address[] memory _allTokens){
-        return tokensInRange(0, iROUTER(_DAO().ROUTER()).tokenCount()) ;
+        return tokensInRange(0, iPOOLCURATION(_DAO().POOLCURATION()).tokenCount()) ;
     }
     function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
         if(start.add(count) > tokenCount()){
@@ -161,7 +166,7 @@ contract Utils {
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i < count; i++){
-            result[i] = iROUTER(_DAO().ROUTER()).getToken(i);
+            result[i] = iPOOLCURATION(_DAO().POOLCURATION()).getToken(i);
         }
         return result;
     }
@@ -174,7 +179,7 @@ contract Utils {
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = getPool(iROUTER(_DAO().ROUTER()).getToken(i));
+            result[i] = getPool(iPOOLCURATION(_DAO().POOLCURATION()).getToken(i));
         }
         return result;
     }
@@ -294,7 +299,7 @@ contract Utils {
 
 
     function curatedPoolCount() public view returns(uint count){
-        return iROUTER(_DAO().ROUTER()).getCuratedPoolsLength();
+        return iPOOLCURATION(_DAO().POOLCURATION()).getCuratedPoolsLength();
     }
 
     function allCuratedPools() public view returns (address[] memory _allCuratedPools){
@@ -306,7 +311,7 @@ contract Utils {
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = iROUTER(_DAO().ROUTER()).getCuratedPool(i);
+            result[i] = iPOOLCURATION(_DAO().POOLCURATION()).getCuratedPool(i);
         }
         return result;
     }

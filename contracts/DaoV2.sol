@@ -2,20 +2,21 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./DaoVault.sol";
-import "./cInterfaces.sol"; 
 
 import "@nomiclabs/buidler/console.sol";
 interface iDAOVAULT {
     function withdraw(address, uint) external  returns (bool);
 }
 interface iROUTER {
-    function isCuratedPool(address) external view returns (bool);
-    function challengLowestCuratedPool(address) external view returns (bool);
     function grantFunds(uint, address) external payable returns (bool);
-    function addCuratedPool(address) external returns (bool);
-    function removeCuratedPool(address) external returns (bool); 
     function changeArrayFeeSize(uint) external returns(bool);
     function changeMaxTrades(uint) external returns(bool);
+}
+interface iPOOLCURATION {
+    function isCuratedPool(address) external view returns (bool);
+    function challengLowestCuratedPool(address) external view returns (bool);
+    function addCuratedPool(address) external returns (bool);
+    function removeCuratedPool(address) external returns (bool);
 }
 interface iUTILS {
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
@@ -36,6 +37,7 @@ interface iSYNTHROUTER {
     function getSynth(address) external view returns(address);
     function isSynth(address) external view returns(bool);
 }
+
 
 contract Dao {
     using SafeMath for uint;
@@ -82,6 +84,7 @@ contract Dao {
     iSYNTHROUTER private _SYNTHROUTER;
     iBOND private _BOND;
     iDAOVAULT private _DAOVAULT;
+    iPOOLCURATION private _POOLCURATION;
 
     address[] public arrayMembers;
     
@@ -132,12 +135,13 @@ contract Dao {
         //secondsPerEra = iBASE(BASE).secondsPerEra();
         secondsPerEra = 2;
     }
-    function setGenesisAddresses(address _router, address _utils, address _synthrouter, address _bond, address _daoVault) public onlyDAO {
+    function setGenesisAddresses(address _router, address _utils, address _synthrouter, address _bond, address _daoVault, address _poolCuration) public onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
         _SYNTHROUTER = iSYNTHROUTER(_synthrouter);
         _BOND = iBOND(_bond);
         _DAOVAULT = iDAOVAULT(_daoVault);
+        _POOLCURATION = iPOOLCURATION(_poolCuration);
     }
 
     function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) public onlyDAO {
@@ -158,7 +162,7 @@ contract Dao {
     }
     // Contract deposits some LP tokens for member
     function depositForMember(address pool, uint256 amount, address member) public {
-        require(_ROUTER.isCuratedPool(pool) == true, "!Curated");
+        require(_POOLCURATION.isCuratedPool(pool) == true, "!Curated");
         require(amount > 0, "!Amount");
         if (!isMember[member]) {
             arrayMembers.push(msg.sender);
@@ -173,7 +177,7 @@ contract Dao {
     // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
     function increaseWeight(address pool, address member) public returns(uint){
         require(isMember[member], "!Member");
-        require(_ROUTER.isCuratedPool(pool) == true, "!Curated");
+        require(_POOLCURATION.isCuratedPool(pool) == true, "!Curated");
         if(mapMemberPool_weight[member][pool] > 0){ // Remove previous weights
             totalWeight = totalWeight.sub(mapMemberPool_weight[member][pool]);
             mapMember_weight[member] = mapMember_weight[member].sub(mapMemberPool_weight[member][pool]);
@@ -487,19 +491,19 @@ contract Dao {
     function _addCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        _ROUTER.addCuratedPool(_proposedAddress); 
+        _POOLCURATION.addCuratedPool(_proposedAddress); 
         completeProposal(_proposalID);
     }
     function _removeCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        _ROUTER.removeCuratedPool(_proposedAddress); 
+        _POOLCURATION.removeCuratedPool(_proposedAddress); 
         completeProposal(_proposalID);
     }
     function _challengLowestCuratedPool(uint _proposalID) internal {
          address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        _ROUTER.challengLowestCuratedPool(_proposedAddress); 
+        _POOLCURATION.challengLowestCuratedPool(_proposedAddress); 
         completeProposal(_proposalID); 
     }
     
@@ -584,6 +588,13 @@ contract Dao {
             return Dao(DAO).DAOVAULT();
         } else {
             return _DAOVAULT;
+        }
+    }
+    function POOLCURATION() public view returns(iPOOLCURATION){
+        if(daoHasMoved){
+            return Dao(DAO).POOLCURATION();
+        } else {
+            return _POOLCURATION;
         }
     }
 
