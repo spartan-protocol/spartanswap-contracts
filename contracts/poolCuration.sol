@@ -27,8 +27,9 @@ contract Curated {
         _;
     }
 
-    constructor (address _base) public payable {
+    constructor (address _base, address _wbnb) public payable {
         BASE = _base;
+        WBNB = _wbnb;
         curatedPoolSize = 10;
         DEPLOYER = msg.sender;
     }

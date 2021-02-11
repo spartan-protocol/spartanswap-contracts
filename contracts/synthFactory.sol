@@ -40,16 +40,12 @@ contract Synth is iBEP20 {
     uint32 private membersActiveCount;
     address public BASE;
     address public LayerONE;
-    address public WBNB;
     uint public genesis;
     address public DEPLOYER;
     uint liqFactor;
     uint256 public synthsAmount;
-    
     uint256 public totalMinted;
     address [] public membersActive;
-    
-
 
     struct CollateralDetails {
         uint ID;
