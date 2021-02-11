@@ -33,6 +33,9 @@ contract('SynthsLiquidate', function (accounts) {
     createPoolWBNB(1000*_.one, 100*_.one)
     createPoolTKN1(1000*_.one, 600*_.one)
     createPoolTKN2(4000*_.one, 130*_.one)
+    addLiquidityBNB(acc0,_.BN2Str(20*_.one),  _.BN2Str(10*_.one));
+    addLiquidityTKN2(acc0,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+    addLiquidityTKN1(acc0,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     addLiquidityBNB(acc1,_.BN2Str(20*_.one),  _.BN2Str(10*_.one));
     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     addLiquidityTKN1(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
@@ -43,16 +46,16 @@ contract('SynthsLiquidate', function (accounts) {
     ShowAddress()
     // ShowBNBPool()
     
-    //swapLayer1ToSynth(_.BN2Str(10*_.one))
+    swapLayer1ToSynth(_.BN2Str(10*_.one))
     // ShowBNBPool()
-    // ShowAccBal(acc0)
-     //swapSynthToLayer1(_.BN2Str(10*_.one))
+     ShowAccBal(acc0)
+     swapSynthToLayer1(_.BN2Str(10*_.one))
     // ShowBNBPool()
     // ShowTKN2Pool()
     // ShowGLOBALCDP()
-    // ShowAccBal(acc0)
+     ShowAccBal(acc0)
 
-    // LeverageUp(acc0)
+    LeverageUp(acc0)
     // // ShowBNBPool()
     // // ShowTKN2Pool()
     // // LeverageUp(acc0)
@@ -61,7 +64,7 @@ contract('SynthsLiquidate', function (accounts) {
     // // ShowGLOBALCDP()
     // // LeverageUp(acc0)
     
-    // ShowAccBal(acc0)
+     ShowAccBal(acc0)
     // ShowBNBPool()
     // ShowTKN2Pool()
 
@@ -151,15 +154,12 @@ async function wrapBNB() {
 }
 async function createPoolWBNB(SPT, token) {
     it("It should deploy BNB Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(SPT),_.BN2Str(token), wbnb.address)
-        await router.createPool(_.BN2Str(SPT), _.BN2Str(token), wbnb.address)
+        var _pool = await curate.createPool.call(wbnb.address)
+        await curate.createPool(wbnb.address)
         poolWBNB = await POOL.at(_pool)
         //console.log(`Pools: ${poolWBNB.address}`)
         const baseAddr = await poolWBNB.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(SPT), 'base balance')
-        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(token), 'wbnb balance')
-
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
         await base.approve(poolWBNB.address, supply, { from: acc1 })
@@ -173,15 +173,12 @@ async function createPoolWBNB(SPT, token) {
 }
 async function createPoolTKN1(SPT, token) {
     it("It should deploy TKN1 Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(SPT), _.BN2Str(token), token1.address)
-        await router.createPool(_.BN2Str(SPT), _.BN2Str(token), token1.address)
+        var _pool = await curate.createPool.call(token1.address)
+        await curate.createPool(token1.address)
         poolTKN1 = await POOL.at(_pool)
         //console.log(`Pools: ${poolTKN1.address}`)
         const baseAddr = await poolTKN1.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(SPT), 'base balance')
-        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(token), 'token1 balance')
-
         let supply = await base.totalSupply()
         await base.approve(poolTKN1.address, supply, { from: acc0 })
         await base.approve(poolTKN1.address, supply, { from: acc1 })
@@ -193,14 +190,12 @@ async function createPoolTKN1(SPT, token) {
 }
 async function createPoolTKN2(SPT, token) {
     it("It should deploy TKN2 Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(SPT), _.BN2Str(token), token2.address)
-        await router.createPool(_.BN2Str(SPT), _.BN2Str(token), token2.address)
+        var _pool = await curate.createPool.call(token2.address)
+        await curate.createPool( token2.address)
         poolTKN2 = await POOL.at(_pool)
         const baseAddr = await poolTKN2.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolTKN2.address)), _.BN2Str(SPT), 'base balance')
-        assert.equal(_.BN2Str(await token2.balanceOf(poolTKN2.address)), _.BN2Str(token), 'token1 balance')
-        
+      
         let supply = await base.totalSupply()
         await base.approve(poolTKN2.address, supply, { from: acc0 })
         await base.approve(poolTKN2.address, supply, { from: acc1 })
@@ -255,7 +250,7 @@ async function createSyntheticBNB() {
 }
 async function swapSynthToLayer1() {
     it("Swap Synthetic BNB To BASE", async () => {
-        let input =  _.BN2Str(2*_.one);
+        let input =  _.BN2Str(1*_.one);
         let synthIN = synthTKN2.address;
         await router.swapSynthToBase(input,synthIN);
     })

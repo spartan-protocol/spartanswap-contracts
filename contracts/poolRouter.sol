@@ -7,7 +7,6 @@ interface iPOOLCURATION {
     function challengLowestCuratedPool(address) external  ;
     function addCuratedPool(address) external ;
     function removeCuratedPool(address) external  ;
-    function addPool(address, address) external ;
     function isPool(address) external view returns (bool);
     function getPool(address) external view returns(address payable);
 }
@@ -25,9 +24,6 @@ contract Router {
 
     uint public secondsPerEra;
     uint public nextEraTime;
-    bool public emitting;
-    address public incentiveAddress;
-    uint32 private BP = 10000;
    
     uint public maxTrades;
     uint public eraLength;
@@ -35,7 +31,6 @@ contract Router {
     uint public arrayFeeSize;
     uint [] public feeArray;
     
-    event NewPool(address token, address pool, uint genesis);
     event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
@@ -69,31 +64,6 @@ contract Router {
         normalAverageFee = Router(oldRouter).normalAverageFee();
     }
 
-    function purgeDeployer() public onlyDAO {
-        DEPLOYER = address(0);
-    }
-
-    function createPool(uint256 inputBase, uint256 inputToken, address token) public payable returns(address pool){
-        require(iPOOLCURATION(_DAO().POOLCURATION()).getPool(token) == address(0));
-        require(token != BASE);
-        require((inputToken > 0 && inputBase > 0));
-        require(iBEP20(token).decimals() == 18);
-        Pool newPool; address _token = token;
-        if(token == address(0)){_token = WBNB;} // Handle BNB
-        newPool = new Pool(BASE, _token); 
-        pool = address(newPool);
-        uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
-        _handleTransferIn(token, inputToken, pool);
-        iPOOLCURATION(_DAO().POOLCURATION()).addPool(_token, pool);
-        totalPooled += _actualInputBase;
-        Pool(pool).addLiquidityForMember(msg.sender);
-        emit NewPool(token, pool, now);
-        return pool;
-    }
-
-    //==================================================================================//
-    // Add/Remove Liquidity functions
-
     // Add liquidity for self
     function addLiquidity(uint inputBase, uint inputToken, address token) public payable returns (uint units) {
         units = addLiquidityForMember(inputBase, inputToken, token, msg.sender);
@@ -118,15 +88,14 @@ contract Router {
         require(inputToken > 0);
         uint halfInput = inputToken.mul(5000).div(10000);
         if(!fromBase){
-            (uint _baseBought, uint _fee) = swapTo(halfInput, token, BASE, member);
+            (uint _baseBought, ) = swapTo(halfInput, token, BASE, member);
             units = addLiquidity(_baseBought, halfInput, token); 
         } else {
-            (uint _tokenBought, uint _fee) = swapTo(halfInput, BASE, token,  member);
+            (uint _tokenBought, ) = swapTo(halfInput, BASE, token,  member);
             units = addLiquidity(halfInput, _tokenBought, token); 
         }
         return units;
     }
-
 
     // Remove % for self
     function removeLiquidity(uint basisPoints, address token) public returns (uint outputBase, uint outputToken) {
@@ -158,10 +127,10 @@ contract Router {
         _handleTransferIn(pool, units, pool);
         (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidityForMember(member);
         if(toBase){
-            (uint _baseBought, uint _fee) = swapTo(_outputToken,token, BASE, member);
+            (uint _baseBought,) = swapTo(_outputToken,token, BASE, member);
             outputAmount = _baseBought.add(_outputBase);
         } else {
-            (uint _tokenBought, uint _fee) = swapTo(_outputBase, BASE,token, member);
+            (uint _tokenBought,) = swapTo(_outputBase, BASE,token, member);
             outputAmount = _tokenBought.add(_outputToken);
         }
         return outputAmount;
@@ -181,8 +150,7 @@ contract Router {
         (outputAmount, fee) = Pool(_pool).swap(_token);
         _handleTransferOut(token, outputAmount, member);
         totalPooled += _actualAmount;
-        totalVolume += _actualAmount;
-        totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, fee);
+        volumeDetails(_actualAmount, fee);
         return (outputAmount, fee);
     }
     function sell(uint amount, address token) public payable returns (uint outputAmount, uint fee){
@@ -194,8 +162,7 @@ contract Router {
         _handleTransferIn(token, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
         totalPooled = totalPooled.sub(outputAmount);
-        totalVolume += outputAmount;
-        totalFees += fee;
+        volumeDetails(outputAmount, fee);
         return (outputAmount, fee);
     }
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
@@ -271,12 +238,10 @@ contract Router {
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true);
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
         address _poolIN = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthINLayer1);
-       
         _handleTransferIn(synthIN, inputAmount, _poolIN);
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN);
         totalPooled = totalPooled.sub(outputBase); 
-        totalVolume += outputBase;
-        totalFees += fee;
+        volumeDetails(outputBase, fee);
         getsDividend( _poolIN,  synthINLayer1,  fee);
         _handleTransferOut(BASE, outputBase, msg.sender);
         emit SwappedSynth(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
@@ -290,8 +255,7 @@ contract Router {
         _handleTransferIn(BASE, inputAmount, _poolOUT);
         (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
         totalPooled = totalPooled.add(inputAmount);
-        totalVolume += inputAmount;
-        totalFees += fee;
+        volumeDetails(inputAmount, fee);
         getsDividend( _poolOUT,  synthOUTLayer1,  fee);
         _handleTransferOut(synthOUT,outputSynth,msg.sender);
         emit SwappedSynth(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
@@ -316,7 +280,7 @@ contract Router {
     }
     function addTradeFee(uint fee) internal returns (bool) {
         uint totalTradeFees = 0;
-        uint arrayFeeLength = getTradeLength();
+        uint arrayFeeLength = feeArray.length;
         if(!(arrayFeeLength == arrayFeeSize)){
             feeArray.push(fee);
         }else {
@@ -333,6 +297,11 @@ contract Router {
         feeArray[i] = feeArray[i - 1];
         }
          feeArray[0] = fee;
+    }
+
+    function volumeDetails(uint inputAmount, uint fee) internal {
+        totalVolume += inputAmount;
+        totalFees += fee;
     }
 
     //=================================onlyDAO=====================================//
@@ -358,14 +327,6 @@ contract Router {
     function destroyRouter() public onlyDAO {
          selfdestruct(msg.sender);
     }
-
-    //======================================HELPERS========================================//
-    // Helper Functions
-
-    function getTradeLength() public view returns(uint256){
-        return feeArray.length;
-    }
-  
 
 
 }

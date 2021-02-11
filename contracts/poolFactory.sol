@@ -93,7 +93,6 @@ contract Pool is iBEP20 {
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 
-    uint256 public genesis;
     uint256 public baseAmount;
     uint256 public unitsAmount;
     uint256 public tokenAmount;
@@ -121,7 +120,6 @@ contract Pool is iBEP20 {
         _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
         decimals = 18;
         DEPLOYER = msg.sender;
-        genesis = now;
     }
 
     //========================================iBEP20=========================================//
@@ -344,10 +342,6 @@ contract Pool is iBEP20 {
      function destroyMe() public onlyDAO {
         selfdestruct(msg.sender);
     } 
-    //==================================================================================//
-    // Data Model
-
-
     // Increment internal balances
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount += _baseAmount;
@@ -357,7 +351,6 @@ contract Pool is iBEP20 {
         baseAmount = _baseAmount;
         tokenAmount = _tokenAmount; 
     }
-
     // Decrement internal balances
     function _decrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount = baseAmount.sub(_baseAmount);

@@ -133,6 +133,12 @@ contract synthRouter {
          selfdestruct(msg.sender);
         return true;
     }
+    function globalPause() public onlyDAO {
+         
+    }
+    function globalPlay() public onlyDAO {
+
+    }
     
     
 

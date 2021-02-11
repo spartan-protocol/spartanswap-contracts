@@ -1,23 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./cInterfaces.sol";
-
-interface iDAO {
-    function UTILS() external view returns(address);
-    function ROUTER() external view returns(address);
-    function DAO() external view returns (address);
-}
-interface iBASE {
-    function DAO() external view returns (iDAO);
-}
-interface iUTILS {
-    function getDepth(address pool) external view returns (uint depth);
-}
+import "./poolFactory.sol";
 
 contract Curated {
-    using SafeMath for uint256;
-
     address public BASE;
     address public WBNB;
     address public DEPLOYER;
@@ -54,6 +40,16 @@ contract Curated {
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
+    function createPool(address token) public onlyDAO payable returns(address pool){
+        require(getPool(token) == address(0));
+        require(token != BASE && iBEP20(token).decimals() == 18);
+        Pool newPool; address _token = token;
+        newPool = new Pool(BASE, _token); 
+        pool = address(newPool);
+        addPool(_token, pool);
+        return pool;
+    }
+
     function migratePOOLData(address payable oldCURATE) public onlyDAO {
         uint256 tokenCount = Curated(oldCURATE).tokenCount();
         for(uint256 i = 0; i<tokenCount; i++){
@@ -111,7 +107,7 @@ contract Curated {
         isCuratedPool[_pool] = false;
     }
 
-    function addPool(address _token, address pool) public onlyDAO {
+    function addPool(address _token, address pool) internal {
         require(_token != BASE);
         mapToken_Pool[_token] = pool;
         arrayTokens.push(_token); 
