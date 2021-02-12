@@ -66,6 +66,7 @@ interface iUTILS {
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSpotValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
     function calcPart(uint bp, uint total) external pure returns (uint part);
+    function calcSwapValueInBase(address token, uint amount) external view returns (uint value);
     function calcSpotValueInBase(address token, uint amount) external view returns (uint value);
     function calcSpotValueInToken(address token, uint amount) external view returns (uint value);
     function getDepth(address pool) external view returns (uint depth);
@@ -276,9 +277,8 @@ contract Pool is iBEP20 {
       uint _amount = _getAddedSynthAmount(synthIn);
       iBEP20(synthIn).approve(synthIn,_amount);
       iSYNTH(synthIn).swapOUT(_amount);    
-      (outputAmount, fee) = _swapTokenToBase(_amount); //get swap value in BASE
-      iBEP20(BASE).transfer(msg.sender, outputAmount); 
-      sync();
+      (outputAmount, fee) = _swapTokenToBase(_amount);
+
       return (outputAmount, fee);
     }
 
@@ -288,7 +288,7 @@ contract Pool is iBEP20 {
       (outputAmount, fee) = _swapBaseToToken(_amount);//get token swapped out
       iBEP20(TOKEN).approve(synthOut, outputAmount);
       synthsOut = iSYNTH(synthOut).swapIN(outputAmount, TOKEN, msg.sender); 
-      sync();
+      iBEP20(BASE).transfer(msg.sender, _amount); //return base
       return (synthsOut, fee);
     }
 

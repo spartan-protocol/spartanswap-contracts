@@ -44,19 +44,23 @@ contract('SynthsLiquidate', function (accounts) {
     createSyntheticBNB()
     ShowAccBal(acc0)
     ShowAddress()
-    // ShowBNBPool()
+    ShowBNBPool()
+
+    ShowRouterBal()
+    swapSynthToLayer1(_.BN2Str(10*_.one))
     
-    swapLayer1ToSynth(_.BN2Str(10*_.one))
-    // ShowBNBPool()
+     //ShowBNBPool()
+     ShowRouterBal()
      ShowAccBal(acc0)
-     swapSynthToLayer1(_.BN2Str(10*_.one))
-    // ShowBNBPool()
+     swapLayer1ToSynth(_.BN2Str(10*_.one))
+     ShowBNBPool()
+     ShowRouterBal()
     // ShowTKN2Pool()
     // ShowGLOBALCDP()
      ShowAccBal(acc0)
 
     LeverageUp(acc0)
-    // // ShowBNBPool()
+     ShowBNBPool()
     // // ShowTKN2Pool()
     // // LeverageUp(acc0)
     // // ShowBNBPool()
@@ -301,7 +305,7 @@ function LeverageUp(acc) {
          await leverage.leverageUp(sBNB, synthTKN2.address, lpToken);
          let tkn4 = _.getBN(await poolWBNB.balanceOf(acc));
          let diff = tkn4.minus(tkn2);
-         console.log(_.BN2Str(diff));
+         //console.log(_.BN2Str(diff));
          await synthRouter.addCollateral(_.BN2Str(diff),lpToken, synthTKN2.address,{from:acc});
 })
 }
@@ -332,6 +336,14 @@ function ShowAccBal(acc) {
         console.log(`SPT1-TKN1  ${acc0T1/_.one}`);
         console.log(`SPT1-TKN2  ${acc0T2/_.one}`);
         console.log(`SST1-sTKN  ${stkn/_.one}`);
+    })
+}
+function ShowRouterBal() {
+    it("Show BALANCES", async () => {
+        let routerr = _.BN2Str(await base.balanceOf(router.address));
+
+        console.log('================= ROUTER ==================')
+        console.log(`Base  ${routerr/_.one}`);
     })
 }
 function Showlptkn2CDPDetails() {

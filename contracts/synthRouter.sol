@@ -41,15 +41,6 @@ contract synthRouter {
 
     receive() external payable {}
 
-    // In case of new synthRouter can migrate metrics
-    function migrateSynthRouterData(address payable oldSynthRouter) public onlyDAO {
- 
-    }
-
-    function migrateSynthTokenData(address payable oldSynthRouter) public onlyDAO {
-
-    }
-
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
@@ -133,11 +124,11 @@ contract synthRouter {
          selfdestruct(msg.sender);
         return true;
     }
-    function globalPause() public onlyDAO {
-         
+    function globalPause(address synth) public onlyDAO {
+         isSynth[synth] = false;
     }
-    function globalPlay() public onlyDAO {
-
+    function globalPlay(address synth) public onlyDAO {
+         isSynth[synth] = true;
     }
     
     
