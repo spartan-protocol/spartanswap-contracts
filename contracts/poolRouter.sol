@@ -149,7 +149,7 @@ contract Router {
         uint _actualAmount = _handleTransferIn(BASE, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swap(_token);
         _handleTransferOut(token, outputAmount, member);
-        totalPooled += _actualAmount;
+        totalPooled = totalPooled.add(_actualAmount);
         volumeDetails(_actualAmount, fee);
         return (outputAmount, fee);
     }
@@ -272,6 +272,7 @@ contract Router {
             uint numerator = _fees.mul(dailyAllocation);
             uint feeDividend = numerator.div(_fees.add(normalAverageFee));
             totalFees = totalFees.add(feeDividend);
+            totalPooled = totalPooled.add(feeDividend); 
             iBEP20(BASE).transfer(_pool,feeDividend);   
             Pool(_pool).sync();
             }

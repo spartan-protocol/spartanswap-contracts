@@ -1,5 +1,6 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
+import "@nomiclabs/buidler/console.sol";
 interface iBEP20 {
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
@@ -55,7 +56,6 @@ interface iDAO {
 interface iWBNB {
     function withdraw(uint256) external;
 }
-
 interface iBASE {
     function DAO() external view returns (iDAO);
 }
@@ -98,6 +98,7 @@ contract Pool is iBEP20 {
     uint256 public tokenAmount;
     uint256 public fees;
     uint256 public volume;
+    uint public genesis;
 
     event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
@@ -119,6 +120,7 @@ contract Pool is iBEP20 {
         _name = string(abi.encodePacked(poolName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
         decimals = 18;
+        genesis = now;
         DEPLOYER = msg.sender;
     }
 
@@ -216,6 +218,7 @@ contract Pool is iBEP20 {
         liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply);
         _incrementPoolBalances(_actualInputBase, _actualInputToken);
         _mint(member, liquidityUnits); 
+        sync();
         emit AddLiquidity(member, _actualInputBase, _actualInputToken, liquidityUnits);
         return liquidityUnits;
     }
@@ -241,6 +244,7 @@ contract Pool is iBEP20 {
         _burn(address(this), _actualInputUnits);
         iBEP20(BASE).transfer(member, outputBase); 
         iBEP20(TOKEN).transfer(member, outputToken);
+        sync();
         emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
@@ -325,7 +329,7 @@ contract Pool is iBEP20 {
         _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
         _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
         _setPoolAmounts(_X.add(_x), _Y.sub(_y));
-        _addPoolMetrics(_y+_fee, _fee, false);
+        _addPoolMetrics(_y.add(_fee), _fee, false);
         return (_y, _fee);
     }
 
@@ -335,7 +339,7 @@ contract Pool is iBEP20 {
         _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
         _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
         _setPoolAmounts(_Y.sub(_y), _X.add(_x));
-        _addPoolMetrics(_y+_fee, _fee, true);
+        _addPoolMetrics(_y.add(_fee), _fee, true);
         return (_y, _fee);
     }
 

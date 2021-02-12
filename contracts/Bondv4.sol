@@ -74,6 +74,11 @@ contract Bond is iBEP20 {
         _;
     }
 
+    modifier onlyDEPLOYER() {
+        require(msg.sender == DEPLOYER );
+        _;
+    }
+
     //=====================================CREATION=========================================//
     // Constructor
     constructor(address _base) public {
@@ -159,13 +164,15 @@ contract Bond is iBEP20 {
     }
 
     //================================MIGRATION==============================//
-    function migrateMemberDetails(address asset, address member, MemberDetails memory memberDetails) public returns (bool){
+    function migrateMemberDetails(address member, address asset, address oldBond) public onlyDEPLOYER returns (bool){
+        MemberDetails memory memberDetails = Bond(oldBond).getMemberDetails(member, asset);
         mapAddress_listedAssets[asset].isMember[member] = memberDetails.isMember;
         mapAddress_listedAssets[asset].bondedLP[member] = memberDetails.bondedLP;
         mapAddress_listedAssets[asset].claimRate[member] = memberDetails.claimRate;
         mapAddress_listedAssets[asset].lastBlockTime[member] = memberDetails.lastBlockTime;
         return true;
     }
+    
 
 
     //====================================ONLY DAO================================//
@@ -198,9 +205,15 @@ contract Bond is iBEP20 {
         _mint(address(this), amount);
        return true;
     }
-    function moveBondBalance(address bond) public onlyDAO returns(bool){
+    function moveBondBASEBalance(address newBond) public onlyDAO returns(bool){
          uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
-         iBEP20(BASE).transfer(bond, baseBal);
+         iBEP20(BASE).transfer(newBond, baseBal);
+         return true;
+    }
+    function moveBondLPS(address asset, address newBond) public onlyDAO returns(bool){
+        address _pool = iUTILS(_DAO().UTILS()).getPool(asset);
+         uint256 poolBal = iBEP20(_pool).balanceOf(address(this));
+         iBEP20(BASE).transfer(newBond, poolBal);
          return true;
     }
     function approveRouter() public returns (bool){
@@ -258,6 +271,10 @@ contract Bond is iBEP20 {
                     claimAndLockForMember(asset[i], msg.sender);
                 }
             }
+    }
+
+    function destroyMe() public onlyDEPLOYER {
+         selfdestruct(msg.sender);
     }
 
     

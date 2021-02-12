@@ -158,10 +158,10 @@ contract Dao {
 
     // Member deposits some LP tokens
     function deposit(address pool, uint256 amount) public {
-        depositForMember(pool, amount, msg.sender);
+        depositLPForMember(pool, amount, msg.sender);
     }
     // Contract deposits some LP tokens for member
-    function depositForMember(address pool, uint256 amount, address member) public {
+    function depositLPForMember(address pool, uint256 amount, address member) public {
         require(_POOLCURATION.isCuratedPool(pool) == true, "!Curated");
         require(amount > 0, "!Amount");
         if (!isMember[member]) {
@@ -174,6 +174,12 @@ contract Dao {
         uint weight = increaseWeight(pool, member);
         emit MemberDeposits(member, pool, amount, weight);
     }
+    
+
+    function depositForMember(address pool, uint256 amount, address member) public {
+        // this will be new logic to migrate old lps into new lps
+    }
+
     // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
     function increaseWeight(address pool, address member) public returns(uint){
         require(isMember[member], "!Member");
@@ -632,6 +638,10 @@ contract Dao {
         } else {
             return false;
         }
+    }
+
+    function destroyMe() public onlyDAO {
+         selfdestruct(msg.sender);
     }
 
 }

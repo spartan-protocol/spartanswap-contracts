@@ -98,7 +98,7 @@ function constructor(accounts) {
         await base.changeDAO(Dao.address)     
         synthRouter = await synthRouter.new(base.address, wbnb.address) //deploy synthRouter
         bond = await BOND.new(base.address)     //deploy new bond
-        curate = await CURATED.new(base.address);
+        curate = await CURATED.new(base.address, wbnb.address);
         token1 = await TOKEN.new()             //deploy token
         token2 = await TOKEN2.new() 
         leverage = await LEVERAGE.new(base.address,wbnb.address );

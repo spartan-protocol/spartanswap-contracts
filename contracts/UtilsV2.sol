@@ -47,6 +47,8 @@ interface iSYNTH {
 
 contract Utils {
 
+     
+
     using SafeMath for uint;
 
     address public BASE;
@@ -191,9 +193,6 @@ contract Utils {
         poolData.genesis = iPOOL(pool).genesis();
         poolData.baseAmount = iPOOL(pool).baseAmount();
         poolData.tokenAmount = iPOOL(pool).tokenAmount();
-        poolData.fees = iPOOL(pool).fees();
-        poolData.volume = iPOOL(pool).volume();
-        poolData.txCount = iPOOL(pool).txCount();
         poolData.poolUnits = iBEP20(pool).totalSupply();
         return poolData;
     }
@@ -377,12 +376,6 @@ contract Utils {
     }
 
 
-    // function calcCDPShare(uint bp, uint total) public pure returns (uint part){
-    //     // 10,000 basis points = 100.00%
-    //     require((bp <= 10000) && (bp > 0), "Must be correct BP");
-    //     return calcShare(bp, 10000, total);
-    // }
-
     function calcLiquidityShare(uint units, address token, address pool) public view returns (uint share){
         // share = amount * part/total
         // address pool = getPool(token);
@@ -478,6 +471,74 @@ contract Utils {
          cdpValue = cdpBase;
          return cdpValue;
      }
-     
+
+    
+ //===============================OlD Utils functions =====================//
+
+//     function getPoolROI(address token) public view returns (uint roi){
+//         address pool = getPool(token);
+//         uint _baseStart = iPOOL(pool).baseAmountPooled().mul(2);
+//         uint _baseEnd = iPOOL(pool).baseAmount().mul(2);
+//         uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
+//         uint _tokenStart = iPOOL(pool).tokenAmountPooled().mul(2);
+//         uint _tokenEnd = iPOOL(pool).tokenAmount().mul(2);
+//         uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
+//         return (_ROIS + _ROIA).div(2);
+//    }
+
+//    function getPoolAPY(address token) public view returns (uint apy){
+//         uint avgROI = getPoolROI(token);
+//         uint poolAge = getPoolAge(token);
+//         return (avgROI.mul(365)).div(poolAge);
+//    }
+
+   
+    //====================================PRICING====================================//
+
+    function calcValueInBase(address token, uint amount) public view returns (uint value){
+       address pool = getPool(token);
+       return calcValueInBaseWithPool(pool, amount);
+    }
+
+    function calcValueInToken(address token, uint amount) public view returns (uint value){
+        address pool = getPool(token);
+        return calcValueInTokenWithPool(pool, amount);
+    }
+
+    function calcTokenPPinBase(address token, uint amount) public view returns (uint _output){
+        address pool = getPool(token);
+        return  calcTokenPPinBaseWithPool(pool, amount);
+   }
+
+    function calcBasePPinToken(address token, uint amount) public view returns (uint _output){
+        address pool = getPool(token);
+        return  calcValueInBaseWithPool(pool, amount);
+    }
+
+    function calcValueInBaseWithPool(address pool, uint amount) public view returns (uint value){
+       uint _baseAmount = iPOOL(pool).baseAmount();
+       uint _tokenAmount = iPOOL(pool).tokenAmount();
+       return (amount.mul(_baseAmount)).div(_tokenAmount);
+    }
+
+    function calcValueInTokenWithPool(address pool, uint amount) public view returns (uint value){
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        return (amount.mul(_tokenAmount)).div(_baseAmount);
+    }
+
+    function calcTokenPPinBaseWithPool(address pool, uint amount) public view returns (uint _output){
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        return  calcSwapOutput(amount, _tokenAmount, _baseAmount);
+   }
+
+    function calcBasePPinTokenWithPool(address pool, uint amount) public view returns (uint _output){
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        return  calcSwapOutput(amount, _baseAmount, _tokenAmount);
+    }
+
+    //====================================CORE-MATH====================================//
 
 }
