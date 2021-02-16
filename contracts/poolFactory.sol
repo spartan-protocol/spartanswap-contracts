@@ -278,7 +278,6 @@ contract Pool is iBEP20 {
       iBEP20(synthIn).approve(synthIn,_amount);
       iSYNTH(synthIn).swapOUT(_amount);    
       (outputAmount, fee) = _swapTokenToBase(_amount);
-
       return (outputAmount, fee);
     }
 

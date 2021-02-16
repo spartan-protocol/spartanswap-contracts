@@ -46,21 +46,23 @@ contract('SynthsLiquidate', function (accounts) {
     ShowAddress()
     ShowBNBPool()
 
-    ShowRouterBal()
+    addCollateralSPTBNBForSyntheticBNB(acc0);
+    ShowAccBal(acc0)
+    // ShowRouterBal()
     swapSynthToLayer1(_.BN2Str(10*_.one))
     
      //ShowBNBPool()
-     ShowRouterBal()
+    //  ShowRouterBal()
      ShowAccBal(acc0)
      swapLayer1ToSynth(_.BN2Str(10*_.one))
-     ShowBNBPool()
-     ShowRouterBal()
+   //  ShowBNBPool()
+    //  ShowRouterBal()
     // ShowTKN2Pool()
     // ShowGLOBALCDP()
-     ShowAccBal(acc0)
+    // ShowAccBal(acc0)
 
     LeverageUp(acc0)
-     ShowBNBPool()
+     //ShowBNBPool()
     // // ShowTKN2Pool()
     // // LeverageUp(acc0)
     // // ShowBNBPool()
@@ -68,12 +70,12 @@ contract('SynthsLiquidate', function (accounts) {
     // // ShowGLOBALCDP()
     // // LeverageUp(acc0)
     
-     ShowAccBal(acc0)
+    // ShowAccBal(acc0)
     // ShowBNBPool()
     // ShowTKN2Pool()
 
     // ShowlpBNBCDPDetails()
-    //  ShowGLOBALCDP()
+     ShowGLOBALCDP()
     //  LeverageDown(acc0)
 
     // // addCollateralSPTBNBForSyntheticBNB(acc0)
@@ -83,7 +85,8 @@ contract('SynthsLiquidate', function (accounts) {
     // ShowlpBNBCDPDetails()
     //  ShowGLOBALCDP()
     // // removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
-    // // Liquidate()
+    Liquidate()
+    ShowGLOBALCDP()
     
      
     
@@ -270,7 +273,7 @@ async function swapLayer1ToSynth() {
 
 async function addCollateralSPTBNBForSyntheticBNB(acc) {
     it("It should add SPT1-WBNB collateral for sBNB", async () => {
-
+        let units =  _.BN2Str(5*_.one);
         let lpToken = poolWBNB.address;
         await synthRouter.addCollateral(units,lpToken, synthTKN2.address,{from:acc});
         

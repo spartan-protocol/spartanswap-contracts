@@ -42,7 +42,8 @@ contract Synth is iBEP20 {
     address public LayerONE;
     uint public genesis;
     address public DEPLOYER;
-    uint liqFactor;
+    uint32 liqFactor;// Liquidation amount default 10%
+    uint32 CLBFactor;// Collateral Buffer 10% - ex. $150 - $15 = $135, 150/135*100 = Collateralisation ratio = 111%
     uint256 public synthsAmount;
     uint256 public totalMinted;
     address [] public membersActive;
@@ -86,6 +87,7 @@ contract Synth is iBEP20 {
         _name = string(abi.encodePacked(synthName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(synthSymbol, iBEP20(_token).symbol()));
         decimals = 18;
+        CLBFactor = 2000;
         DEPLOYER = msg.sender;
         liqFactor = 1000;
         genesis = now;
@@ -173,7 +175,9 @@ contract Synth is iBEP20 {
     function addCollateralForMember(address pool, address member) public returns(uint syntheticAmount){
         require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(pool) == true, '!POOL');
         uint256 _actualInputCollateral = _getAddedLPAmount(pool);// get the added collateral to LP CDP
-        uint baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, _actualInputCollateral);//get asym share in sparta
+        uint256 inputCollateralBuffer = _actualInputCollateral.mul(CLBFactor).div(10000);
+        uint256 bufferedCollateral = _actualInputCollateral.sub(inputCollateralBuffer);
+        uint baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, bufferedCollateral);//get asym share in sparta
          syntheticAmount = iUTILS(_DAO().UTILS()).calcSwapValueInToken(LayerONE, baseValueCollateral); //get synthetic asset swap
          totalMinted = totalMinted.add(syntheticAmount); //map synthetic debt
          _incrementCDPCollateral(_actualInputCollateral, syntheticAmount, pool); //update CDP Collateral details
@@ -283,7 +287,7 @@ contract Synth is iBEP20 {
             iBEP20(pool).approve(_DAO().ROUTER(),liqAmount);
             (uint _outputBase, uint _outputToken) = iROUTER(_DAO().ROUTER()).removeLiquidityExact(liqAmount,token);
             iBEP20(token).approve(_DAO().ROUTER(),_outputToken); 
-            (uint _baseBought, uint _fee) = iROUTER(_DAO().ROUTER()).swap(_outputToken,token, BASE);
+            (uint _baseBought,) = iROUTER(_DAO().ROUTER()).swap(_outputToken,token, BASE);
             uint outputAmount = _baseBought.add(_outputBase); 
             iBEP20(BASE).transfer(pool, outputAmount); // send base to pool for arb 
             iPOOL(pool).sync(); //sync balances for pool
@@ -314,9 +318,13 @@ contract Synth is iBEP20 {
         selfdestruct(msg.sender);
     } 
 
-    function changeLiqFactor(uint newliqFactor) public onlyDAO {
+    function changeLiqFactor(uint32 newliqFactor) public onlyDAO {
           require(newliqFactor > 10 || newliqFactor < 10000);
           liqFactor = newliqFactor;
+    }
+    function changeCLBFactor(uint32 newCLBFactor) public onlyDAO {
+        require(newCLBFactor > 1000 || newCLBFactor < 10000);
+          CLBFactor = newCLBFactor;
     }
 
 //=========================================HELPERS===============================================

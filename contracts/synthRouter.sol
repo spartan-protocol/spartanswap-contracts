@@ -99,9 +99,13 @@ contract synthRouter {
         }
     }
 
-    function changeLiquidationFactor(address synth, uint liqFactor) public onlyDAO {
+    function changeLiquidationFactor(address synth, uint32 liqFactor) public onlyDAO {
         require(isSynth[synth] == true, "!SYNTH");
         Synth(synth).changeLiqFactor(liqFactor); 
+    }
+    function changeColBufferFactor(address synth, uint32 CLBFactor) public onlyDAO {
+        require(isSynth[synth] == true, "!SYNTH");
+        Synth(synth).changeCLBFactor(CLBFactor); 
     }
     
     function getSynth(address token) public view returns(address synth){

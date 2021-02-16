@@ -52,8 +52,8 @@ contract Router {
         arrayFeeSize = 20;
         eraLength = 30;
         maxTrades = 100;
-        maxDebtAmount = 1000*10**18; // 1000 sparta
-        maxCreditAmount = 1000*10**18; // 1000 sparta
+        maxDebtAmount = 10000*10**18; // 10000 sparta
+        maxCreditAmount = 10000*10**18; // 10000 sparta
         DEPLOYER = msg.sender;
     }
 
@@ -243,8 +243,6 @@ contract Router {
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true);
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
         uint baseOut = iUTILS(_DAO().UTILS()).calcSwapValueInBase(synthINLayer1, inputAmount);
-        debtTotal = debtTotal.add(baseOut); 
-        require(debtTotal < maxDebtAmount, '!OVERMAXDEBT');
         address _poolIN = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthINLayer1);
         _handleTransferIn(synthIN, inputAmount, _poolIN);
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN);
@@ -257,7 +255,6 @@ contract Router {
     function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint outPut){
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true);
         creditTotal = creditTotal.add(inputAmount); 
-        require(creditTotal < maxCreditAmount, '!OVERMAXCREDIT');
         address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
         address _poolOUT = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthOUTLayer1);
         require(iPOOLCURATION(_DAO().POOLCURATION()).isPool(_poolOUT) == true);
