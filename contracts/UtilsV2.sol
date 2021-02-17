@@ -442,12 +442,19 @@ contract Utils {
         return share;
     }
 
-    function calcAsymmetricValue(address pool, uint amount) public view returns (uint baseValue){
+    function calcAsymmetricValueBase(address pool, uint amount) public view returns (uint baseValue){
         uint baseAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
         uint tokenAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
         uint tokenSwapped = calcSwapValueInBaseWithPool(pool, tokenAmount);
         baseValue = baseAmount.add(tokenSwapped);
         return baseValue;
+    }
+     function calcAsymmetricValueToken(address pool, uint amount) public view returns (uint tokenValue){
+        uint baseAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
+        uint tokenAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
+        uint baseSwapped = calcSwapValueInTokenWithPool(pool, baseAmount);
+        tokenValue = tokenAmount.add(baseSwapped);
+        return tokenValue;
     }
     function calcSynthsValue(address pool, uint amount) public view returns (uint units){
         uint amountHalved = amount.div(2);
@@ -470,6 +477,12 @@ contract Utils {
          }
          cdpValue = cdpBase;
          return cdpValue;
+     }
+     function calcLiquidityUnitsAsym(uint Amount, address pool) public view returns (uint units){
+        uint baseAmount = iPOOL(pool).baseAmount();
+        uint totalSupply = iBEP20(pool).totalSupply();
+        uint two = 2;
+         return totalSupply.mul(Amount).div((two.mul(Amount.add(baseAmount))));
      }
 
     

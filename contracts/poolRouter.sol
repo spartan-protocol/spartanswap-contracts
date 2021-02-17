@@ -239,34 +239,33 @@ contract Router {
 
     //=================================================================================//
     //Swap Synths
-    function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint outPut){
-        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true);
-        creditTotal = creditTotal.add(inputAmount); 
-        address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
-        address _poolOUT = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthOUTLayer1);
-        require(iPOOLCURATION(_DAO().POOLCURATION()).isPool(_poolOUT) == true);
-        _handleTransferIn(BASE, inputAmount, _poolOUT);
-        (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
-        volumeDetails(inputAmount, fee);
-        getsDividend( _poolOUT,  synthOUTLayer1,  fee);
-        _handleTransferOut(synthOUT,outputSynth,msg.sender);
-        emit SwappedSynth(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
-        return outputSynth;
+    function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint output){
+         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true);
+         address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
+         address _poolOUT = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthOUTLayer1);
+         _handleTransferIn(BASE, inputAmount, _poolOUT);
+         (uint outputSynth, uint fee ) = Pool(_poolOUT).swapSynthOUT(synthOUT);
+         volumeDetails(inputAmount, fee);
+         getsDividend( _poolOUT,  synthOUTLayer1,  fee);
+         _handleTransferOut(synthOUT,outputSynth,msg.sender);
+         emit SwappedSynth(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
+         return outputSynth;
+         
     }
-    
     function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true);
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
         uint baseOut = iUTILS(_DAO().UTILS()).calcSwapValueInBase(synthINLayer1, inputAmount);
         address _poolIN = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthINLayer1);
         _handleTransferIn(synthIN, inputAmount, _poolIN);
-        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN);
+        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         volumeDetails(outputBase, fee);
         getsDividend(_poolIN, synthINLayer1, fee);
         _handleTransferOut(BASE, outputBase, msg.sender);
         emit SwappedSynth(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
         return outputBase;
     }
+
     
     //==================================================================================//
     //Token Dividends / Curated Pools

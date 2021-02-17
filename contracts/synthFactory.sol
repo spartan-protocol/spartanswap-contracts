@@ -12,10 +12,12 @@ interface iROUTER {
 }
 interface iUTILS {
    function calcSwapValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
-    function calcAsymmetricValue(address token, uint units) external view returns(uint amount);
+    function calcAsymmetricValueBase(address pool, uint amount) external pure returns (uint units);
+    function calcAsymmetricValueToken(address pool, uint amount) external pure returns (uint units);
     function calcDebtShare(uint units, uint amount, address, address synth) external view returns (uint unitSynths);
     function calcSwapValueInToken(address token, uint units) external view returns (uint amount);
     function allCuratedPools() external view returns (address [] memory);
+    function calcSynthsValue(address pool, uint amount)external view returns (uint units);
    
 }
 interface iDAO {
@@ -161,68 +163,23 @@ contract Synth is iBEP20 {
         return true;
     }
 
-    function sync() public {
-        synthsAmount = balanceOf(address(this));
-    }
-
-    // Add collateral for self
-    // function addCollateral(address pool) public returns(uint synths){
-    //     synths = addCollateralForMember(pool, msg.sender);
-    //     return synths;
-    // } 
-    
-    // add collateral for member
-    // function addCollateralForMember(address pool, address member) public returns(uint syntheticAmount){
-    //     require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(pool) == true, '!POOL');
-    //     uint256 _actualInputCollateral = _getAddedLPAmount(pool);// get the added collateral to LP CDP
-    //     uint256 inputCollateralBuffer = _actualInputCollateral.mul(CLBFactor).div(10000);
-    //     uint256 bufferedCollateral = _actualInputCollateral.sub(inputCollateralBuffer);
-    //     uint baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, bufferedCollateral);//get asym share in sparta
-    //      syntheticAmount = iUTILS(_DAO().UTILS()).calcSwapValueInToken(LayerONE, baseValueCollateral); //get synthetic asset swap
-    //      totalMinted = totalMinted.add(syntheticAmount); //map synthetic debt
-    //      _incrementCDPCollateral(_actualInputCollateral, syntheticAmount, pool); //update CDP Collateral details
-    //      _incrementMemberDetails(pool, member, syntheticAmount); //update member details
-    //      _mint(member, syntheticAmount); // mint synth to member
-    //      emit AddLPCollateral(member, _actualInputCollateral, syntheticAmount, pool); 
-    //     return syntheticAmount; 
-    // }
-
-    // // Remove Collateral
-    // function removeCollateral(address pool) public returns (uint outputCollateral, uint burntDebt) {
-    //      (outputCollateral, burntDebt)= removeCollateralForMember(pool, msg.sender);
-    //     return (outputCollateral, burntDebt);
-    // } 
-
-    // // Remove Collateral for a member
-    // function removeCollateralForMember(address pool, address member) public returns (uint outputCollateral, uint debtBurnt) {
-    //     uint256 _actualInputSynths = _getAddedSynthsAmount(address(this));
-    //     require(mapMember_Details[member].synthDebt[pool] >= _actualInputSynths, 'INPUTERR');
-    //     outputCollateral = iUTILS(_DAO().UTILS()).calcDebtShare(_actualInputSynths, totalDebt[pool], pool, address(this));  
-    //     totalMinted = totalMinted.sub(_actualInputSynths); //map synthetic debt
-    //     _decrementCDPDebt(outputCollateral, _actualInputSynths, pool );
-    //     _decrementMemberDetails(pool, member, _actualInputSynths); //update member details
-    //     _burn(address(this), _actualInputSynths);
-    //     iBEP20(pool).transfer(member, outputCollateral); // return their collateral
-    //     emit RemoveCollateral(member, outputCollateral, _actualInputSynths, pool);
-    //     return (outputCollateral, _actualInputSynths);
-    // }
-
-     function swapIN(uint amount, address token, address member) public returns (uint syntheticAmount){
+     function swapIN(address token, address member) public returns (uint syntheticAmount){
         require(token != BASE, '!BASE');
         require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
-         syntheticAmount = _handleTransferIn(token, amount);
-        _mint(member, syntheticAmount); // mint synths
-        iBEP20(token).transfer(msg.sender, syntheticAmount);//return token back into pool
+        uint lpUnits = _getAddedLPAmount(msg.sender);
+        uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);//get asym share in sparta
+        _mint(member, tokenValue); // mint synths
         return syntheticAmount;
     }
     
-    function swapOUT(uint amount) public returns (uint syntheticAmount){
+    function swapOUT(uint amount) public returns (uint LPunits){
         require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
-         syntheticAmount = _handleTransferIn(address(this), amount);
+        uint  syntheticAmount = _handleTransferIn(address(this), amount);
          _burn(address(this), syntheticAmount); // burn synths
-        return syntheticAmount;
+         LPunits = iUTILS(_DAO().UTILS()).calcSynthsValue(msg.sender,syntheticAmount);
+         iBEP20(msg.sender).transfer(msg.sender, LPunits);
+        return LPunits;
     }
-
 
 
     function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 actual){
@@ -278,7 +235,7 @@ contract Synth is iBEP20 {
     }
 
     function _liquidate(address pool) public {
-        uint256 baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, totalCollateral[pool]);
+        uint256 baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(pool, totalCollateral[pool]);
         uint256 baseValueDebt = iUTILS(_DAO().UTILS()).calcSwapValueInBaseWithPool(pool, totalDebt[pool]);//get asym share in sparta
         if(baseValueDebt > baseValueCollateral){
             uint liqAmount = totalCollateral[pool].mul(liqFactor).div(10000);
