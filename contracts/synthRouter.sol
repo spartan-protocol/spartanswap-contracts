@@ -53,42 +53,42 @@ contract synthRouter {
         Synth newSynth; 
         newSynth = new Synth(BASE,token);  
         synth = address(newSynth);
-        _handleLPTransfer(lpToken, inputLPToken, msg.sender, synth);
+        // _handleLPTransfer(lpToken, inputLPToken, msg.sender, synth);
         mapToken_Synth[token] = synth;
         arraySynths.push(synth); 
         isSynth[synth] = true;
-        Synth(synth).addCollateralForMember(lpToken, msg.sender);
+        // Synth(synth).addCollateralForMember(lpToken, msg.sender);
         emit NewSynth(token, synth, now);
         return synth;
-        }
-
-    // Add collateral for self
-    function addCollateral(uint inputLPToken, address lpToken, address synth) public payable returns (uint synths) {
-        synths = addCollateralForMember(inputLPToken, lpToken, msg.sender, synth);
-        return synths;
-    }
-    // Add collateral for member
-    function addCollateralForMember(uint inputLPToken, address lpToken, address member, address synth) public payable returns (uint synthMinted) {
-        require(isSynth[synth] == true, "Synth must exist");
-        require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
-        _handleLPTransfer(lpToken, inputLPToken, member, synth);
-        synthMinted = Synth(synth).addCollateralForMember(lpToken, member);
-        emit AddCollateral(inputLPToken, lpToken, synth, synthMinted);
-        return synthMinted;
     }
 
-    function removeCollateral(uint inputAmount, address lpToken,address synth) public returns (uint lpCollateral){
-        (lpCollateral) = removeCollateralForMember(inputAmount,lpToken, msg.sender, synth);
-        return (lpCollateral);
-    }
-    function removeCollateralForMember(uint inputSynth, address lpToken, address member, address synth) public returns (uint lpCollateral){
-        require(isSynth[synth] == true, "Synth must exist");
-        require((inputSynth > 0), "InputErr"); uint synthBurnt;
-        Synth(synth).transferTo(synth, inputSynth);
-        (lpCollateral, synthBurnt) = Synth(synth).removeCollateralForMember(lpToken, member);
-        emit RemoveCollateral(lpCollateral, lpToken, synth, synthBurnt);
-        return (lpCollateral);
-    }
+    // // Add collateral for self
+    // function addCollateral(uint inputLPToken, address lpToken, address synth) public payable returns (uint synths) {
+    //     synths = addCollateralForMember(inputLPToken, lpToken, msg.sender, synth);
+    //     return synths;
+    // }
+    // // Add collateral for member
+    // function addCollateralForMember(uint inputLPToken, address lpToken, address member, address synth) public payable returns (uint synthMinted) {
+    //     require(isSynth[synth] == true, "Synth must exist");
+    //     require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
+    //     _handleLPTransfer(lpToken, inputLPToken, member, synth);
+    //     synthMinted = Synth(synth).addCollateralForMember(lpToken, member);
+    //     emit AddCollateral(inputLPToken, lpToken, synth, synthMinted);
+    //     return synthMinted;
+    // }
+
+    // function removeCollateral(uint inputAmount, address lpToken,address synth) public returns (uint lpCollateral){
+    //     (lpCollateral) = removeCollateralForMember(inputAmount,lpToken, msg.sender, synth);
+    //     return (lpCollateral);
+    // }
+    // function removeCollateralForMember(uint inputSynth, address lpToken, address member, address synth) public returns (uint lpCollateral){
+    //     require(isSynth[synth] == true, "Synth must exist");
+    //     require((inputSynth > 0), "InputErr"); uint synthBurnt;
+    //     Synth(synth).transferTo(synth, inputSynth);
+    //     (lpCollateral, synthBurnt) = Synth(synth).removeCollateralForMember(lpToken, member);
+    //     emit RemoveCollateral(lpCollateral, lpToken, synth, synthBurnt);
+    //     return (lpCollateral);
+    // }
 
     // handle input LP transfers 
     function _handleLPTransfer(address _lptoken, uint256 _amount, address member,  address _synth) internal returns(uint256 actual){

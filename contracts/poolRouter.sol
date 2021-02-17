@@ -239,19 +239,6 @@ contract Router {
 
     //=================================================================================//
     //Swap Synths
-    function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
-        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true);
-        address synthINLayer1 = iSYNTH(synthIN).LayerONE();
-        uint baseOut = iUTILS(_DAO().UTILS()).calcSwapValueInBase(synthINLayer1, inputAmount);
-        address _poolIN = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthINLayer1);
-        _handleTransferIn(synthIN, inputAmount, _poolIN);
-        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN);
-        volumeDetails(outputBase, fee);
-        getsDividend(_poolIN, synthINLayer1, fee);
-        _handleTransferOut(BASE, outputBase, msg.sender);
-        emit SwappedSynth(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
-        return outputBase;
-    }
     function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint outPut){
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true);
         creditTotal = creditTotal.add(inputAmount); 
@@ -266,6 +253,21 @@ contract Router {
         emit SwappedSynth(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
         return outputSynth;
     }
+    
+    function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
+        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true);
+        address synthINLayer1 = iSYNTH(synthIN).LayerONE();
+        uint baseOut = iUTILS(_DAO().UTILS()).calcSwapValueInBase(synthINLayer1, inputAmount);
+        address _poolIN = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthINLayer1);
+        _handleTransferIn(synthIN, inputAmount, _poolIN);
+        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN);
+        volumeDetails(outputBase, fee);
+        getsDividend(_poolIN, synthINLayer1, fee);
+        _handleTransferOut(BASE, outputBase, msg.sender);
+        emit SwappedSynth(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
+        return outputBase;
+    }
+    
     //==================================================================================//
     //Token Dividends / Curated Pools
     function addDividend(address _token, uint256 _fees) internal {
