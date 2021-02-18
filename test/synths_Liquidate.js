@@ -46,36 +46,38 @@ contract('SynthsLiquidate', function (accounts) {
     ShowAddress()
     ShowBNBPool()
 
-    addCollateralSPTBNBForSyntheticBNB(acc0);
+    //addCollateralSPTBNBForSyntheticBNB(acc0);
     ShowAccBal(acc0)
     // ShowRouterBal()
-    swapSynthToLayer1(_.BN2Str(10*_.one))
+    
     
      //ShowBNBPool()
     //  ShowRouterBal()
-     ShowAccBal(acc0)
+    ShowTKN2Pool()
      swapLayer1ToSynth(_.BN2Str(10*_.one))
+     ShowTKN2Pool()
    //  ShowBNBPool()
     //  ShowRouterBal()
     // ShowTKN2Pool()
     // ShowGLOBALCDP()
-    // ShowAccBal(acc0)
-
-    LeverageUp(acc0)
+     ShowAccBal(acc0)
+     swapSynthToLayer1(_.BN2Str(1*_.one))
+     ShowTKN2Pool()
+   // LeverageUp(acc0)
      //ShowBNBPool()
-    // // ShowTKN2Pool()
+ 
     // // LeverageUp(acc0)
     // // ShowBNBPool()
     // // ShowTKN2Pool()
     // // ShowGLOBALCDP()
     // // LeverageUp(acc0)
     
-    // ShowAccBal(acc0)
+     ShowAccBal(acc0)
     // ShowBNBPool()
     // ShowTKN2Pool()
 
     // ShowlpBNBCDPDetails()
-     ShowGLOBALCDP()
+   //  ShowGLOBALCDP()
     //  LeverageDown(acc0)
 
     // // addCollateralSPTBNBForSyntheticBNB(acc0)
@@ -85,8 +87,8 @@ contract('SynthsLiquidate', function (accounts) {
     // ShowlpBNBCDPDetails()
     //  ShowGLOBALCDP()
     // // removeSPTBNBCollateralForSyntheticBNB(acc0, _.BN2Str(1*_.one));
-    Liquidate()
-    ShowGLOBALCDP()
+   // Liquidate()
+   // ShowGLOBALCDP()
     
      
     
@@ -256,17 +258,19 @@ async function createSyntheticBNB() {
     })
 }
 async function swapSynthToLayer1() {
-    it("Swap Synthetic BNB To BASE", async () => {
+    it("Swap Synthetic tkn2 To BASE", async () => {
         let input =  _.BN2Str(1*_.one);
         let synthIN = synthTKN2.address;
         await router.swapSynthToBase(input,synthIN);
     })
 }
 async function swapLayer1ToSynth() {
-    it("Swap BASE to Synthetic BNB", async () => {
+    it("Swap BASE to Synthetic tkn2", async () => {
         let input =  _.BN2Str(10*_.one);
         let synthOUT = synthTKN2.address;
         await router.swapBaseToSynth(input,synthOUT);
+        let lpBal = _.BN2Str(await poolTKN2.balanceOf(synthTKN2.address));
+        console.log(lpBal);
       
     })
 }
@@ -279,7 +283,6 @@ async function addCollateralSPTBNBForSyntheticBNB(acc) {
         
     })
 }
-
 
 function Liquidate() {
     it("Liquidate", async () => {
@@ -397,7 +400,7 @@ function ShowGLOBALCDP() {
     it("Show DEPT", async () => {
         let totalColl = _.BN2Str(await synthTKN2.totalCollateral(poolWBNB.address));
         let totalMinted = _.BN2Str(await synthTKN2.totalDebt(poolWBNB.address));
-        let baseColl = _.BN2Str(await utils.calcAsymmetricValue(poolWBNB.address, totalColl))
+        let baseColl = _.BN2Str(await utils.calcAsymmetricValueBase(poolWBNB.address, totalColl))
         let baseVal = _.BN2Str(await utils.calcSwapValueInBase(wbnb.address, totalMinted ))
         
         console.log('================= SST1-sTKN - SPT1-BNB - CDP =============')

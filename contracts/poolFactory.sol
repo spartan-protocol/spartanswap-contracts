@@ -291,7 +291,7 @@ contract Pool is iBEP20 {
       iBEP20(synthIN).approve(synthIN, inputSynth);
       iSYNTH(synthIN).swapOUT(inputSynth);  
       uint _amountUnits = _getAddedUnitsAmount(); 
-       uint baseOutput = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(msg.sender, _amountUnits);//get asym share in sparta
+       uint baseOutput = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(address(this), _amountUnits);//get asym share in sparta
        (outputAmount, fee) = _swapTokenToBase(inputSynth);//get token swapped out
       _decrementPoolBalances(baseOutput, 0);
       _burn(address(this), _amountUnits);

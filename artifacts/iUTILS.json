@@ -18,24 +18,48 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "token",
+          "name": "pool",
           "type": "address"
         },
-        {
-          "internalType": "uint256",
-          "name": "units",
-          "type": "uint256"
-        }
-      ],
-      "name": "calcAsymmetricValue",
-      "outputs": [
         {
           "internalType": "uint256",
           "name": "amount",
           "type": "uint256"
         }
       ],
-      "stateMutability": "view",
+      "name": "calcAsymmetricValueBase",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "units",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "pool",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "calcAsymmetricValueToken",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "units",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "pure",
       "type": "function"
     },
     {
@@ -114,6 +138,30 @@
         {
           "internalType": "uint256",
           "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "pool",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "calcSynthsValue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "units",
           "type": "uint256"
         }
       ],
