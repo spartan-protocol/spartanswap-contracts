@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./poolFactory.sol";
+import "./synthFactory.sol";  
+import "./poolFactory.sol";  
 
-contract Curated {
+contract AssetCuration {
     address public BASE;
     address public WBNB;
     address public DEPLOYER;
@@ -13,9 +14,13 @@ contract Curated {
     address[] public arrayTokens;
     address[] public curatedPools;
     address[] public arrayPools;
+    address[] public arraySynths;
     mapping(address=>address) private mapToken_Pool;
+    mapping(address => address) private mapToken_Synth;
+    mapping(address => bool) public isSynth;
     mapping(address=>bool) public isListedPool;
     mapping(address=>bool) public isCuratedPool;
+
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -50,12 +55,24 @@ contract Curated {
         addPool(_token, pool);
         return pool;
     }
+    //Create a synth asset - only from curated pools
+    function createSynth(address lpToken, address token, uint256 inputLPToken) public returns(address synth){
+        require(getSynth(token) == address(0), "CreateErr");
+        require(lpToken != BASE, "Must not be Base");
+        require(inputLPToken > 0, "Must get lp token");
+        require(isCuratedPool[lpToken] == true, "Must be Curated");
+        Synth newSynth; 
+        newSynth = new Synth(BASE,token);  
+        synth = address(newSynth);
+        addSynth(token, synth);
+        return synth;
+    }
 
     function migratePOOLData(address payable oldCURATE) public onlyDAO {
-        uint256 tokenCount = Curated(oldCURATE).tokenCount();
+        uint256 tokenCount = AssetCuration(oldCURATE).tokenCount();
         for(uint256 i = 0; i<tokenCount; i++){
-            address token = Curated(oldCURATE).getToken(i);
-            address pool = Curated(oldCURATE).getPool(token);
+            address token = AssetCuration(oldCURATE).getToken(i);
+            address pool = AssetCuration(oldCURATE).getPool(token);
             isListedPool[pool] = true;
             arrayTokens.push(token);
             arrayPools.push(pool);
@@ -114,6 +131,14 @@ contract Curated {
         arrayTokens.push(_token); 
         isListedPool[pool] = true;
     }
+
+    function addSynth(address _token, address _synth) internal {
+        require(_token != BASE);
+        mapToken_Synth[_token] = _synth;
+        arraySynths.push(_synth); 
+        isSynth[_synth] = true;
+    }
+
     function isPool(address pool) public view returns (bool){
         if(isListedPool[pool] == true){
             return true;
@@ -125,6 +150,14 @@ contract Curated {
          selfdestruct(msg.sender);
     }
 
+    function destroySynth(address synth) public onlyDAO returns(bool){
+         Synth(synth).destroyMe(); 
+        return true;
+    }
+     function destroyPool(address pool) public onlyDAO {
+         Pool(pool).destroyMe();  
+    }
+
     //======================================HELPERS========================================//
     // Helper Functions
     function getPool(address token) public view returns(address pool){
@@ -134,6 +167,9 @@ contract Curated {
             pool = mapToken_Pool[token];  // Handle normal token
         } 
         return pool;
+    }
+      function getSynth(address token) public view returns(address synth){
+        return mapToken_Synth[token];
     }
     function tokenCount() public view returns(uint256){
         return arrayTokens.length;

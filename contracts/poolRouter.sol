@@ -2,7 +2,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "./poolFactory.sol";
-interface iPOOLCURATION {
+interface iASSETCURATION {
     function isCuratedPool(address) external view returns (bool);
     function challengLowestCuratedPool(address) external  ;
     function addCuratedPool(address) external ;
@@ -78,7 +78,7 @@ contract Router {
 
     // Add liquidity for member
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
-        address pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
+        address pool = iASSETCURATION(_DAO().POOLCURATION()).getPool(token);
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         uint256 _actualInputtoken =  _handleTransferIn(token, inputToken, pool);
         totalPooled += _actualInputBase;
@@ -106,13 +106,13 @@ contract Router {
     // Remove % for self
     function removeLiquidity(uint basisPoints, address token) public returns (uint outputBase, uint outputToken) {
         require((basisPoints > 0 && basisPoints <= 10000));
-        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLCURATION(_DAO().POOLCURATION()).getPool(token)).balanceOf(msg.sender));
+        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iASSETCURATION(_DAO().POOLCURATION()).getPool(token)).balanceOf(msg.sender));
         return removeLiquidityExact(_units, token);
     }
     // Remove an exact qty of units
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
-        address _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
-        require(iPOOLCURATION(_DAO().POOLCURATION()).isPool(_pool) == true);
+        address _pool = iASSETCURATION(_DAO().POOLCURATION()).getPool(token);
+        require(iASSETCURATION(_DAO().POOLCURATION()).isPool(_pool) == true);
         address _member = msg.sender;
         _handleTransferIn(_pool, units, _pool);
         (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
@@ -127,8 +127,8 @@ contract Router {
     }
     // Remove Asymmetrically
     function removeLiquidityAsymForMember(uint units, bool toBase, address token, address member) public returns (uint outputAmount){
-        address pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
-        require(iPOOLCURATION(_DAO().POOLCURATION()).isPool(pool) == true);
+        address pool = iASSETCURATION(_DAO().POOLCURATION()).getPool(token);
+        require(iASSETCURATION(_DAO().POOLCURATION()).isPool(pool) == true);
         require(units < iBEP20(pool).totalSupply());
         _handleTransferIn(pool, units, pool);
         (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidityForMember(member);
@@ -151,7 +151,7 @@ contract Router {
         require(token != BASE);
         address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
-        address _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
+        address _pool = iASSETCURATION(_DAO().POOLCURATION()).getPool(token);
         uint _actualAmount = _handleTransferIn(BASE, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swap(_token);
         _handleTransferOut(token, outputAmount, member);
@@ -164,7 +164,7 @@ contract Router {
     }
     function sellTo(uint amount, address token, address member) public payable returns (uint outputAmount, uint fee) {
         require(token != BASE);
-        address _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
+        address _pool = iASSETCURATION(_DAO().POOLCURATION()).getPool(token);
         _handleTransferIn(token, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
         totalPooled = totalPooled.sub(outputAmount);
@@ -179,18 +179,18 @@ contract Router {
         uint256 _transferAmount = 0;
         if(fromToken == BASE){
             (outputAmount, fee) = buyTo(inputAmount, toToken, member);
-            _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(toToken);
+            _pool = iASSETCURATION(_DAO().POOLCURATION()).getPool(toToken);
             getsDividend(_pool,toToken, fee);
         } else if(toToken == BASE) {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
-            _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(fromToken);
+            _pool = iASSETCURATION(_DAO().POOLCURATION()).getPool(fromToken);
             getsDividend(_pool,fromToken, fee);
         } else {
-            address _poolTo = iPOOLCURATION(_DAO().POOLCURATION()).getPool(toToken);
+            address _poolTo = iASSETCURATION(_DAO().POOLCURATION()).getPool(toToken);
             (uint256 _yy, uint256 _feey) = sellTo(inputAmount, fromToken, _poolTo);
             totalVolume += _yy; totalFees += _feey;
             address _toToken = toToken;
-             _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(fromToken);
+             _pool = iASSETCURATION(_DAO().POOLCURATION()).getPool(fromToken);
              getsDividend(_pool,fromToken, _feey);
             if(toToken == address(0)){_toToken = WBNB;} 
             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
@@ -204,7 +204,7 @@ contract Router {
         return (outputAmount, fee);
     }
     function getsDividend(address _pool, address _token, uint fee) internal {
-        if(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(_pool) == true){
+        if(iASSETCURATION(_DAO().POOLCURATION()).isCuratedPool(_pool) == true){
             addTradeFee(fee);
             addDividend(_token, fee); 
            }
@@ -242,7 +242,7 @@ contract Router {
     function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint output){
          require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true);
          address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
-         address _poolOUT = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthOUTLayer1);
+         address _poolOUT = iASSETCURATION(_DAO().POOLCURATION()).getPool(synthOUTLayer1);
          _handleTransferIn(BASE, inputAmount, _poolOUT);
          (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
          volumeDetails(inputAmount, fee);
@@ -255,7 +255,7 @@ contract Router {
     function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true);
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
-        address _poolIN = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthINLayer1);
+        address _poolIN = iASSETCURATION(_DAO().POOLCURATION()).getPool(synthINLayer1);
         _handleTransferIn(synthIN, inputAmount, _poolIN);
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         volumeDetails(outputBase, fee);
@@ -272,7 +272,7 @@ contract Router {
         if(!(normalAverageFee == 0)){
              uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance
             if(!(reserve == 0)){
-            address _pool = iPOOLCURATION(_DAO().POOLCURATION()).getPool(_token);
+            address _pool = iASSETCURATION(_DAO().POOLCURATION()).getPool(_token);
             uint dailyAllocation = reserve.div(eraLength).div(maxTrades); // get max dividend for reserve/30/100 
             uint numerator = _fees.mul(dailyAllocation);
             uint feeDividend = numerator.div(_fees.add(normalAverageFee));
@@ -333,9 +333,6 @@ contract Router {
         iBEP20(BASE).transfer(grantee, amount);
     }
 
-    function destroyPool(address pool) public onlyDAO {
-         Pool(pool).destroyMe();  
-    }
     function destroyRouter() public onlyDAO {
          selfdestruct(msg.sender);
     }

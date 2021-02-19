@@ -1,41 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./cInterfaces.sol";
 import "@nomiclabs/buidler/console.sol";
-interface iBASE {
-    function DAO() external view returns (iDAO);
-}
-interface iROUTER {
-    function swap(uint, address, address) external returns(uint, uint);
-    function removeLiquidityExact(uint, address) external returns(uint, uint);
-}
-interface iUTILS {
-   function calcSwapValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
-    function calcAsymmetricValueBase(address pool, uint amount) external pure returns (uint units);
-    function calcAsymmetricValueToken(address pool, uint amount) external pure returns (uint units);
-    function calcDebtShare(uint units, uint amount, address, address synth) external view returns (uint unitSynths);
-    function calcSwapValueInToken(address token, uint units) external view returns (uint amount);
-    function allCuratedPools() external view returns (address [] memory);
-    function calcLiquidityUnitsAsymToken(uint amount, address pool) external view returns (uint units);
-   
-}
-interface iDAO {
-    function ROUTER() external view returns(address);
-    function UTILS() external view returns(address);
-    function DAO() external view returns (address);
-    function POOLCURATION() external view returns (address);
-   
-}
-interface iPOOL {
-    function TOKEN() external view returns(address);
-    function sync() external;
-}
-interface iPOOLCURATION {
+import "./poolFactory.sol";  
+interface iASSETCURATION {
     function isCuratedPool(address) external view returns (bool);
 
 }
-
 
 contract Synth is iBEP20 {
     using SafeMath for uint256;
@@ -143,19 +114,19 @@ contract Synth is iBEP20 {
 
      function swapBaseIN(address token, address member) public returns (uint syntheticAmount){
         require(token != BASE, '!BASE');
-        require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
+        require(iASSETCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
         uint lpUnits = _getAddedLPAmount(msg.sender);
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);//get asym share in sparta
-        _mint(member, tokenValue); // mint synths
+        _mint(member, tokenValue); // mint synths 
         return tokenValue;
     }
     
     function swapBaseOUT(uint amount) public returns (uint LPunits){
-        require(iPOOLCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
+        require(iASSETCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
         uint syntheticAmount = _handleTransferIn(address(this), amount);
          _burn(address(this), syntheticAmount); 
          LPunits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsymToken(syntheticAmount, msg.sender);
-         iBEP20(msg.sender).transfer(msg.sender, LPunits);
+         iBEP20(msg.sender).transfer(msg.sender, LPunits); 
         return LPunits;
     }
 
@@ -180,14 +151,5 @@ contract Synth is iBEP20 {
     function destroyMe() public onlyDAO {
         selfdestruct(msg.sender);
     } 
-        function sync() public {
-        baseAmount = iBEP20(BASE).balanceOf(address(this));
-        tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
-        unitsAmount = balanceOf(address(this));
-    }
-   
-
-
-
 
 }

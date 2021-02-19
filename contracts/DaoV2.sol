@@ -12,7 +12,7 @@ interface iROUTER {
     function changeArrayFeeSize(uint) external returns(bool);
     function changeMaxTrades(uint) external returns(bool);
 }
-interface iPOOLCURATION {
+interface iASSETCURATION {
     function isCuratedPool(address) external view returns (bool);
     function challengLowestCuratedPool(address) external view returns (bool);
     function addCuratedPool(address) external returns (bool);
@@ -84,7 +84,7 @@ contract Dao {
     iSYNTHROUTER private _SYNTHROUTER;
     iBOND private _BOND;
     iDAOVAULT private _DAOVAULT;
-    iPOOLCURATION private _POOLCURATION;
+    iASSETCURATION private _ASSETCURATION;
 
     address[] public arrayMembers;
     
@@ -141,7 +141,7 @@ contract Dao {
         _SYNTHROUTER = iSYNTHROUTER(_synthrouter);
         _BOND = iBOND(_bond);
         _DAOVAULT = iDAOVAULT(_daoVault);
-        _POOLCURATION = iPOOLCURATION(_poolCuration);
+        _ASSETCURATION = iASSETCURATION(_poolCuration);
     }
 
     function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) public onlyDAO {
@@ -162,7 +162,7 @@ contract Dao {
     }
     // Contract deposits some LP tokens for member
     function depositLPForMember(address pool, uint256 amount, address member) public {
-        require(_POOLCURATION.isCuratedPool(pool) == true, "!Curated");
+        require(_ASSETCURATION.isCuratedPool(pool) == true, "!Curated");
         require(amount > 0, "!Amount");
         if (!isMember[member]) {
             arrayMembers.push(msg.sender);
@@ -183,7 +183,7 @@ contract Dao {
     // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
     function increaseWeight(address pool, address member) public returns(uint){
         require(isMember[member], "!Member");
-        require(_POOLCURATION.isCuratedPool(pool) == true, "!Curated");
+        require(_ASSETCURATION.isCuratedPool(pool) == true, "!Curated");
         if(mapMemberPool_weight[member][pool] > 0){ // Remove previous weights
             totalWeight = totalWeight.sub(mapMemberPool_weight[member][pool]);
             mapMember_weight[member] = mapMember_weight[member].sub(mapMemberPool_weight[member][pool]);
@@ -497,19 +497,19 @@ contract Dao {
     function _addCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        _POOLCURATION.addCuratedPool(_proposedAddress); 
+        _ASSETCURATION.addCuratedPool(_proposedAddress); 
         completeProposal(_proposalID);
     }
     function _removeCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        _POOLCURATION.removeCuratedPool(_proposedAddress); 
+        _ASSETCURATION.removeCuratedPool(_proposedAddress); 
         completeProposal(_proposalID);
     }
     function _challengLowestCuratedPool(uint _proposalID) internal {
          address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        _POOLCURATION.challengLowestCuratedPool(_proposedAddress); 
+        _ASSETCURATION.challengLowestCuratedPool(_proposedAddress); 
         completeProposal(_proposalID); 
     }
     
@@ -596,11 +596,11 @@ contract Dao {
             return _DAOVAULT;
         }
     }
-    function POOLCURATION() public view returns(iPOOLCURATION){
+    function ASSETCURATION() public view returns(iASSETCURATION){
         if(daoHasMoved){
-            return Dao(DAO).POOLCURATION();
+            return Dao(DAO).ASSETCURATION();
         } else {
-            return _POOLCURATION;
+            return _ASSETCURATION;
         }
     }
 
