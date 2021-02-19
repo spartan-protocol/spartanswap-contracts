@@ -270,7 +270,7 @@ async function swapLayer1ToSynth() {
         let synthOUT = synthTKN2.address;
         await router.swapBaseToSynth(input,synthOUT);
         let lpBal = _.BN2Str(await poolTKN2.balanceOf(synthTKN2.address));
-        console.log(lpBal);
+       // console.log("Synth LP Balance ",lpBal/_.one);
       
     })
 }

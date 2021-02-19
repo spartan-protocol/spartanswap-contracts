@@ -71,6 +71,7 @@ interface iUTILS {
     function calcSpotValueInBase(address token, uint amount) external view returns (uint value);
     function calcSpotValueInToken(address token, uint amount) external view returns (uint value);
     function getDepth(address pool) external view returns (uint depth);
+    function calcLiquidityUnitsAsym(uint Amount, address pool)external pure returns (uint units);
 }
 interface iSYNTHROUTER {
     function getSynth(address) external view returns(address);
@@ -79,8 +80,8 @@ interface iSYNTHROUTER {
 interface iSYNTH {
     function LayerONE() external view returns(address);
     function _liquidate(address) external;
-    function swapIN(address, address) external returns (uint);
-    function swapOUT(uint) external returns(uint);
+    function swapBaseIN(address, address) external returns (uint);
+    function swapBaseOUT(uint) external returns(uint);
 }
 contract Pool is iBEP20 {
     using SafeMath for uint256;
@@ -276,12 +277,11 @@ contract Pool is iBEP20 {
     function swapSynthOUT(address synthOut) public returns(uint outputAmount, uint fee) {
       require(msg.sender == _DAO().ROUTER(), '!poolRouter');
       uint256 _actualInputBase = _getAddedBaseAmount();
-      uint liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, 0, tokenAmount, totalSupply);
       _incrementPoolBalances(_actualInputBase, 0);
-      (outputAmount, fee) = _swapBaseToToken(_actualInputBase);//get token swapped out
+      uint liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); 
+      fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, tokenAmount, baseAmount);
       _mint(synthOut, liquidityUnits); 
-      iSYNTH(synthOut).swapIN(TOKEN, msg.sender); 
-      sync();
+      outputAmount = iSYNTH(synthOut).swapBaseIN(TOKEN, msg.sender); 
       return (outputAmount, fee);
     }
 
@@ -289,15 +289,14 @@ contract Pool is iBEP20 {
       require(msg.sender == _DAO().ROUTER(), '!poolRouter');
       uint inputSynth = _getAddedSynthAmount(synthIN);
       iBEP20(synthIN).approve(synthIN, inputSynth);
-      iSYNTH(synthIN).swapOUT(inputSynth);  
+      iSYNTH(synthIN).swapBaseOUT(inputSynth);  
       uint _amountUnits = _getAddedUnitsAmount(); 
-       uint baseOutput = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(address(this), _amountUnits);//get asym share in sparta
-       (outputAmount, fee) = _swapTokenToBase(inputSynth);//get token swapped out
+      uint baseOutput = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(address(this), _amountUnits);//get asym share in sparta
+      fee = iUTILS(_DAO().UTILS()).calcSwapFee(inputSynth, baseAmount, tokenAmount);
       _decrementPoolBalances(baseOutput, 0);
       _burn(address(this), _amountUnits);
-      iBEP20(BASE).transfer(msg.sender, baseOutput); 
-      sync();
-      return (outputAmount, fee);
+      iBEP20(BASE).transfer(msg.sender, baseOutput);
+      return (baseOutput, fee);
     }
 
     function _getAddedBaseAmount() internal view returns(uint256 _actual){

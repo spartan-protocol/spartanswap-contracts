@@ -478,11 +478,18 @@ contract Utils {
          cdpValue = cdpBase;
          return cdpValue;
      }
+     //synthUnits += (P b)/(2 (b + B))
      function calcLiquidityUnitsAsym(uint Amount, address pool) public view returns (uint units){
         uint baseAmount = iPOOL(pool).baseAmount();
         uint totalSupply = iBEP20(pool).totalSupply();
         uint two = 2;
-         return totalSupply.mul(Amount).div((two.mul(Amount.add(baseAmount))));
+         return (totalSupply.mul(Amount)).div((two.mul(Amount.add(baseAmount))));
+     }
+     function calcLiquidityUnitsAsymToken(uint Amount, address pool) public view returns (uint units){
+        uint tokenAmount = iPOOL(pool).tokenAmount();
+        uint totalSupply = iBEP20(pool).totalSupply();
+        uint two = 2;
+         return (totalSupply.mul(Amount)).div((two.mul(Amount.add(tokenAmount))));
      }
 
     

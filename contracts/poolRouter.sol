@@ -244,7 +244,7 @@ contract Router {
          address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
          address _poolOUT = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthOUTLayer1);
          _handleTransferIn(BASE, inputAmount, _poolOUT);
-         (uint outputSynth, uint fee ) = Pool(_poolOUT).swapSynthOUT(synthOUT);
+         (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
          volumeDetails(inputAmount, fee);
          getsDividend( _poolOUT,  synthOUTLayer1,  fee);
          _handleTransferOut(synthOUT,outputSynth,msg.sender);
@@ -255,7 +255,6 @@ contract Router {
     function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true);
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
-        uint baseOut = iUTILS(_DAO().UTILS()).calcSwapValueInBase(synthINLayer1, inputAmount);
         address _poolIN = iPOOLCURATION(_DAO().POOLCURATION()).getPool(synthINLayer1);
         _handleTransferIn(synthIN, inputAmount, _poolIN);
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
