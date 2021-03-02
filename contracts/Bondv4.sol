@@ -20,6 +20,9 @@ interface iUTILS {
     function calcSwapValueInBase(address pool, uint256 amount) external view returns (uint256 value);
      function getPool(address token)external view returns (address value);
 }
+interface iPOOL {
+    function TOKEN() external view returns(address);
+}
 
 
 
@@ -249,6 +252,20 @@ contract Bond is iBEP20 {
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
+    function depositInit(address lptoken, uint256 amount, address member) public onlyDAO returns (bool success) {
+       iBEP20(lptoken).transferFrom(msg.sender, address(this), amount);
+       address asset = iPOOL(lptoken).TOKEN();
+        if(!mapAddress_listedAssets[asset].isMember[member]){
+          mapAddress_listedAssets[asset].isMember[member] = true;
+          arrayMembers.push(member);
+          mapAddress_listedAssets[asset].members.push(member);
+        }
+        mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].add(amount);
+        mapAddress_listedAssets[asset].lastBlockTime[member] = now;
+        mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[member].div(23328000);
+        return true;
+    }
+
     function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
         uint256 spartaAllocation = iUTILS(_DAO().UTILS()).calcSwapValueInBase(_token, _amount); 
         if(_token == address(0)){
@@ -264,20 +281,6 @@ contract Bond is iBEP20 {
             } 
     }
 
-    function claimAndLock(address [] memory asset) public returns (bool){
-        require(asset.length > 0, '!array');
-            for(uint i = 0; i < asset.length; i++){
-                if(calcClaimBondedLP(asset[i], msg.sender) > 0){
-                    claimAndLockForMember(asset[i], msg.sender);
-                }
-            }
-    }
-
-    function destroyMe() public onlyDEPLOYER {
-         selfdestruct(msg.sender);
-    }
-
-    
     function claimAndLockForMember(address asset, address member) public returns (bool){
         require(mapAddress_listedAssets[asset].bondedLP[member] > 0, '!bondedlps');
         require(mapAddress_listedAssets[asset].isMember[member], '!deposited');
@@ -287,8 +290,6 @@ contract Bond is iBEP20 {
         mapAddress_listedAssets[asset].lastBlockTime[member] = now;
         mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].sub(claimable);
         iBEP20(_pool).transfer(member, claimable); // send LPs to user
-        uint256 lpBalance =  iBEP20(_pool).balanceOf(member); // get user LP balance incase of bondv2 claim
-        iDAO(_DAO()).depositForMember(_pool, lpBalance, member); //send lp tokens to DAO for lock
         return true;
     }
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
@@ -326,6 +327,8 @@ contract Bond is iBEP20 {
         return memberDetails;
     }
     
-    
+      function destroyMe() public onlyDEPLOYER {
+         selfdestruct(msg.sender);
+    }
     
 }

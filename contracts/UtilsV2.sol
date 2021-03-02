@@ -15,7 +15,7 @@ interface iROUTER {
     function swapTx() external view returns (uint);
     
 }
-interface iPOOLCURATION {
+interface iPSFACTORY {
     function getCuratedPool(uint) external view returns(address);
     function getPool(address) external view returns(address payable);
     function getToken(uint) external view returns(address);
@@ -25,7 +25,7 @@ interface iPOOLCURATION {
 }
 interface iDAO {
     function ROUTER() external view returns(address);
-    function POOLCURATION() external view returns(address);
+    function PSFACTORY() external view returns(address);
     function SYNTHROUTER() external view returns(address);
 }
 interface iPOOL {
@@ -154,13 +154,13 @@ contract Utils {
     }
 
     function getPool(address token) public view returns(address pool){
-        return iPOOLCURATION(_DAO().POOLCURATION()).getPool(token);
+        return iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
-        return iPOOLCURATION(_DAO().POOLCURATION()).tokenCount();
+        return iPSFACTORY(_DAO().PSFACTORY()).tokenCount();
     }
     function allTokens() public view returns (address[] memory _allTokens){
-        return tokensInRange(0, iPOOLCURATION(_DAO().POOLCURATION()).tokenCount()) ;
+        return tokensInRange(0, iPSFACTORY(_DAO().PSFACTORY()).tokenCount()) ;
     }
     function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
         if(start.add(count) > tokenCount()){
@@ -168,7 +168,7 @@ contract Utils {
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i < count; i++){
-            result[i] = iPOOLCURATION(_DAO().POOLCURATION()).getToken(i);
+            result[i] = iPSFACTORY(_DAO().PSFACTORY()).getToken(i);
         }
         return result;
     }
@@ -181,13 +181,13 @@ contract Utils {
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = getPool(iPOOLCURATION(_DAO().POOLCURATION()).getToken(i));
+            result[i] = getPool(iPSFACTORY(_DAO().PSFACTORY()).getToken(i));
         }
         return result;
     }
 
     function getPoolData(address token) public view returns(PoolDataStruct memory poolData){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         poolData.poolAddress = pool;
         poolData.tokenAddress = token;
         poolData.genesis = iPOOL(pool).genesis();
@@ -298,7 +298,7 @@ contract Utils {
 
 
     function curatedPoolCount() public view returns(uint count){
-        return iPOOLCURATION(_DAO().POOLCURATION()).getCuratedPoolsLength();
+        return iPSFACTORY(_DAO().PSFACTORY()).getCuratedPoolsLength();
     }
 
     function allCuratedPools() public view returns (address[] memory _allCuratedPools){
@@ -310,7 +310,7 @@ contract Utils {
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = iPOOLCURATION(_DAO().POOLCURATION()).getCuratedPool(i);
+            result[i] = iPSFACTORY(_DAO().PSFACTORY()).getCuratedPool(i);
         }
         return result;
     }

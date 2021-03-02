@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./synthFactory.sol";  
-import "./poolFactory.sol";  
+import "./synth.sol";  
+import "./pool.sol";  
 
-contract AssetCuration {
+contract PSFactory { // this factory
     address public BASE;
     address public WBNB;
     address public DEPLOYER;

@@ -1,64 +1,99 @@
+/**
+ *Submitted for verification at BscScan.com on 2020-09-27
+*/
+
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-import "./DaoVault.sol";
 
-import "@nomiclabs/buidler/console.sol";
-interface iDAOVAULT {
-    function withdraw(address, uint) external  returns (bool);
+interface iBEP20 {
+    function totalSupply() external view returns (uint);
+    function balanceOf(address) external view returns (uint);
+    function transfer(address, uint) external returns (bool);
+    function transferFrom(address, address, uint) external returns (bool);
 }
 interface iROUTER {
-    function grantFunds(uint, address) external payable returns (bool);
-    function changeArrayFeeSize(uint) external returns(bool);
-    function changeMaxTrades(uint) external returns(bool);
-    function addLiquidity(uint, uint, address) external payable returns (uint);
-}
-interface iPSFACTORY {
-    function isCuratedPool(address) external view returns (bool);
-    function challengLowestCuratedPool(address) external view returns (bool);
-    function addCuratedPool(address) external returns (bool);
-    function removeCuratedPool(address) external returns (bool);
-    function getPool(address token) external returns (address);
-}
-interface iUTILS {
-    function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
-    function getPoolShareWeight(address token, uint units)external view returns(uint weight);
+    function isPool(address) external view returns(bool);
 }
 interface iPOOL {
     function TOKEN() external view returns(address);
-    function transferTo(address, uint) external payable returns(bool);
-    function removeLiquidityForMember(address) external returns (uint, uint);
+    function transferTo(address, uint) external returns (bool);
 }
-interface iBOND {
-    function mintBond() external payable returns (bool);
-    function burnBond() external payable returns (bool);
-    function listBondAsset(address) external returns (bool);
-    function delistBondAsset(address) external returns (bool);
-    function changeBondingPeriod(uint) external returns (bool);
-    function depositInit(address, uint, address) external;
+interface iUTILS {
+    function calcShare(uint, uint, uint) external pure returns (uint);
+    function getPoolShare(address, uint) external view returns(uint);
 }
-interface iMASTERLOAN {
-    
+interface iBASE {
+    function secondsPerEra() external view returns (uint);
+    function changeIncentiveAddress(address) external returns(bool);
+    function changeDAO(address) external returns(bool);
+    function changeEmissionCurve(uint256) external returns(bool);
+    function changeEraDuration(uint256) external returns(bool);
+    function listAsset(address, uint256, uint256) external returns(bool);
+    function delistAsset(address) external returns(bool);
+    function startEmissions() external returns(bool);
+    function stopEmissions() external returns(bool);
 }
 
+// SafeMath
+library SafeMath {
+
+    function add(uint a, uint b) internal pure returns (uint)   {
+        uint c = a + b;
+        assert(c >= a);
+        return c;
+    }
+
+    function mul(uint a, uint b) internal pure returns (uint) {
+        if (a == 0) {
+            return 0;
+        }
+        uint c = a * b;
+        require(c / a == b, "SafeMath");
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath");
+    }
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "SafeMath");
+    }
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        return c;
+    }
+}
 
 
 contract Dao {
+
     using SafeMath for uint;
 
     address public DEPLOYER;
     address public BASE;
 
     uint256 public totalWeight;
-    uint256 public secondsPerEra;
-    uint32 public coolOffPeriod;
-    uint32 public proposalCount;
-    uint32 public majorityFactor;
-    uint128 public erasToEarn;
-    uint32 public daoClaim;
-    uint32 public daoFee;
-    
+    uint public one = 10**18;
 
+    uint public coolOffPeriod;
+    uint public secondsPerEra;
+    uint public erasToEarn;
+
+    uint public proposalCount;
+
+    struct ListDetails{
+        address asset;
+        uint claimRate;
+        uint allocation;
+    }
     struct GrantDetails{
         address recipient;
         uint amount;
@@ -78,6 +113,7 @@ contract Dao {
         bool finalised;
         uint param;
         address proposedAddress;
+        ListDetails list;
     }
 
     bool public daoHasMoved;
@@ -85,23 +121,18 @@ contract Dao {
 
     iROUTER private _ROUTER;
     iUTILS private _UTILS;
-    iMASTERLOAN private _MASTERLOAN;
-    iBOND private _BOND;
-    iDAOVAULT private _DAOVAULT;
-    iPSFACTORY private _PSFACTORY;
 
     address[] public arrayMembers;
-    
     mapping(address => bool) public isMember; // Is Member
     mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's balance in pool
     mapping(address => uint256) public mapMember_weight; // Value of weight
     mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of weight for pool
     mapping(address => uint256) public mapMember_lastTime;
     mapping(address => address[]) public mapMember_poolArray;
-    mapping(address => bool) public isListed;
 
-    mapping(uint256 => uint32) public mapPID_param;
+    mapping(uint256 => uint256) public mapPID_param;
     mapping(uint256 => address) public mapPID_address;
+    mapping(uint256 => ListDetails) public mapPID_list;
     mapping(uint256 => GrantDetails) public mapPID_grant;
     mapping(uint256 => string) public mapPID_type;
     mapping(uint256 => uint256) public mapPID_votes;
@@ -116,85 +147,60 @@ contract Dao {
 
     event NewProposal(address indexed member, uint indexed proposalID, string proposalType);
     event NewVote(address indexed member, uint indexed proposalID, uint voteWeight, uint totalVotes, string proposalType);
-    event RemovedVote(address indexed member, uint indexed proposalID, uint voteWeight, uint totalVotes, string proposalType);
     event ProposalFinalising(address indexed member,uint indexed proposalID, uint timeFinalised, string proposalType);
     event CancelProposal(address indexed member, uint indexed oldProposalID, uint oldVotes, uint newVotes, uint totalWeight);
     event FinalisedProposal(address indexed member,uint indexed proposalID, uint votesCast, uint totalWeight, string proposalType);
 
     // Only Deployer can execute
-     // Only DAO can execute
-    modifier onlyDAO() {
-        require(msg.sender == DEPLOYER, "Must be DAO");
+    modifier onlyDeployer() {
+        require(msg.sender == DEPLOYER, "DeployerErr");
         _;
     }
-    constructor (address _base) public {
-        BASE = _base;
+
+    constructor () public payable {
+        BASE = 0xE4Ae305ebE1AbE663f261Bc00534067C80ad677C;
         DEPLOYER = msg.sender;
-        coolOffPeriod = 1; 
-        DAO = address(this);
+        coolOffPeriod = 1;
         erasToEarn = 30;
-        majorityFactor = 6666;
-        daoClaim = 1000;
-        daoFee = 100;
         secondsPerEra = iBASE(BASE).secondsPerEra();
-        //secondsPerEra = 2;
     }
-    function setGenesisAddresses(address _router, address _utils, address _masterLoan, address _bond, address _daoVault, address _psFactory) public onlyDAO {
+    function setGenesisAddresses(address _router, address _utils) public onlyDeployer {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
-        _MASTERLOAN = iMASTERLOAN(_masterLoan);
-        _BOND = iBOND(_bond);
-        _DAOVAULT = iDAOVAULT(_daoVault);
-        _PSFACTORY = iPSFACTORY(_psFactory);
     }
-
-    function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) public onlyDAO {
+    function setGenesisFactors(uint _coolOff, uint _daysToEarn) public onlyDeployer {
         coolOffPeriod = _coolOff;
         erasToEarn = _daysToEarn;
-        majorityFactor = _majorityFactor;
-        daoClaim = _daoClaim;
-        daoFee = _daoFee;
     }
-    function purgeDeployer() public onlyDAO {
+
+    function purgeDeployer() public onlyDeployer {
         DEPLOYER = address(0);
     }
+
     //============================== USER - DEPOSIT/WITHDRAW ================================//
 
     // Member deposits some LP tokens
     function deposit(address pool, uint256 amount) public {
-        depositLPForMember(pool, amount, msg.sender);
+        depositForMember(pool, amount, msg.sender);
     }
     // Contract deposits some LP tokens for member
-    function depositLPForMember(address pool, uint256 amount, address member) public {
-        require(_PSFACTORY.isCuratedPool(pool) == true, "!Curated");
-        require(amount > 0, "!Amount");
+    function depositForMember(address pool, uint256 amount, address member) public {
+        require(_ROUTER.isPool(pool) == true, "Must be listed");
+        require(amount > 0, "Must get some");
         if (!isMember[member]) {
+            mapMember_lastTime[member] = now;
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
-        require(iPOOL(pool).transferTo(address(_DAOVAULT), amount), 'sendlps');
-        mapMember_lastTime[member] = now;
+        require(iPOOL(pool).transferTo(address(this), amount),"Must transfer"); // LP tokens return bool
         mapMemberPool_balance[member][pool] = mapMemberPool_balance[member][pool].add(amount); // Record total pool balance for member
         uint weight = increaseWeight(pool, member);
         emit MemberDeposits(member, pool, amount, weight);
     }
-    
-    function depositForMember(address pool, uint256 amount, address member) public {
-        address token = iPOOL(pool).TOKEN();//old pool
-        iBEP20(pool).transfer(pool, amount);//send lps to pool
-        (uint outputBase, uint outputToken) = iPOOL(pool).removeLiquidityForMember(member); 
-        iBEP20(BASE).approve(address(_ROUTER), outputBase);
-        iBEP20(token).approve(address(_ROUTER), outputToken);
-        address newPool = _PSFACTORY.getPool(token); 
-        uint lpUNits = _ROUTER.addLiquidity(outputBase, outputToken, token);
-        iBEP20(newPool).approve(address(_BOND), lpUNits);
-        _BOND.depositInit(newPool, lpUNits, member);
-    }
 
     // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
     function increaseWeight(address pool, address member) public returns(uint){
-        require(isMember[member], "!Member");
-        require(_PSFACTORY.isCuratedPool(pool) == true, "!Curated");
+        require(isMember[member], "Must be member");
         if(mapMemberPool_weight[member][pool] > 0){ // Remove previous weights
             totalWeight = totalWeight.sub(mapMemberPool_weight[member][pool]);
             mapMember_weight[member] = mapMember_weight[member].sub(mapMemberPool_weight[member][pool]);
@@ -202,7 +208,7 @@ contract Dao {
         } else {
             mapMember_poolArray[member].push(pool);
         }
-        uint weight = _UTILS.getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[member][pool]); // Get claim on BASE in pool
+        uint weight = _UTILS.getPoolShare(iPOOL(pool).TOKEN(), mapMemberPool_balance[member][pool]); // Get claim on BASE in pool
         mapMemberPool_weight[member][pool] = weight;
         mapMember_weight[member] = mapMember_weight[member].add(weight);
         totalWeight = totalWeight.add(weight);
@@ -213,9 +219,12 @@ contract Dao {
     // Member withdraws all from a pool
     function withdraw(address pool) public {
         uint256 balance = mapMemberPool_balance[msg.sender][pool];
-        require(balance > 0, "!Balance");
+        require(balance > 0, "Must have a balance");
         decreaseWeight(pool, msg.sender);
-        require(_DAOVAULT.withdraw(pool, balance), "!transfer"); // Then transfer
+        if(mapMember_weight[msg.sender] == 0 && iBEP20(BASE).balanceOf(address(this)) > 0){
+            harvest();
+        }
+        require(iBEP20(pool).transfer(msg.sender, balance), "Must transfer"); // Then transfer
         emit MemberWithdraws(msg.sender, pool, balance);
     }
 
@@ -223,7 +232,6 @@ contract Dao {
         uint weight = mapMemberPool_weight[member][pool];
         mapMemberPool_balance[member][pool] = 0; // Zero out balance
         mapMemberPool_weight[member][pool] = 0; // Zero out weight
-        mapMember_lastTime[member] = 0; //Zero out seconds 
         totalWeight = totalWeight.sub(weight); // Remove that weight
         mapMember_weight[member] = mapMember_weight[member].sub(weight); // Reduce weight
         emit WeightChange(member, weight, totalWeight);
@@ -235,34 +243,24 @@ contract Dao {
     function harvest() public {
         uint reward = calcCurrentReward(msg.sender);
         mapMember_lastTime[msg.sender] = now;
-        _ROUTER.grantFunds(reward, msg.sender);
+        iBEP20(BASE).transfer(msg.sender, reward);
     }
 
-    function calcCurrentReward(address member) public returns(uint){
-        require(isMember[member], "!member");
+    function calcCurrentReward(address member) public view returns(uint){
         uint secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
         uint reward = share.mul(secondsSinceClaim).div(secondsPerEra);    // Get owed amount, based on per-day rates
-        uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER));
-        uint daoReward = reserve.mul(daoClaim).div(10000);
-        if(reward >= daoReward) {
-            reward = daoReward; // Send full reserve if the last person
+        uint reserve = iBEP20(BASE).balanceOf(address(this));
+        if(reward >= reserve) {
+            reward = reserve; // Send full reserve if the last person
         }
         return reward;
     }
 
-    function calcReward(address member) public returns(uint){
-        updateWeight(member);
+    function calcReward(address member) public view returns(uint){
         uint weight = mapMember_weight[member];
-        uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER)).div(erasToEarn); // Aim to deplete reserve over a number of days
+        uint reserve = iBEP20(BASE).balanceOf(address(this)).div(erasToEarn); // Aim to deplete reserve over a number of days
         return _UTILS.calcShare(weight, totalWeight, reserve); // Get member's share of that
-    }
-
-    function updateWeight(address member) public returns(uint){
-       uint memberPool =  mapMember_poolArray[member].length;
-       for(uint i = 0; i < memberPool; i++){
-           increaseWeight(mapMember_poolArray[member][i], member);
-       }
     }
 
     //============================== CREATE PROPOSALS ================================//
@@ -274,15 +272,13 @@ contract Dao {
 
     // Simple Action Call
     function newActionProposal(string memory typeStr) public returns(uint) {
-        payFee();
         proposalCount += 1;
         mapPID_type[proposalCount] = typeStr;
         emit NewProposal(msg.sender, proposalCount, typeStr);
         return proposalCount;
     }
     // Action with uint parameter
-    function newParamProposal(uint32 param, string memory typeStr) public returns(uint) {
-        payFee();
+    function newParamProposal(uint param, string memory typeStr) public returns(uint) {
         proposalCount += 1;
         mapPID_param[proposalCount] = param;
         mapPID_type[proposalCount] = typeStr;
@@ -291,16 +287,27 @@ contract Dao {
     }
     // Action with address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
-        payFee();
         proposalCount += 1;
         mapPID_address[proposalCount] = proposedAddress;
         mapPID_type[proposalCount] = typeStr;
         emit NewProposal(msg.sender, proposalCount, typeStr);
         return proposalCount;
     }
+    // Action with list parameter
+    function newListProposal(address asset, uint256 claimRate, uint256 allocation) public returns(uint) {
+        string memory typeStr = "LIST";
+        proposalCount += 1;
+        mapPID_type[proposalCount] = typeStr;
+        ListDetails memory list;
+        list.asset = asset;
+        list.claimRate = claimRate;
+        list.allocation = allocation;
+        mapPID_list[proposalCount] = list;
+        emit NewProposal(msg.sender, proposalCount, typeStr);
+        return proposalCount;
+    }
     // Action with funding
     function newGrantProposal(address recipient, uint amount) public returns(uint) {
-        payFee();
         string memory typeStr = "GRANT";
         proposalCount += 1;
         mapPID_type[proposalCount] = typeStr;
@@ -311,12 +318,6 @@ contract Dao {
         emit NewProposal(msg.sender, proposalCount, typeStr);
         return proposalCount;
     }
-    
-    function payFee() internal returns(bool){
-        uint _amount = daoFee*10**18;
-        require(iBASE(BASE).transferTo(address(_ROUTER), _amount), '!fee' ); 
-        return true;
-    } 
 
 //============================== VOTE && FINALISE ================================//
 
@@ -336,39 +337,29 @@ contract Dao {
         emit NewVote(msg.sender, proposalID, voteWeight, mapPID_votes[proposalID], string(_type));
     }
 
-    //Remove vote from a proposal
-    function _removeVote(uint proposalID) public returns (uint voteWeightRemoved){
-        bytes memory _type = bytes(mapPID_type[proposalID]);
-        voteWeightRemoved = mapPIDMember_votes[proposalID][msg.sender]; // get voted weight
-        mapPID_votes[proposalID] -= voteWeightRemoved; //remove voteweight from totalVotingweight
-        mapPIDMember_votes[proposalID][msg.sender] = 0; //zero out voting weight for member
-        emit RemovedVote(msg.sender, proposalID, voteWeightRemoved, mapPID_votes[proposalID], string(_type));
-        return voteWeightRemoved;
-    }
-
     function _finalise(uint _proposalID) internal {
         bytes memory _type = bytes(mapPID_type[_proposalID]);
         mapPID_finalising[_proposalID] = true;
         mapPID_timeStart[_proposalID] = now;
         emit ProposalFinalising(msg.sender, _proposalID, now+coolOffPeriod, string(_type));
     }
+
     // If an existing proposal, allow a minority to cancel
     function cancelProposal(uint oldProposalID, uint newProposalID) public {
-        require(mapPID_finalising[oldProposalID], "!finalising");
-        require(hasMinority(newProposalID), "!minority");
-        require(isEqual(bytes(mapPID_type[oldProposalID]), bytes(mapPID_type[newProposalID])), "!same");
+        require(mapPID_finalising[oldProposalID], "Must be finalising");
+        require(hasMinority(newProposalID), "Must have minority");
+        require(isEqual(bytes(mapPID_type[oldProposalID]), bytes(mapPID_type[newProposalID])), "Must be same");
         mapPID_votes[oldProposalID] = 0;
         emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], totalWeight);
     }
 
     // Proposal with quorum can finalise after cool off period
     function finaliseProposal(uint proposalID) public  {
-        require((now - mapPID_timeStart[proposalID]) > coolOffPeriod, "!cool off");
-        require(mapPID_finalising[proposalID] == true, "!finalising");
-        if(!hasMajority(proposalID)){
+        require((now - mapPID_timeStart[proposalID]) > coolOffPeriod, "Must be after cool off");
+        require(mapPID_finalising[proposalID] == true, "Must be finalising");
+        if(!hasQuorum(proposalID)){
             mapPID_finalising[proposalID] = false;
         }
-        else {
         bytes memory _type = bytes(mapPID_type[proposalID]);
         if(isEqual(_type, 'DAO')){
             moveDao(proposalID);
@@ -378,6 +369,10 @@ contract Dao {
             moveUtils(proposalID);
         } else if (isEqual(_type, 'INCENTIVE')){
             moveIncentiveAddress(proposalID);
+        } else if (isEqual(_type, 'LIST')){
+            listAsset(proposalID);
+        } else if (isEqual(_type, 'DELIST')){
+            delistAsset(proposalID);
         } else if (isEqual(_type, 'CURVE')){
             changeCurve(proposalID);
         } else if (isEqual(_type, 'DURATION')){
@@ -392,27 +387,9 @@ contract Dao {
             changeEras(proposalID);
         } else if (isEqual(_type, 'GRANT')){
             grantFunds(proposalID);
-        } else if (isEqual(_type, 'GET_SPARTA')){
-            _increaseSpartaAllocation(proposalID);
-        } else if (isEqual(_type, 'LIST_BOND')){
-            _listBondAsset(proposalID);
-        } else if (isEqual(_type, 'DELIST_BOND')){
-            _delistBondAsset(proposalID);
-        } else if (isEqual(_type, 'ADD_CURATED_POOL')){
-            _addCuratedPool(proposalID);
-        } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
-            _removeCuratedPool(proposalID);
-        } else if (isEqual(_type, 'CHALLENGE_CURATED_POOL')){
-            _challengLowestCuratedPool(proposalID);
-        } else if (isEqual(_type, 'FEE_ARRAY_SIZE')){
-            _changeArrayFeeSize(proposalID);
-        } else if (isEqual(_type, 'MAX_TRADES')){
-            _changeMaxTrades(proposalID);
         }
-        
-        }
-        
     }
+
     function moveDao(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
@@ -420,15 +397,17 @@ contract Dao {
         iBASE(BASE).changeDAO(_proposedAddress);
         uint reserve = iBEP20(BASE).balanceOf(address(this));
         iBEP20(BASE).transfer(_proposedAddress, reserve);
-        daoHasMoved = true; 
+        daoHasMoved = true;
         completeProposal(_proposalID);
     }
+
     function moveRouter(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
         _ROUTER = iROUTER(_proposedAddress);
         completeProposal(_proposalID);
     }
+
     function moveUtils(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
@@ -441,6 +420,20 @@ contract Dao {
         iBASE(BASE).changeIncentiveAddress(_proposedAddress);
         completeProposal(_proposalID);
     }
+
+    function listAsset(uint _proposalID) internal {
+        ListDetails memory _list = mapPID_list[_proposalID];
+        require(iBEP20(BASE).totalSupply() <= 100 * 10**6 * one, "Must not list over 100m");
+        require(_list.claimRate.mul(_list.allocation) <= 10 * 10**6 * one, "Must not list over 10m");
+        iBASE(BASE).listAsset(_list.asset, _list.claimRate, _list.allocation);
+        completeProposal(_proposalID);
+    }
+    function delistAsset(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID];
+        require(_proposedAddress != address(0), "No address proposed");
+        iBASE(BASE).delistAsset(_proposedAddress);
+        completeProposal(_proposalID);
+    }
     function changeCurve(uint _proposalID) internal {
         uint _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
@@ -451,7 +444,7 @@ contract Dao {
         uint _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
         iBASE(BASE).changeEraDuration(_proposedParam);
-        secondsPerEra = iBASE(BASE).secondsPerEra(); 
+        secondsPerEra = iBASE(BASE).secondsPerEra();
         completeProposal(_proposalID);
     }
     function startEmissions(uint _proposalID) internal {
@@ -461,69 +454,27 @@ contract Dao {
     function stopEmissions(uint _proposalID) internal {
         iBASE(BASE).stopEmissions();
         completeProposal(_proposalID);
-    } 
+    }
+
     function changeCooloff(uint _proposalID) internal {
-        uint32 _proposedParam = mapPID_param[_proposalID];
+        uint _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
         coolOffPeriod = _proposedParam;
         completeProposal(_proposalID);
     }
     function changeEras(uint _proposalID) internal {
-        uint32 _proposedParam = mapPID_param[_proposalID];
+        uint _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
         erasToEarn = _proposedParam;
         completeProposal(_proposalID);
     }
     function grantFunds(uint _proposalID) internal {
         GrantDetails memory _grant = mapPID_grant[_proposalID];
-        _ROUTER.grantFunds(_grant.amount, _grant.recipient);
+        require(_grant.amount <= iBEP20(BASE).balanceOf(address(this)), "Not more than balance");
         completeProposal(_proposalID);
+        iBEP20(BASE).transfer(_grant.recipient, _grant.amount);
     }
-    function _increaseSpartaAllocation(uint _proposalID) internal {
-        _BOND.mintBond(); 
-        _BOND.burnBond();
-        completeProposal(_proposalID);
-    }
-    function _changeArrayFeeSize(uint _proposalID) internal {
-        uint _proposedParam = mapPID_param[_proposalID];
-        _ROUTER.changeArrayFeeSize(_proposedParam); 
-        completeProposal(_proposalID);
-    }
-    function _changeMaxTrades(uint _proposalID) internal {
-        uint _proposedParam = mapPID_param[_proposalID];
-        _ROUTER.changeMaxTrades(_proposedParam); 
-        completeProposal(_proposalID); 
-    }
-    function _listBondAsset(uint _proposalID) internal {
-         address _proposedAddress = mapPID_address[_proposalID];
-        _BOND.listBondAsset(_proposedAddress);
-        completeProposal(_proposalID);
-    }
-    function _delistBondAsset(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _BOND.delistBondAsset(_proposedAddress); 
-        completeProposal(_proposalID);
-    }
-    function _addCuratedPool(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _PSFACTORY.addCuratedPool(_proposedAddress); 
-        completeProposal(_proposalID);
-    }
-    function _removeCuratedPool(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _PSFACTORY.removeCuratedPool(_proposedAddress); 
-        completeProposal(_proposalID);
-    }
-    function _challengLowestCuratedPool(uint _proposalID) internal {
-         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _PSFACTORY.challengLowestCuratedPool(_proposedAddress); 
-        completeProposal(_proposalID); 
-    }
-    
+
     function completeProposal(uint _proposalID) internal {
         string memory _typeStr = mapPID_type[_proposalID];
         emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID], totalWeight, _typeStr);
@@ -531,20 +482,21 @@ contract Dao {
         mapPID_finalised[_proposalID] = true;
         mapPID_finalising[_proposalID] = false;
     }
+    
 
     //============================== CONSENSUS ================================//
 
     function countVotes(uint _proposalID) internal returns (uint voteWeight){
         mapPID_votes[_proposalID] = mapPID_votes[_proposalID].sub(mapPIDMember_votes[_proposalID][msg.sender]);
-        updateWeight(msg.sender);
         voteWeight = mapMember_weight[msg.sender];
         mapPID_votes[_proposalID] += voteWeight;
         mapPIDMember_votes[_proposalID][msg.sender] = voteWeight;
         return voteWeight;
     }
+
     function hasMajority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-        uint consensus = totalWeight.mul(majorityFactor).div(10000); // > 66.66%
+        uint consensus = totalWeight.div(2); // >50%
         if(votes > consensus){
             return true;
         } else {
@@ -579,39 +531,12 @@ contract Dao {
             return _ROUTER;
         }
     }
+
     function UTILS() public view returns(iUTILS){
         if(daoHasMoved){
             return Dao(DAO).UTILS();
         } else {
             return _UTILS;
-        }
-    }
-    function MASTERLOAN() public view returns(iMASTERLOAN){
-        if(daoHasMoved){
-            return Dao(DAO).MASTERLOAN();
-        } else {
-            return _MASTERLOAN;
-        }
-    }
-    function BOND() public view returns(iBOND){
-        if(daoHasMoved){
-            return Dao(DAO).BOND();
-        } else {
-            return _BOND;
-        }
-    }
-    function DAOVAULT() public view returns(iDAOVAULT){
-        if(daoHasMoved){
-            return Dao(DAO).DAOVAULT();
-        } else {
-            return _DAOVAULT;
-        }
-    }
-    function PSFACTORY() public view returns(iPSFACTORY){
-        if(daoHasMoved){
-            return Dao(DAO).PSFACTORY();
-        } else {
-            return _PSFACTORY;
         }
     }
 
@@ -620,6 +545,7 @@ contract Dao {
     function memberCount() public view returns(uint){
         return arrayMembers.length;
     }
+
     function getMemberDetails(address member) public view returns (MemberDetails memory memberDetails){
         memberDetails.isMember = isMember[member];
         memberDetails.weight = mapMember_weight[member];
@@ -636,13 +562,10 @@ contract Dao {
         proposalDetails.finalised = mapPID_finalised[proposalID];
         proposalDetails.param = mapPID_param[proposalID];
         proposalDetails.proposedAddress = mapPID_address[proposalID];
+        proposalDetails.list = mapPID_list[proposalID];
         return proposalDetails;
     }
-    function getGrantDetails(uint proposalID) public view returns (GrantDetails memory grantDetails){
-        grantDetails.recipient = mapPID_grant[proposalID].recipient;
-        grantDetails.amount = mapPID_grant[proposalID].amount;
-        return grantDetails;
-    }
+
     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
         if(sha256(part1) == sha256(part2)){
             return true;
@@ -651,11 +574,4 @@ contract Dao {
         }
     }
 
-    function destroyMe() public onlyDAO {
-         selfdestruct(msg.sender);
-    }
-
 }
-
-
-   

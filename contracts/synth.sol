@@ -2,8 +2,8 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 import "@nomiclabs/buidler/console.sol";
-import "./poolFactory.sol";  
-interface iASSETCURATION {
+import "./pool.sol";  
+interface iPSFACTORY {
     function isCuratedPool(address) external view returns (bool);
 
 }
@@ -28,7 +28,11 @@ contract Synth is iBEP20 {
         return iBASE(BASE).DAO();
     }
      modifier onlyDAO() {
-        require(msg.sender == DEPLOYER, "Must be DAO");
+        require(msg.sender == DEPLOYER, "!DAO");
+        _;
+    }
+    modifier onlyPool() {
+        require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(msg.sender) == true, "!POOL");
         _;
     }
 
@@ -112,22 +116,23 @@ contract Synth is iBEP20 {
         return true;
     }
 
-     function swapBaseIN(address token, address member) public returns (uint syntheticAmount){
+     function mintSynth(address token, address member) public returns (uint syntheticAmount){
         require(token != BASE, '!BASE');
-        require(iASSETCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
+        require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
         uint lpUnits = _getAddedLPAmount(msg.sender);
-        uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);//get asym share in sparta
-        _mint(member, tokenValue); // mint synths 
+        uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
+        _mint(member, tokenValue); 
         return tokenValue;
     }
     
-    function swapBaseOUT(uint amount) public returns (uint LPunits){
-        require(iASSETCURATION(_DAO().POOLCURATION()).isCuratedPool(msg.sender) == true, '!POOL');
+    function redeemSynth(uint amount) public returns (bool){
+        require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
         uint syntheticAmount = _handleTransferIn(address(this), amount);
          _burn(address(this), syntheticAmount); 
-         LPunits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsymToken(syntheticAmount, msg.sender);
-         iBEP20(msg.sender).transfer(msg.sender, LPunits); 
-        return LPunits;
+         uint LPBalance = Pool(msg.sender).balanceOf(address(this));
+         uint _amountUnits = (amount.mul(LPBalance)).div(totalSupply);// share = amount * part/total
+         Pool(msg.sender).burn(_amountUnits);
+        return true;
     }
 
     function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 actual){

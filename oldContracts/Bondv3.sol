@@ -288,7 +288,6 @@ contract BondV3 is iBEP20 {
         uint256 liquidityUnits = handleTransferIn(asset, amount);
         if(!mapAddress_listedAssets[asset].isMember[msg.sender]){
           mapAddress_listedAssets[asset].isMember[msg.sender] = true;
-          arrayMembers.push(msg.sender);
           mapAddress_listedAssets[asset].members.push(msg.sender);
         }
         mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(liquidityUnits);
@@ -489,8 +488,8 @@ contract BondV3 is iBEP20 {
     function memberCount() public view returns (uint256 count){
         return arrayMembers.length;
     }
-    function allMembers() public view returns (address[] memory _allMembers){
-        return arrayMembers;
+    function allMembers(address asset) public view returns (address[] memory _allMembers){
+        return mapAddress_listedAssets[asset].members;
     }
     function getMemberDetails(address member, address asset) public view returns (MemberDetails memory memberDetails){
         memberDetails.isMember = mapAddress_listedAssets[asset].isMember[member];

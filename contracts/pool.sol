@@ -7,13 +7,14 @@ interface iDAO {
     function UTILS() external view returns(address);
     function SYNTHROUTER() external view returns(address);
     function DAO() external view returns (address);
-    function POOLCURATION() external view returns(address);
+    function PSFACTORY() external view returns(address);
 }
 interface iWBNB {
     function withdraw(uint256) external;
 }
 interface iBASE {
     function DAO() external view returns (iDAO);
+    function transferTo(address, uint256 ) external payable returns(bool);
 }
 interface iUTILS {
     function calcAsymmetricValueBase(address pool, uint amount) external pure returns (uint units);
@@ -37,9 +38,9 @@ interface iSYNTHROUTER {
 }
 interface iSYNTH {
     function LayerONE() external view returns(address);
-    function _liquidate(address) external;
-    function swapBaseIN(address, address) external returns (uint);
-    function swapBaseOUT(uint) external returns(uint);
+    function mintSynth(address, address) external returns (uint);
+    function redeemSynth(uint) external returns(uint);
+    function transferTo(address, uint256 ) external payable returns(bool);
 }
 
 
@@ -71,7 +72,11 @@ contract Pool is iBEP20 {
         return iBASE(BASE).DAO();
     }
     modifier onlyDAO() {
-        require(msg.sender == DEPLOYER, "Must be DAO");
+        require(msg.sender == DEPLOYER, "!DAO");
+        _;
+    }
+    modifier onlyRouter() {
+        require(msg.sender == _DAO().ROUTER(), "!ROUTER");
         _;
     }
 
@@ -129,7 +134,6 @@ contract Pool is iBEP20 {
         require(_balances[_to] + _value >= _balances[_to], 'BalanceErr');
         _balances[_from] -= _value;
         _balances[_to] += _value;
-        _checkLiquidate();
         emit Transfer(_from, _to, _value);
     }
 
@@ -191,13 +195,6 @@ contract Pool is iBEP20 {
         return removeLiquidityForMember(msg.sender);
     } 
 
-    function _checkLiquidate() internal {
-        address synth = iSYNTHROUTER(_DAO().SYNTHROUTER()).getSynth(address(this));
-        if(!(synth == address(0))){
-            iSYNTH(synth)._liquidate(address(this));
-        }
-    }
-
     // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
         uint256 _actualInputUnits = _getAddedUnitsAmount();
@@ -234,27 +231,23 @@ contract Pool is iBEP20 {
         return (outputAmount, fee);
     }
 
-    function swapSynthOUT(address synthOut) public returns(uint outputAmount, uint fee) {
-      require(msg.sender == _DAO().ROUTER(), '!poolRouter');
+    function swapSynthOUT(address synthOut) public onlyRouter returns(uint outputAmount, uint fee) {
       uint256 _actualInputBase = _getAddedBaseAmount();
       _incrementPoolBalances(_actualInputBase, 0);
       uint liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); 
       fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, tokenAmount, baseAmount);
       _mint(synthOut, liquidityUnits); 
-      outputAmount = iSYNTH(synthOut).swapBaseIN(TOKEN, msg.sender); 
+      outputAmount = iSYNTH(synthOut).mintSynth(TOKEN, msg.sender); //mintSynth to Router
       return (outputAmount, fee);
     }
 
-    function swapSynthIN(address synthIN) public returns(uint outputAmount, uint fee) {
-      require(msg.sender == _DAO().ROUTER(), '!poolRouter');
+    function swapSynthIN(address synthIN) public onlyRouter returns(uint outputAmount, uint fee) {
       uint inputSynth = _getAddedSynthAmount(synthIN);
-      iBEP20(synthIN).approve(synthIN, inputSynth);
-      iSYNTH(synthIN).swapBaseOUT(inputSynth);  
-      uint _amountUnits = _getAddedUnitsAmount(); 
-      uint baseOutput = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(address(this), _amountUnits);//get asym share in sparta
+      uint baseOutput = iUTILS(_DAO().UTILS()).calcSwapValueInBase(address(this), inputSynth);//get swapValue from synths input
       fee = iUTILS(_DAO().UTILS()).calcSwapFee(inputSynth, baseAmount, tokenAmount);
+      iBEP20(synthIN).approve(synthIN, inputSynth); 
+      iSYNTH(synthIN).redeemSynth(inputSynth); //redeem Synth
       _decrementPoolBalances(baseOutput, 0);
-      _burn(address(this), _amountUnits);
       iBEP20(BASE).transfer(msg.sender, baseOutput);
       return (baseOutput, fee);
     }
@@ -268,6 +261,7 @@ contract Pool is iBEP20 {
         }
         return _actual;
     }
+  
     function _getAddedTokenAmount() internal view returns(uint256 _actual){
         uint _tokenBalance = iBEP20(TOKEN).balanceOf(address(this)); 
         if(_tokenBalance > tokenAmount){

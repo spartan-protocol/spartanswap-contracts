@@ -11,14 +11,13 @@ var DAO = artifacts.require("./Dao.sol");
 var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
-var synthRouter = artifacts.require("./synthRouter.sol");
-var SYNTH = artifacts.require("./synth.sol");
+var MLOAN = artifacts.require("./SpartanLoan.sol");
+var LVAULT = artifacts.require("./SpartanLoanVault.sol");
 var BOND = artifacts.require("./Bond.sol");
 var TOKEN = artifacts.require("./Token1.sol");
 var TOKEN2 = artifacts.require("./Token2.sol");
 var WBNB = artifacts.require("./WBNB");
 var DAOVAULT = artifacts.require("./DaoVault.sol");
-var LEVERAGE = artifacts.require("./Leverage.sol");
 var CURATED = artifacts.require("./Curated.sol");
 
 var base; var token1;  var token2; var wbnb;
@@ -27,14 +26,16 @@ var poolWBNB; var poolTKN1; var synthTNK2; var synthTKN2;
 var acc0; var acc1; var acc2; var acc3;
 
 
-contract('SynthsLiquidate', function (accounts) {
+contract('Sim', function (accounts) {
     constructor(accounts)
-    wrapBNB()
-    createPoolWBNB()
-    addLiquidityBNB(acc0,_.BN2Str(20*_.one),  _.BN2Str(10*_.one));
-    LpUnits();
-    addLiquidityBNB(acc0,_.BN2Str(5*_.one),  _.BN2Str(3*_.one));
-    LpUnits();
+     wrapBNB()
+     createPoolWBNB()
+     addLiquidityBNB(acc0,_.BN2Str(40*_.one),  _.BN2Str(40*_.one));
+      LpUnits();
+     addLiquidityBNB(acc0,_.BN2Str(5*_.one),  _.BN2Str(5*_.one));
+     LpUnits();
+     addLiquidityBNB(acc0,_.BN2Str(0*_.one),  _.BN2Str(20*_.one));
+     LpUnits();
      
     
 })
@@ -50,14 +51,13 @@ function constructor(accounts) {
         router = await ROUTER.new(base.address, wbnb.address) //deploy router
         daoVault = await DAOVAULT.new(base.address);
         await base.changeDAO(Dao.address)     
-        synthRouter = await synthRouter.new(base.address, wbnb.address) //deploy synthRouter
         bond = await BOND.new(base.address)     //deploy new bond
         curate = await CURATED.new(base.address, wbnb.address);
         token1 = await TOKEN.new()             //deploy token
         token2 = await TOKEN2.new() 
-        leverage = await LEVERAGE.new(base.address,wbnb.address );
+        mLoan = await MLOAN.new(base.address, wbnb.address) 
 
-        await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address, curate.address);
+        await Dao.setGenesisAddresses(router.address, utils.address, mLoan.address, bond.address, daoVault.address, curate.address);
 
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
@@ -66,9 +66,9 @@ function constructor(accounts) {
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await base.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await base.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await base.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
         await token1.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
         await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -76,9 +76,9 @@ function constructor(accounts) {
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await token1.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token1.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token1.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
         await token2.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
         await token2.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -86,9 +86,9 @@ function constructor(accounts) {
         await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await token2.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token2.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token2.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
     });
 }
@@ -101,9 +101,9 @@ async function wrapBNB() {
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await wbnb.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await wbnb.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await wbnb.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await wbnb.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await wbnb.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await wbnb.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
 async function createPoolWBNB() {
@@ -117,12 +117,10 @@ async function createPoolWBNB() {
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
         await base.approve(poolWBNB.address, supply, { from: acc1 })
-        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await poolWBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await poolWBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await poolWBNB.approve(leverage.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await poolWBNB.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await poolWBNB.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await poolWBNB.approve(mLoan.address, _.BN2Str(500000 * _.one), { from: acc2 })
+
     })
 }
 async function addLiquidityBNB(acc, b, t) {
@@ -133,7 +131,7 @@ async function addLiquidityBNB(acc, b, t) {
         var T = _.getBN(poolData.tokenAmount)
         poolUnits = _.getBN((await poolWBNB.totalSupply()))
         let units = math.calcLiquidityUnits(b, B, t, T, poolUnits)
-        console.log("utils ",units/_.one);
+        console.log("units ",units/_.one);
         let slip = math.getSlipAdustment(b, B, t,  T)
         console.log("slip ",slip/_.one);
         await router.addLiquidity(b, t, token, { from: acc})

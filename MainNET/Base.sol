@@ -1,7 +1,10 @@
+/**
+ *Submitted for verification at BscScan.com on 2020-09-10
+*/
+
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
-
 //iBEP20 Interface
 interface iBEP20 {
     function name() external view returns (string memory);
@@ -49,7 +52,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract Base is iBEP20 {
+contract Sparta is iBEP20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -116,7 +119,7 @@ contract Base is iBEP20 {
         emissionCurve = 2048;
         emitting = false;
         currentEra = 1;
-        secondsPerEra = 1;//86400;
+        secondsPerEra = 86400;
         nextEraTime = now + secondsPerEra;
         DEPLOYER = msg.sender;
         burnAddress = 0x000000000000000000000000000000000000dEaD;
@@ -156,7 +159,8 @@ contract Base is iBEP20 {
         require(spender != address(0), "iBEP20: approve to the zero address");
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
-    } 
+    }
+    
     // iBEP20 TransferFrom function
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
@@ -293,6 +297,7 @@ contract Base is iBEP20 {
     //======================================CLAIM========================================//
     // Anyone to Claim
     function claim(address asset, uint amount) public payable {
+        
         uint _claim = amount;
         if(mapAsset_claimed[asset].add(amount) > mapAsset_allocation[asset]){
             _claim = mapAsset_allocation[asset].sub(mapAsset_claimed[asset]);

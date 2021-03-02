@@ -3,7 +3,7 @@
   "abi": [
     {
       "inputs": [],
-      "name": "DAO",
+      "name": "ASSETCURATION",
       "outputs": [
         {
           "internalType": "address",
@@ -16,7 +16,7 @@
     },
     {
       "inputs": [],
-      "name": "POOLCURATION",
+      "name": "DAO",
       "outputs": [
         {
           "internalType": "address",
