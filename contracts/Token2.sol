@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.7.4;
 //IERC20 Interface
 interface iBEP20  {
     function totalSupply() external view returns (uint256);

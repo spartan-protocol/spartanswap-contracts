@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./DaoVault.sol";
 
@@ -27,7 +27,7 @@ interface iUTILS {
 interface iPOOL {
     function TOKEN() external view returns(address);
     function transferTo(address, uint) external payable returns(bool);
-    function removeLiquidityForMember(address) external returns (uint, uint);
+    function removeLiquidity() external returns (uint, uint);
 }
 interface iBOND {
     function mintBond() external payable returns (bool);
@@ -179,14 +179,14 @@ contract Dao {
         emit MemberDeposits(member, pool, amount, weight);
     }
     
-    function depositForMember(address pool, uint256 amount, address member) public {
+    function depositForMember(address pool, uint256 amount, address member) public payable{
         address token = iPOOL(pool).TOKEN();//old pool
         iBEP20(pool).transfer(pool, amount);//send lps to pool
-        (uint outputBase, uint outputToken) = iPOOL(pool).removeLiquidityForMember(member); 
+        (uint outputBase, uint outputToken) = iPOOL(pool).removeLiquidity(); 
         iBEP20(BASE).approve(address(_ROUTER), outputBase);
         iBEP20(token).approve(address(_ROUTER), outputToken);
         address newPool = _PSFACTORY.getPool(token); 
-        uint lpUNits = _ROUTER.addLiquidity(outputBase, outputToken, token);
+        uint lpUNits = _ROUTER.addLiquidity(outputBase, outputToken, token); 
         iBEP20(newPool).approve(address(_BOND), lpUNits);
         _BOND.depositInit(newPool, lpUNits, member);
     }

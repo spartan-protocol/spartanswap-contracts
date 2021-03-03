@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./cInterfaces.sol";
 interface iBASE {
@@ -93,7 +93,6 @@ contract Bond is iBEP20 {
         totalSupply = 1 * (10 ** 18);
         _balances[address(this)] = totalSupply;
         emit Transfer(address(0), address(this), totalSupply);
-
     }
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
@@ -280,7 +279,6 @@ contract Bond is iBEP20 {
                 LPunits = iROUTER(_DAO().ROUTER()).addLiquidity(spartaAllocation, _amount, _token);
             } 
     }
-
     function claimAndLockForMember(address asset, address member) public returns (bool){
         require(mapAddress_listedAssets[asset].bondedLP[member] > 0, '!bondedlps');
         require(mapAddress_listedAssets[asset].isMember[member], '!deposited');
