@@ -44,7 +44,7 @@ contract Synth is iBEP20 {
         _symbol = string(abi.encodePacked(synthSymbol, iBEP20(_token).symbol()));
         decimals = 18;
         DEPLOYER = msg.sender;
-        genesis = now;
+        genesis = block.timestamp ;
     }
 
     //========================================iBEP20=========================================//

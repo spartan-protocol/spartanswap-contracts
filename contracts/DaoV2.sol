@@ -173,7 +173,7 @@ contract Dao {
             isMember[member] = true;
         }
         require(iPOOL(pool).transferTo(address(_DAOVAULT), amount), 'sendlps');
-        mapMember_lastTime[member] = now;
+        mapMember_lastTime[member] = block.timestamp;
         mapMemberPool_balance[member][pool] = mapMemberPool_balance[member][pool].add(amount); // Record total pool balance for member
         uint weight = increaseWeight(pool, member);
         emit MemberDeposits(member, pool, amount, weight);
@@ -211,22 +211,24 @@ contract Dao {
     }
 
     // Member withdraws all from a pool
-    function withdraw(address pool) public {
-        uint256 balance = mapMemberPool_balance[msg.sender][pool];
-        require(balance > 0, "!Balance");
-        decreaseWeight(pool, msg.sender);
-        require(_DAOVAULT.withdraw(pool, balance), "!transfer"); // Then transfer
-        emit MemberWithdraws(msg.sender, pool, balance);
+    function withdraw(address pool, uint amount) public {
+        mapMemberPool_balance[msg.sender][pool] =  mapMemberPool_balance[msg.sender][pool].sub(amount);
+        uint weight = _UTILS.getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[msg.sender][pool]); // Get claim on BASE in pool
+        mapMemberPool_weight[msg.sender][pool] = weight;
+        require(amount > 0, "!Balance");
+        decreaseWeight(pool, msg.sender, amount);
+        require(_DAOVAULT.withdraw(pool, amount), "!transfer"); // Then transfer
+        emit MemberWithdraws(msg.sender, pool, amount);
     }
 
-    function decreaseWeight(address pool, address member) internal {
-        uint weight = mapMemberPool_weight[member][pool];
-        mapMemberPool_balance[member][pool] = 0; // Zero out balance
-        mapMemberPool_weight[member][pool] = 0; // Zero out weight
-        mapMember_lastTime[member] = 0; //Zero out seconds 
-        totalWeight = totalWeight.sub(weight); // Remove that weight
-        mapMember_weight[member] = mapMember_weight[member].sub(weight); // Reduce weight
-        emit WeightChange(member, weight, totalWeight);
+    function decreaseWeight(address pool, address member, uint amount) internal {
+        uint weightRemoved = _UTILS.getPoolShareWeight(iPOOL(pool).TOKEN(), amount); // Get claim on BASE in pool
+        if(mapMemberPool_balance[msg.sender][pool] == 0){
+            mapMember_lastTime[member] = 0; //Zero out seconds 
+        }
+        totalWeight = totalWeight.sub(weightRemoved); // Remove that weight
+        mapMember_weight[member] = mapMember_weight[member].sub(weightRemoved); // Reduce weight
+        emit WeightChange(member, weightRemoved, totalWeight);
     }
 
     //============================== REWARDS ================================//
@@ -234,13 +236,13 @@ contract Dao {
 
     function harvest() public {
         uint reward = calcCurrentReward(msg.sender);
-        mapMember_lastTime[msg.sender] = now;
+        mapMember_lastTime[msg.sender] = block.timestamp;
         _ROUTER.grantFunds(reward, msg.sender);
     }
 
     function calcCurrentReward(address member) public returns(uint){
         require(isMember[member], "!member");
-        uint secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
+        uint secondsSinceClaim = block.timestamp.sub(mapMember_lastTime[member]); // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
         uint reward = share.mul(secondsSinceClaim).div(secondsPerEra);    // Get owed amount, based on per-day rates
         uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER));
@@ -349,8 +351,8 @@ contract Dao {
     function _finalise(uint _proposalID) internal {
         bytes memory _type = bytes(mapPID_type[_proposalID]);
         mapPID_finalising[_proposalID] = true;
-        mapPID_timeStart[_proposalID] = now;
-        emit ProposalFinalising(msg.sender, _proposalID, now+coolOffPeriod, string(_type));
+        mapPID_timeStart[_proposalID] = block.timestamp;
+        emit ProposalFinalising(msg.sender, _proposalID, block.timestamp+coolOffPeriod, string(_type));
     }
     // If an existing proposal, allow a minority to cancel
     function cancelProposal(uint oldProposalID, uint newProposalID) public {
@@ -363,7 +365,7 @@ contract Dao {
 
     // Proposal with quorum can finalise after cool off period
     function finaliseProposal(uint proposalID) public  {
-        require((now - mapPID_timeStart[proposalID]) > coolOffPeriod, "!cool off");
+        require((block.timestamp - mapPID_timeStart[proposalID]) > coolOffPeriod, "!cool off");
         require(mapPID_finalising[proposalID] == true, "!finalising");
         if(!hasMajority(proposalID)){
             mapPID_finalising[proposalID] = false;

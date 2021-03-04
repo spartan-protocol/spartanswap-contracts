@@ -309,7 +309,7 @@ contract Router {
         if(lastMonth == 0){
             lastMonth = Pool(pool).genesis();
         }
-        if(now <= lastMonth.add(2592000)){
+        if(block.timestamp <= lastMonth.add(2592000)){
             map30DPoolRevenue[pool] = map30DPoolRevenue[pool].add(fees);
         }else{
             lastMonth = lastMonth.add(2592000);

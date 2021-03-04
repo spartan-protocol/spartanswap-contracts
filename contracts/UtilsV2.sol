@@ -256,10 +256,10 @@ contract Utils {
     function getPoolAge(address token) public view returns (uint daysSinceGenesis){
         address pool = getPool(token);
         uint genesis = iPOOL(pool).genesis();
-        if(now < genesis.add(86400)){
+        if(block.timestamp  < genesis.add(86400)){
             return 1;
         } else {
-            return (now.sub(genesis)).div(86400);
+            return (block.timestamp .sub(genesis)).div(86400);
         }
     }
 

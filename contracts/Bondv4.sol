@@ -246,7 +246,7 @@ contract Bond is iBEP20 {
             claimAndLockForMember(asset, msg.sender);
         }
         mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(liquidityUnits);
-        mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
+        mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = block.timestamp;
         mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(bondingPeriodSeconds);
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
@@ -260,7 +260,7 @@ contract Bond is iBEP20 {
           mapAddress_listedAssets[asset].members.push(member);
         }
         mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].add(amount);
-        mapAddress_listedAssets[asset].lastBlockTime[member] = now;
+        mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
         mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[member].div(23328000);
         return true;
     }
@@ -285,14 +285,14 @@ contract Bond is iBEP20 {
         uint256 claimable = calcClaimBondedLP(member, asset); 
         address _pool = iUTILS(_DAO().UTILS()).getPool(asset);
         require(claimable <= mapAddress_listedAssets[asset].bondedLP[member],'attempted to overclaim');
-        mapAddress_listedAssets[asset].lastBlockTime[member] = now;
+        mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
         mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].sub(claimable);
         iBEP20(_pool).transfer(member, claimable); // send LPs to user
         return true;
     }
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
         require(isListed[asset], '!listed');
-        uint256 secondsSinceClaim = now.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
+        uint256 secondsSinceClaim = block.timestamp.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
         uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
         uint claimAmount;
         if(secondsSinceClaim >= bondingPeriodSeconds){

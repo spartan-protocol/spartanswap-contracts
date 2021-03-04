@@ -88,7 +88,7 @@ contract Pool is iBEP20 {
         _name = string(abi.encodePacked(poolName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
         decimals = 18;
-        genesis = now;
+        genesis = block.timestamp;
         DEPLOYER = msg.sender;
     }
 
