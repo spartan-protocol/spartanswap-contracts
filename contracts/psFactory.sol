@@ -69,10 +69,10 @@ contract PSFactory { // this factory
     }
 
     function migratePOOLData(address payable oldCURATE) public onlyDAO {
-        uint256 tokenCount = AssetCuration(oldCURATE).tokenCount();
+        uint256 tokenCount = PSFACTORY(oldCURATE).tokenCount();
         for(uint256 i = 0; i<tokenCount; i++){
-            address token = AssetCuration(oldCURATE).getToken(i);
-            address pool = AssetCuration(oldCURATE).getPool(token);
+            address token = PSFACTORY(oldCURATE).getToken(i);
+            address pool = PSFACTORY(oldCURATE).getPool(token);
             isListedPool[pool] = true;
             arrayTokens.push(token);
             arrayPools.push(pool);

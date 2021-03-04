@@ -11,6 +11,7 @@ interface iPSFACTORY {
     function getPool(address) external view returns(address payable);
 }
 
+
 contract Router {
     using SafeMath for uint256;
 
@@ -120,25 +121,27 @@ contract Router {
         return (outputBase, outputToken);
     }
 
-    function removeLiquidityAsym(uint units, bool toBase, address token) public returns (uint outputAmount){
-        outputAmount = removeLiquidityAsymForMember(units, toBase, token, msg.sender);
-        return outputAmount;
+    function removeLiquidityAsym(uint units, bool toBase, address token) public returns (uint outputAmount, uint fee){
+        (outputAmount, fee) = removeLiquidityAsymForMember(units, toBase, token, msg.sender);
+        return (outputAmount, fee);
     }
     // Remove Asymmetrically
-    function removeLiquidityAsymForMember(uint units, bool toBase, address token, address member) public returns (uint outputAmount){
+    function removeLiquidityAsymForMember(uint units, bool toBase, address token, address member) public returns (uint outputAmount, uint fee){
         address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         require(iPSFACTORY(_DAO().PSFACTORY()).isPool(pool) == true);
         require(units < iBEP20(pool).totalSupply());
         _handleTransferIn(pool, units, pool);
         (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidityForMember(member);
         if(toBase){
-            (uint _baseBought,) = swapTo(_outputToken,token, BASE, member);
+            (uint _baseBought,uint _feey) = swapTo(_outputToken,token, BASE, member);
             outputAmount = _baseBought.add(_outputBase);
+            fee = _feey;
         } else {
-            (uint _tokenBought,) = swapTo(_outputBase, BASE,token, member);
+            (uint _tokenBought,uint _feez) = swapTo(_outputBase, BASE,token, member);
             outputAmount = _tokenBought.add(_outputToken);
-        }
-        return outputAmount;
+            fee = _feez;
+        } 
+        return (outputAmount, fee);
     }
 
     //==================================================================================//
@@ -153,13 +156,14 @@ contract Router {
         address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         uint _actualAmount = _handleTransferIn(BASE, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swapTo(_token, member);
+        uint _fee =  iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, fee);
         _handleTransferOut(token, outputAmount, member);
         totalPooled = totalPooled.add(_actualAmount);
-        volumeDetails(_actualAmount, fee);
-        revenueDetails(fee,_pool );
-        getsDividend(_pool,token, fee);
-        emit Swapped(_token, BASE, amount, outputAmount, fee, member);
-        return (outputAmount, fee);
+        volumeDetails(_actualAmount, _fee);
+        revenueDetails(_fee,_pool );
+        getsDividend(_pool,token, _fee);
+        emit Swapped(_token, BASE, amount, outputAmount, _fee, member);
+        return (outputAmount, _fee);
     }
     function sell(uint amount, address token) public payable returns (uint outputAmount, uint fee){
         return sellTo(amount, token, msg.sender);
@@ -187,15 +191,17 @@ contract Router {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
         } else {
             address _poolTo = iPSFACTORY(_DAO().PSFACTORY()).getPool(toToken);
-            (,uint feey) = sellTo(inputAmount, fromToken, _poolTo);
+            (uint _yy,uint feey) = sellTo(inputAmount, fromToken, _poolTo);
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} 
-            (outputAmount, fee) = Pool(_poolTo).swap(_toToken);
+             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
+            totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(_toToken, _feez); 
+            totalPooled = totalPooled.add(_yy);
+            fee = feey +iUTILS(_DAO().UTILS()).calcSpotValueInBase(toToken, _feez);
             getsDividend(_poolTo,_toToken, fee);
-            volumeDetails(outputAmount, fee);
             revenueDetails(fee,_poolTo);
             _handleTransferOut(toToken, outputAmount, member);
-            fee = fee.add(feey);
+            outputAmount = _zz; 
             emit DoubleSwapped(fromToken, toToken, inputAmount, outputAmount, fee, member);
         }
         return (outputAmount, fee);

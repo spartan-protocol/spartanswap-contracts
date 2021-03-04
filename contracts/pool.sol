@@ -235,7 +235,8 @@ contract Pool is iBEP20 {
       uint256 _actualInputBase = _getAddedBaseAmount();
       _incrementPoolBalances(_actualInputBase, 0);
       uint liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); 
-      fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, tokenAmount, baseAmount);
+      uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount);
+      fee = iUTILS(_DAO().UTILS()).calcSwapValueInBase(TOKEN,_fee );
       _mint(synthOut, liquidityUnits); 
       outputAmount = iSYNTH(synthOut).mintSynth(TOKEN, msg.sender); //mintSynth to Router
       return (outputAmount, fee);
@@ -244,7 +245,7 @@ contract Pool is iBEP20 {
     function swapSynthIN(address synthIN) public onlyRouter returns(uint outputAmount, uint fee) {
       uint inputSynth = _getAddedSynthAmount(synthIN);
       uint baseOutput = iUTILS(_DAO().UTILS()).calcSwapValueInBase(address(this), inputSynth);//get swapValue from synths input
-      fee = iUTILS(_DAO().UTILS()).calcSwapFee(inputSynth, baseAmount, tokenAmount);
+      fee = iUTILS(_DAO().UTILS()).calcSwapFee(inputSynth, tokenAmount, baseAmount);
       iBEP20(synthIN).approve(synthIN, inputSynth); 
       iSYNTH(synthIN).redeemSynth(inputSynth); //redeem Synth
       _decrementPoolBalances(baseOutput, 0);

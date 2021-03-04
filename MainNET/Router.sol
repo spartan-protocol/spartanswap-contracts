@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./IContracts.sol"; 
 contract Pool is iBEP20 {
@@ -44,7 +44,7 @@ contract Pool is iBEP20 {
         _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
         
         decimals = 18;
-        genesis = now;
+        genesis = block.timestamp;
     }
 
     //========================================iBEP20=========================================//
@@ -313,7 +313,7 @@ contract Router {
 
     // In case of new router can migrate metrics
     function migrateRouterData(address payable oldRouter) public onlyDAO {
-        totalPooled = Router(oldRouter).totalPooled();
+        totalPooled = 28736281000000000000000000;
         totalVolume = Router(oldRouter).totalVolume();
         totalFees = Router(oldRouter).totalFees();
     }
@@ -331,25 +331,6 @@ contract Router {
 
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
-    }
-
-    function createPool(uint256 inputBase, uint256 inputToken, address token) public payable onlyDAO returns(address pool){
-        require(getPool(token) == address(0), "CreateErr");
-        require(token != BASE, "Must not be Base");
-        require((inputToken > 0 && inputBase > 0), "Must get tokens for both");
-        Pool newPool; address _token = token;
-        if(token == address(0)){_token = WBNB;} // Handle BNB
-        newPool = new Pool(BASE, _token); 
-        pool = address(newPool);
-        mapToken_Pool[_token] = pool;
-        uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
-        _handleTransferIn(token, inputToken, pool);
-        arrayTokens.push(_token);
-        isPool[pool] = true;
-        totalPooled += _actualInputBase;
-        Pool(pool).addLiquidityForMember(msg.sender);
-        emit NewPool(token, pool, now);
-        return pool;
     }
 
     //==================================================================================//
@@ -451,7 +432,6 @@ contract Router {
         } else {
             address _poolTo = getPool(toToken);
             (uint256 _yy, uint256 _feey) = sellTo(inputAmount, fromToken, _poolTo);
-            totalVolume += _yy; totalFees += _feey;
             address _toToken = toToken;
             address _pool = getPool(fromToken);
              if(isCuratedPool[_pool]){
@@ -465,8 +445,9 @@ contract Router {
             addDividend(_toToken,  _feez);
             }
             _handleTransferOut(toToken, _zz, member);
-            totalFees += _DAO().UTILS().calcValueInBase(toToken, _feez);
+            totalFees += _DAO().UTILS().calcValueInBase(toToken, _feez); 
             _transferAmount = _yy; outputAmount = _zz; 
+            totalPooled = totalPooled.add(_yy);
             fee = _feez + _DAO().UTILS().calcValueInToken(toToken, _feey);
         }
         emit Swapped(fromToken, toToken, inputAmount, _transferAmount, outputAmount, fee, member);
@@ -588,6 +569,9 @@ contract Router {
     }
     function getTradeLength() public view returns(uint256){
         return feeArray.length;
+    }
+     function destroyRouter() public onlyDAO {
+         selfdestruct(msg.sender);
     }
 
 }

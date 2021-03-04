@@ -19,6 +19,7 @@ interface iPSFACTORY {
     function addCuratedPool(address) external returns (bool);
     function removeCuratedPool(address) external returns (bool);
     function getPool(address token) external returns (address);
+    function isPool(address) external returns (bool);
 }
 interface iUTILS {
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
@@ -186,6 +187,7 @@ contract Dao {
         iBEP20(BASE).approve(address(_ROUTER), outputBase);
         iBEP20(token).approve(address(_ROUTER), outputToken);
         address newPool = _PSFACTORY.getPool(token); 
+        require(_PSFACTORY.isPool(newPool) == true, "!POOL");
         uint lpUNits = _ROUTER.addLiquidity(outputBase, outputToken, token); 
         iBEP20(newPool).approve(address(_BOND), lpUNits);
         _BOND.depositInit(newPool, lpUNits, member);
