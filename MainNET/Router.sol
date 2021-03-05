@@ -128,6 +128,7 @@ contract Pool is iBEP20 {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
     }
+    
 
     // Add liquidity for self
     function addLiquidity() public returns(uint liquidityUnits){
@@ -335,7 +336,23 @@ contract Router {
 
     //==================================================================================//
     // Add/Remove Liquidity functions
-
+    function createPool(uint256 inputBase, uint256 inputToken, address token) public payable onlyDAO returns(address pool){
+        require(getPool(token) == address(0), "CreateErr");
+        require(token != BASE, "MustBase");
+        require((inputToken > 0 && inputBase > 0), "Mus");
+        Pool newPool; address _token = token;
+        if(token == address(0)){_token = WBNB;} // Handle BNB
+        newPool = new Pool(BASE, _token); 
+        pool = address(newPool);
+        mapToken_Pool[_token] = pool;
+        uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
+        _handleTransferIn(token, inputToken, pool);
+        arrayTokens.push(_token);
+        isPool[pool] = true;
+        totalPooled += _actualInputBase;
+        Pool(pool).addLiquidityForMember(msg.sender);
+        return pool;
+    }
     // Add liquidity for self
     function addLiquidity(uint inputBase, uint inputToken, address token) public payable returns (uint units) {
         units = addLiquidityForMember(inputBase, inputToken, token, msg.sender);

@@ -145,7 +145,7 @@ contract Utils {
     }
 
     constructor () public payable {
-        BASE = 0xE4Ae305ebE1AbE663f261Bc00534067C80ad677C;
+        BASE = 0x6e812dD5B642334bbd17636d3865CE82C3D4d7eB;
         DEPLOYER = msg.sender;
     }
 

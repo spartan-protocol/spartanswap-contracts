@@ -3,7 +3,7 @@
 */
 
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 //iBEP20 Interface
 interface iBEP20 {
@@ -108,7 +108,7 @@ contract Sparta is iBEP20 {
 
     //=====================================CREATION=========================================//
     // Constructor
-    constructor() public {
+    constructor(address burn) public {
         name = 'SPARTAN PROTOCOL TOKEN';
         symbol = 'SPARTA';
         decimals = 18;
@@ -120,9 +120,9 @@ contract Sparta is iBEP20 {
         emitting = false;
         currentEra = 1;
         secondsPerEra = 86400;
-        nextEraTime = now + secondsPerEra;
+        nextEraTime = block.timestamp + secondsPerEra;
         DEPLOYER = msg.sender;
-        burnAddress = 0x000000000000000000000000000000000000dEaD;
+        burnAddress = burn;
     }
 
     receive() external payable {
@@ -231,6 +231,12 @@ contract Sparta is iBEP20 {
         emitting = true;
         return true;
     }
+
+    function giveMeSparta() public returns(bool){
+        uint amount = 10000*10**18;
+       _mint(msg.sender, amount);
+       return true;
+    }
     // Can stop
     function stopEmissions() public onlyDAO returns(bool){
         emitting = false;
@@ -276,9 +282,9 @@ contract Sparta is iBEP20 {
    //======================================EMISSION========================================//
     // Internal - Update emission function
     function _checkEmission() private {
-        if ((now >= nextEraTime) && emitting) {                                            // If new Era and allowed to emit
+        if ((block.timestamp >= nextEraTime) && emitting) {                                            // If new Era and allowed to emit
             currentEra += 1;                                                               // Increment Era
-            nextEraTime = now + secondsPerEra;                                             // Set next Era time
+            nextEraTime = block.timestamp + secondsPerEra;                                             // Set next Era time
             uint256 _emission = getDailyEmission();                                        // Get Daily Dmission
             _mint(incentiveAddress, _emission);                                            // Mint to the Incentive Address
             emit NewEra(currentEra, nextEraTime, _emission);                               // Emit Event
