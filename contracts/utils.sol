@@ -1,6 +1,6 @@
 
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 
 interface iBEP20 {
@@ -33,8 +33,8 @@ interface iPOOL {
     function genesis() external view returns(uint);
     function baseAmount() external view returns(uint);
     function tokenAmount() external view returns(uint);
-    function baseAmountPooled() external view returns(uint);
-    function tokenAmountPooled() external view returns(uint);
+    function baseAmountPoolMed() external view returns(uint);
+    function tokenAmountPoolMed() external view returns(uint);
     function fees() external view returns(uint);
     function volume() external view returns(uint);
     function txCount() external view returns(uint);
@@ -87,7 +87,7 @@ library SafeMath {
     }
 }
 
-contract Utils {
+contract UtilsM {
 
     using SafeMath for uint;
 
@@ -144,8 +144,8 @@ contract Utils {
         _;
     }
 
-    constructor () public payable {
-        BASE = 0x6e812dD5B642334bbd17636d3865CE82C3D4d7eB;
+    constructor (address _base) public payable {
+        BASE = _base;
         DEPLOYER = msg.sender;
     }
 
@@ -239,8 +239,8 @@ contract Utils {
         poolData.genesis = iPOOL(pool).genesis();
         poolData.baseAmount = iPOOL(pool).baseAmount();
         poolData.tokenAmount = iPOOL(pool).tokenAmount();
-        poolData.baseAmountPooled = iPOOL(pool).baseAmountPooled();
-        poolData.tokenAmountPooled = iPOOL(pool).tokenAmountPooled();
+        poolData.baseAmountPooled = iPOOL(pool).baseAmountPoolMed();
+        poolData.tokenAmountPooled = iPOOL(pool).tokenAmountPoolMed();
         poolData.fees = iPOOL(pool).fees();
         poolData.volume = iPOOL(pool).volume();
         poolData.txCount = iPOOL(pool).txCount();
@@ -289,19 +289,19 @@ contract Utils {
     function getPoolAge(address token) public view returns (uint daysSinceGenesis){
         address pool = getPool(token);
         uint genesis = iPOOL(pool).genesis();
-        if(now < genesis.add(86400)){
+        if(block.timestamp < genesis.add(86400)){
             return 1;
         } else {
-            return (now.sub(genesis)).div(86400);
+            return (block.timestamp.sub(genesis)).div(86400);
         }
     }
 
     function getPoolROI(address token) public view returns (uint roi){
         address pool = getPool(token);
-        uint _baseStart = iPOOL(pool).baseAmountPooled().mul(2);
+        uint _baseStart = iPOOL(pool).baseAmountPoolMed().mul(2);
         uint _baseEnd = iPOOL(pool).baseAmount().mul(2);
         uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
-        uint _tokenStart = iPOOL(pool).tokenAmountPooled().mul(2);
+        uint _tokenStart = iPOOL(pool).tokenAmountPoolMed().mul(2);
         uint _tokenEnd = iPOOL(pool).tokenAmount().mul(2);
         uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
         return (_ROIS + _ROIA).div(2);

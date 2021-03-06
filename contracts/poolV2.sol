@@ -21,7 +21,7 @@ interface iUTILS {
     function calcAsymmetricValueToken(address pool, uint amount) external pure returns (uint units);
     function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units);
     function calcLiquidityUnitsAsymToken(uint amount, address pool) external pure returns (uint units);
-    function calcLiquidityShare(uint units, address token, address pool) external pure returns (uint share);
+    function calcLiquidityHoldings(uint units, address token, address pool) external pure returns (uint share);
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSpotValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
@@ -198,8 +198,8 @@ contract Pool is iBEP20 {
     // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
         uint256 _actualInputUnits = _getAddedUnitsAmount();
-        outputBase = iUTILS(_DAO().UTILS()).calcLiquidityShare(_actualInputUnits, BASE, address(this));
-        outputToken = iUTILS(_DAO().UTILS()).calcLiquidityShare(_actualInputUnits, TOKEN, address(this));
+        outputBase = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, BASE, address(this));
+        outputToken = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this));
         _decrementPoolBalances(outputBase, outputToken);
         _burn(address(this), _actualInputUnits);
         iBEP20(BASE).transfer(member, outputBase); 

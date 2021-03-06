@@ -3,9 +3,9 @@
 */
 
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 interface iBEP20 {
     function totalSupply() external view returns (uint);
     function balanceOf(address) external view returns (uint);
@@ -73,7 +73,7 @@ library SafeMath {
 }
 
 
-contract Dao {
+contract DaoM {
 
     using SafeMath for uint;
 
@@ -157,8 +157,8 @@ contract Dao {
         _;
     }
 
-    constructor () public payable {
-        BASE = 0x6e812dD5B642334bbd17636d3865CE82C3D4d7eB;
+    constructor (address _base) public payable {
+        BASE = _base;
         DEPLOYER = msg.sender;
         coolOffPeriod = 1;
         erasToEarn = 30;
@@ -188,7 +188,7 @@ contract Dao {
         require(_ROUTER.isPool(pool) == true, "Must be listed");
         require(amount > 0, "Must get some");
         if (!isMember[member]) {
-            mapMember_lastTime[member] = now;
+            mapMember_lastTime[member] = block.timestamp;
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
@@ -242,12 +242,12 @@ contract Dao {
 
     function harvest() public {
         uint reward = calcCurrentReward(msg.sender);
-        mapMember_lastTime[msg.sender] = now;
+        mapMember_lastTime[msg.sender] = block.timestamp;
         iBEP20(BASE).transfer(msg.sender, reward);
     }
 
     function calcCurrentReward(address member) public view returns(uint){
-        uint secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
+        uint secondsSinceClaim = block.timestamp.sub(mapMember_lastTime[member]); // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
         uint reward = share.mul(secondsSinceClaim).div(secondsPerEra);    // Get owed amount, based on per-day rates
         uint reserve = iBEP20(BASE).balanceOf(address(this));
@@ -340,8 +340,8 @@ contract Dao {
     function _finalise(uint _proposalID) internal {
         bytes memory _type = bytes(mapPID_type[_proposalID]);
         mapPID_finalising[_proposalID] = true;
-        mapPID_timeStart[_proposalID] = now;
-        emit ProposalFinalising(msg.sender, _proposalID, now+coolOffPeriod, string(_type));
+        mapPID_timeStart[_proposalID] = block.timestamp;
+        emit ProposalFinalising(msg.sender, _proposalID, block.timestamp+coolOffPeriod, string(_type));
     }
 
     // If an existing proposal, allow a minority to cancel
@@ -355,7 +355,7 @@ contract Dao {
 
     // Proposal with quorum can finalise after cool off period
     function finaliseProposal(uint proposalID) public  {
-        require((now - mapPID_timeStart[proposalID]) > coolOffPeriod, "Must be after cool off");
+        require((block.timestamp - mapPID_timeStart[proposalID]) > coolOffPeriod, "Must be after cool off");
         require(mapPID_finalising[proposalID] == true, "Must be finalising");
         if(!hasQuorum(proposalID)){
             mapPID_finalising[proposalID] = false;
@@ -526,7 +526,7 @@ contract Dao {
 
     function ROUTER() public view returns(iROUTER){
         if(daoHasMoved){
-            return Dao(DAO).ROUTER();
+            return DaoM(DAO).ROUTER();
         } else {
             return _ROUTER;
         }
@@ -534,7 +534,7 @@ contract Dao {
 
     function UTILS() public view returns(iUTILS){
         if(daoHasMoved){
-            return Dao(DAO).UTILS();
+            return DaoM(DAO).UTILS();
         } else {
             return _UTILS;
         }

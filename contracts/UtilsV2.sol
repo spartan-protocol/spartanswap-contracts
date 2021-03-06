@@ -13,6 +13,7 @@ interface iROUTER {
     function removeLiquidityTx() external view returns (uint);
     function addLiquidityTx() external view returns (uint);
     function swapTx() external view returns (uint);
+    function getPool(address) external view returns(address payable);
     
 }
 interface iPSFACTORY {
@@ -154,7 +155,7 @@ contract Utils {
     }
 
     function getPool(address token) public view returns(address pool){
-        return iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
+        return iROUTER(_DAO().ROUTER()).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
         return iPSFACTORY(_DAO().PSFACTORY()).tokenCount();
@@ -181,7 +182,7 @@ contract Utils {
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = getPool(iPSFACTORY(_DAO().PSFACTORY()).getToken(i));
+            result[i] = iPSFACTORY(_DAO().PSFACTORY()).getPool(iPSFACTORY(_DAO().PSFACTORY()).getToken(i));
         }
         return result;
     }
@@ -198,13 +199,13 @@ contract Utils {
     }
 
     function getMemberShare(address token, address member) public view returns(uint baseAmount, uint tokenAmount){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         uint units = iBEP20(pool).balanceOf(member);
         return getPoolShare(token, units);
     }
 
     function getPoolShare(address token, uint units) public view returns(uint baseAmount, uint tokenAmount){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         baseAmount = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
         tokenAmount = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
         return (baseAmount, tokenAmount);
@@ -218,7 +219,7 @@ contract Utils {
 
 
     function getPoolShareWeight(address token, uint units) public view returns(uint weight){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         weight = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
         return (weight);
     }
@@ -229,18 +230,18 @@ contract Utils {
 
 
     function getShareOfBaseAmount(address token, address member) public view returns(uint baseAmount){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         uint units = iBEP20(pool).balanceOf(member);
         return calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
     }
     function getShareOfTokenAmount(address token, address member) public view returns(uint baseAmount){
-        address pool = getPool(token);
+       address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         uint units = iBEP20(pool).balanceOf(member);
         return calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
     }
 
     function getPoolShareAssym(address token, address member, bool toBase) public view returns(uint baseAmount, uint tokenAmount, uint outputAmt){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         if(toBase){
             baseAmount = calcAsymmetricShare(token, member);
             tokenAmount = 0;
@@ -254,7 +255,7 @@ contract Utils {
     }
 
     function getPoolAge(address token) public view returns (uint daysSinceGenesis){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         uint genesis = iPOOL(pool).genesis();
         if(block.timestamp  < genesis.add(86400)){
             return 1;
@@ -264,7 +265,7 @@ contract Utils {
     }
 
     function isMember(address token, address member) public view returns(bool){
-        address pool = getPool(token);
+       address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         if (iBEP20(pool).balanceOf(member) > 0){
             return true;
         } else {
@@ -319,22 +320,22 @@ contract Utils {
     //====================================PRICING====================================//
 
     function calcSpotValueInBase(address token, uint amount) public view returns (uint value){
-       address pool = getPool(token);
+      address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
        return calcSpotValueInBaseWithPool(pool, amount);
     }
 
     function calcSpotValueInToken(address token, uint amount) public view returns (uint value){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         return calcSpotValueInTokenWithPool(pool, amount);
     }
 
     function calcSwapValueInBase(address token, uint amount) public view returns (uint _output){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         return  calcSwapValueInBaseWithPool(pool, amount);
    }
 
     function calcSwapValueInToken(address token, uint amount) public view returns (uint _output){
-        address pool = getPool(token);
+        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         return  calcSwapValueInTokenWithPool(pool, amount);
     }
 
@@ -376,7 +377,7 @@ contract Utils {
     }
 
 
-    function calcLiquidityShare(uint units, address token, address pool) public view returns (uint share){
+    function calcLiquidityHoldings(uint units, address token, address pool) public view returns (uint share){
         // share = amount * part/total
         // address pool = getPool(token);
         uint amount = iBEP20(token).balanceOf(pool);
@@ -558,6 +559,15 @@ contract Utils {
         uint _tokenAmount = iPOOL(pool).tokenAmount();
         return  calcSwapOutput(amount, _baseAmount, _tokenAmount);
     }
+
+     function calcLiquidityShare(uint units, address token, address pool, address member) public view returns (uint share){
+        // share = amount * part/total
+        // address pool = getPool(token);
+        uint amount = iBEP20(token).balanceOf(pool);
+        uint totalSupply = iBEP20(pool).totalSupply();
+        return(amount.mul(units)).div(totalSupply);
+    }
+
 
     //====================================CORE-MATH====================================//
 

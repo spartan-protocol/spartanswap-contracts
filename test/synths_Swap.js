@@ -39,11 +39,11 @@ contract('SynthsSwap', function (accounts) {
     ShowAccBal(acc0)
     ShowBNBPool()
      swapLayer1ToSynth()
-     ShowAccBal(acc0)
-     ShowBNBPool()
+    //  ShowAccBal(acc0)
+    //  ShowBNBPool()
      swapSynthToLayer1()
-     ShowAccBal(acc0)
-     ShowBNBPool()
+    //  ShowAccBal(acc0)
+    //  ShowBNBPool()
 
 })
 

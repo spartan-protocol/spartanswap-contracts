@@ -15,19 +15,8 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "transferTo",
+      "inputs": [],
+      "name": "mapAddressHasClaimed",
       "outputs": [
         {
           "internalType": "bool",
@@ -35,7 +24,7 @@
           "type": "bool"
         }
       ],
-      "stateMutability": "payable",
+      "stateMutability": "view",
       "type": "function"
     }
   ],

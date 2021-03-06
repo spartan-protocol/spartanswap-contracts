@@ -2,7 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./synth.sol";  
-import "./pool.sol";  
+import "./poolV2.sol";  
 
 contract PSFactory { // this factory
     address public BASE;

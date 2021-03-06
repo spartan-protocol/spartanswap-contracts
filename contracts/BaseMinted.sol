@@ -97,8 +97,8 @@ contract BaseMinted is iBEP20 {
     event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 emission);
 
     // Only DAO can execute
-    modifier onlyDAO() {
-        require(msg.sender == DAO, "Must be DAO");
+   modifier onlyDAO() {
+        require(msg.sender == DAO || msg.sender == DEPLOYER, "Must be DAO");
         _;
     }
 
@@ -117,7 +117,7 @@ contract BaseMinted is iBEP20 {
         currentEra = 1;
         secondsPerEra = 1; //86400;
         nextEraTime = block.timestamp + secondsPerEra;
-        DAO = msg.sender;
+         DEPLOYER = msg.sender;
         burnAddress = 0x0000000000000000000000000000000000000001;
         _balances[msg.sender] = totalSupply;
         emit Transfer(address(0), msg.sender, totalSupply);

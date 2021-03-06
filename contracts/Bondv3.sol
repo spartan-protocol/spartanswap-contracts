@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 //iBEP20 Interface
 interface iBEP20 {
     function name() external view returns (string memory);
@@ -74,7 +74,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract BondV3 is iBEP20 {
+contract BondV3M is iBEP20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -291,7 +291,7 @@ contract BondV3 is iBEP20 {
           mapAddress_listedAssets[asset].members.push(msg.sender);
         }
         mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(liquidityUnits);
-        mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
+        mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = block.timestamp;
         mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(bondingPeriodSeconds);
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
@@ -319,7 +319,7 @@ contract BondV3 is iBEP20 {
         uint256 claimable = calcClaimBondedLP(member, asset); 
         address _pool = iUTILS(iDAO(_DAO()).UTILS()).getPool(asset);
         require(claimable <= mapAddress_listedAssets[asset].bondedLP[member],'attempted to overclaim');
-        mapAddress_listedAssets[asset].lastBlockTime[member] = now;
+        mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
         mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].sub(claimable);
         iBEP20(_pool).transfer(member, claimable); // send LPs to user
         uint256 lpBalance =  iBEP20(_pool).balanceOf(member); // get user LP balance incase of bondv2 claim
@@ -328,7 +328,7 @@ contract BondV3 is iBEP20 {
     }
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
         require(isListed[asset], 'asset must be listed');
-        uint256 secondsSinceClaim = now.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
+        uint256 secondsSinceClaim = block.timestamp.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
         uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
         uint claimAmount;
         if(secondsSinceClaim >= bondingPeriodSeconds){
@@ -382,8 +382,8 @@ contract BondV3 is iBEP20 {
     function _finalise(uint _proposalID) internal {
         bytes memory _type = bytes(mapPID_type[_proposalID]);
         mapPID_finalising[_proposalID] = true;
-        mapPID_timeStart[_proposalID] = now;
-        emit ProposalFinalising(msg.sender, _proposalID, now+coolOffPeriod, string(_type));
+        mapPID_timeStart[_proposalID] = block.timestamp;
+        emit ProposalFinalising(msg.sender, _proposalID, block.timestamp+coolOffPeriod, string(_type));
     }
     function cancelProposal(uint oldProposalID, uint newProposalID) public {
         require(mapPID_finalising[oldProposalID], "Must be finalising");
@@ -393,7 +393,7 @@ contract BondV3 is iBEP20 {
         emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], totalWeight);
     }
     function finaliseProposal(uint proposalID) public  {
-        require((now.sub(mapPID_timeStart[proposalID])) > coolOffPeriod, "Must be after cool off");
+        require((block.timestamp.sub(mapPID_timeStart[proposalID])) > coolOffPeriod, "Must be after cool off");
         require(mapPID_finalising[proposalID] == true, "Must be finalising");
         if(!hasMajority(proposalID)){
             mapPID_finalising[proposalID] = false;

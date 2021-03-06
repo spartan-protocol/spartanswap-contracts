@@ -67,7 +67,7 @@
           "type": "address"
         }
       ],
-      "name": "calcLiquidityShare",
+      "name": "calcLiquidityHoldings",
       "outputs": [
         {
           "internalType": "uint256",
