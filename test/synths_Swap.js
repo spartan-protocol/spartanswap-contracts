@@ -16,6 +16,7 @@ var SYNTH = artifacts.require("./synth.sol");
 var BOND = artifacts.require("./Bond.sol");
 var TOKEN = artifacts.require("./Token1.sol");
 var TOKEN2 = artifacts.require("./Token2.sol");
+var PSFACTORY = artifacts.require("./PSFactory.sol");
 var WBNB = artifacts.require("./WBNB");
 var DAOVAULT = artifacts.require("./DaoVault.sol");
 
@@ -31,13 +32,18 @@ contract('SynthsSwap', function (accounts) {
     createPoolWBNB(100*_.one, 10*_.one)
     createPoolTKN1(10*_.one, 60*_.one)
     createPoolTKN2(40*_.one, 13*_.one)
-    addLiquidityBNB(acc1,_.BN2Str(20*_.one),  _.BN2Str(10*_.one));
+    addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one));
     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
     createSyntheticBNB()
+    ShowAccBal(acc0)
+    ShowBNBPool()
+     swapLayer1ToSynth()
+     ShowAccBal(acc0)
+     ShowBNBPool()
      swapSynthToLayer1()
-    swapLayer1ToSynth()
-    
+     ShowAccBal(acc0)
+     ShowBNBPool()
 
 })
 
@@ -57,8 +63,9 @@ function constructor(accounts) {
         bond = await BOND.new(base.address)     //deploy new bond
         token1 = await TOKEN.new()             //deploy token
         token2 = await TOKEN2.new() 
+        psFactory = await PSFACTORY.new(base.address,  wbnb.address) 
 
-        await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address);
+        await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address,psFactory.address );
 
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
@@ -106,14 +113,12 @@ async function wrapBNB() {
 }
 async function createPoolWBNB(SPT, token) {
     it("It should deploy BNB Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(SPT),_.BN2Str(token), wbnb.address)
-        await router.createPool(_.BN2Str(SPT), _.BN2Str(token), wbnb.address)
+        var _pool = await psFactory.createPool.call( wbnb.address)
+        await psFactory.createPool(wbnb.address)
         poolWBNB = await POOL.at(_pool)
         //console.log(`Pools: ${poolWBNB.address}`)
         const baseAddr = await poolWBNB.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(SPT), 'base balance')
-        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(token), 'wbnb balance')
 
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
@@ -125,15 +130,12 @@ async function createPoolWBNB(SPT, token) {
 }
 async function createPoolTKN1(SPT, token) {
     it("It should deploy TKN1 Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(SPT), _.BN2Str(token), token1.address)
-        await router.createPool(_.BN2Str(SPT), _.BN2Str(token), token1.address)
+        var _pool = await psFactory.createPool.call(token1.address)
+        await psFactory.createPool(token1.address)
         poolTKN1 = await POOL.at(_pool)
         //console.log(`Pools: ${poolTKN1.address}`)
         const baseAddr = await poolTKN1.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(SPT), 'base balance')
-        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(token), 'token1 balance')
-
         let supply = await base.totalSupply()
         await base.approve(poolTKN1.address, supply, { from: acc0 })
         await base.approve(poolTKN1.address, supply, { from: acc1 })
@@ -145,14 +147,11 @@ async function createPoolTKN1(SPT, token) {
 }
 async function createPoolTKN2(SPT, token) {
     it("It should deploy TKN2 Pool", async () => {
-        var _pool = await router.createPool.call(_.BN2Str(SPT), _.BN2Str(token), token2.address)
-        await router.createPool(_.BN2Str(SPT), _.BN2Str(token), token2.address)
+        var _pool = await psFactory.createPool.call(token2.address)
+        await psFactory.createPool(token2.address)
         poolTKN2 = await POOL.at(_pool)
         const baseAddr = await poolTKN2.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolTKN2.address)), _.BN2Str(SPT), 'base balance')
-        assert.equal(_.BN2Str(await token2.balanceOf(poolTKN2.address)), _.BN2Str(token), 'token1 balance')
-        
         let supply = await base.totalSupply()
         await base.approve(poolTKN2.address, supply, { from: acc0 })
         await base.approve(poolTKN2.address, supply, { from: acc1 })
@@ -175,18 +174,16 @@ async function addLiquidityTKN2(acc, b, t) {
 }
 async function curatePools() {
     it("Curate POOls", async () => {
-        await router.addCuratedPool(wbnb.address);
-        await router.addCuratedPool(token1.address);
-        await router.addCuratedPool(token2.address);
+        await psFactory.addCuratedPool(wbnb.address);
+        await psFactory.addCuratedPool(token1.address);
+        await psFactory.addCuratedPool(token2.address);
        
     })
 }
 async function createSyntheticBNB() {
     it("It should Create Synthetic BNB ", async () => {
-        let inputLPToken = _.BN2Str(10*_.one)
-        let lpToken = poolTKN2.address;
-        var _synth =  await synthRouter.createSynth.call(lpToken,wbnb.address, inputLPToken);
-        await synthRouter.createSynth(lpToken,wbnb.address,inputLPToken);
+        var _synth =  await psFactory.createSynth.call(wbnb.address);
+        await psFactory.createSynth(wbnb.address);
         synthBNB = await SYNTH.at(_synth)
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
@@ -195,9 +192,10 @@ async function createSyntheticBNB() {
 }
 async function swapSynthToLayer1() {
     it("Swap Synthetic BNB To BASE", async () => {
-        let input =  _.BN2Str(1*_.one);
+        let input = _.BN2Str(await synthBNB.balanceOf(acc0));
         let synthIN = synthBNB.address;
-        console.log(_.BN2Str(await synthBNB.balanceOf(acc0))/_.one)
+        console.log(_.BN2Str(await poolWBNB.balanceOf(synthBNB.address))/_.one)
+        console.log(_.BN2Str(await synthBNB.totalSupply())/_.one)
         await router.swapSynthToBase(input,synthIN);
     })
 }
@@ -208,6 +206,25 @@ async function swapLayer1ToSynth() {
         await router.swapBaseToSynth(input,synthOUT);
       
     })
+}
+function ShowAccBal(acc) {
+    it("Show BALANCES", async () => {
+        let acc0S = _.BN2Str(await base.balanceOf(acc));
+        let stkn = _.BN2Str(await synthBNB.balanceOf(acc));
+        console.log('================= BALANCES ==================')
+        console.log(`Base  ${acc0S/_.one}`);
+        console.log(`SST1-sBNB  ${stkn/_.one}`);
+    })
+}
+function ShowBNBPool() {
+    it("Show POOls", async () => {
+        await poolWBNB.sync();
+    let tknA = _.BN2Str(await poolWBNB.tokenAmount());
+    let baseA = _.BN2Str(await poolWBNB.baseAmount());
+    console.log('================= POOL DEPTH ==================')
+    console.log(`SPARTA - ${baseA/_.one}`);
+    console.log(`BNB - ${tknA/_.one}`);
+})
 }
 
 

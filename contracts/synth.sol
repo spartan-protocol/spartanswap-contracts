@@ -127,9 +127,9 @@ contract Synth is iBEP20 {
     function redeemSynth(uint amount) public returns (bool){
         require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
         uint syntheticAmount = _handleTransferIn(address(this), amount);
-         _burn(address(this), syntheticAmount); 
          uint LPBalance = Pool(msg.sender).balanceOf(address(this));
          uint _amountUnits = (amount.mul(LPBalance)).div(totalSupply);// share = amount * part/total
+         _burn(address(this), syntheticAmount); 
          Pool(msg.sender).burn(_amountUnits);
         return true;
     }

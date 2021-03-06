@@ -74,15 +74,11 @@ contract Token2 is iBEP20 {
     mapping(address => uint256) public override balanceOf;                          // Map balanceOf
     mapping(address => mapping(address => uint256)) public override allowance;    // Map allowances
     
-    // Events
-    event Approval(address indexed owner, address indexed spender, uint value); // ERC20
-    event Transfer(address indexed from, address indexed to, uint256 value);    // ERC20
-
     // Minting event
     constructor() public{
         balanceOf[msg.sender] = totalSupply;
-        name = "Token";
-        symbol  = "TKN";
+        name = "BITCOIN";
+        symbol  = "BTC";
         emit Transfer(address(0), msg.sender, totalSupply);
     }
     
@@ -98,6 +94,13 @@ contract Token2 is iBEP20 {
         emit Approval(msg.sender, spender, value);
         return true;
     }
+     // Internal mint (upgrading and daily emissions)
+    function _mint(address account, uint256 amount) internal virtual {
+        require(account != address(0), "iBEP20: mint to the zero address");
+        totalSupply = totalSupply.add(amount);
+        balanceOf[account] = balanceOf[account].add(amount);
+        emit Transfer(address(0), account, amount);
+    }
 
     // ERC20
     function transferFrom(address from, address to, uint256 value) public override returns (bool success) {
@@ -105,6 +108,11 @@ contract Token2 is iBEP20 {
         allowance[from][msg.sender] -= value;
         _transfer(from, to, value);
         return true;
+    }
+    function giveMeSparta() public returns(bool){
+        uint amount = 10000*10**18;
+       _mint(msg.sender, amount);
+       return true;
     }
 
     // Transfer function 

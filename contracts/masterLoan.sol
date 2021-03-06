@@ -43,9 +43,9 @@ contract SpartanLoan {
     }
     // Add collateral for member
     function addCollateralForMember(uint inputLPToken, address lpToken, address member, address loanAsset) public payable returns (uint loanedAssetAmount) {
-        require(iASSETCURATION(_DAO().ASSETCURATION()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
-        address _loanPool = iASSETCURATION(_DAO().ASSETCURATION()).getPool(loanAsset);
-        require(iASSETCURATION(_DAO().ASSETCURATION()).isCuratedPool(_loanPool) == true, "Asset Loan from Curated pools");
+        require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(lpToken) == true, "LP tokens must be from Curated pools");
+        address _loanPool = iPSFACTORY(_DAO().PSFACTORY()).getPool(loanAsset);
+        require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(_loanPool) == true, "Asset Loan from Curated pools");
         _handleLPTransfer(lpToken, inputLPToken, member, loanAsset); 
         loanedAssetAmount = SpartanLoanVault(loanAsset).addCollateralForMember(lpToken, member); 
         emit AddCollateral(inputLPToken, lpToken, loanAsset, loanedAssetAmount);

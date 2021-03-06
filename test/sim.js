@@ -31,11 +31,11 @@ contract('Sim', function (accounts) {
      wrapBNB()
      createPoolWBNB()
      addLiquidityBNB(acc0,_.BN2Str(40*_.one),  _.BN2Str(40*_.one));
-      LpUnits();
+ 
      addLiquidityBNB(acc0,_.BN2Str(5*_.one),  _.BN2Str(5*_.one));
-     LpUnits();
+
      addLiquidityBNB(acc0,_.BN2Str(0*_.one),  _.BN2Str(20*_.one));
-     LpUnits();
+
      
     
 })

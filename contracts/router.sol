@@ -8,6 +8,7 @@ interface iPSFACTORY {
     function addCuratedPool(address) external ;
     function removeCuratedPool(address) external  ;
     function isPool(address) external view returns (bool);
+    function isSynth(address) external view returns (bool);
     function getPool(address) external view returns(address payable);
 }
 
@@ -242,7 +243,7 @@ contract Router {
     //=================================================================================//
     //Swap Synths
     function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint output){
-         require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthOUT) == true);
+         require(iPSFACTORY(_DAO().PSFACTORY()).isSynth(synthOUT) == true, "!synth");
          address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
          address _poolOUT = iPSFACTORY(_DAO().PSFACTORY()).getPool(synthOUTLayer1);
          iBASE(BASE).transferTo(_poolOUT, inputAmount); //RPTAF
@@ -255,7 +256,7 @@ contract Router {
          
     }
     function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
-        require(iSYNTHROUTER(_DAO().SYNTHROUTER()).isSynth(synthIN) == true);
+        require(iPSFACTORY(_DAO().PSFACTORY()).isSynth(synthIN) == true, "!synth");
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
         address _poolIN = iPSFACTORY(_DAO().PSFACTORY()).getPool(synthINLayer1);
         iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF

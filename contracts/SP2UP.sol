@@ -11,6 +11,7 @@ interface iDAO {
      function ROUTER() external view returns(address);
      function UTILS() external view returns(address);
      function DAO() external view returns (address);
+     function PSFACTORY() external view returns(address);
      function BOND() external view returns (address);
      function depositForMember(address pool, uint256 amount, address member) external;
 }
@@ -22,7 +23,7 @@ interface iROUTER {
 
 interface iPOOL {
     function transferTo(address, uint) external returns (bool);
-    function removeLiquidity() public returns (uint outputBase, uint outputToken) 
+    function removeLiquidity() external returns (uint outputBase, uint outputToken);
 }
 
 interface iPSFACTORY {
@@ -78,11 +79,11 @@ contract SPARTANUPGRADE {
         uint memberBal = iBEP20(_oldPool).balanceOf(_member);
         address _newPool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token); //get new pool
         require(iPSFACTORY(_DAO().PSFACTORY()).isPool(_newPool) == true, "!POOL");
-        uint amount = iBEP20(_oldPool).transferTo(_newPool,memberBal);
+        iPOOL(_oldPool).transferTo(_newPool,memberBal);
          (uint outputBase, uint outputToken) = iPOOL(_oldPool).removeLiquidity();
         iBEP20(BASE).approve(address(_DAO().ROUTER()), outputBase);
         iBEP20(token).approve(address(_DAO().ROUTER()), outputToken);
-        units = iROUTER(_DAO().ROUTER()).addLiquidity(outputBase, outputToken, token);  
+        uint units = iROUTER(_DAO().ROUTER()).addLiquidity(outputBase, outputToken, token);  
         iBEP20(_newPool).approve(address(_DAO().BOND()), units);
         iBOND(_DAO().BOND()).depositInit(_newPool, units, _member);
 

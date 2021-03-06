@@ -73,11 +73,6 @@ contract Token1 is iBEP20 {
     // Mapping
     mapping(address => uint256) public override balanceOf;                          // Map balanceOf
     mapping(address => mapping(address => uint256)) public override allowance;    // Map allowances
-    
-    // Events
-    event Approval(address indexed owner, address indexed spender, uint value); // ERC20
-    event Transfer(address indexed from, address indexed to, uint256 value);    // ERC20
-
     // Minting event
     constructor() public{
         balanceOf[msg.sender] = totalSupply;

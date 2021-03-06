@@ -56,11 +56,10 @@ contract PSFactory { // this factory
         return pool;
     }
     //Create a synth asset - only from curated pools
-    function createSynth(address lpToken, address token, uint256 inputLPToken) public returns(address synth){
+    function createSynth(address token) public returns(address synth){
         require(getSynth(token) == address(0), "CreateErr");
-        require(lpToken != BASE, "Must not be Base");
-        require(inputLPToken > 0, "Must get lp token");
-        require(isCuratedPool[lpToken] == true, "Must be Curated");
+        address _pool = getPool(token);
+        require(isCuratedPool[_pool] == true, "Must be Curated");
         Synth newSynth; 
         newSynth = new Synth(BASE,token);  
         synth = address(newSynth);
@@ -69,10 +68,10 @@ contract PSFactory { // this factory
     }
 
     function migratePOOLData(address payable oldCURATE) public onlyDAO {
-        uint256 tokenCount = PSFACTORY(oldCURATE).tokenCount();
+        uint256 tokenCount = PSFactory(oldCURATE).tokenCount();
         for(uint256 i = 0; i<tokenCount; i++){
-            address token = PSFACTORY(oldCURATE).getToken(i);
-            address pool = PSFACTORY(oldCURATE).getPool(token);
+            address token = PSFactory(oldCURATE).getToken(i);
+            address pool = PSFactory(oldCURATE).getPool(token);
             isListedPool[pool] = true;
             arrayTokens.push(token);
             arrayPools.push(pool);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 //iERC20 Interface
 interface iBEP20 {
@@ -116,7 +116,7 @@ contract BaseMinted is iBEP20 {
         emitting = false;
         currentEra = 1;
         secondsPerEra = 1; //86400;
-        nextEraTime = now + secondsPerEra;
+        nextEraTime = block.timestamp + secondsPerEra;
         DAO = msg.sender;
         burnAddress = 0x0000000000000000000000000000000000000001;
         _balances[msg.sender] = totalSupply;
@@ -270,9 +270,9 @@ contract BaseMinted is iBEP20 {
    //======================================EMISSION========================================//
     // Internal - Update emission function
     function _checkEmission() private {
-        if ((now >= nextEraTime) && emitting) {                                            // If new Era and allowed to emit
+        if ((block.timestamp  >= nextEraTime) && emitting) {                                            // If new Era and allowed to emit
             currentEra += 1;                                                               // Increment Era
-            nextEraTime = now + secondsPerEra;                                             // Set next Era time
+            nextEraTime = block.timestamp  + secondsPerEra;                                             // Set next Era time
             uint256 _emission = getDailyEmission();                                        // Get Daily Dmission
             _mint(incentiveAddress, _emission);                                            // Mint to the Incentive Address
             emit NewEra(currentEra, nextEraTime, _emission);                               // Emit Event

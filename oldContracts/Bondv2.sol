@@ -185,6 +185,11 @@ contract BondV2 is iBEP20 {
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
     }
+    function mintBond() public onlyDeployer returns (bool) {
+        uint256 amount =1*10**18;
+        _mint(address(this), amount);
+       return true;
+    }
 
     function burnBond() public returns (bool success){
         require(totalSupply >= 1, 'burnt already');
