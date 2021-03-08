@@ -40,13 +40,12 @@ contract SPARTANUPGRADE {
 
    address public BASE;
    address public OLDRouter;
-   address public OLDUtils;
+
    address public DEPLOYER;
 
-  constructor (address _base, address oldRouter, address oldUtils) public payable {
+  constructor (address _base, address oldRouter) public payable {
         BASE = _base;
         OLDRouter = oldRouter;
-        OLDUtils = oldUtils;
         DEPLOYER = msg.sender;
     }
 
@@ -71,22 +70,14 @@ contract SPARTANUPGRADE {
         return units; 
     }
 
-    //function upgrade Bondv2
-    // step : Take LPs from user 
     function upgradeBond(address token) public returns (bool){
         address _member = msg.sender;
          address _oldPool = iROUTER(OLDRouter).getPool(token);//get old pool
-        uint memberBal = iBEP20(_oldPool).balanceOf(_member);
         address _newPool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token); //get new pool
         require(iPSFACTORY(_DAO().PSFACTORY()).isPool(_newPool) == true, "!POOL");
-        iPOOL(_oldPool).transferTo(_newPool,memberBal);
-         (uint outputBase, uint outputToken) = iPOOL(_oldPool).removeLiquidity();
-        iBEP20(BASE).approve(address(_DAO().ROUTER()), outputBase);
-        iBEP20(token).approve(address(_DAO().ROUTER()), outputToken);
-        uint units = iROUTER(_DAO().ROUTER()).addLiquidity(outputBase, outputToken, token);  
-        iBEP20(_newPool).approve(address(_DAO().BOND()), units);
-        iBOND(_DAO().BOND()).depositInit(_newPool, units, _member);
-
+        uint256 lpBalance =  iBEP20(_oldPool).balanceOf(_member); // get user LP balance incase of bondv2 claim
+        iDAO(_DAO().DAO()).depositForMember(_oldPool, lpBalance, _member); //send lp tokens to DAO for lock
+        return true;
     }
 
   function destroyMe() public onlyDEPLOYER {

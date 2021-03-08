@@ -53,6 +53,7 @@ contract Utils {
     using SafeMath for uint;
 
     address public BASE;
+    address public oldRouter;
     address public DEPLOYER;
 
     uint public one = 10**18;
@@ -110,8 +111,9 @@ contract Utils {
         _;
     }
 
-    constructor (address _base) public payable {
+    constructor (address _base, address _oldRouter) public payable {
         BASE = _base;
+        oldRouter = _oldRouter;
         DEPLOYER = msg.sender;
     }
 
@@ -155,7 +157,7 @@ contract Utils {
     }
 
     function getPool(address token) public view returns(address pool){
-        return iROUTER(_DAO().ROUTER()).getPool(token);
+        return iROUTER(oldRouter).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
         return iPSFACTORY(_DAO().PSFACTORY()).tokenCount();

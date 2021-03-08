@@ -57,7 +57,7 @@ contract('DAO', function (accounts) {
     //swapPassR2(acc0, _.BN2Str(_.one * 10))
 
     // harvest()
-    // withdrawBNB(acc0)
+     withdrawBNB(acc0)
     // withdrawTKN1(acc1)
 
 })

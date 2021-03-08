@@ -56,6 +56,7 @@ contract Bond is iBEP20 {
 
   // Parameters
     address public BASE;
+    address public WBNB;
     address [] public arrayMembers;
     address public DEPLOYER;
     uint public one = 10**18;
@@ -84,8 +85,9 @@ contract Bond is iBEP20 {
 
     //=====================================CREATION=========================================//
     // Constructor
-    constructor(address _base) public {
+    constructor(address _base, address _wbnb) public {
         BASE = _base;
+        WBNB = _wbnb;
         name = "SpartanBondTokenV3";
         symbol  = "SPT-BOND-V3";
         decimals = 18;
@@ -254,6 +256,9 @@ contract Bond is iBEP20 {
     function depositInit(address lptoken, uint256 amount, address member) public onlyDAO returns (bool success) {
        iBEP20(lptoken).transferFrom(msg.sender, address(this), amount);
        address asset = iPOOL(lptoken).TOKEN();
+        if(asset == WBNB){
+           asset = address(0);
+        }
         if(!mapAddress_listedAssets[asset].isMember[member]){
           mapAddress_listedAssets[asset].isMember[member] = true;
           arrayMembers.push(member);

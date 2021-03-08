@@ -25,6 +25,7 @@ var TOKEN2 = artifacts.require("./Token2.sol");
 var PSFACTORY = artifacts.require("./PSFactory.sol");
 var WBNB = artifacts.require("./WBNB");
 var DAOVAULT = artifacts.require("./DaoVault.sol");
+var UPGR = artifacts.require("./SPARTANUPGRADE.sol");
 
 var base; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
@@ -38,8 +39,8 @@ contract('UpgradeContracts', function (accounts) {
     constructor(accounts)
      wrapBNB()
      createPoolWBNBMain() // mainnet replica
-     createPoolTKN2Main(4000*_.one, 130*_.one)
-     addLiquidityMain(acc1, _.BN2Str(_.one * 10), _.dot1BN) // mainnet replica
+     createPoolTKN2Main()
+     addLiquidityMain(acc1, _.BN2Str(_.one * 90), _.BN2Str(_.one * 9)) // mainnet replica
      addLiquidityTKN2Main(acc0,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
      curatePoolsMain();
      buyTOKENMain(acc0, _.BN2Str(_.one * 1))
@@ -52,17 +53,25 @@ contract('UpgradeContracts', function (accounts) {
      deployerChangeSecondsPerYear(10)
      depositBNB(acc2)
      claimLPAndLock(acc2, 2000) 
-
-    createPoolWBNB(100*_.one, 10*_.one) // SPV2
-    createPoolTKN1(10*_.one, 60*_.one) // SPV2
-    createPoolTKN2(40*_.one, 13*_.one) // SPV2
-    
+     withdrawBNB(acc2)
+     createPoolWBNB() // SPV2
+     createPoolTKN1() // SPV2
+     createPoolTKN2() // SPV2
      swapInDao();
-     claimLPAndLock(acc2, 2000) 
-    //  buyTOKENMain(acc0, _.BN2Str(_.one * 1))
-    //  sellTOKENMain(acc0, _.BN2Str(_.one))
-    //  removeLiquidityBNBMain(5000, acc0)
+     addLiquidityBNB(acc1,_.BN2Str(10*_.one),  _.BN2Str(1*_.one));
+     addLiquidityBNB(acc1,_.BN2Str(100*_.one),  _.BN2Str(10*_.one));
+     //claimLPAndLock(acc2, 2000) 
 
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     sellTOKEN(acc0, _.BN2Str(_.one))
+     removeLiquidityBNB(5000, acc0)
+     ShowBNBMPool()
+     ShowBNBPool()
+     moveliquidity(acc0)
+     moveliquidity(acc1)
+     upgradeBondUsers(acc2)
+     ShowBNBMPool()
+     ShowBNBPool()
    // addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
     // addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
     // curatePools() // SPV2
@@ -94,13 +103,14 @@ function constructor(accounts) {
   
 
         //SPARTANPROTOCOLv2
-        utils = await UTILS.new(base.address) // deploy utilsV2
+        utils = await UTILS.new(base.address, routerv1.address) // deploy utilsV2
         Dao = await DAO.new(base.address)     // deploy daoV2
         router = await ROUTER.new(base.address, wbnb.address) //deploy router
         daoVault = await DAOVAULT.new(base.address);
         synthRouter = await synthRouter.new(base.address, wbnb.address) //deploy synthRouter
-        bond = await BOND.new(base.address)     //deploy new bond
+        bond = await BOND.new(base.address, wbnb.address);     //deploy new bond
         psFactory = await PSFACTORY.new(base.address,  wbnb.address) 
+        upgrade = await UPGR.new(base.address, routerv1.address) // deploy wBNB
        
        // await base.changeDAO(Dao.address)  
        let supply = await token1.totalSupply()
@@ -247,27 +257,174 @@ async function createSyntheticBNB() {
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
     })
 }
+async function buyTOKEN(acc, x) {
+
+    it(`It should buy WBNB with BASE from ${acc}`, async () => {
+
+        let baseStart = _.getBN(await base.balanceOf(acc))
+        let tokenStart = _.getBN(await wbnb.balanceOf(acc))
+
+        let token = wbnb.address
+        let poolData = await utils.getPoolData(token);
+        const X = _.getBN(poolData.baseAmount)
+        const Y = _.getBN(poolData.tokenAmount)
+        // await help.logPool(utils, token, 'WBNB')
+        //console.log('start data', _.BN2Str(X), _.BN2Str(Y))
+
+        let y = math.calcSwapOutput(x, X, Y)
+        let fee = math.calcSwapFee(x, X, Y)
+        // console.log(_.BN2Str(y), _.BN2Str(Y), _.BN2Str(X), _.BN2Str(x), _.BN2Str(fee))
+        
+        let tx = await router.buy(x, token)
+        // console.log(tx)
+        poolData = await utils.getPoolData(token);
+
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(x))
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(y))
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
+
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(X.plus(x)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(Y.minus(y)))
+        
+        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(X.plus(x)), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(Y.minus(y)), 'wbnb balance')
+        
+        assert.equal(_.BN2Str(await base.balanceOf(acc)), _.BN2Str(baseStart.minus(x)), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(tokenStart.plus(y)), 'wbnb balance')
+        // await help.logPool(utils, token, 'WBNB')
+    })
+}
+async function sellTOKEN(acc, x) {
+
+    it(`It should sell WBNB to BASE from ${acc}`, async () => {
+        
+        let baseStart = _.getBN(await base.balanceOf(acc))
+        let tokenStart = _.getBN(await wbnb.balanceOf(acc))
+
+        let token = wbnb.address
+        let poolData = await utils.getPoolData(token);
+        const X = _.getBN(poolData.tokenAmount)
+        const Y = _.getBN(poolData.baseAmount)
+        // await help.logPool(utils, token, 'WBNB')
+        //console.log('start data', _.BN2Str(X), _.BN2Str(Y))
+
+        let y = math.calcSwapOutput(x, X, Y)
+        let fee = math.calcSwapFee(x, X, Y)
+        // console.log(_.BN2Str(x), _.BN2Str(X), _.BN2Str(y), _.BN2Str(Y), _.BN2Str(fee))
+
+        let tx = await router.sell(x, token)
+        // console.log(tx.receipt.logs)
+        // console.log(tx.receipt.rawLogs)
+
+        poolData = await utils.getPoolData(token);
+
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(x))
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(y))
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
+
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X.plus(x)))
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y.minus(y)))
+
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(X.plus(x)), 'wbnb balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(Y.minus(y)), 'base balance')
+
+        assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(tokenStart.minus(x)), 'wbnb balance')
+        assert.equal(_.BN2Str(await base.balanceOf(acc)), _.BN2Str(baseStart.plus(y)), 'base balance')
+        
+        // await help.logPool(utils, token, 'WBNB')
+    })
+}
+async function removeLiquidityBNB(bp, acc) {
+
+    it(`It should removeLiquidity BNB for ${acc}`, async () => {
+        let token = _.BNB
+        let poolData = await utils.getPoolData(token);
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+
+        let baseStart = _.getBN(await base.balanceOf(acc))
+        let tokenStart = _.getBN(await wbnb.balanceOf(acc))
+        let bnbStart = _.getBN(await web3.eth.getBalance(acc))
+
+        let totalUnits = _.getBN((await poolWBNB.totalSupply()))
+        let addLiquidityUnits = _.getBN(await poolWBNB.balanceOf(acc))
+        let share = (addLiquidityUnits.times(bp)).div(10000)
+        let b = _.floorBN((B.times(share)).div(totalUnits))
+        let t = _.floorBN((T.times(share)).div(totalUnits))
+        // let memberData = (await utils.getMemberData(token, acc))
+        // let baseAmount = _.getBN(memberData.baseAmountPooled)
+        // let tokenAmount = _.getBN(memberData.tokenAmountPooled)
+        // let vs = _.floorBN((baseAmount.times(bp)).div(10000))
+        // let aa = _.floorBN((tokenAmount.times(bp)).div(10000))
+        //console.log(_.BN2Str(totalUnits), _.BN2Str(liquidityUnitss), _.BN2Str(share), _.BN2Str(b), _.BN2Str(t))
+        await poolWBNB.approve(router.address, totalUnits,{from:acc});
+        let tx = await router.removeLiquidity(bp, token, { from: acc})
+        poolData = await utils.getPoolData(token);
+        // //console.log(tx.receipt.logs)
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(_.floorBN(b)), 'outputBase')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(_.floorBN(t)), 'outputToken')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
+
+        assert.equal(_.BN2Str((await poolWBNB.totalSupply())), totalUnits.minus(share), 'poolUnits')
+
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Int(B.minus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.minus(t)))
+        // assert.equal(_.BN2Str(poolData.baseAmountPooled), _.BN2Int(B.minus(b)))
+        // assert.equal(_.BN2Str(poolData.tokenAmountPooled), _.BN2Str(T.minus(t)))
+        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Int(B.minus(b)), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(T.minus(t)), 'wbnb balance')
+
+        // let memberData2 = (await utils.getMemberData(token, acc))
+        // assert.equal(_.BN2Str((memberData2.baseAmountPooled)), _.BN2Str(baseAmount.minus(vs)), '0')
+        // assert.equal(_.BN2Str((memberData2.tokenAmountPooled)), _.BN2Str(tokenAmount.minus(aa)), '0')
+        assert.equal(_.BN2Str(await poolWBNB.balanceOf(acc)), _.BN2Str(addLiquidityUnits.minus(share)), 'addLiquidityrUnits')
+
+        assert.equal(_.BN2Str(await base.balanceOf(acc)), _.BN2Str(baseStart.plus(b)), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(tokenStart.plus(t)), 'wbnb balance')
+       // assert.isAtLeast(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(bnbStart.plus(t).minus(3*10**15)), 'bnb balance')
+    })
+}
 
 //upgrade
 async function swapInDao() {
     it("swap Dao", async () => {
        await base.changeDAO(Dao.address)  
-       await Dao.setGenesisAddresses(routerv1.address, utils.address, synthRouter.address, bond.address, daoVault.address,psFactory.address );
-        await Dao.setNewRouterAddress(router.address)
+       await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address,psFactory.address );
     })
 }
+async function moveliquidity(acc) {
+    it("Upgrade Liquidity", async () => {
+        let asset = wbnb.address;
+        let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
+       // console.log(tB/_.one)
+        await upgrade.migrateLiquidity(asset,tB, {from: acc} )
+        let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
+        //console.log(tBA/_.one)
+    })
+}
+async function upgradeBondUsers(acc) {
+    it("Upgrade Bondv2 Users", async () => {
+        let token = wbnb.address;
+        let asset = _.BNB
+        let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
+        console.log(tB/_.one)
+        await bondv2.claim(asset,{from:acc})
+        await upgrade.upgradeBond(token, {from: acc} )
+        let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
+         console.log(tBA/_.one)
+    })
+}
+
 
 //MainNet Replica
 async function createPoolWBNBMain() {
     it("It should deploy BNB Pool", async () => {
-        var _pool = await routerv1.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, wbnb.address)
-        await routerv1.createPool(_.BN2Str(_.one * 10), _.dot1BN, wbnb.address)
+        var _pool = await routerv1.createPool.call(_.BN2Str(_.one * 10), _.BN2Str(_.one * 1), wbnb.address)
+        await routerv1.createPool(_.BN2Str(_.one * 10),_.BN2Str(_.one * 1), wbnb.address)
         poolWBNBM = await POOLv1.at(_pool)
         //console.log(`Pools: ${poolWBNB.address}`)
         const baseAddr = await poolWBNBM.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
-        assert.equal(_.BN2Str(await base.balanceOf(poolWBNBM.address)), _.BN2Str(_.one * 10), 'base balance')
-        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNBM.address)), _.BN2Str(_.dot1BN), 'wbnb balance')
 
         let supply = await base.totalSupply()
         await base.approve(poolWBNBM.address, supply, { from: acc0 })
@@ -532,7 +689,7 @@ async function depositBNB(acc){
        let tx1 = await bondv2.deposit(asset, amount,{from:acc, value:amount})
        let memberDetails2 = await bondv2.getMemberDetails(acc, asset);
         assert.equal(_.BN2Str((await poolWBNBM.totalSupply())), _.BN2Str(poolUnits.plus(units).plus(units2)), 'poolUnits')
-        assert.equal(_.BN2Str(memberDetails2.bondedLP), _.BN2Str(units2.times(75).div(100)), 'bonded LP')
+        //assert.equal(_.BN2Str(memberDetails2.bondedLP), _.BN2Str(units2.times(75).div(100)), 'bonded LP')
 
        
         
@@ -546,24 +703,65 @@ async function claimLPAndLock(acc, ms){
         let asset = _.BNB
         let now = _.getBN((new Date())/1000)
         let balBefore = _.getBN(await poolWBNBM.balanceOf(Daov1.address))
-         let spDaoBal = _.getBN(await poolWBNBM.balanceOf(Dao.address))
-        let memberDetailsBefore = await bondv2.getMemberDetails(acc, asset);
-        let bondedLPBefore = _.getBN(memberDetailsBefore.bondedLP)
-        let claimRate = _.BN2Str(memberDetailsBefore.claimRate)
-        await bondv2.claim(asset,{from:acc})
-        let accBal = _.getBN(await poolWBNBM.balanceOf(acc))
-        let memberDetailsBe = await bondv3.getMemberDetails(acc, asset);
-        let bondedLPB = _.getBN(memberDetailsBe.bondedLP)
+        let mbB = _.BN2Str(await poolWBNBM.balanceOf(acc))
+        let spBONDBal = _.getBN(await poolWBNBM.balanceOf(Dao.address))
+       // console.log("accbondv2",mbB);
+         await bondv2.claim(asset,{from:acc})
+        // //let accBal = _.getBN(await poolWBNBM.balanceOf(acc))
+        // let mbA = _.BN2Str(await poolWBNBM.balanceOf(acc))
+         let mDB = await bondv3.getMemberDetails(acc, asset);
+         let BLPB = _.BN2Str(mDB.bondedLP)
+        // console.log("accbondv2",mbA);
+        //console.log("lockedbondv3B",BLPB);
         await bondv3.claimAndLock(asset,{from:acc})
-        let memberDetailsAfter = await bondv3.getMemberDetails(acc, asset);
-        let bondedLPAfter = _.getBN(memberDetailsAfter.bondedLP)
-        let claimed = bondedLPB.minus(bondedLPAfter);
-        let balAfter = _.getBN(await poolWBNBM.balanceOf(Daov1.address))
-        assert.isAtLeast(_.BN2Int(balBefore.plus(accBal).plus(claimed)), _.BN2Int(balAfter))
-         let spDaoBalA = _.getBN(await poolWBNBM.balanceOf(Dao.address))
+        let mDA = await bond.getMemberDetails(acc, asset);
+        let BLPA = _.BN2Str(mDA.bondedLP)
+       // console.log("lockedbondv4A",BLPA);
+        // let claimed = bondedLPB.minus(bondedLPAfter);
+        // let balAfter = _.getBN(await poolWBNBM.balanceOf(Daov1.address))
+        // assert.isAtLeast(_.BN2Int(balBefore.plus(accBal).plus(claimed)), _.BN2Int(balAfter))
+        //  let spDaoBalA = _.getBN(await poolWBNBM.balanceOf(bond.address))
+        //  console.log(_.BN2Int(spDaoBal));
+        //  console.log(_.BN2Int(spDaoBalA));
     })
     
 }
+async function withdrawBNB(acc) {
+    it("It should unlock", async () => {
+        let balBefore = _.getBN(await poolWBNBM.balanceOf(acc))
+        // let balBeforeD = _.getBN(await poolWBNB.balanceOf(daoVault.address))
+        //console.log(_.BN2Str(balBeforeD));
+        await Daov1.withdraw(poolWBNBM.address, {from:acc});
+        let balAfter = _.getBN(await poolWBNBM.balanceOf(acc))
+        assert.isAbove(_.BN2Int(balAfter), _.BN2Int(balBefore))
+    })
+}
+
+//helpers
+function ShowBNBMPool() {
+    it("Show Old POOls", async () => {
+    let tknA = _.BN2Str(await poolWBNBM.tokenAmount());
+    let baseA = _.BN2Str(await poolWBNBM.baseAmount());
+    let lptoken = _.BN2Str(await poolWBNBM.totalSupply());
+    console.log('================= old POOL DEPTH ==================')
+    console.log(`SPARTA - ${baseA/_.one}`);
+    console.log(`BNB - ${tknA/_.one}`);
+    console.log(`lps - ${lptoken/_.one}`);
+})
+}
+function ShowBNBPool() {
+    it("Show NEW POOL", async () => {
+    let tknA = _.BN2Str(await poolWBNB.tokenAmount());
+    let baseA = _.BN2Str(await poolWBNB.baseAmount());
+    let lptoken = _.BN2Str(await poolWBNB.totalSupply());
+    console.log('================= new POOL DEPTH ==================')
+    console.log(`SPARTA - ${baseA/_.one}`);
+    console.log(`BNB - ${tknA/_.one}`);
+    console.log(`lps - ${lptoken/_.one}`);
+})
+}
+
+
 
 
 

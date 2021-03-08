@@ -49,7 +49,6 @@ contract Dao {
 
     address public DEPLOYER;
     address public BASE;
-    address public newRouter;
 
     uint256 public totalWeight;
     uint256 public secondsPerEra;
@@ -149,10 +148,6 @@ contract Dao {
         _DAOVAULT = iDAOVAULT(_daoVault);
         _PSFACTORY = iPSFACTORY(_psFactory);
     }
-    function setNewRouterAddress(address _newRouter) public onlyDAO {
-        newRouter = _newRouter;
-    }
-
 
     function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) public onlyDAO {
         coolOffPeriod = _coolOff;
@@ -189,11 +184,11 @@ contract Dao {
         address token = iPOOL(pool).TOKEN();//old pool
         iPOOL(pool).transferTo(pool, amount);//send lps to pool
         (uint outputBase, uint outputToken) = iPOOL(pool).removeLiquidity(); 
-        iBEP20(BASE).approve(address(newRouter), outputBase);
-        iBEP20(token).approve(address(newRouter), outputToken);
+        iBEP20(BASE).approve(address(_ROUTER), outputBase);
+        iBEP20(token).approve(address(_ROUTER), outputToken);
         address newPool = _PSFACTORY.getPool(token); 
         require(_PSFACTORY.isPool(newPool) == true, "!POOL");
-        uint lpUNits = iROUTER(newRouter).addLiquidity(outputBase, outputToken, token); 
+        uint lpUNits = iROUTER(_ROUTER).addLiquidity(outputBase, outputToken, token); 
         iBEP20(newPool).approve(address(_BOND), lpUNits);
         _BOND.depositInit(newPool, lpUNits, member);
     }

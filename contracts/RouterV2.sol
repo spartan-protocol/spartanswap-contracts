@@ -156,7 +156,7 @@ contract Router {
         if(token == address(0)){_token = WBNB;} // Handle BNB
         address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         uint _actualAmount = _handleTransferIn(BASE, amount, _pool);
-        (outputAmount, fee) = Pool(_pool).swapTo(_token, member);
+        (outputAmount, fee) = Pool(_pool).swap(_token);
         uint _fee =  iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, fee);
         _handleTransferOut(token, outputAmount, member);
         totalPooled = totalPooled.add(_actualAmount);
@@ -196,10 +196,10 @@ contract Router {
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} 
              (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
-            totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(_toToken, _feez); 
+            totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(toToken, _feez); 
             totalPooled = totalPooled.add(_yy);
             fee = feey +iUTILS(_DAO().UTILS()).calcSpotValueInBase(toToken, _feez);
-            getsDividend(_poolTo,_toToken, fee);
+            getsDividend(_poolTo,toToken, fee);
             revenueDetails(fee,_poolTo);
             _handleTransferOut(toToken, outputAmount, member);
             outputAmount = _zz; 
