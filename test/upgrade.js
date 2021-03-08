@@ -57,25 +57,28 @@ contract('UpgradeContracts', function (accounts) {
      createPoolWBNB() // SPV2
      createPoolTKN1() // SPV2
      createPoolTKN2() // SPV2
+     deployerListBNBBond()
      swapInDao();
      addLiquidityBNB(acc1,_.BN2Str(10*_.one),  _.BN2Str(1*_.one));
      addLiquidityBNB(acc1,_.BN2Str(100*_.one),  _.BN2Str(10*_.one));
-     //claimLPAndLock(acc2, 2000) 
+     claimLPAndLock(acc2, 2000) 
 
      buyTOKEN(acc0, _.BN2Str(_.one * 1))
      sellTOKEN(acc0, _.BN2Str(_.one))
      removeLiquidityBNB(5000, acc0)
-     ShowBNBMPool()
-     ShowBNBPool()
+    //  ShowBNBMPool()
+    //  ShowBNBPool()
      moveliquidity(acc0)
      moveliquidity(acc1)
-     upgradeBondUsers(acc2)
-     ShowBNBMPool()
-     ShowBNBPool()
-   // addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
-    // addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
-    // curatePools() // SPV2
-    // createSyntheticBNB() // SPV2
+     //upgradeBondUsers(acc2)
+    //  ShowBNBMPool()
+    //  ShowBNBPool()
+     addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
+     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
+     curatePools() // SPV2
+     createSyntheticBNB() // SPV2
+     bondv4Seconds(10)
+     bondv4Claim(acc2, 2000)
    
 })
 
@@ -384,6 +387,14 @@ async function removeLiquidityBNB(bp, acc) {
        // assert.isAtLeast(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(bnbStart.plus(t).minus(3*10**15)), 'bnb balance')
     })
 }
+async function deployerListBNBBond(){
+    it('deployer list bnb asset', async () =>{
+        let deployer = acc0;
+        let asset = _.BNB;
+        await bond.listBondAsset(asset, {from:deployer});
+
+    })
+}
 
 //upgrade
 async function swapInDao() {
@@ -407,11 +418,35 @@ async function upgradeBondUsers(acc) {
         let token = wbnb.address;
         let asset = _.BNB
         let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
-        console.log(tB/_.one)
+       // console.log(tB/_.one)
         await bondv2.claim(asset,{from:acc})
         await upgrade.upgradeBond(token, {from: acc} )
         let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
-         console.log(tBA/_.one)
+        // console.log(tBA/_.one)
+    })
+}
+async function bondv4Seconds(seconds) {
+    it("Change Seconds", async () => {
+        await bond.changeBondingPeriod(seconds, {from:acc0});
+        let secondsPerYearA = _.BN2Str(await bond.bondingPeriodSeconds());
+        assert.equal(secondsPerYearA, seconds, 'deployer change bond period in seconds')
+    })
+}
+async function bondv4Claim(acc, ms) {
+    it("Claim bond ", async () => {
+        let asset = _.BNB
+        await sleep(ms)
+        let spBONDBal = _.BN2Str(await poolWBNB.balanceOf(acc))
+        console.log("acclp",spBONDBal);
+        let mDB = await bond.getMemberDetails(acc, asset);
+         let BLPB = _.BN2Str(mDB.bondedLP)
+         console.log("acclp",BLPB);
+        await bond.claimForMember(asset,acc,{from:acc})
+        let spBONDA = _.BN2Str(await poolWBNB.balanceOf(acc))
+        console.log("accb",spBONDA);
+        let mDA = await bond.getMemberDetails(acc, asset);
+         let BLPA = _.BN2Str(mDA.bondedLP)
+         console.log("acclcA",BLPA);
     })
 }
 
