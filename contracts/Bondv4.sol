@@ -92,8 +92,8 @@ contract Bond is iBEP20 {
     constructor(address _base, address _wbnb) public {
         BASE = _base;
         WBNB = _wbnb;
-        name = "SpartanBondTokenV3";
-        symbol  = "SPT-BOND-V3";
+        name = "SpartanBondTokenV4";
+        symbol  = "SPT-BOND-V4";
         decimals = 18;
         DEPLOYER = msg.sender;
         totalSupply = 1 * (10 ** 18);

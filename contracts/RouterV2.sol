@@ -20,10 +20,6 @@ contract Router {
     address public WBNB;
     address public DEPLOYER;
 
-    uint public totalPooled; 
-    uint public totalVolume;
-    uint public totalFees;
-
     uint public secondsPerEra;
     uint public nextEraTime;
    
@@ -66,8 +62,6 @@ contract Router {
 
     // In case of new router can migrate metrics
     function migrateRouterData(address payable oldRouter) public onlyDAO {
-        totalPooled = Router(oldRouter).totalPooled();
-        totalVolume = Router(oldRouter).totalVolume();
         normalAverageFee = Router(oldRouter).normalAverageFee();
     }
 
@@ -82,7 +76,6 @@ contract Router {
         address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token); 
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         uint256 _actualInputtoken =  _handleTransferIn(token, inputToken, pool);
-        totalPooled = totalPooled.add(_actualInputBase);
         units = Pool(pool).addLiquidityForMember(member);
         emit AddLiquidity(member, _actualInputBase,_actualInputtoken, units );
         return units;
@@ -117,7 +110,6 @@ contract Router {
         address _member = msg.sender;
         Pool(_pool).transferTo(_pool, units);//RPTAF
         (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
-        totalPooled = totalPooled.sub(outputBase);
         emit RemoveLiquidity(_member,outputBase, outputToken,units);
         return (outputBase, outputToken);
     }
@@ -159,9 +151,6 @@ contract Router {
         (outputAmount, fee) = Pool(_pool).swap(_token);
         uint _fee =  iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, fee);
         _handleTransferOut(token, outputAmount, member);
-        totalPooled = totalPooled.add(_actualAmount);
-        volumeDetails(_actualAmount, _fee);
-        revenueDetails(_fee,_pool );
         getsDividend(_pool,token, _fee);
         emit Swapped(_token, BASE, amount, outputAmount, _fee, member);
         return (outputAmount, _fee);
@@ -174,9 +163,6 @@ contract Router {
         address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
         _handleTransferIn(token, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
-        totalPooled = totalPooled.sub(outputAmount);
-        volumeDetails(outputAmount, fee);
-        revenueDetails(fee,_pool );
         getsDividend(_pool,token, fee);
         emit Swapped(BASE, token, amount, outputAmount, fee, member);
         return (outputAmount, fee);
@@ -196,11 +182,8 @@ contract Router {
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} 
              (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
-            totalFees += iUTILS(_DAO().UTILS()).calcSpotValueInBase(toToken, _feez); 
-            totalPooled = totalPooled.add(_yy);
             fee = feey +iUTILS(_DAO().UTILS()).calcSpotValueInBase(toToken, _feez);
             getsDividend(_poolTo,toToken, fee);
-            revenueDetails(fee,_poolTo);
             _handleTransferOut(toToken, outputAmount, member);
             outputAmount = _zz; 
             emit DoubleSwapped(fromToken, toToken, inputAmount, outputAmount, fee, member);
@@ -248,7 +231,6 @@ contract Router {
          address _poolOUT = iPSFACTORY(_DAO().PSFACTORY()).getPool(synthOUTLayer1);
          iBASE(BASE).transferTo(_poolOUT, inputAmount); //RPTAF
          (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
-         volumeDetails(inputAmount, fee);
          getsDividend( _poolOUT,  synthOUTLayer1,  fee);
          _handleTransferOut(synthOUT,outputSynth,msg.sender);
          emit Swapped(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
@@ -261,7 +243,6 @@ contract Router {
         address _poolIN = iPSFACTORY(_DAO().PSFACTORY()).getPool(synthINLayer1);
         iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
-        volumeDetails(outputBase, fee);
         getsDividend(_poolIN, synthINLayer1, fee);
         _handleTransferOut(BASE, outputBase, msg.sender);
         emit Swapped(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
@@ -278,8 +259,6 @@ contract Router {
             uint dailyAllocation = reserve.div(eraLength).div(maxTrades); // get max dividend for reserve/30/100 
             uint numerator = _fees.mul(dailyAllocation);
             uint feeDividend = numerator.div(_fees.add(normalAverageFee));
-            totalFees = totalFees.add(feeDividend);
-            totalPooled = totalPooled.add(feeDividend); 
             revenueDetails(feeDividend,_pool);
             iBEP20(BASE).transfer(_pool,feeDividend);   
             Pool(_pool).sync();
@@ -287,7 +266,7 @@ contract Router {
         }
        
     }
-    function addTradeFee(uint fee) internal returns (bool) {
+    function addTradeFee(uint fee) internal {
         uint totalTradeFees = 0;
         uint arrayFeeLength = feeArray.length;
         if(!(arrayFeeLength == arrayFeeSize)){
@@ -308,10 +287,6 @@ contract Router {
          feeArray[0] = fee;
     }
 
-    function volumeDetails(uint inputAmount, uint fee) internal {
-        totalVolume += inputAmount;
-        totalFees += fee;
-    }
     function revenueDetails(uint fees, address pool) internal {
         if(lastMonth == 0){
             lastMonth = Pool(pool).genesis();

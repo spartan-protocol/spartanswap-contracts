@@ -60,10 +60,11 @@ contract Pool is iBEP20 {
     uint256 public baseAmount;
     uint256 public unitsAmount;
     uint256 public tokenAmount;
-    uint256 public fees;
-    uint256 public volume;
+     uint private lastMonth;
     uint public genesis;
-
+    uint256 public map30DPoolRevenue;
+    uint256 public mapPast30DPoolRevenue;
+    uint256 [] public revenueArray;
     event AddLiquidity(address member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint outputAmount, uint fee, address recipient);
@@ -239,6 +240,7 @@ contract Pool is iBEP20 {
       fee = iUTILS(_DAO().UTILS()).calcSwapValueInBase(TOKEN,_fee );
       _mint(synthOut, liquidityUnits); 
       outputAmount = iSYNTH(synthOut).mintSynth(TOKEN, msg.sender); //mintSynth to Router
+      _addPoolMetrics(fee);
       return (outputAmount, fee);
     }
 
@@ -250,6 +252,7 @@ contract Pool is iBEP20 {
       iSYNTH(synthIN).redeemSynth(inputSynth); //redeem Synth
       _decrementPoolBalances(baseOutput, 0);
       iBEP20(BASE).transfer(msg.sender, baseOutput);
+      _addPoolMetrics(fee);
       return (baseOutput, fee);
     }
 
@@ -291,7 +294,7 @@ contract Pool is iBEP20 {
         _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
         _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
         _setPoolAmounts(_X.add(_x), _Y.sub(_y));
-        _addPoolMetrics(_y.add(_fee), _fee, false);
+        _addPoolMetrics(_fee);
         return (_y, _fee);
     }
 
@@ -301,7 +304,7 @@ contract Pool is iBEP20 {
         _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
         _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
         _setPoolAmounts(_Y.sub(_y), _X.add(_x));
-        _addPoolMetrics(_y.add(_fee), _fee, true);
+        _addPoolMetrics(_fee);
         return (_y, _fee);
     }
 
@@ -323,13 +326,35 @@ contract Pool is iBEP20 {
         tokenAmount = tokenAmount.sub(_tokenAmount); 
     }
 
-    function _addPoolMetrics(uint256 _volume, uint256 _fee, bool _toBase) internal {
-        if(_toBase){
-            volume += _volume;
-            fees += _fee;
-        } else {
-            volume += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithPool(address(this), _volume);
-            fees += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithPool(address(this), _fee); 
+    function _addPoolMetrics(uint256 _fee) internal {
+        if(lastMonth == 0){
+            lastMonth = genesis;
+        }
+        if(block.timestamp <= lastMonth.add(2592000)){
+            map30DPoolRevenue = map30DPoolRevenue.add(_fee);
+        }else{
+            lastMonth = lastMonth.add(2592000);
+            mapPast30DPoolRevenue = map30DPoolRevenue;
+            addRevenue(mapPast30DPoolRevenue);
+            map30DPoolRevenue = 0;
+            map30DPoolRevenue = map30DPoolRevenue.add(_fee);
         }
     }
+    function addRevenue(uint totalRev) internal {
+        uint arrayRevenueLength = 2;
+        if(!(arrayRevenueLength == 2)){
+            revenueArray.push(totalRev);
+        }else {
+            addFee(totalRev);
+        }
+        }
+    
+    function addFee(uint rev) internal {
+        uint n = revenueArray.length;//2
+        for (uint i = n - 1; i > 0; i--) {
+        revenueArray[i] = revenueArray[i - 1];
+        }
+         revenueArray[0] = rev;
+    }
+
 }
