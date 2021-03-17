@@ -147,13 +147,12 @@ contract Router {
         address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
-        uint _actualAmount = _handleTransferIn(BASE, amount, _pool);
+        _handleTransferIn(BASE, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swap(_token);
-        uint _fee =  iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, fee);
         _handleTransferOut(token, outputAmount, member);
-        getsDividend(_pool,token, _fee);
-        emit Swapped(_token, BASE, amount, outputAmount, _fee, member);
-        return (outputAmount, _fee);
+        getsDividend(_pool,token, fee);
+        emit Swapped(_token, BASE, amount, outputAmount, fee, member);
+        return (outputAmount, fee);
     }
     function sell(uint amount, address token) public payable returns (uint outputAmount, uint fee){
         return sellTo(amount, token, msg.sender);
@@ -178,11 +177,11 @@ contract Router {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
         } else {
             address _poolTo = iPSFACTORY(_DAO().PSFACTORY()).getPool(toToken);
-            (uint _yy,uint feey) = sellTo(inputAmount, fromToken, _poolTo);
+            (,uint feey) = sellTo(inputAmount, fromToken, _poolTo);
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} 
              (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
-            fee = feey +iUTILS(_DAO().UTILS()).calcSpotValueInBase(toToken, _feez);
+            fee = feey.add(_feez);
             getsDividend(_poolTo,toToken, fee);
             _handleTransferOut(toToken, outputAmount, member);
             outputAmount = _zz; 
@@ -291,7 +290,7 @@ contract Router {
         if(lastMonth == 0){
             lastMonth = Pool(pool).genesis();
         }
-        if(block.timestamp <= lastMonth.add(2592000)){
+        if(block.timestamp <= lastMonth.add(2592000)){//30days
             map30DPoolRevenue[pool] = map30DPoolRevenue[pool].add(fees);
         }else{
             lastMonth = lastMonth.add(2592000);

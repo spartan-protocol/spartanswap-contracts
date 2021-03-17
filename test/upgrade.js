@@ -62,23 +62,55 @@ contract('UpgradeContracts', function (accounts) {
      addLiquidityBNB(acc1,_.BN2Str(10*_.one),  _.BN2Str(1*_.one));
      addLiquidityBNB(acc1,_.BN2Str(100*_.one),  _.BN2Str(10*_.one));
      claimLPAndLock(acc2, 2000) 
-
+   
+     curatePools() // SPV2
      buyTOKEN(acc0, _.BN2Str(_.one * 1))
      sellTOKEN(acc0, _.BN2Str(_.one))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     sellTOKEN(acc0, _.BN2Str(_.one))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     sellTOKEN(acc0, _.BN2Str(_.one))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     sellTOKEN(acc0, _.BN2Str(_.one))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     sellTOKEN(acc0, _.BN2Str(_.one))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     sellTOKEN(acc0, _.BN2Str(_.one))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     sellTOKEN(acc0, _.BN2Str(_.one))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     sellTOKEN(acc0, _.BN2Str(_.one))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     sellTOKEN(acc0, _.BN2Str(_.one))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+
+     swapBASE(acc0, _.BN2Str(_.one))
+     swapTOKEN(acc0, _.BN2Str(_.one * 1))
+     swapBASE(acc0, _.BN2Str(_.one))
+     swapTOKEN(acc0, _.BN2Str(_.one * 1))
+     swapBASE(acc0, _.BN2Str(_.one))
+     swapTOKEN(acc0, _.BN2Str(_.one * 1))
+     swapBASE(acc0, _.BN2Str(_.one))
+     swapTOKEN(acc0, _.BN2Str(_.one * 1))
+     swapBASE(acc0, _.BN2Str(_.one))
+     swapTOKEN(acc0, _.BN2Str(_.one * 1))
+     
      removeLiquidityBNB(5000, acc0)
+     revenue()
     //  ShowBNBMPool()
     //  ShowBNBPool()
-     moveliquidity(acc0)
-     moveliquidity(acc1)
-     //upgradeBondUsers(acc2)
-    //  ShowBNBMPool()
-    //  ShowBNBPool()
-     addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
-     addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
-     curatePools() // SPV2
-     createSyntheticBNB() // SPV2
-     bondv4Seconds(10)
-     bondv4Claim(acc2, 2000)
+    //  moveliquidity(acc0)
+    //  moveliquidity(acc1)
+    //  //upgradeBondUsers(acc2)
+    // //  ShowBNBMPool()
+    // //  ShowBNBPool()
+    //  addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
+    //  addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
+    
+    //  createSyntheticBNB() // SPV2
+    //  bondv4Seconds(10)
+    //  bondv4Claim(acc2, 2000)
    
 })
 
@@ -449,6 +481,100 @@ async function bondv4Claim(acc, ms) {
          console.log("acclcA",BLPA);
     })
 }
+async function revenue() {
+    it("Revenue", async () => {
+        let feeRev = _.BN2Str(await router.map30DPoolRevenue(poolWBNB.address))
+        let feeRev30 = _.BN2Str(await router.mapPast30DPoolRevenue(poolWBNB.address))
+        let feeRev2 = _.BN2Str(await poolWBNB.map30DPoolRevenue())
+        let feeRev302 = _.BN2Str(await poolWBNB.mapPast30DPoolRevenue())
+        let feeRev30Array = _.BN2Str(await poolWBNB.revenueArray(0))
+        //let feeRev30Array1 = _.BN2Str(await poolWBNB.revenueArray(1))
+        console.log("Div30",feeRev/_.one)
+        console.log("Div30P",feeRev30/_.one)
+        console.log("TotFee30Current",feeRev2/_.one)
+        console.log("TotFee30Past",feeRev302/_.one)
+        console.log("RevFee30Past",feeRev30Array/_.one)
+        //console.log("RevFee30S",feeRev30Array1/_.one)
+    })
+}
+async function swapBASE(acc, x) {
+    it(`Swap from BNB to BASE and pool gets Dividend`, async () => {
+        let baseStart = _.getBN(await base.balanceOf(acc))
+        let tokenStart = _.getBN(await wbnb.balanceOf(acc))
+        let reserve = _.getBN(await base.balanceOf(router.address));
+        let dailyAllocation = reserve.div(30).div(100);
+        
+        let fromToken = wbnb.address
+        let toToken = base.address
+        let poolData = await utils.getPoolData(fromToken);
+        const X = _.getBN(poolData.tokenAmount)
+        const Y = _.getBN(poolData.baseAmount)
+        //console.log('start data', _.BN2Str(X), _.BN2Str(Y))
+
+        let y = math.calcSwapOutput(x, X, Y)
+     
+        // console.log(_.BN2Str(x), _.BN2Str(X), _.BN2Str(y), _.BN2Str(Y), _.BN2Str(fee))
+        
+        let tx = await router.swap(x, fromToken, toToken)
+        let normalFee = _.getBN(await router.normalAverageFee());
+    
+        let fee = math.calcSwapFee(x, X, Y)
+        let numerator = fee.times(dailyAllocation);
+        let feeDividend = _.floorBN(numerator.div(fee.plus(normalFee)));
+
+        poolData = await utils.getPoolData(fromToken);
+
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X.plus(x)))
+        if(!(_.BN2Str(normalFee) == 0)){
+            assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y.plus(feeDividend.minus(y))))
+            assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X.plus(x)))
+            assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(Y.minus(y).plus(feeDividend)), 'base balance')
+        }else{
+            assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X.plus(x)))
+            assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y.minus(y)))
+            assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(X.plus(x)), 'wbnb balance')
+            assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(Y.minus(y)), 'base balance')
+        }
+
+    })
+}
+async function swapTOKEN(acc, x) {
+    it(`Swap from BASE to BNB and pool gets Dividend`, async () => {
+        let baseStart = _.getBN(await base.balanceOf(acc))
+        let tokenStart = _.getBN(await wbnb.balanceOf(acc))
+        let reserve = _.getBN(await base.balanceOf(router.address));
+        let dailyAllocation = reserve.div(30).div(100);
+        let fromToken = base.address
+        let toToken = wbnb.address
+        let poolData = await utils.getPoolData(toToken);
+        const X = _.getBN(poolData.baseAmount)
+        const Y = _.getBN(poolData.tokenAmount)
+        //console.log('start data', _.BN2Str(X), _.BN2Str(Y))
+        let y = math.calcSwapOutput(x, X, Y)
+        // console.log(_.BN2Str(y), _.BN2Str(Y), _.BN2Str(X), _.BN2Str(x), _.BN2Str(fee))
+        
+        let tx = await router.swap(x, fromToken, toToken)
+
+        let normalFee = _.getBN(await router.normalAverageFee());
+        let fee = _.getBN(tx.receipt.logs[1].args.fee)
+
+        let numerator = fee.times(dailyAllocation);
+        let feeDividend = _.floorBN(numerator.div(fee.plus(normalFee)));
+        poolData2 = await utils.getPoolData(toToken);
+        if(!(normalFee == 0)){
+            assert.equal(_.BN2Str(poolData2.baseAmount), _.BN2Str(X.plus(feeDividend.plus(x))))
+            assert.equal(_.BN2Str(poolData2.tokenAmount), _.BN2Str(Y.minus(y)))
+            assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(X.plus(x).plus(feeDividend)), 'base balance')
+        }else{
+            assert.equal(_.BN2Str(poolData2.baseAmount), _.BN2Str(X.plus(x)))
+            assert.equal(_.BN2Str(poolData2.tokenAmount), _.BN2Str(Y.minus(y)))
+            assert.equal(_.BN2Str(await base.balanceOf(acc)), _.BN2Str(baseStart.minus(x)), 'base balance')
+            assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(tokenStart.plus(y)), 'wbnb balance')
+        }
+
+    })
+}
+
 
 
 //MainNet Replica

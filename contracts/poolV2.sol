@@ -91,6 +91,7 @@ contract Pool is iBEP20 {
         decimals = 18;
         genesis = block.timestamp;
         DEPLOYER = msg.sender;
+        lastMonth = 0;
     }
 
     //========================================iBEP20=========================================//
@@ -237,7 +238,7 @@ contract Pool is iBEP20 {
       uint liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); 
       _incrementPoolBalances(_actualInputBase, 0);
       uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount);
-      fee = iUTILS(_DAO().UTILS()).calcSwapValueInBase(TOKEN,_fee );
+      fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN,_fee );
       _mint(synthOut, liquidityUnits); 
       outputAmount = iSYNTH(synthOut).mintSynth(TOKEN, msg.sender); //mintSynth to Router
       _addPoolMetrics(fee);
@@ -292,7 +293,8 @@ contract Pool is iBEP20 {
         uint256 _X = baseAmount;
         uint256 _Y = tokenAmount;
         _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
-        _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
+        uint fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
+        _fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, fee);
         _setPoolAmounts(_X.add(_x), _Y.sub(_y));
         _addPoolMetrics(_fee);
         return (_y, _fee);
@@ -330,7 +332,7 @@ contract Pool is iBEP20 {
         if(lastMonth == 0){
             lastMonth = genesis;
         }
-        if(block.timestamp <= lastMonth.add(2592000)){
+        if(block.timestamp <= lastMonth.add(2592000)){//30Days
             map30DPoolRevenue = map30DPoolRevenue.add(_fee);
         }else{
             lastMonth = lastMonth.add(2592000);
@@ -341,8 +343,7 @@ contract Pool is iBEP20 {
         }
     }
     function addRevenue(uint totalRev) internal {
-        uint arrayRevenueLength = 2;
-        if(!(arrayRevenueLength == 2)){
+        if(!(revenueArray.length == 2)){
             revenueArray.push(totalRev);
         }else {
             addFee(totalRev);
