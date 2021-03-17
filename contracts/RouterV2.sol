@@ -2,15 +2,19 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
-interface iPSFACTORY {
+interface iSYNTHFACTORY {
+    function isSynth(address) external view returns (bool);
+
+}
+interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
     function challengLowestCuratedPool(address) external  ;
     function addCuratedPool(address) external ;
     function removeCuratedPool(address) external  ;
     function isPool(address) external view returns (bool);
-    function isSynth(address) external view returns (bool);
     function getPool(address) external view returns(address payable);
 }
+
 
 
 contract Router {
@@ -73,7 +77,7 @@ contract Router {
 
     // Add liquidity for member
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
-        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token); 
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); 
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         uint256 _actualInputtoken =  _handleTransferIn(token, inputToken, pool);
         units = Pool(pool).addLiquidityForMember(member);
@@ -100,13 +104,13 @@ contract Router {
     // Remove % for self
     function removeLiquidity(uint basisPoints, address token) public returns (uint outputBase, uint outputToken) {
         require((basisPoints > 0 && basisPoints <= 10000));
-        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPSFACTORY(_DAO().PSFACTORY()).getPool(token)).balanceOf(msg.sender));
+        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token)).balanceOf(msg.sender));
         return removeLiquidityExact(_units, token);
     }
     // Remove an exact qty of units
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
-        address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
-        require(iPSFACTORY(_DAO().PSFACTORY()).isPool(_pool) == true);
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true);
         address _member = msg.sender;
         Pool(_pool).transferTo(_pool, units);//RPTAF
         (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
@@ -120,8 +124,8 @@ contract Router {
     }
     // Remove Asymmetrically
     function removeLiquidityAsymForMember(uint units, bool toBase, address token, address member) public returns (uint outputAmount, uint fee){
-        address pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
-        require(iPSFACTORY(_DAO().PSFACTORY()).isPool(pool) == true);
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(pool) == true);
         require(units < iBEP20(pool).totalSupply());
         _handleTransferIn(pool, units, pool);
         (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidityForMember(member);
@@ -146,7 +150,7 @@ contract Router {
         require(token != BASE);
         address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
-        address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         _handleTransferIn(BASE, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swap(_token);
         _handleTransferOut(token, outputAmount, member);
@@ -159,7 +163,7 @@ contract Router {
     }
     function sellTo(uint amount, address token, address member) public payable returns (uint outputAmount, uint fee) {
         require(token != BASE);
-        address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token);
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         _handleTransferIn(token, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
         getsDividend(_pool,token, fee);
@@ -176,7 +180,7 @@ contract Router {
         } else if(toToken == BASE) {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
         } else {
-            address _poolTo = iPSFACTORY(_DAO().PSFACTORY()).getPool(toToken);
+            address _poolTo = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
             (,uint feey) = sellTo(inputAmount, fromToken, _poolTo);
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} 
@@ -190,7 +194,7 @@ contract Router {
         return (outputAmount, fee);
     }
     function getsDividend(address _pool, address _token, uint fee) internal {
-        if(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(_pool) == true){
+        if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
             addTradeFee(fee);
             addDividend(_token, fee); 
            }
@@ -225,9 +229,9 @@ contract Router {
     //=================================================================================//
     //Swap Synths
     function swapBaseToSynth(uint inputAmount, address synthOUT) public returns (uint output){
-         require(iPSFACTORY(_DAO().PSFACTORY()).isSynth(synthOUT) == true, "!synth");
+         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOUT) == true, "!synth");
          address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
-         address _poolOUT = iPSFACTORY(_DAO().PSFACTORY()).getPool(synthOUTLayer1);
+         address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthOUTLayer1);
          iBASE(BASE).transferTo(_poolOUT, inputAmount); //RPTAF
          (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
          getsDividend( _poolOUT,  synthOUTLayer1,  fee);
@@ -237,9 +241,9 @@ contract Router {
          
     }
     function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
-        require(iPSFACTORY(_DAO().PSFACTORY()).isSynth(synthIN) == true, "!synth");
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
-        address _poolIN = iPSFACTORY(_DAO().PSFACTORY()).getPool(synthINLayer1);
+        address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthINLayer1);
         iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         getsDividend(_poolIN, synthINLayer1, fee);
@@ -254,7 +258,7 @@ contract Router {
         if(!(normalAverageFee == 0)){
              uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance
             if(!(reserve == 0)){
-            address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(_token);
+            address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token);
             uint dailyAllocation = reserve.div(eraLength).div(maxTrades); // get max dividend for reserve/30/100 
             uint numerator = _fees.mul(dailyAllocation);
             uint feeDividend = numerator.div(_fees.add(normalAverageFee));

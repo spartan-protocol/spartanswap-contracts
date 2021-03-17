@@ -5,7 +5,7 @@ import "./DaoVault.sol";
 
 import "@nomiclabs/buidler/console.sol";
 interface iDAOVAULT {
-    function withdraw(address, uint) external  returns (bool);
+    function withdraw(address, uint, address) external  returns (bool);
 }
 interface iROUTER {
     function grantFunds(uint, address) external payable returns (bool);
@@ -13,13 +13,18 @@ interface iROUTER {
     function changeMaxTrades(uint) external returns(bool);
     function addLiquidity(uint, uint, address) external payable returns (uint);
 }
-interface iPSFACTORY {
+interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
     function challengLowestCuratedPool(address) external view returns (bool);
     function addCuratedPool(address) external returns (bool);
     function removeCuratedPool(address) external returns (bool);
     function getPool(address token) external returns (address);
+    function getPoolArray(uint i) external returns (address);
+    function poolCount() external returns (uint);
     function isPool(address) external returns (bool);
+}
+interface iSYNTHFACTORY {
+    function isSynth(address) external returns (bool);
 }
 interface iUTILS {
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
@@ -89,7 +94,8 @@ contract Dao {
     iMASTERLOAN private _MASTERLOAN;
     iBOND private _BOND;
     iDAOVAULT private _DAOVAULT;
-    iPSFACTORY private _PSFACTORY;
+    iPOOLFACTORY private _POOLFACTORY;
+    iSYNTHFACTORY private _SYNTHFACTORY;
 
     address[] public arrayMembers;
     
@@ -125,28 +131,28 @@ contract Dao {
     // Only Deployer can execute
      // Only DAO can execute
     modifier onlyDAO() {
-        require(msg.sender == DEPLOYER, "Must be DAO");
+        require(msg.sender == DEPLOYER);
         _;
     }
     constructor (address _base) public {
         BASE = _base;
         DEPLOYER = msg.sender;
-        coolOffPeriod = 1; 
+        coolOffPeriod = 3; 
         DAO = address(this);
         erasToEarn = 30;
         majorityFactor = 6666;
         daoClaim = 1000;
         daoFee = 100;
         secondsPerEra = iBASE(BASE).secondsPerEra();
-        //secondsPerEra = 2;
     }
-    function setGenesisAddresses(address _router, address _utils, address _masterLoan, address _bond, address _daoVault, address _psFactory) public onlyDAO {
+    function setGenesisAddresses(address _router, address _utils, address _masterLoan, address _bond, address _daoVault, address _poolFactory,address _synthFactory ) public onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
         _MASTERLOAN = iMASTERLOAN(_masterLoan);
         _BOND = iBOND(_bond);
         _DAOVAULT = iDAOVAULT(_daoVault);
-        _PSFACTORY = iPSFACTORY(_psFactory);
+        _POOLFACTORY = iPOOLFACTORY(_poolFactory);
+        _SYNTHFACTORY = iSYNTHFACTORY(_synthFactory);
     }
 
     function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) public onlyDAO {
@@ -165,9 +171,19 @@ contract Dao {
     function deposit(address pool, uint256 amount) public {
         depositLPForMember(pool, amount, msg.sender);
     }
+     function DaoMIGRATION(address pool) public onlyDAO{
+        for(uint i = 0; i < arrayMembers.length; i++){
+            address member = arrayMembers[i];
+            if(mapMember_weight[member] > 0){
+                migrateMember(pool,member);
+            }
+            
+       }
+       
+    }
     // Contract deposits some LP tokens for member
     function depositLPForMember(address pool, uint256 amount, address member) public {
-        require(_PSFACTORY.isCuratedPool(pool) == true, "!Curated");
+        require(_POOLFACTORY.isCuratedPool(pool) == true, "!Curated");
         require(amount > 0, "!Amount");
         if (!isMember[member]) {
             arrayMembers.push(msg.sender);
@@ -186,8 +202,8 @@ contract Dao {
         (uint outputBase, uint outputToken) = iPOOL(pool).removeLiquidity(); 
         iBEP20(BASE).approve(address(_ROUTER), outputBase);
         iBEP20(token).approve(address(_ROUTER), outputToken);
-        address newPool = _PSFACTORY.getPool(token); 
-        require(_PSFACTORY.isPool(newPool) == true, "!POOL");
+        address newPool = _POOLFACTORY.getPool(token); 
+        require(_POOLFACTORY.isPool(newPool) == true, "!POOL");
         uint lpUNits = iROUTER(_ROUTER).addLiquidity(outputBase, outputToken, token); 
         iBEP20(newPool).approve(address(_BOND), lpUNits);
         _BOND.depositInit(newPool, lpUNits, member);
@@ -196,7 +212,7 @@ contract Dao {
     // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
     function increaseWeight(address pool, address member) public returns(uint){
         require(isMember[member], "!Member");
-        require(_PSFACTORY.isCuratedPool(pool) == true, "!Curated");
+        require(_POOLFACTORY.isCuratedPool(pool) == true, "!Curated");
         if(mapMemberPool_weight[member][pool] > 0){ // Remove previous weights
             totalWeight = totalWeight.sub(mapMemberPool_weight[member][pool]);
             mapMember_weight[member] = mapMember_weight[member].sub(mapMemberPool_weight[member][pool]);
@@ -219,13 +235,13 @@ contract Dao {
         mapMemberPool_weight[msg.sender][pool] = weight;
         require(amount > 0, "!Balance");
         decreaseWeight(pool, msg.sender, amount);
-        require(_DAOVAULT.withdraw(pool, amount), "!transfer"); // Then transfer
+        require(_DAOVAULT.withdraw(pool, amount, msg.sender), "!transfer"); // Then transfer
         emit MemberWithdraws(msg.sender, pool, amount);
     }
 
     function decreaseWeight(address pool, address member, uint amount) internal {
         uint weightRemoved = _UTILS.getPoolShareWeight(iPOOL(pool).TOKEN(), amount); // Get claim on BASE in pool
-        if(mapMemberPool_balance[msg.sender][pool] == 0){
+        if(mapMemberPool_balance[member][pool] == 0){
             mapMember_lastTime[member] = 0; //Zero out seconds 
         }
         totalWeight = totalWeight.sub(weightRemoved); // Remove that weight
@@ -422,8 +438,6 @@ contract Dao {
         require(_proposedAddress != address(0), "No address proposed");
         DAO = mapPID_address[_proposalID];
         iBASE(BASE).changeDAO(_proposedAddress);
-        uint reserve = iBEP20(BASE).balanceOf(address(this));
-        iBEP20(BASE).transfer(_proposedAddress, reserve);
         daoHasMoved = true; 
         completeProposal(_proposalID);
     }
@@ -512,19 +526,19 @@ contract Dao {
     function _addCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        _PSFACTORY.addCuratedPool(_proposedAddress); 
+        _POOLFACTORY.addCuratedPool(_proposedAddress); 
         completeProposal(_proposalID);
     }
     function _removeCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        _PSFACTORY.removeCuratedPool(_proposedAddress); 
+        _POOLFACTORY.removeCuratedPool(_proposedAddress); 
         completeProposal(_proposalID);
     }
     function _challengLowestCuratedPool(uint _proposalID) internal {
          address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        _PSFACTORY.challengLowestCuratedPool(_proposedAddress); 
+        _POOLFACTORY.challengLowestCuratedPool(_proposedAddress); 
         completeProposal(_proposalID); 
     }
     
@@ -573,6 +587,16 @@ contract Dao {
             return false;
         }
     }
+    function migrateMember(address pool, address member) internal  {
+        uint amount = mapMemberPool_balance[member][pool];
+        mapMemberPool_weight[member][pool] = 0;
+        require(amount > 0, "!Balance");
+        mapMemberPool_balance[member][pool] = 0;
+        decreaseWeight(pool, member, amount);
+        require(_DAOVAULT.withdraw(pool, amount, member), "!transfer"); // Then transfer
+        emit MemberWithdraws(member, pool, amount);
+    }
+
 
     //============================== ROUTER && UTILS ================================//
 
@@ -611,13 +635,21 @@ contract Dao {
             return _DAOVAULT;
         }
     }
-    function PSFACTORY() public view returns(iPSFACTORY){
+    function POOLFACTORY() public view returns(iPOOLFACTORY){
         if(daoHasMoved){
-            return Dao(DAO).PSFACTORY();
+            return Dao(DAO).POOLFACTORY();
         } else {
-            return _PSFACTORY;
+            return _POOLFACTORY;
         }
     }
+     function SYNTHFACTORY() public view returns(iSYNTHFACTORY){
+        if(daoHasMoved){
+            return Dao(DAO).SYNTHFACTORY();
+        } else {
+            return _SYNTHFACTORY;
+        }
+    }
+    
 
     //============================== HELPERS ================================//
 

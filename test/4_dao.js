@@ -224,9 +224,10 @@ async function lockTKN(acc, amount) {
         // let balance = await poolTKN1.balanceOf(acc)
         // //console.log(`balance: ${balance}`)
         // await poolTKN1.approve(Dao.address, balance, { from: acc })
-        await Dao.deposit(poolTKN1.address, amount, { from: acc })
-        //console.log(`isMember: ${await Dao.isMember(acc)}`)
-        //console.log(`mapMemberPool_balance: ${await Dao.mapMemberPool_balance(acc, poolWBNB.address)}`)
+        console.log(`isMember: ${await Dao.isMember(acc)}`)
+        console.log(`mapMemberPool_balance: ${await Dao.mapMemberPool_balance(acc, poolWBNB.address)}`)
+        //await Dao.deposit(poolTKN1.address, amount, { from: acc })
+       
         //console.log(`totalWeight: ${await Dao.totalWeight()}`)
         //console.log(`mapMember_weight: ${await Dao.mapMember_weight(acc)}`)
         //console.log(`rate: ${_.getBN(await Dao.mapMember_weight(acc)).div(_.getBN(await Dao.totalWeight()))}`)

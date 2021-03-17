@@ -11,7 +11,7 @@ interface iDAO {
      function ROUTER() external view returns(address);
      function UTILS() external view returns(address);
      function DAO() external view returns (address);
-     function PSFACTORY() external view returns(address);
+     function POOLFACTORY() external view returns(address);
      function depositForMember(address pool, uint256 amount, address member) external;
 }
 interface iROUTER {
@@ -23,7 +23,7 @@ interface iUTILS {
 interface iPOOL {
     function TOKEN() external view returns(address);
 }
-interface iPSFACTORY {
+interface iPOOLFACTORY {
     function getPool(address token) external returns (address);
 }
 
@@ -219,7 +219,7 @@ contract Bond is iBEP20 {
          return true;
     }
     function moveBondLPS(address asset, address newBond) public onlyDAO returns(bool){
-        address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(asset);
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset);
          uint256 poolBal = iBEP20(_pool).balanceOf(address(this));
          iBEP20(BASE).transfer(newBond, poolBal);
          return true;
@@ -292,7 +292,7 @@ contract Bond is iBEP20 {
         require(mapAddress_listedAssets[asset].bondedLP[member] > 0, '!bondedlps');
         require(mapAddress_listedAssets[asset].isMember[member], '!deposited');
         uint256 claimable = calcClaimBondedLP(member, asset); 
-        address _pool = iPSFACTORY(_DAO().PSFACTORY()).getPool(asset);
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset);
         require(claimable <= mapAddress_listedAssets[asset].bondedLP[member],'attempted to overclaim');
         mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
         mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].sub(claimable);

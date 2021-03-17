@@ -33,8 +33,8 @@ function _DAO() internal view returns(iDAO) {
     }
 
     // Contract withdraws LP tokens for member
-function withdraw(address pool, uint amount) public onlyDAO returns (bool){
-        require(iBEP20(pool).transfer(tx.origin, amount), "Must transfer"); // Then transfer
+function withdraw(address pool, uint amount, address member) public onlyDAO returns (bool){
+        require(iBEP20(pool).transfer(member, amount), "Must transfer"); // Then transfer
         return true;
 }
 

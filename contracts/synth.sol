@@ -2,9 +2,9 @@ pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "@nomiclabs/buidler/console.sol";
 import "./poolV2.sol";  
-interface iPSFACTORY {
+interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
-
+    function getPool(address) external view returns (address);
 }
 
 contract Synth is iBEP20 {
@@ -31,7 +31,7 @@ contract Synth is iBEP20 {
         _;
     }
     modifier onlyPool() {
-        require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(msg.sender) == true, "!POOL");
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, "!POOL");
         _;
     }
 
@@ -117,7 +117,7 @@ contract Synth is iBEP20 {
 
      function mintSynth(address token, address member) public returns (uint syntheticAmount){
         require(token != BASE, '!BASE');
-        require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
         uint lpUnits = _getAddedLPAmount(msg.sender);
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
         _mint(member, tokenValue); 
@@ -125,7 +125,7 @@ contract Synth is iBEP20 {
     }
     
     function redeemSynth(uint amount) public returns (bool){
-        require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
         uint syntheticAmount = _handleTransferIn(address(this), amount);
          uint LPBalance = Pool(msg.sender).balanceOf(address(this));
          uint _amountUnits = (amount.mul(LPBalance)).div(totalSupply);// share = amount * part/total

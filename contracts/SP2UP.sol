@@ -11,7 +11,7 @@ interface iDAO {
      function ROUTER() external view returns(address);
      function UTILS() external view returns(address);
      function DAO() external view returns (address);
-     function PSFACTORY() external view returns(address);
+     function POOLFACTORY() external view returns(address);
      function BOND() external view returns (address);
      function depositForMember(address pool, uint256 amount, address member) external;
 }
@@ -26,7 +26,7 @@ interface iPOOL {
     function removeLiquidity() external returns (uint outputBase, uint outputToken);
 }
 
-interface iPSFACTORY {
+interface iPOOLFACTORY {
     function getPool(address token) external returns (address);
     function isPool(address) external view returns (bool);
 }
@@ -60,8 +60,8 @@ contract SPARTANUPGRADE {
     function migrateLiquidity(address token, uint amount) public returns (uint units) {
         address _member = msg.sender;
         address _oldPool = iROUTER(OLDRouter).getPool(token);//get old pool
-        address newPool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token); //get new pool
-        require(iPSFACTORY(_DAO().PSFACTORY()).isPool(newPool) == true, "!POOL");
+        address newPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); //get new pool
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(newPool) == true, "!POOL");
         iPOOL(_oldPool).transferTo(_oldPool, amount);//RPTAF
         (uint outputBase, uint outputToken) = iPOOL(_oldPool).removeLiquidity();
         iBEP20(BASE).approve(address(_DAO().ROUTER()), outputBase);
@@ -73,8 +73,8 @@ contract SPARTANUPGRADE {
     function upgradeBond(address token) public returns (bool){
         address _member = msg.sender;
          address _oldPool = iROUTER(OLDRouter).getPool(token);//get old pool
-        address _newPool = iPSFACTORY(_DAO().PSFACTORY()).getPool(token); //get new pool
-        require(iPSFACTORY(_DAO().PSFACTORY()).isPool(_newPool) == true, "!POOL");
+        address _newPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); //get new pool
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_newPool) == true, "!POOL");
         uint256 lpBalance =  iBEP20(_oldPool).balanceOf(_member); // get user LP balance incase of bondv2 claim
         iDAO(_DAO().DAO()).depositForMember(_oldPool, lpBalance, _member); //send lp tokens to DAO for lock
         return true;

@@ -1,5 +1,5 @@
 {
-  "contractName": "iPSFACTORY",
+  "contractName": "iSYNTHFACTORY",
   "abi": [
     {
       "inputs": [
@@ -9,7 +9,7 @@
           "type": "address"
         }
       ],
-      "name": "isCuratedPool",
+      "name": "isSynth",
       "outputs": [
         {
           "internalType": "bool",

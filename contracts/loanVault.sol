@@ -22,17 +22,20 @@ interface iDAO {
     function ROUTER() external view returns(address);
     function UTILS() external view returns(address);
     function DAO() external view returns (address);
-    function PSFACTORY() external view returns (address);
+    function POOLFACTORY() external view returns (address);
+    function SYNTHFACTORY() external view returns (address);
    
 }
 interface iPOOL {
     function TOKEN() external view returns(address);
     function sync() external; 
 }
-interface iPSFACTORY {
+interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
-    function isSynth(address) external view returns (bool);
     function getPool(address) external view returns(address payable);
+}
+interface iSYNTHFACTORY{
+    function isSynth(address) external view returns (bool);
 }
 
 contract SpartanLoanVault {
@@ -83,7 +86,7 @@ contract SpartanLoanVault {
     
     // add collateral for member
     function addCollateralForMember(address pool, address member) public returns(uint syntheticAmount){
-        require(iPSFACTORY(_DAO().PSFACTORY()).isCuratedPool(pool) == true, '!POOL');
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(pool) == true, '!POOL');
         uint256 _actualInputCollateral = _getAddedLPAmount(pool);
         uint baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, _actualInputCollateral);//get asym share in sparta
         //  syntheticAmount = iUTILS(_DAO().UTILS()).calcSwapValueInToken(LayerONE, baseValueCollateral); //get synthetic asset swap

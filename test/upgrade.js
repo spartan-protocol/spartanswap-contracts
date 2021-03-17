@@ -15,14 +15,15 @@ var POOL = artifacts.require("./Pool.sol");
 var POOLv1 = artifacts.require("./PoolM.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var UTILSV1 = artifacts.require("./UtilsM.sol");
-var synthRouter = artifacts.require("./synthRouter.sol");
+
 var SYNTH = artifacts.require("./synth.sol");
 var BOND = artifacts.require("./Bond.sol");
 var BONDv2 = artifacts.require("./BondV2M.sol");
 var BONDv3 = artifacts.require("./BondV3M.sol");
 var TOKEN = artifacts.require("./Token1.sol");
 var TOKEN2 = artifacts.require("./Token2.sol");
-var PSFACTORY = artifacts.require("./PSFactory.sol");
+var POOLFACTORY = artifacts.require("./poolFactory.sol");
+var SYNTHFACTORY = artifacts.require("./synthFactory.sol");
 var WBNB = artifacts.require("./WBNB");
 var DAOVAULT = artifacts.require("./DaoVault.sol");
 var UPGR = artifacts.require("./SPARTANUPGRADE.sol");
@@ -97,17 +98,19 @@ contract('UpgradeContracts', function (accounts) {
      swapTOKEN(acc0, _.BN2Str(_.one * 1))
      
      removeLiquidityBNB(5000, acc0)
-     revenue()
+    
     //  ShowBNBMPool()
     //  ShowBNBPool()
-    //  moveliquidity(acc0)
-    //  moveliquidity(acc1)
+      moveliquidity(acc0)
+      moveliquidity(acc1)
     //  //upgradeBondUsers(acc2)
     // //  ShowBNBMPool()
     // //  ShowBNBPool()
-    //  addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
-    //  addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
-    
+      addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
+      addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
+      revenue()
+      lockTKN(acc0, _.BN2Str(_.one * 1))
+      withdraw(acc0)
     //  createSyntheticBNB() // SPV2
     //  bondv4Seconds(10)
     //  bondv4Claim(acc2, 2000)
@@ -142,10 +145,12 @@ function constructor(accounts) {
         Dao = await DAO.new(base.address)     // deploy daoV2
         router = await ROUTER.new(base.address, wbnb.address) //deploy router
         daoVault = await DAOVAULT.new(base.address);
-        synthRouter = await synthRouter.new(base.address, wbnb.address) //deploy synthRouter
         bond = await BOND.new(base.address, wbnb.address);     //deploy new bond
-        psFactory = await PSFACTORY.new(base.address,  wbnb.address) 
+        poolFactory = await POOLFACTORY.new(base.address,  wbnb.address) 
+        synthFactory = await SYNTHFACTORY.new(base.address,  wbnb.address) 
         upgrade = await UPGR.new(base.address, routerv1.address) // deploy wBNB
+
+        Dao2 = await DAO.new(base.address)     // deploy daoV3
        
        // await base.changeDAO(Dao.address)  
        let supply = await token1.totalSupply()
@@ -160,9 +165,6 @@ function constructor(accounts) {
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await base.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
         await token1.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
         await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -173,9 +175,7 @@ function constructor(accounts) {
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await token1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+
 
         await token2.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
         await token2.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -186,9 +186,7 @@ function constructor(accounts) {
         await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await token2.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await token2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+
 
         await wbnb.approve(bondv3.address, supply, {from:acc1}) // approve bond 
         await token1.approve(bondv3.address, supply, {from:acc1}) // approve bond 
@@ -215,8 +213,8 @@ async function wrapBNB() {
 }
 async function createPoolWBNB(SPT, token) {
     it("It should deploy BNB Pool", async () => {
-        var _pool = await psFactory.createPool.call( wbnb.address)
-        await psFactory.createPool(wbnb.address)
+        var _pool = await poolFactory.createPool.call( wbnb.address)
+        await poolFactory.createPool(wbnb.address)
         poolWBNB = await POOL.at(_pool)
         //console.log(`Pools: ${poolWBNB.address}`)
         const baseAddr = await poolWBNB.BASE()
@@ -225,15 +223,13 @@ async function createPoolWBNB(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
         await base.approve(poolWBNB.address, supply, { from: acc1 })
-        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await poolWBNB.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+
     })
 }
 async function createPoolTKN1(SPT, token) {
     it("It should deploy TKN1 Pool", async () => {
-        var _pool = await psFactory.createPool.call(token1.address)
-        await psFactory.createPool(token1.address)
+        var _pool = await poolFactory.createPool.call(token1.address)
+        await poolFactory.createPool(token1.address)
         poolTKN1 = await POOL.at(_pool)
         //console.log(`Pools: ${poolTKN1.address}`)
         const baseAddr = await poolTKN1.BASE()
@@ -241,25 +237,21 @@ async function createPoolTKN1(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolTKN1.address, supply, { from: acc0 })
         await base.approve(poolTKN1.address, supply, { from: acc1 })
-        await poolTKN1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await poolTKN1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await poolTKN1.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+
 
     })
 }
 async function createPoolTKN2(SPT, token) {
     it("It should deploy TKN2 Pool", async () => {
-        var _pool = await psFactory.createPool.call(token2.address)
-        await psFactory.createPool(token2.address)
+        var _pool = await poolFactory.createPool.call(token2.address)
+        await poolFactory.createPool(token2.address)
         poolTKN2 = await POOL.at(_pool)
         const baseAddr = await poolTKN2.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
         let supply = await base.totalSupply()
         await base.approve(poolTKN2.address, supply, { from: acc0 })
         await base.approve(poolTKN2.address, supply, { from: acc1 })
-        await poolTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await poolTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc1 });
-        await poolTKN2.approve(synthRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+  
     })
 }
 async function addLiquidityBNB(acc, b, t) {
@@ -276,16 +268,16 @@ async function addLiquidityTKN2(acc, b, t) {
 }
 async function curatePools() {
     it("Curate POOls", async () => {
-        await psFactory.addCuratedPool(wbnb.address);
-        await psFactory.addCuratedPool(token1.address);
-        await psFactory.addCuratedPool(token2.address);
+        await poolFactory.addCuratedPool(wbnb.address);
+        await poolFactory.addCuratedPool(token1.address);
+        await poolFactory.addCuratedPool(token2.address);
        
     })
 }
 async function createSyntheticBNB() {
     it("It should Create Synthetic BNB ", async () => {
-        var _synth =  await psFactory.createSynth.call(wbnb.address);
-        await psFactory.createSynth(wbnb.address);
+        var _synth =  await synthFactory.createSynth.call(wbnb.address);
+        await synthFactory.createSynth(wbnb.address);
         synthBNB = await SYNTH.at(_synth)
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
@@ -432,7 +424,7 @@ async function deployerListBNBBond(){
 async function swapInDao() {
     it("swap Dao", async () => {
        await base.changeDAO(Dao.address)  
-       await Dao.setGenesisAddresses(router.address, utils.address, synthRouter.address, bond.address, daoVault.address,psFactory.address );
+       await Dao.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address );
     })
 }
 async function moveliquidity(acc) {
@@ -487,14 +479,40 @@ async function revenue() {
         let feeRev30 = _.BN2Str(await router.mapPast30DPoolRevenue(poolWBNB.address))
         let feeRev2 = _.BN2Str(await poolWBNB.map30DPoolRevenue())
         let feeRev302 = _.BN2Str(await poolWBNB.mapPast30DPoolRevenue())
-        let feeRev30Array = _.BN2Str(await poolWBNB.revenueArray(0))
+        // let feeRev30Array = _.BN2Str(await poolWBNB.revenueArray(0))
         //let feeRev30Array1 = _.BN2Str(await poolWBNB.revenueArray(1))
-        console.log("Div30",feeRev/_.one)
-        console.log("Div30P",feeRev30/_.one)
-        console.log("TotFee30Current",feeRev2/_.one)
-        console.log("TotFee30Past",feeRev302/_.one)
-        console.log("RevFee30Past",feeRev30Array/_.one)
+        // console.log("Div30",feeRev/_.one)
+        // console.log("Div30P",feeRev30/_.one)
+        // console.log("TotFee30Current",feeRev2/_.one)
+        // console.log("TotFee30Past",feeRev302/_.one)
+        // console.log("RevFee30Past",feeRev30Array/_.one)
         //console.log("RevFee30S",feeRev30Array1/_.one)
+    })
+}
+async function lockTKN(acc, amount) {
+    it("It should deposit", async () => {
+        let balance = await poolWBNB.balanceOf(acc)
+        console.log(`balance: ${balance}`)
+        // await poolTKN1.approve(Dao.address, balance, { from: acc })
+        await Dao.deposit(poolWBNB.address, balance, { from: acc })
+        let balancee = await poolWBNB.balanceOf(acc)
+        console.log(`balanceA: ${balancee}`)
+        //console.log(`isMember: ${await Dao.isMember(acc)}`)
+        //console.log(`mapMemberPool_balance: ${await Dao.mapMemberPool_balance(acc, poolWBNB.address)}`)
+        //console.log(`totalWeight: ${await Dao.totalWeight()}`)
+        //console.log(`mapMember_weight: ${await Dao.mapMember_weight(acc)}`)
+        //console.log(`rate: ${_.getBN(await Dao.mapMember_weight(acc)).div(_.getBN(await Dao.totalWeight()))}`)
+    })
+}
+async function withdraw(acc) {
+    it("LPMIGRATION", async () => {
+        await Dao.DaoMIGRATION(poolWBNB.address);
+        console.log(`mapMemberPool_balance: ${await Dao.mapMemberPool_balance(acc, poolWBNB.address)}`)
+        let balancee = await poolWBNB.balanceOf(acc)
+        console.log(`balanceAA: ${balancee}`)
+        //console.log(`totalWeight: ${await Dao.totalWeight()}`)
+        //console.log(`mapMember_weight: ${await Dao.mapMember_weight(acc)}`)
+        //console.log(`rate: ${_.getBN(await Dao.mapMember_weight(acc)).div(_.getBN(await Dao.totalWeight()))}`)
     })
 }
 async function swapBASE(acc, x) {
@@ -572,6 +590,12 @@ async function swapTOKEN(acc, x) {
             assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(tokenStart.plus(y)), 'wbnb balance')
         }
 
+    })
+}
+async function swapInDao2() {
+    it("swap Dao", async () => {
+       await base.changeDAO(Dao2.address)  
+       await Dao2.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address );
     })
 }
 

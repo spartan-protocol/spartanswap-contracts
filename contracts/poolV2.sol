@@ -7,7 +7,8 @@ interface iDAO {
     function UTILS() external view returns(address);
     function SYNTHROUTER() external view returns(address);
     function DAO() external view returns (address);
-    function PSFACTORY() external view returns(address);
+    function POOLFACTORY() external view returns(address);
+    function SYNTHFACTORY() external view returns(address);
 }
 interface iWBNB {
     function withdraw(uint256) external;
@@ -60,7 +61,7 @@ contract Pool is iBEP20 {
     uint256 public baseAmount;
     uint256 public unitsAmount;
     uint256 public tokenAmount;
-     uint private lastMonth;
+    uint private lastMonth;
     uint public genesis;
     uint256 public map30DPoolRevenue;
     uint256 public mapPast30DPoolRevenue;
