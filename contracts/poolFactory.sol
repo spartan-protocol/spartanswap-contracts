@@ -47,6 +47,7 @@ contract PoolFactory {
         require(getPool(token) == address(0));
         require(token != BASE && iBEP20(token).decimals() == 18);
         Pool newPool; address _token = token;
+        if(token == address(0)){_token = WBNB;} // Handle BNB
         newPool = new Pool(BASE, _token); 
         pool = address(newPool);
         addPool(_token, pool);

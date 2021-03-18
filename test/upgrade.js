@@ -39,33 +39,33 @@ function sleep(ms) {
 contract('UpgradeContracts', function (accounts) {
     constructor(accounts)
      wrapBNB()
-     createPoolWBNBMain() // mainnet replica
-     createPoolTKN2Main()
-     addLiquidityMain(acc1, _.BN2Str(_.one * 90), _.BN2Str(_.one * 9)) // mainnet replica
-     addLiquidityTKN2Main(acc0,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
-     curatePoolsMain();
-     buyTOKENMain(acc0, _.BN2Str(_.one * 1))
-     sellTOKENMain(acc0, _.BN2Str(_.one))
-     removeLiquidityBNBMain(1000, acc0)
-     checkLockSupply()
-     burnBondv2()
-     burnBondv3()
-     deployerListBNB()
-     deployerChangeSecondsPerYear(10)
-     depositBNB(acc2)
-     claimLPAndLock(acc2, 2000) 
-     withdrawBNB(acc2)
+    //  createPoolWBNBMain() // mainnet replica
+    //  createPoolTKN2Main()
+    //  addLiquidityMain(acc1, _.BN2Str(_.one * 90), _.BN2Str(_.one * 9)) // mainnet replica
+    //  addLiquidityTKN2Main(acc0,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+    //  curatePoolsMain();
+    //  buyTOKENMain(acc0, _.BN2Str(_.one * 1))
+    //  sellTOKENMain(acc0, _.BN2Str(_.one))
+    //  removeLiquidityBNBMain(1000, acc0)
+    //  checkLockSupply()
+    //  burnBondv2()
+    //  burnBondv3()
+    //  deployerListBNB()
+    //  deployerChangeSecondsPerYear(10)
+    //  depositBNB(acc2)
+    //  claimLPAndLock(acc2, 2000) 
+    //  withdrawBNB(acc2)
      createPoolWBNB() // SPV2
      createPoolTKN1() // SPV2
      createPoolTKN2() // SPV2
-     deployerListBNBBond()
-     swapInDao();
-     addLiquidityBNB(acc1,_.BN2Str(10*_.one),  _.BN2Str(1*_.one));
-     addLiquidityBNB(acc1,_.BN2Str(100*_.one),  _.BN2Str(10*_.one));
-     claimLPAndLock(acc2, 2000) 
+    //  deployerListBNBBond() //SPV2
+     swapInDao(); //SPV2
+     addLiquidityBNB(acc1,_.BN2Str(10*_.one),  _.BN2Str(1*_.one)); //SPV2
+     addLiquidityBNB(acc1,_.BN2Str(100*_.one),  _.BN2Str(10*_.one)); //SPV2
+     //claimLPAndLock(acc2, 2000)  //SPV2
    
      curatePools() // SPV2
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+     buyTOKEN(acc0, _.BN2Str(_.one * 1)) //SPV2
      sellTOKEN(acc0, _.BN2Str(_.one))
      buyTOKEN(acc0, _.BN2Str(_.one * 1))
      sellTOKEN(acc0, _.BN2Str(_.one))
@@ -97,20 +97,21 @@ contract('UpgradeContracts', function (accounts) {
      swapBASE(acc0, _.BN2Str(_.one))
      swapTOKEN(acc0, _.BN2Str(_.one * 1))
      
-     removeLiquidityBNB(5000, acc0)
+     removeLiquidityBNB(5000, acc0) //SPV2
     
     //  ShowBNBMPool()
     //  ShowBNBPool()
-      moveliquidity(acc0)
-      moveliquidity(acc1)
-    //  //upgradeBondUsers(acc2)
+    //    moveliquidity(acc0) //SP2UP
+    //    moveliquidity(acc1) //SP2UP
+    //   upgradeBondUsers(acc2) //SP2UP
     // //  ShowBNBMPool()
     // //  ShowBNBPool()
       addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
       addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
-      revenue()
-      lockTKN(acc0, _.BN2Str(_.one * 1))
-      withdraw(acc0)
+      zapLiquidity(acc1)
+    //   revenue() // SPV2
+    //   lockTKN(acc0, _.BN2Str(_.one * 1)) // SPV2
+    //   withdraw(acc0) // SPV2
     //  createSyntheticBNB() // SPV2
     //  bondv4Seconds(10)
     //  bondv4Claim(acc2, 2000)
@@ -417,6 +418,23 @@ async function deployerListBNBBond(){
         let asset = _.BNB;
         await bond.listBondAsset(asset, {from:deployer});
 
+    })
+}
+async function zapLiquidity(acc) {
+    it("zap liquidity", async () => {
+        let SPT2BNB = _.BN2Str(await poolWBNB.balanceOf(acc))
+        let SPT2TKN = _.BN2Str(await poolTKN2.balanceOf(acc))
+        console.log("SPT2BNB bal",SPT2BNB/_.one )
+        console.log("SPT2BTC bal",SPT2TKN/_.one )
+        let fromTOKEN = wbnb.address
+        let toTOKEN = token2.address
+        let tx = await router.zapLiquidity(SPT2BNB, fromTOKEN, toTOKEN, {from:acc})
+        let SPT2BNBa = _.BN2Str(await poolWBNB.balanceOf(acc))
+        let SPT2TKNa = _.BN2Str(await poolTKN2.balanceOf(acc))
+        console.log("SPT2BNB bal",SPT2BNBa/_.one )
+        console.log("SPT2BTC bal",SPT2TKNa/_.one )
+        //console.log("Fee in Sparta", fee/_.one)
+       
     })
 }
 

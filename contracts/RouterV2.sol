@@ -87,16 +87,30 @@ contract Router {
     function addLiquidityAsym(uint inputToken, bool fromBase, address token) public payable returns (uint units) {
        return addLiquidityAsymForMember(inputToken,fromBase, token, msg.sender);
     }
+
+    function zapLiquidity(uint unitsLP, address fromToken, address toToken) public payable returns (uint units, uint fee){
+        address _poolTo = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_poolTo) == true);
+        address _poolFrom = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(fromToken);
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_poolFrom) == true);
+        address _member = msg.sender; 
+        Pool(_poolFrom).transferTo(_poolFrom, unitsLP);//RPTAF
+        require(unitsLP <= iBEP20(_poolFrom).totalSupply());
+        (uint _outputBase, uint _outputToken) = Pool(_poolFrom).removeLiquidityForMember(_member);
+        (uint _tokenBought,uint _feey) = swapTo(_outputToken,fromToken, toToken, _member);
+        units = addLiquidityForMember(_outputBase, _tokenBought, toToken, _member); 
+         return (units, _feey);
+    }
     // Add Asymmetrically
     function addLiquidityAsymForMember(uint inputToken, bool fromBase, address token, address member) public payable returns (uint units) {
         require(inputToken > 0);
         uint halfInput = inputToken.mul(5000).div(10000);
         if(!fromBase){
             (uint _baseBought, ) = swapTo(halfInput, token, BASE, member);
-            units = addLiquidity(_baseBought, halfInput, token); 
+            units = addLiquidityForMember(_baseBought, halfInput, token, member); 
         } else {
             (uint _tokenBought, ) = swapTo(halfInput, BASE, token,  member);
-            units = addLiquidity(halfInput, _tokenBought, token); 
+            units = addLiquidityForMember(halfInput, _tokenBought, token, member); 
         }
         return units;
     }
@@ -126,8 +140,8 @@ contract Router {
     function removeLiquidityAsymForMember(uint units, bool toBase, address token, address member) public returns (uint outputAmount, uint fee){
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(pool) == true);
-        require(units < iBEP20(pool).totalSupply());
-        _handleTransferIn(pool, units, pool);
+        require(units <= iBEP20(pool).totalSupply());
+        Pool(pool).transferTo(pool, units);//RPTAF
         (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidityForMember(member);
         if(toBase){
             (uint _baseBought,uint _feey) = swapTo(_outputToken,token, BASE, member);

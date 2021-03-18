@@ -1,6 +1,6 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-import "@nomiclabs/buidler/console.sol";
+
 import "./poolV2.sol";  
 interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
