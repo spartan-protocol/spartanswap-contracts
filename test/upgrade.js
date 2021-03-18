@@ -39,22 +39,25 @@ function sleep(ms) {
 contract('UpgradeContracts', function (accounts) {
     constructor(accounts)
      wrapBNB()
-    //  createPoolWBNBMain() // mainnet replica
-    //  createPoolTKN2Main()
-    //  addLiquidityMain(acc1, _.BN2Str(_.one * 90), _.BN2Str(_.one * 9)) // mainnet replica
-    //  addLiquidityTKN2Main(acc0,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
-    //  curatePoolsMain();
-    //  buyTOKENMain(acc0, _.BN2Str(_.one * 1))
-    //  sellTOKENMain(acc0, _.BN2Str(_.one))
-    //  removeLiquidityBNBMain(1000, acc0)
-    //  checkLockSupply()
-    //  burnBondv2()
-    //  burnBondv3()
-    //  deployerListBNB()
-    //  deployerChangeSecondsPerYear(10)
-    //  depositBNB(acc2)
-    //  claimLPAndLock(acc2, 2000) 
-    //  withdrawBNB(acc2)
+     createPoolWBNBMain() // mainnet replica
+     createPoolTKN2Main()
+     createPoolTKN1Main()
+     addLiquidityMain(acc1, _.BN2Str(_.one * 90), _.BN2Str(_.one * 9)) // mainnet replica
+     addLiquidityTKN2Main(acc0,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+    // addLiquidityTKN1Main(acc0,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+     curatePoolsMain();
+     buyTOKENMain(acc0, _.BN2Str(_.one * 1))
+     sellTOKENMain(acc0, _.BN2Str(_.one))
+     removeLiquidityBNBMain(1000, acc0)
+     checkLockSupply()
+     burnBondv2()
+     burnBondv3()
+     deployerListBNB()
+     deployerChangeSecondsPerYear(1)
+     depositBNB(acc2)
+     depositINTOBOND(acc1)
+    // claimLPAndLock(acc2, 2000) 
+     //withdrawBNB(acc2)
      createPoolWBNB() // SPV2
      createPoolTKN1() // SPV2
      createPoolTKN2() // SPV2
@@ -65,50 +68,51 @@ contract('UpgradeContracts', function (accounts) {
      //claimLPAndLock(acc2, 2000)  //SPV2
    
      curatePools() // SPV2
-     buyTOKEN(acc0, _.BN2Str(_.one * 1)) //SPV2
-     sellTOKEN(acc0, _.BN2Str(_.one))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
-     sellTOKEN(acc0, _.BN2Str(_.one))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
-     sellTOKEN(acc0, _.BN2Str(_.one))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
-     sellTOKEN(acc0, _.BN2Str(_.one))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
-     sellTOKEN(acc0, _.BN2Str(_.one))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
-     sellTOKEN(acc0, _.BN2Str(_.one))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
-     sellTOKEN(acc0, _.BN2Str(_.one))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
-     sellTOKEN(acc0, _.BN2Str(_.one))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
-     sellTOKEN(acc0, _.BN2Str(_.one))
-     buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1)) //SPV2
+    //  sellTOKEN(acc0, _.BN2Str(_.one))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  sellTOKEN(acc0, _.BN2Str(_.one))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  sellTOKEN(acc0, _.BN2Str(_.one))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  sellTOKEN(acc0, _.BN2Str(_.one))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  sellTOKEN(acc0, _.BN2Str(_.one))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  sellTOKEN(acc0, _.BN2Str(_.one))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  sellTOKEN(acc0, _.BN2Str(_.one))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  sellTOKEN(acc0, _.BN2Str(_.one))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  sellTOKEN(acc0, _.BN2Str(_.one))
+    //  buyTOKEN(acc0, _.BN2Str(_.one * 1))
 
-     swapBASE(acc0, _.BN2Str(_.one))
-     swapTOKEN(acc0, _.BN2Str(_.one * 1))
-     swapBASE(acc0, _.BN2Str(_.one))
-     swapTOKEN(acc0, _.BN2Str(_.one * 1))
-     swapBASE(acc0, _.BN2Str(_.one))
-     swapTOKEN(acc0, _.BN2Str(_.one * 1))
-     swapBASE(acc0, _.BN2Str(_.one))
-     swapTOKEN(acc0, _.BN2Str(_.one * 1))
-     swapBASE(acc0, _.BN2Str(_.one))
-     swapTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  swapBASE(acc0, _.BN2Str(_.one))
+    //  swapTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  swapBASE(acc0, _.BN2Str(_.one))
+    //  swapTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  swapBASE(acc0, _.BN2Str(_.one))
+    //  swapTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  swapBASE(acc0, _.BN2Str(_.one))
+    //  swapTOKEN(acc0, _.BN2Str(_.one * 1))
+    //  swapBASE(acc0, _.BN2Str(_.one))
+    //  swapTOKEN(acc0, _.BN2Str(_.one * 1))
      
      removeLiquidityBNB(5000, acc0) //SPV2
     
     //  ShowBNBMPool()
     //  ShowBNBPool()
-    //    moveliquidity(acc0) //SP2UP
-    //    moveliquidity(acc1) //SP2UP
-    //   upgradeBondUsers(acc2) //SP2UP
-    // //  ShowBNBMPool()
-    // //  ShowBNBPool()
-      addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
-      addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
-      zapLiquidity(acc1)
+        moveliquidity(acc0) //SP2UP
+        moveliquidity(acc1) //SP2UP
+        moveBONDv3(acc1)
+    // //   upgradeBondUsers(acc2) //SP2UP
+    // // //  ShowBNBMPool()
+    // // //  ShowBNBPool()
+       addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
+       addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
+       zapLiquidity(acc1)
     //   revenue() // SPV2
     //   lockTKN(acc0, _.BN2Str(_.one * 1)) // SPV2
     //   withdraw(acc0) // SPV2
@@ -149,7 +153,7 @@ function constructor(accounts) {
         bond = await BOND.new(base.address, wbnb.address);     //deploy new bond
         poolFactory = await POOLFACTORY.new(base.address,  wbnb.address) 
         synthFactory = await SYNTHFACTORY.new(base.address,  wbnb.address) 
-        upgrade = await UPGR.new(base.address, routerv1.address) // deploy wBNB
+        upgrade = await UPGR.new(base.address, routerv1.address, bondv3.address) // deploy wBNB
 
         Dao2 = await DAO.new(base.address)     // deploy daoV3
        
@@ -191,6 +195,7 @@ function constructor(accounts) {
 
         await wbnb.approve(bondv3.address, supply, {from:acc1}) // approve bond 
         await token1.approve(bondv3.address, supply, {from:acc1}) // approve bond 
+        await token2.approve(bondv3.address, supply, {from:acc1}) // approve bond 
         await base.approve(bondv3.address, supply, {from:acc1})
         await wbnb.approve(bondv2.address, supply, {from:acc1}) // approve bond 
         await token1.approve(bondv2.address, supply, {from:acc1}) // approve bond 
@@ -441,18 +446,56 @@ async function zapLiquidity(acc) {
 //upgrade
 async function swapInDao() {
     it("swap Dao", async () => {
+        // console.log("giv me",token1.address);
        await base.changeDAO(Dao.address)  
        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address );
     })
 }
 async function moveliquidity(acc) {
     it("Upgrade Liquidity", async () => {
-        let asset = wbnb.address;
-        let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
-       // console.log(tB/_.one)
-        await upgrade.migrateLiquidity(asset,tB, {from: acc} )
-        let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
-        //console.log(tBA/_.one)
+        // let tkn2 = _.BN2Str(await poolTKN2M.balanceOf(acc))
+        // console.log("tkn2 balance",tkn2/_.one)
+        // let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
+        // console.log("bnbLP balance",tB/_.one)
+        // let tkn1 = _.BN2Str(await poolTKN1M.balanceOf(acc))
+        // console.log("give balance",tkn1/_.one)
+        await upgrade.migrateLiquidity({from: acc})
+        // let tkn2A = _.BN2Str(await poolTKN2.balanceOf(acc))
+        // console.log("tkn2lp balance After",tkn2A/_.one)
+        // let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
+        // console.log("bnbLP balance After",tBA/_.one)
+        // let tkn1A = _.BN2Str(await poolTKN1.balanceOf(acc))
+        // console.log("givlp balance After",tkn1A/_.one)
+        
+    })
+}
+async function moveBONDv3(acc) {
+    it("Upgrade Liquidity", async () => {
+  
+        let mDB = await bondv3.getMemberDetails(acc, token1.address);
+        let BLPB = _.BN2Str(mDB.bondedLP)
+         console.log("lockedbondv3tkn1",BLPB);
+         let mDB1 = await bondv3.getMemberDetails(acc, token2.address);
+        let BLPB1 = _.BN2Str(mDB1.bondedLP)
+         console.log("lockedbondv3tkn2",BLPB1);
+         let mDB1b = await bondv3.getMemberDetails(acc, _.BNB);
+        let BLPB3 = _.BN2Str(mDB1b.bondedLP)
+         console.log("lockedbondv3bnb",BLPB3);
+        await upgrade.upgradeBONDv3({from: acc})
+        let mDA = await bondv3.getMemberDetails(acc, token1.address);
+        let BLPA = _.BN2Str(mDA.bondedLP)
+         console.log("lockedToken1",BLPA);
+         let mDA2 = await bondv3.getMemberDetails(acc, token2.address);
+        let BLPA2 = _.BN2Str(mDA2.bondedLP)
+         console.log("lockedTOken2",BLPA2);
+         let mDB1ba = await bondv3.getMemberDetails(acc, _.BNB);
+        let BLPB3a = _.BN2Str(mDB1ba.bondedLP)
+         console.log("lockedbondv3bnb",BLPB3a);
+         let mDB1bad = await bond.getMemberDetails(acc, _.BNB);
+        let BLPB3ad = _.BN2Str(mDB1bad.bondedLP)
+         console.log("lockedbondv3bnb",BLPB3ad);
+        
+        
     })
 }
 async function upgradeBondUsers(acc) {
@@ -634,6 +677,19 @@ async function createPoolWBNBMain() {
         await base.approve(poolWBNBM.address, supply, { from: acc1 })
     })
 }
+async function createPoolTKN1Main(SPT, token) {
+    it("It should deploy TKN1 Pool", async () => {
+        var _pool = await routerv1.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, token1.address)
+        await routerv1.createPool(_.BN2Str(_.one * 10), _.dot1BN, token1.address)
+        poolTKN1M = await POOLv1.at(_pool)
+        const baseAddr = await poolTKN1M.BASE()
+        assert.equal(baseAddr, base.address, "address is correct")
+      
+        let supply = await base.totalSupply()
+        await base.approve(poolTKN1M.address, supply, { from: acc0 })
+        await base.approve(poolTKN1M.address, supply, { from: acc1 })
+   })
+}
 async function createPoolTKN2Main(SPT, token) {
     it("It should deploy TKN2 Pool", async () => {
         var _pool = await routerv1.createPool.call(_.BN2Str(_.one * 10), _.dot1BN, token2.address)
@@ -678,11 +734,17 @@ async function addLiquidityTKN2Main(acc, b, t) {
         let tx = await routerv1.addLiquidity(b, t, token, { from: acc})
     })
 }
+async function addLiquidityTKN1Main(acc, b, t) {
+    it(`It should addLiquidity TKN2 from ${acc}`, async () => {
+        let token = token1.address
+        let tx = await routerv1.addLiquidity(b, t, token, { from: acc})
+    })
+}
 async function curatePoolsMain() {
     it("Curate POOls", async () => {
         await routerv1.addCuratedPoolM(wbnb.address);
         await routerv1.addCuratedPoolM(token2.address);
-        //await router.addCuratedPool(token2.address);
+        await routerv1.addCuratedPoolM(token1.address);
         //await router.challengLowestCuratedPool(token2.address);
         // let curatedP = await router.curatedPools(0);
         // // console.log(curatedP)
@@ -856,6 +918,8 @@ async function deployerListBNB(){
         let asset = _.BNB;
         await bondv2.listBondAsset(asset, {from:deployer});
         await bondv3.listBondAsset(asset, {from:deployer});
+        await bondv3.listBondAsset(token1.address, {from:deployer});
+        await bondv3.listBondAsset(token2.address, {from:deployer});
 
     })
 }
@@ -900,6 +964,26 @@ async function depositBNB(acc){
        
     })
 }
+async function depositINTOBOND(acc){
+    it(`It should deposit and bond into dao `, async () => {
+        // let asset = token1.address
+         let amount = _.BN2Str(_.one)
+        // let poolData = await utilsv1.getPoolData(asset);
+        // let spartaAllocation = await utilsv1.calcTokenPPinBase(asset,amount)
+        // var B = _.getBN(poolData.baseAmount)
+        // var T = _.getBN(poolData.tokenAmount)
+        // poolUnits = _.getBN((await poolWBNBM.totalSupply()))
+        // let units = _.getBN(await utilsv1.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
+        // DEPOTime = _.getBN((new Date())/1000)
+        await bondv3.deposit(token1.address, amount,{from:acc, value:amount})
+        await bondv3.deposit(token2.address, amount,{from:acc, value:amount})
+        await bondv3.deposit(_.BNB, amount,{from:acc, value:amount})
+    //    let memberDetails = await bondv3.getMemberDetails(acc, asset);
+    //    assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(units), 'bonded LP')
+       
+    })
+}
+
 async function claimLPAndLock(acc, ms){
     it(`It should claim and bond into DAO LPs after ${ms/1000} seconds`, async () => {
         await sleep(ms)
