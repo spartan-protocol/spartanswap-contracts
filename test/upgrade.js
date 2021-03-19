@@ -56,7 +56,7 @@ contract('UpgradeContracts', function (accounts) {
      deployerChangeSecondsPerYear(1)
      depositBNB(acc2)
      depositINTOBOND(acc1)
-    // claimLPAndLock(acc2, 2000) 
+     //claimLPAndLock(acc1, 2000) 
      //withdrawBNB(acc2)
      createPoolWBNB() // SPV2
      createPoolTKN1() // SPV2
@@ -65,8 +65,9 @@ contract('UpgradeContracts', function (accounts) {
      swapInDao(); //SPV2
      addLiquidityBNB(acc1,_.BN2Str(10*_.one),  _.BN2Str(1*_.one)); //SPV2
      addLiquidityBNB(acc1,_.BN2Str(100*_.one),  _.BN2Str(10*_.one)); //SPV2
-     //claimLPAndLock(acc2, 2000)  //SPV2
-   
+    // claimLPAndLock(acc2, 2000)  //SPV2
+   //
+   deployerListBNBSPV2()
      curatePools() // SPV2
     //  buyTOKEN(acc0, _.BN2Str(_.one * 1)) //SPV2
     //  sellTOKEN(acc0, _.BN2Str(_.one))
@@ -100,25 +101,25 @@ contract('UpgradeContracts', function (accounts) {
     //  swapBASE(acc0, _.BN2Str(_.one))
     //  swapTOKEN(acc0, _.BN2Str(_.one * 1))
      
-     removeLiquidityBNB(5000, acc0) //SPV2
+    // removeLiquidityBNB(5000, acc0) //SPV2
     
     //  ShowBNBMPool()
     //  ShowBNBPool()
-        moveliquidity(acc0) //SP2UP
-        moveliquidity(acc1) //SP2UP
-        moveBONDv3(acc1)
+         moveliquidity(acc0) //SP2UP
+         moveliquidity(acc1) //SP2UP
+         moveBONDv3(acc1)
     // //   upgradeBondUsers(acc2) //SP2UP
     // // //  ShowBNBMPool()
     // // //  ShowBNBPool()
-       addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
-       addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
-       zapLiquidity(acc1)
+        addLiquidityBNB(acc1,_.BN2Str(200*_.one),  _.BN2Str(10*_.one)); // SPV2
+        addLiquidityTKN2(acc1,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one)) // SPV2
+    //    zapLiquidity(acc1)
     //   revenue() // SPV2
     //   lockTKN(acc0, _.BN2Str(_.one * 1)) // SPV2
     //   withdraw(acc0) // SPV2
     //  createSyntheticBNB() // SPV2
-    //  bondv4Seconds(10)
-    //  bondv4Claim(acc2, 2000)
+       bondv4Seconds(1)
+       bondv4Claim(acc1, 2000)
    
 })
 
@@ -510,6 +511,16 @@ async function upgradeBondUsers(acc) {
         // console.log(tBA/_.one)
     })
 }
+async function deployerListBNBSPV2(){
+    it('deployer list asset', async () =>{
+        let deployer = acc0;
+        let asset = _.BNB;
+        await bond.listBondAsset(asset, {from:deployer});
+        await bond.listBondAsset(token1.address, {from:deployer});
+        await bond.listBondAsset(token2.address, {from:deployer});
+
+    })
+}
 async function bondv4Seconds(seconds) {
     it("Change Seconds", async () => {
         await bond.changeBondingPeriod(seconds, {from:acc0});
@@ -518,20 +529,42 @@ async function bondv4Seconds(seconds) {
     })
 }
 async function bondv4Claim(acc, ms) {
-    it("Claim bond ", async () => {
+    it("Claim all bondv4", async () => {
         let asset = _.BNB
         await sleep(ms)
+        let mDb = await bond.getMemberDetails(acc, asset);
+        let BLPb = _.BN2Str(mDb.bondedLP)
+        console.log("acc locked bnb",BLPb/_.one);
+        let mDA11 = await bond.getMemberDetails(acc, token1.address);
+        let BLPA11 = _.BN2Str(mDA11.bondedLP)
+        console.log("acc locked tkn1",BLPA11/_.one);
+        let mDA21 = await bond.getMemberDetails(acc, token2.address);
+        let BLPA21 = _.BN2Str(mDA21.bondedLP)
+        console.log("acc locked tkn2",BLPA21/_.one);
+
         let spBONDBal = _.BN2Str(await poolWBNB.balanceOf(acc))
-        console.log("acclp",spBONDBal);
-        let mDB = await bond.getMemberDetails(acc, asset);
-         let BLPB = _.BN2Str(mDB.bondedLP)
-         console.log("acclp",BLPB);
-        await bond.claimForMember(asset,acc,{from:acc})
-        let spBONDA = _.BN2Str(await poolWBNB.balanceOf(acc))
-        console.log("accb",spBONDA);
+        console.log("acc bnb",spBONDBal/_.one);
+        let spBONDBal1 = _.BN2Str(await poolTKN1.balanceOf(acc))
+        console.log("acc tkn1",spBONDBal1/_.one);
+        let spBONDBal2 = _.BN2Str(await poolTKN2.balanceOf(acc))
+        console.log("acc tkn2",spBONDBal2/_.one);
+        
+        await bond.claimAllForMember(acc,{from:acc})
         let mDA = await bond.getMemberDetails(acc, asset);
          let BLPA = _.BN2Str(mDA.bondedLP)
-         console.log("acclcA",BLPA);
+         console.log("acc locked bnb",BLPA/_.one);
+         let mDA1 = await bond.getMemberDetails(acc, token1.address);
+         let BLPA1 = _.BN2Str(mDA1.bondedLP)
+         console.log("acc locked tkn1",BLPA1/_.one);
+         let mDA2 = await bond.getMemberDetails(acc, token2.address);
+         let BLPA2 = _.BN2Str(mDA2.bondedLP)
+         console.log("acc locked tkn2",BLPA2/_.one);
+         let b = _.BN2Str(await poolWBNB.balanceOf(acc))
+        console.log("acc lp bnb",b/_.one);
+        let b1 = _.BN2Str(await poolTKN1.balanceOf(acc))
+        console.log("acc lp tkn1",b1/_.one);
+        let b2 = _.BN2Str(await poolTKN2.balanceOf(acc))
+        console.log("acc lp tkn2",b2/_.one);
     })
 }
 async function revenue() {

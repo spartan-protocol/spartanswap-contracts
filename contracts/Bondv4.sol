@@ -2,6 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./cInterfaces.sol";
+import "@nomiclabs/buidler/console.sol";
 interface iBASE {
     function DAO() external view returns (iDAO);
     function burn(uint) external;
@@ -287,6 +288,16 @@ contract Bond is iBEP20 {
                 }
                 LPunits = iROUTER(_DAO().ROUTER()).addLiquidity(spartaAllocation, _amount, _token);
             } 
+    }
+    function claimAllForMember(address member) public returns (bool){
+        address [] memory listedAssets = listedBondAssets;
+        for(uint i =0; i<listedAssets.length; i++){
+            uint claimA = calcClaimBondedLP(member,listedAssets[i]);
+            if(claimA>0){
+                claimForMember(listedAssets[i],member);
+            }
+        }
+        return true;
     }
     function claimForMember(address asset, address member) public returns (bool){
         require(mapAddress_listedAssets[asset].bondedLP[member] > 0, '!bondedlps');
