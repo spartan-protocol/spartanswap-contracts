@@ -81,7 +81,7 @@ function depositLP(address pool, uint amount, address member) public onlyDAO ret
 
         return weight;
     }
-       function updateWeight(address member) public {
+    function updateWeight(address member) public {
        uint memberPool =  mapMember_poolArray[member].length;
        for(uint i = 0; i < memberPool; i++){
            increaseWeight(mapMember_poolArray[member][i], member);
@@ -96,13 +96,12 @@ function depositLP(address pool, uint amount, address member) public onlyDAO ret
 
 
 function withdraw(address pool, uint amount, address member) public onlyDAO returns (bool){
-         mapMemberPool_balance[msg.sender][pool] =  mapMemberPool_balance[msg.sender][pool].sub(amount);
-        uint weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[msg.sender][pool]); // Get claim on BASE in pool
-        mapMemberPool_weight[msg.sender][pool] = weight;
+         mapMemberPool_balance[member][pool] =  mapMemberPool_balance[member][pool].sub(amount);
+        uint weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[member][pool]); // Get claim on BASE in pool
+        mapMemberPool_weight[member][pool] = weight;
         require(amount > 0, "!Balance");
-        decreaseWeight(pool, msg.sender, amount);
+        decreaseWeight(pool, member, amount);
         require(iBEP20(pool).transfer(member, amount), "Must transfer"); // Then transfer
-        mapMemberPool_balance[member][pool] = mapMemberPool_balance[member][pool].sub(amount); // Record total pool balance for member
         return true;
 }
 

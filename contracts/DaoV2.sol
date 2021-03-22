@@ -2,12 +2,12 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./DaoVault.sol";
-
+import "@nomiclabs/buidler/console.sol";
 
 interface iDAOVAULT {
     function withdraw(address, uint, address) external  returns (bool);
     function depositLP(address, uint, address) external  returns (bool);
-    function updateWeight(address member) external returns(uint);
+    function updateWeight(address) external ;
     function mapMember_weight(address) external returns(uint); 
     function mapMemberPool_balance(address, address) external returns (uint);
     function totalWeight() external view returns(uint);
@@ -55,12 +55,12 @@ contract Dao {
 
     
     uint256 public secondsPerEra;
-    uint32 public coolOffPeriod;
-    uint32 public proposalCount;
-    uint32 public majorityFactor;
-    uint128 public erasToEarn;
-    uint32 public daoClaim;
-    uint32 public daoFee;
+    uint256 public coolOffPeriod;
+    uint256 public proposalCount;
+    uint256 public majorityFactor;
+    uint256 public erasToEarn;
+    uint256 public daoClaim;
+    uint256 public daoFee;
     
 
     struct GrantDetails{
@@ -138,7 +138,8 @@ contract Dao {
         daoClaim = 1000;
         daoFee = 100;
         mStatus =false;
-        secondsPerEra = iBASE(BASE).secondsPerEra();
+        // secondsPerEra = iBASE(BASE).secondsPerEra();
+        secondsPerEra = 3;
     }
     function setGenesisAddresses(address _router, address _utils, address _masterLoan, address _bond, address _daoVault, address _poolFactory,address _synthFactory ) public onlyDAO {
         _ROUTER = iROUTER(_router);
@@ -203,7 +204,7 @@ contract Dao {
     function withdraw(address pool, uint amount) public {
         require(_DAOVAULT.withdraw(pool, amount, msg.sender), "!transfer"); // Then transfer
         uint256 poolBal = _DAOVAULT.mapMemberPool_balance(msg.sender, pool);
-        if(poolBal > 0){
+        if(poolBal == 0){
             mapMember_lastTime[msg.sender] = 0; //Zero out seconds 
         }
         emit MemberWithdraws(msg.sender, pool, amount);
@@ -287,7 +288,7 @@ contract Dao {
     }
     
     function payFee() internal returns(bool){
-        uint _amount = daoFee*10**18;
+        uint _amount = daoFee.mul(10**18);
         require(iBASE(BASE).transferTo(address(_ROUTER), _amount), '!fee' ); 
         return true;
     } 

@@ -90,18 +90,12 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "member",
+          "name": "",
           "type": "address"
         }
       ],
       "name": "updateWeight",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
+      "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
     },

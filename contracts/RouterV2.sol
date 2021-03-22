@@ -335,10 +335,11 @@ contract Router {
         uint balanceBase = iBEP20(BASE).balanceOf(address(this)); // get base balance
         iBEP20(BASE).transfer(newRouterAddress, balanceBase);
     }
-    function grantFunds(uint amount, address grantee) public onlyDAO {
+    function grantFunds(uint amount, address grantee) public onlyDAO returns (bool){
         require(amount < iBEP20(BASE).balanceOf(address(this)));
         require(grantee != address(0));
         iBEP20(BASE).transfer(grantee, amount);
+        return true;
     }
 
     function destroyRouter() public onlyDAO {
