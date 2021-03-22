@@ -2,6 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
+import "@nomiclabs/buidler/console.sol";
 interface iSYNTHFACTORY {
     function isSynth(address) external view returns (bool);
 
@@ -21,6 +22,7 @@ contract Router {
     using SafeMath for uint256;
 
     address public BASE;
+    address private NDAO;
     address public WBNB;
     address public DEPLOYER;
 
@@ -48,7 +50,8 @@ contract Router {
         _;
     }
 
-    constructor (address _base, address _wbnb) public payable {
+    constructor (address _base, address _wbnb, address _newDao) public payable {
+        NDAO = _newDao;
         BASE = _base;
         WBNB = _wbnb;
         arrayFeeSize = 20;
@@ -59,7 +62,12 @@ contract Router {
     }
 
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        bool status = iDAO(NDAO).MSTATUS();
+        if(status == true){
+         return iBASE(BASE).DAO();
+        }else{
+          return iNDAO(NDAO).DAO();
+        }
     }
 
     receive() external payable {}
@@ -157,9 +165,6 @@ contract Router {
 
     //==================================================================================//
     // Swapping Functions
-    function buy(uint256 amount, address token) public returns (uint256 outputAmount, uint256 fee){
-        return buyTo(amount, token, msg.sender);
-    }
     function buyTo(uint amount, address token, address member) public returns (uint outputAmount, uint fee) {
         require(token != BASE);
         address _token = token;
@@ -171,9 +176,6 @@ contract Router {
         getsDividend(_pool,token, fee);
         emit Swapped(_token, BASE, amount, outputAmount, fee, member);
         return (outputAmount, fee);
-    }
-    function sell(uint amount, address token) public payable returns (uint outputAmount, uint fee){
-        return sellTo(amount, token, msg.sender);
     }
     function sellTo(uint amount, address token, address member) public payable returns (uint outputAmount, uint fee) {
         require(token != BASE);
@@ -201,8 +203,8 @@ contract Router {
              (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
             fee = feey.add(_feez);
             getsDividend(_poolTo,toToken, fee);
-            _handleTransferOut(toToken, outputAmount, member);
             outputAmount = _zz; 
+            _handleTransferOut(toToken, outputAmount, member);
             emit DoubleSwapped(fromToken, toToken, inputAmount, outputAmount, fee, member);
         }
         return (outputAmount, fee);

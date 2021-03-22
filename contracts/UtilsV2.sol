@@ -32,6 +32,11 @@ interface iDAO {
     function SYNTHFACTORY() external view returns(address);
     function POOLFACTORY() external view returns(address);
     function SYNTHROUTER() external view returns(address);
+    function MSTATUS() external view returns(bool);
+}
+interface iNDAO {
+    function DAO() external view returns (iDAO);
+ 
 }
 interface iPOOL {
     function genesis() external view returns(uint);
@@ -57,6 +62,7 @@ contract Utils {
     address public BASE;
     address public oldRouter;
     address public DEPLOYER;
+    address public NDAO;
 
     uint public one = 10**18;
 
@@ -113,14 +119,20 @@ contract Utils {
         _;
     }
 
-    constructor (address _base, address _oldRouter) public payable {
+    constructor (address _base, address _oldRouter, address _newDAO) public payable {
         BASE = _base;
+        NDAO = _newDAO;
         oldRouter = _oldRouter;
         DEPLOYER = msg.sender;
     }
 
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        bool status = iDAO(NDAO).MSTATUS();
+        if(status == true){
+         return iBASE(BASE).DAO();
+        }else{
+          return iNDAO(NDAO).DAO();
+        }
     }
 
     //====================================DATA-HELPERS====================================//

@@ -13,6 +13,7 @@ contract Synth is iBEP20 {
     address public LayerONE;
     uint public genesis;
     address public DEPLOYER;
+    address public NDAO;
 
     // ERC-20 Parameters
     string _name; string _symbol;
@@ -24,7 +25,12 @@ contract Synth is iBEP20 {
     uint public totalCollateral;
 
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        bool status = iDAO(NDAO).MSTATUS();
+        if(status == true){
+         return iBASE(BASE).DAO();
+        }else{
+          return iNDAO(NDAO).DAO();
+        }
     }
      modifier onlyDAO() {
         require(msg.sender == DEPLOYER, "!DAO");
@@ -35,8 +41,9 @@ contract Synth is iBEP20 {
         _;
     }
 
-    constructor (address _base,address _token) public payable {
+    constructor (address _base,address _token, address _newDAO) public payable {
          BASE = _base;
+         NDAO = _newDAO;
          LayerONE = _token;
         string memory synthName = "SpartanSynthV1-";
         string memory synthSymbol = "SST1-s";

@@ -6,6 +6,11 @@ import "./DaoVault.sol";
 
 interface iDAOVAULT {
     function withdraw(address, uint, address) external  returns (bool);
+    function depositLP(address, uint, address) external  returns (bool);
+    function updateWeight(address member) external returns(uint);
+    function mapMember_weight(address) external returns(uint); 
+    function mapMemberPool_balance(address, address) external returns (uint);
+    function totalWeight() external view returns(uint);
 }
 interface iROUTER {
     function grantFunds(uint, address) external payable returns (bool);
@@ -26,15 +31,8 @@ interface iPOOLFACTORY {
 interface iSYNTHFACTORY {
     function isSynth(address) external returns (bool);
 }
-interface iUTILS {
-    function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
-    function getPoolShareWeight(address token, uint units)external view returns(uint weight);
-}
-interface iPOOL {
-    function TOKEN() external view returns(address);
-    function transferTo(address, uint) external payable returns(bool);
-    function removeLiquidity() external returns (uint, uint);
-}
+
+
 interface iBOND {
     function mintBond() external payable returns (bool);
     function burnBond() external payable returns (bool);
@@ -55,7 +53,7 @@ contract Dao {
     address public DEPLOYER;
     address public BASE;
 
-    uint256 public totalWeight;
+    
     uint256 public secondsPerEra;
     uint32 public coolOffPeriod;
     uint32 public proposalCount;
@@ -87,6 +85,7 @@ contract Dao {
     }
 
     bool public daoHasMoved;
+    bool public mStatus;
     address public DAO;
 
     iROUTER private _ROUTER;
@@ -100,12 +99,8 @@ contract Dao {
     address[] public arrayMembers;
     
     mapping(address => bool) public isMember; // Is Member
-    mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's balance in pool
-    mapping(address => uint256) public mapMember_weight; // Value of weight
-    mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of weight for pool
-    mapping(address => uint256) public mapMember_lastTime;
-    mapping(address => address[]) public mapMember_poolArray;
     mapping(address => bool) public isListed;
+    mapping(address => uint256) public mapMember_lastTime;
 
     mapping(uint256 => uint32) public mapPID_param;
     mapping(uint256 => address) public mapPID_address;
@@ -117,9 +112,8 @@ contract Dao {
     mapping(uint256 => bool) public mapPID_finalised;
     mapping(uint256 => mapping(address => uint256)) public mapPIDMember_votes;
 
-    event MemberDeposits(address indexed member,address indexed pool,uint256 amount, uint256 weight);
+    event MemberDeposits(address indexed member,address indexed pool,uint256 amount);
     event MemberWithdraws(address indexed member,address indexed pool,uint256 balance);
-    event WeightChange(address indexed member, uint256 weight, uint256 totalWeight);
 
     event NewProposal(address indexed member, uint indexed proposalID, string proposalType);
     event NewVote(address indexed member, uint indexed proposalID, uint voteWeight, uint totalVotes, string proposalType);
@@ -143,6 +137,7 @@ contract Dao {
         majorityFactor = 6666;
         daoClaim = 1000;
         daoFee = 100;
+        mStatus =false;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
     function setGenesisAddresses(address _router, address _utils, address _masterLoan, address _bond, address _daoVault, address _poolFactory,address _synthFactory ) public onlyDAO {
@@ -165,22 +160,19 @@ contract Dao {
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
+    function MSTATUS() public view returns (bool) {
+        return mStatus;
+    }
+    function _MSTATUS(bool status) public onlyDAO {
+        mStatus = status;
+    }
     //============================== USER - DEPOSIT/WITHDRAW ================================//
 
     // Member deposits some LP tokens
     function deposit(address pool, uint256 amount) public {
         depositLPForMember(pool, amount, msg.sender);
     }
-     function DaoMIGRATION(address pool) public onlyDAO{
-        for(uint i = 0; i < arrayMembers.length; i++){
-            address member = arrayMembers[i];
-            if(mapMember_weight[member] > 0){
-                migrateMember(pool,member);
-            }
-            
-       }
-       
-    }
+
     // Contract deposits some LP tokens for member
     function depositLPForMember(address pool, uint256 amount, address member) public {
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!Curated");
@@ -189,11 +181,9 @@ contract Dao {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
-        require(iPOOL(pool).transferTo(address(_DAOVAULT), amount), 'sendlps');
+        _DAOVAULT.depositLP(pool, amount, member);
         mapMember_lastTime[member] = block.timestamp;
-        mapMemberPool_balance[member][pool] = mapMemberPool_balance[member][pool].add(amount); // Record total pool balance for member
-        uint weight = increaseWeight(pool, member);
-        emit MemberDeposits(member, pool, amount, weight);
+        emit MemberDeposits(member, pool, amount);
     }
     
     function depositForMember(address pool, uint256 amount, address member) public payable{
@@ -209,45 +199,16 @@ contract Dao {
         _BOND.depositInit(newPool, lpUNits, member);
     }
 
-    // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
-    function increaseWeight(address pool, address member) public returns(uint){
-        require(isMember[member], "!Member");
-        require(_POOLFACTORY.isCuratedPool(pool) == true, "!Curated");
-        if(mapMemberPool_weight[member][pool] > 0){ // Remove previous weights
-            totalWeight = totalWeight.sub(mapMemberPool_weight[member][pool]);
-            mapMember_weight[member] = mapMember_weight[member].sub(mapMemberPool_weight[member][pool]);
-            mapMemberPool_weight[member][pool] = 0;
-        } else {
-            mapMember_poolArray[member].push(pool);
-        }
-        uint weight = _UTILS.getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[member][pool]); // Get claim on BASE in pool
-        mapMemberPool_weight[member][pool] = weight;
-        mapMember_weight[member] = mapMember_weight[member].add(weight);
-        totalWeight = totalWeight.add(weight);
-        emit WeightChange(member, weight, totalWeight);
-        return weight;
-    }
-
     // Member withdraws all from a pool
     function withdraw(address pool, uint amount) public {
-        mapMemberPool_balance[msg.sender][pool] =  mapMemberPool_balance[msg.sender][pool].sub(amount);
-        uint weight = _UTILS.getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[msg.sender][pool]); // Get claim on BASE in pool
-        mapMemberPool_weight[msg.sender][pool] = weight;
-        require(amount > 0, "!Balance");
-        decreaseWeight(pool, msg.sender, amount);
         require(_DAOVAULT.withdraw(pool, amount, msg.sender), "!transfer"); // Then transfer
+        uint256 poolBal = _DAOVAULT.mapMemberPool_balance(msg.sender, pool);
+        if(poolBal > 0){
+            mapMember_lastTime[msg.sender] = 0; //Zero out seconds 
+        }
         emit MemberWithdraws(msg.sender, pool, amount);
     }
 
-    function decreaseWeight(address pool, address member, uint amount) internal {
-        uint weightRemoved = _UTILS.getPoolShareWeight(iPOOL(pool).TOKEN(), amount); // Get claim on BASE in pool
-        if(mapMemberPool_balance[member][pool] == 0){
-            mapMember_lastTime[member] = 0; //Zero out seconds 
-        }
-        totalWeight = totalWeight.sub(weightRemoved); // Remove that weight
-        mapMember_weight[member] = mapMember_weight[member].sub(weightRemoved); // Reduce weight
-        emit WeightChange(member, weightRemoved, totalWeight);
-    }
 
     //============================== REWARDS ================================//
     // Rewards
@@ -272,19 +233,12 @@ contract Dao {
     }
 
     function calcReward(address member) public returns(uint){
-        updateWeight(member);
-        uint weight = mapMember_weight[member];
+        _DAOVAULT.updateWeight(member);
+        uint weight = _DAOVAULT.mapMember_weight(member);
+        uint _totalWeight = _DAOVAULT.totalWeight();
         uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER)).div(erasToEarn); // Aim to deplete reserve over a number of days
-        return _UTILS.calcShare(weight, totalWeight, reserve); // Get member's share of that
+        return _UTILS.calcShare(weight, _totalWeight, reserve); // Get member's share of that
     }
-
-    function updateWeight(address member) public returns(uint){
-       uint memberPool =  mapMember_poolArray[member].length;
-       for(uint i = 0; i < memberPool; i++){
-           increaseWeight(mapMember_poolArray[member][i], member);
-       }
-    }
-
     //============================== CREATE PROPOSALS ================================//
 
     // New ID, but specify type, one type for each function call
@@ -378,7 +332,7 @@ contract Dao {
         require(hasMinority(newProposalID), "!minority");
         require(isEqual(bytes(mapPID_type[oldProposalID]), bytes(mapPID_type[newProposalID])), "!same");
         mapPID_votes[oldProposalID] = 0;
-        emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], totalWeight);
+        emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], _DAOVAULT.totalWeight());
     }
 
     // Proposal with quorum can finalise after cool off period
@@ -544,7 +498,7 @@ contract Dao {
     
     function completeProposal(uint _proposalID) internal {
         string memory _typeStr = mapPID_type[_proposalID];
-        emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID], totalWeight, _typeStr);
+        emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID],_DAOVAULT.totalWeight(), _typeStr);
         mapPID_votes[_proposalID] = 0;
         mapPID_finalised[_proposalID] = true;
         mapPID_finalising[_proposalID] = false;
@@ -554,15 +508,16 @@ contract Dao {
 
     function countVotes(uint _proposalID) internal returns (uint voteWeight){
         mapPID_votes[_proposalID] = mapPID_votes[_proposalID].sub(mapPIDMember_votes[_proposalID][msg.sender]);
-        updateWeight(msg.sender);
-        voteWeight = mapMember_weight[msg.sender];
+         _DAOVAULT.updateWeight(msg.sender);
+        voteWeight = _DAOVAULT.mapMember_weight(msg.sender);
         mapPID_votes[_proposalID] += voteWeight;
         mapPIDMember_votes[_proposalID][msg.sender] = voteWeight;
         return voteWeight;
     }
     function hasMajority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-        uint consensus = totalWeight.mul(majorityFactor).div(10000); // > 66.66%
+         uint _totalWeight = _DAOVAULT.totalWeight();
+        uint consensus = _totalWeight.mul(majorityFactor).div(10000); // > 66.66%
         if(votes > consensus){
             return true;
         } else {
@@ -571,7 +526,8 @@ contract Dao {
     }
     function hasQuorum(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-        uint consensus = totalWeight.div(3); // >33%
+        uint _totalWeight = _DAOVAULT.totalWeight();
+        uint consensus = _totalWeight.div(3); // >33%
         if(votes > consensus){
             return true;
         } else {
@@ -580,23 +536,14 @@ contract Dao {
     }
     function hasMinority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-        uint consensus = totalWeight.div(6); // >16%
+         uint _totalWeight = _DAOVAULT.totalWeight();
+        uint consensus = _totalWeight.div(6); // >16%
         if(votes > consensus){
             return true;
         } else {
             return false;
         }
     }
-    function migrateMember(address pool, address member) internal  {
-        uint amount = mapMemberPool_balance[member][pool];
-        mapMemberPool_weight[member][pool] = 0;
-        require(amount > 0, "!Balance");
-        mapMemberPool_balance[member][pool] = 0;
-        decreaseWeight(pool, member, amount);
-        require(_DAOVAULT.withdraw(pool, amount, member), "!transfer"); // Then transfer
-        emit MemberWithdraws(member, pool, amount);
-    }
-
 
     //============================== ROUTER && UTILS ================================//
 
@@ -656,13 +603,7 @@ contract Dao {
     function memberCount() public view returns(uint){
         return arrayMembers.length;
     }
-    function getMemberDetails(address member) public view returns (MemberDetails memory memberDetails){
-        memberDetails.isMember = isMember[member];
-        memberDetails.weight = mapMember_weight[member];
-        memberDetails.lastBlock = mapMember_lastTime[member];
-        memberDetails.poolCount = mapMember_poolArray[member].length;
-        return memberDetails;
-    }
+    
     function getProposalDetails(uint proposalID) public view returns (ProposalDetails memory proposalDetails){
         proposalDetails.id = proposalID;
         proposalDetails.proposalType = mapPID_type[proposalID];

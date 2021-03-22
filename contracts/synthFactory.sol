@@ -7,6 +7,7 @@ contract SynthFactory {
     address public BASE;
     address public WBNB;
     address public DEPLOYER;
+    address public NDAO;
 
     address[] public arraySynths;
     mapping(address => address) private mapToken_Synth;
@@ -23,14 +24,20 @@ contract SynthFactory {
         _;
     }
 
-    constructor (address _base, address _wbnb) public payable {
+    constructor (address _base, address _wbnb, address _newDAO) public payable {
         BASE = _base;
         WBNB = _wbnb;
+        NDAO = _newDAO;
         DEPLOYER = msg.sender;
     }
 
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        bool status = iDAO(NDAO).MSTATUS();
+        if(status == true){
+         return iBASE(BASE).DAO();
+        }else{
+          return iNDAO(NDAO).DAO();
+        }
     }
 
     function purgeDeployer() public onlyDAO {
@@ -43,7 +50,7 @@ contract SynthFactory {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "Must be Curated");
         Synth newSynth; 
-        newSynth = new Synth(BASE,token);  
+        newSynth = new Synth(BASE,token, NDAO);  
         synth = address(newSynth);
         addSynth(token, synth);
         return synth;

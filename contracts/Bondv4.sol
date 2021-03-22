@@ -12,8 +12,13 @@ interface iDAO {
      function ROUTER() external view returns(address);
      function UTILS() external view returns(address);
      function DAO() external view returns (address);
+     function MSTATUS() external view returns(bool);
      function POOLFACTORY() external view returns(address);
      function depositForMember(address pool, uint256 amount, address member) external;
+}
+interface iNDAO {
+    function DAO() external view returns (iDAO);
+ 
 }
 interface iROUTER {
     function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
@@ -62,6 +67,7 @@ contract Bond is iBEP20 {
   // Parameters
     address public BASE;
     address public WBNB;
+      address private NDAO;
     address [] public arrayMembers;
     address public DEPLOYER;
     uint public one = 10**18;
@@ -90,9 +96,10 @@ contract Bond is iBEP20 {
 
     //=====================================CREATION=========================================//
     // Constructor
-    constructor(address _base, address _wbnb) public {
+    constructor(address _base, address _wbnb, address _newDao) public {
         BASE = _base;
         WBNB = _wbnb;
+        NDAO = _newDao;
         name = "SpartanBondTokenV4";
         symbol  = "SPT-BOND-V4";
         decimals = 18;
@@ -102,7 +109,12 @@ contract Bond is iBEP20 {
         emit Transfer(address(0), address(this), totalSupply);
     }
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        bool status = iDAO(NDAO).MSTATUS();
+        if(status == true){
+         return iBASE(BASE).DAO();
+        }else{
+          return iNDAO(NDAO).DAO();
+        }
     }
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);

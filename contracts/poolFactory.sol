@@ -8,6 +8,7 @@ contract PoolFactory {
     address public BASE;
     address public WBNB;
     address public DEPLOYER;
+      address public NDAO;
 
     uint public curatedPoolSize;
 
@@ -29,15 +30,21 @@ contract PoolFactory {
         _;
     }
 
-    constructor (address _base, address _wbnb) public payable {
+    constructor (address _base, address _wbnb, address _newDAO) public payable {
         BASE = _base;
         WBNB = _wbnb;
+        NDAO = _newDAO;
         curatedPoolSize = 10;
         DEPLOYER = msg.sender;
     }
 
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        bool status = iDAO(NDAO).MSTATUS();
+        if(status == true){
+         return iBASE(BASE).DAO();
+        }else{
+          return iNDAO(NDAO).DAO();
+        }
     }
 
     function purgeDeployer() public onlyDAO {
@@ -48,7 +55,7 @@ contract PoolFactory {
         require(token != BASE && iBEP20(token).decimals() == 18);
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
-        newPool = new Pool(BASE, _token); 
+        newPool = new Pool(BASE, _token, NDAO); 
         pool = address(newPool);
         addPool(_token, pool);
         return pool;

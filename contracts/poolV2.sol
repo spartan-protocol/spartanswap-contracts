@@ -1,14 +1,19 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 import "./cInterfaces.sol";
 interface iDAO {
     function ROUTER() external view returns(address);
     function UTILS() external view returns(address);
     function SYNTHROUTER() external view returns(address);
+    function MSTATUS() external view returns(bool);
     function DAO() external view returns (address);
     function POOLFACTORY() external view returns(address);
     function SYNTHFACTORY() external view returns(address);
+}
+interface iNDAO {
+    function DAO() external view returns (iDAO);
+ 
 }
 interface iWBNB {
     function withdraw(uint256) external;
@@ -49,6 +54,7 @@ contract Pool is iBEP20 {
     using SafeMath for uint256;
 
     address public BASE;
+    address public NDAO;
     address public TOKEN;
     address public DEPLOYER;
     // ERC-20 Parameters
@@ -71,7 +77,12 @@ contract Pool is iBEP20 {
     event Swapped(address tokenFrom, address tokenTo, uint inputAmount, uint outputAmount, uint fee, address recipient);
 
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        bool status = iDAO(NDAO).MSTATUS();
+        if(status == true){
+         return iBASE(BASE).DAO();
+        }else{
+          return iNDAO(NDAO).DAO();
+        }
     }
     modifier onlyDAO() {
         require(msg.sender == DEPLOYER, "!DAO");
@@ -82,8 +93,9 @@ contract Pool is iBEP20 {
         _;
     }
 
-    constructor (address _base, address _token) public payable {
+    constructor (address _base, address _token, address _newDAO) public payable {
         BASE = _base;
+         NDAO = _newDAO;
         TOKEN = _token;
         string memory poolName = "SpartanPoolV2-";
         string memory poolSymbol = "SPT2-";

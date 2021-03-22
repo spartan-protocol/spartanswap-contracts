@@ -8,10 +8,14 @@ interface iBASE {
     function burn(uint) external;
     function claim(address asset, uint256 amount) external payable;  
 }
+interface iNDAO {
+    function DAO() external view returns (iDAO);
+}
 interface iDAO {
      function ROUTER() external view returns(address);
      function UTILS() external view returns(address);
      function DAO() external view returns (address);
+     function MSTATUS() external view returns(bool);
      function POOLFACTORY() external view returns(address);
      function BOND() external view returns (address);
      function depositForMember(address pool, uint256 amount, address member) external;
@@ -45,18 +49,24 @@ contract SPARTANUPGRADE {
    address public BASE;
    address public OLDRouter;
    address public OLDBOND;
-
+   address private NDAO;
    address public DEPLOYER;
    
-  constructor (address _base, address oldRouter, address _oldBond) public payable {
+  constructor (address _base, address oldRouter, address _oldBond, address _newDAO) public payable {
         BASE = _base;
+        NDAO = _newDAO;
         OLDRouter = oldRouter;
          OLDBOND = _oldBond;
         DEPLOYER = msg.sender;
     }
 
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        bool status = iDAO(NDAO).MSTATUS();
+        if(status == true){
+         return iBASE(BASE).DAO();
+        }else{
+          return iNDAO(NDAO).DAO();
+        }
     }
       modifier onlyDEPLOYER() {
         require(msg.sender == DEPLOYER );
@@ -68,7 +78,7 @@ contract SPARTANUPGRADE {
         uint tokenAll = iROUTER(OLDRouter).tokenCount();
         for(uint i = 0; i < tokenAll; i++){
           address token = iROUTER(OLDRouter).getToken(i);
-          if(token == 0xE49b84771470A87F4D9544685ea0F0517933B2B4){ //0xE49b84771470A87F4D9544685ea0F0517933B2B4 = GIV
+          if(token == 0xE49b84771470A87F4D9544685ea0F0517933B2B4){ //decimal check
                _oldPool = iROUTER(OLDRouter).getPool(token);//get old pool
                amount = iBEP20(_oldPool).balanceOf(_member);
               if(amount > 0){
