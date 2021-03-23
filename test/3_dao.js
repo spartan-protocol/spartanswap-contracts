@@ -45,14 +45,14 @@ contract('DAO', function (accounts) {
     rate()
     // voteParam()
     // voteIncentive()
-     voteAction()
+    // voteAction()
     // voteGrant()
     // voteUtils()
     // voteRouter()
     //voteDao()
     //  withdrawBNB(acc0)
     //  withdrawTKN1(acc1)
-    //harvest()
+    harvest()
 
 })
 

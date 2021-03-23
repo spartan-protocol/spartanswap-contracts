@@ -14,6 +14,8 @@ var UTILS = artifacts.require("./Utils.sol");
 var POOLFACTORY = artifacts.require("./poolFactory.sol");
 var WBNB = artifacts.require("./WBNB");
 var TOKEN = artifacts.require("./Token1.sol");
+var SYNTH = artifacts.require("./synth.sol");
+var SYNTHFACTORY = artifacts.require("./synthFactory.sol");
 var base; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
 var poolWBNB; var poolTKN1; var synthTNK2; var synthBNB;
@@ -33,12 +35,33 @@ contract('SWAP', function (accounts) {
     addLiquidityTKN1(acc1,_.BN2Str(100*_.one),  _.BN2Str(50*_.one))
     swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
     swapBNBtoBASE(acc1, _.BN2Str(1*_.one))// wbnb swaps
+    curatePools() // SPV2
+    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
     buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
     sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
     swapTKN1ToBNB(acc2, _.BN2Str(_.one * 1))//double swaps
     swapBNBToTKN1(acc2, _.BN2Str(_.one * 1))//double swaps
     swapBASE(acc0, _.BN2Str(_.one)) // dividends
     swapTOKEN(acc0, _.BN2Str(_.one * 1))// dividends
+    swapBASE(acc0, _.BN2Str(_.one)) // dividends
+    swapTOKEN(acc0, _.BN2Str(_.one * 1))// dividends
+    createSyntheticBNB() 
+    swapLayer1ToSynth(acc1)
+    swapSynthToLayer1(acc1)
+    
 
 })
 
@@ -55,8 +78,9 @@ function constructor(accounts) {
         router = await ROUTER.new(base.address, wbnb.address, Dao.address) //deploy router
         utils = await UTILS.new(base.address, router.address, Dao.address) // deploy utilsV2
         poolFactory = await POOLFACTORY.new(base.address,  wbnb.address, Dao.address) 
+        synthFactory = await SYNTHFACTORY.new(base.address,  wbnb.address, Dao.address) 
         token1 = await TOKEN.new()     
-        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, utils.address, utils.address,poolFactory.address, utils.address);
+        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, utils.address, utils.address,poolFactory.address, synthFactory.address);
     
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
@@ -282,7 +306,8 @@ async function swapTOKEN(acc, x) {
         
         let tx = await router.swap(x, fromToken, toToken)
         let normalFee = _.getBN(await router.normalAverageFee());
-        let fee = math.calcSwapFee(x, X, Y)
+        let _fee = math.calcSwapFee(x, X, Y)
+        let fee =  _.floorBN((_fee.times(X)).div(Y));
         let numerator = fee.times(dailyAllocation);
         let feeDividend = _.floorBN(numerator.div(fee.plus(normalFee)));
         // console.log(tx)
@@ -379,6 +404,12 @@ async function sellBNB(acc, x) {
         // await help.logPool(utils, token, 'WBNB')
     })
 }
+async function curatePools() {
+    it("Curate POOls", async () => {
+        await poolFactory.addCuratedPool(wbnb.address);
+        await poolFactory.addCuratedPool(token1.address);
+    })
+}
 async function swapBNBToTKN1(acc, x) {
     it(`It should buy BNB with TKN1 from ${acc}`, async () => {
        let wbnbStart = _.getBN(await wbnb.balanceOf(acc))
@@ -469,6 +500,33 @@ async function swapTKN1ToBNB(acc, x) {
         assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(0), 'wbnb balance')
        // assert.isAtLeast(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(bnbStart.plus(y)), 'bnb balance')
         // await help.logPool(utils, token, 'WBNB')
+    })
+}
+async function createSyntheticBNB() {
+    it("It should Create Synthetic BNB ", async () => {
+        var _synth =  await synthFactory.createSynth.call(wbnb.address);
+        await synthFactory.createSynth(wbnb.address);
+        synthBNB = await SYNTH.at(_synth)
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+    })
+}
+async function swapSynthToLayer1(acc) {
+    it("Swap Synthetic BNB To BASE", async () => {
+        let input = _.BN2Str(await synthBNB.balanceOf(acc0));
+        let synthIN = synthBNB.address;
+        console.log(_.BN2Str(await poolWBNB.balanceOf(synthBNB.address))/_.one)
+        console.log(_.BN2Str(await synthBNB.totalSupply())/_.one)
+        await router.swapSynthToBase(input,synthIN,{from:acc});
+    })
+}
+async function swapLayer1ToSynth(acc) {
+    it("Swap BASE to Synthetic BNB", async () => {
+        let input =  _.BN2Str(10*_.one);
+        let synthOUT = synthBNB.address;
+        await router.swapBaseToSynth(input,synthOUT,{from:acc});
+        
     })
 }
 
