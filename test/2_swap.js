@@ -61,6 +61,7 @@ contract('SWAP', function (accounts) {
     createSyntheticBNB() 
     swapLayer1ToSynth(acc1)
     swapSynthToLayer1(acc1)
+    zapLiquidity()
     
 
 })
@@ -527,6 +528,23 @@ async function swapLayer1ToSynth(acc) {
         let synthOUT = synthBNB.address;
         await router.swapBaseToSynth(input,synthOUT,{from:acc});
         
+    })
+}
+async function zapLiquidity(acc) {
+    it("zap liquidity", async () => {
+        let SPT2BNB = _.BN2Str(await poolWBNB.balanceOf(acc))
+        let SPT2TKN = _.BN2Str(await poolTKN1.balanceOf(acc))
+        console.log("SPT2BNB bal",SPT2BNB/_.one )
+        console.log("SPT2BTC bal",SPT2TKN/_.one )
+        let fromTOKEN = wbnb.address
+        let toTOKEN = token1.address
+        let tx = await router.zapLiquidity(SPT2BNB, fromTOKEN, toTOKEN, {from:acc})
+        let SPT2BNBa = _.BN2Str(await poolWBNB.balanceOf(acc))
+        let SPT2TKNa = _.BN2Str(await poolTKN1.balanceOf(acc))
+        console.log("SPT2BNB bal",SPT2BNBa/_.one )
+        console.log("SPT2BTC bal",SPT2TKNa/_.one )
+        //console.log("Fee in Sparta", fee/_.one)
+       
     })
 }
 
