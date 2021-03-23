@@ -18,21 +18,9 @@ interface iROUTER {
     function changeMaxTrades(uint) external returns(bool);
     function addLiquidity(uint, uint, address) external payable returns (uint);
 }
-interface iPOOLFACTORY {
-    function isCuratedPool(address) external view returns (bool);
-    function challengLowestCuratedPool(address) external view returns (bool);
-    function addCuratedPool(address) external returns (bool);
-    function removeCuratedPool(address) external returns (bool);
-    function getPool(address token) external returns (address);
-    function getPoolArray(uint i) external returns (address);
-    function poolCount() external returns (uint);
-    function isPool(address) external returns (bool);
-}
 interface iSYNTHFACTORY {
     function isSynth(address) external returns (bool);
 }
-
-
 interface iBOND {
     function mintBond() external payable returns (bool);
     function burnBond() external payable returns (bool);
@@ -139,7 +127,7 @@ contract Dao {
         daoFee = 100;
         mStatus =false;
         // secondsPerEra = iBASE(BASE).secondsPerEra();
-        secondsPerEra = 3;
+        secondsPerEra = 30;
     }
     function setGenesisAddresses(address _router, address _utils, address _masterLoan, address _bond, address _daoVault, address _poolFactory,address _synthFactory ) public onlyDAO {
         _ROUTER = iROUTER(_router);
@@ -300,7 +288,7 @@ contract Dao {
         bytes memory _type = bytes(mapPID_type[proposalID]);
         voteWeight = countVotes(proposalID);
         if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
-            if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'INCENTIVE')){
+            if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'INCENTIVE') || isEqual(_type, 'LIST_BOND')|| isEqual(_type, 'GRANT')|| isEqual(_type, 'GET_SPARTA')|| isEqual(_type, 'ADD_CURATED_POOL')){
                 if(hasMajority(proposalID)){
                     _finalise(proposalID);
                 }
@@ -312,7 +300,7 @@ contract Dao {
     }
 
     //Remove vote from a proposal
-    function _removeVote(uint proposalID) public returns (uint voteWeightRemoved){
+    function removeVote(uint proposalID) public returns (uint voteWeightRemoved){
         bytes memory _type = bytes(mapPID_type[proposalID]);
         voteWeightRemoved = mapPIDMember_votes[proposalID][msg.sender]; // get voted weight
         mapPID_votes[proposalID] -= voteWeightRemoved; //remove voteweight from totalVotingweight
@@ -340,7 +328,7 @@ contract Dao {
     function finaliseProposal(uint proposalID) public  {
         require((block.timestamp - mapPID_timeStart[proposalID]) > coolOffPeriod, "!cool off");
         require(mapPID_finalising[proposalID] == true, "!finalising");
-        if(!hasMajority(proposalID)){
+        if(!hasQuorum(proposalID)){
             mapPID_finalising[proposalID] = false;
         }
         else {

@@ -1,14 +1,25 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 import "./cInterfaces.sol"; 
 interface iDAO {
      function DAO() external view returns (address);
      function MSTATUS() external view returns(bool);
+    function POOLFACTORY() external view returns(address);
     function UTILS() external view returns(address);
 }
 interface iNDAO {
     function DAO() external view returns (iDAO);
+}
+interface iPOOLFACTORY {
+   function isCuratedPool(address) external view returns (bool);
+    function challengLowestCuratedPool(address) external view returns (bool);
+    function addCuratedPool(address) external returns (bool);
+    function removeCuratedPool(address) external returns (bool);
+    function getPool(address token) external returns (address);
+    function getPoolArray(uint i) external returns (address);
+    function poolCount() external returns (uint);
+    function isPool(address) external returns (bool);
 }
 interface iBASE {
     function secondsPerEra() external view returns (uint256);
@@ -67,6 +78,7 @@ function depositLP(address pool, uint amount, address member) public onlyDAO ret
 
  // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
     function increaseWeight(address pool, address member) public returns(uint){
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(pool), "!pool");
         if(mapMemberPool_weight[member][pool] > 0){ // Remove previous weights
             totalWeight = totalWeight.sub(mapMemberPool_weight[member][pool]);
             mapMember_weight[member] = mapMember_weight[member].sub(mapMemberPool_weight[member][pool]);
@@ -78,7 +90,6 @@ function depositLP(address pool, uint amount, address member) public onlyDAO ret
         mapMemberPool_weight[member][pool] = weight;
         mapMember_weight[member] = mapMember_weight[member].add(weight);
         totalWeight = totalWeight.add(weight);
-
         return weight;
     }
     function updateWeight(address member) public {

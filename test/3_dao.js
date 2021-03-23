@@ -7,6 +7,7 @@ const math = require('./math.js');
 const help = require('./helper.js');
 
 var BASE = artifacts.require("./BaseMinted.sol");
+var BOND = artifacts.require("./Bond.sol");
 var DAO = artifacts.require("./Dao.sol");
 var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
@@ -30,24 +31,28 @@ contract('DAO', function (accounts) {
     createPoolWBNB()
     createPoolTKN1()
     addLiquidityTKN1(acc1,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
+    addLiquidityTKN1(acc0,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
     addLiquidityBNB(acc1,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
     addLiquidityBNB(acc0,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
     addLiquidityBNB(acc2,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
     addLiquidityTKN1(acc2,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
     curatePools()
+    burnBOND()
     lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
+    lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
     lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
     lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-    //rate()
+    rate()
     // voteParam()
     // voteIncentive()
-    // voteAction()
-    voteGrant()
-    voteUtils()
-    voteRouter()
-    voteDao()
+     voteAction()
+    // voteGrant()
+    // voteUtils()
+    // voteRouter()
+    //voteDao()
     //  withdrawBNB(acc0)
     //  withdrawTKN1(acc1)
+    //harvest()
 
 })
 
@@ -62,9 +67,11 @@ function constructor(accounts) {
         router = await ROUTER.new(base.address, wbnb.address, Dao.address) //deploy router
         utils = await UTILS.new(base.address, router.address, Dao.address) // deploy utilsV2
         poolFactory = await POOLFACTORY.new(base.address,  wbnb.address, Dao.address) 
-        token1 = await TOKEN.new()     
+        token1 = await TOKEN.new()    
+        bond = await BOND.new(base.address, wbnb.address, Dao.address);     //deploy new bond 
         daoVault = await DAOVAULT.new(base.address, Dao.address);
-        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, utils.address, daoVault.address,poolFactory.address, utils.address);
+        await base.listAsset(bond.address, _.BN2Str(allocation* _.one),_.BN2Str(18*_.one) ) // list bond
+        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, utils.address);
         let migration = true;
         await base.changeDAO(Dao.address)
         await Dao._MSTATUS(migration);
@@ -88,6 +95,7 @@ function constructor(accounts) {
 
     });
 }
+
 async function wrapBNB() {
     it("It should wrap", async () => {
         await web3.eth.sendTransaction({to: wbnb.address, value:_.BN2Str(_.one*100), from:acc0});
@@ -97,6 +105,21 @@ async function wrapBNB() {
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+    })
+}
+async function burnBOND(){
+    it("Burn bond for Allocation", async () => {
+        let lockBalBefore = await bond.balanceOf(bond.address)
+        assert.equal(_.BN2Str(lockBalBefore), _.BN2Str(_.one), '1 bond exist')
+        let spartaBalBefore = await base.balanceOf(bond.address)
+        assert.equal(spartaBalBefore,'0', 'Sparta balance zero')
+        await bond.approve(base.address, lockBalBefore, {from:acc0})
+        expect(_.BN2Str(await bond.allowance(acc0, base.address))).to.equal(_.BN2Str(lockBalBefore));
+        let tx = await bond.burnBond()
+        let lockBalAfter = await bond.balanceOf(bond.address)
+        assert.equal(lockBalAfter,'0',  'bond was burnt')
+        let spartaBalAfter = await base.balanceOf(bond.address)
+        assert.equal(_.BN2Str(spartaBalAfter/_.one),"2500000", 'did it get 2.5m sparta')
     })
 }
 async function createPoolWBNB(SPT, token) {
@@ -302,27 +325,54 @@ async function voteIncentive() {
 }
 
 async function voteAction() {
-    it("It should vote, finalise START_EMISSIONS", async () => {
-        await Dao.newActionProposal('START_EMISSIONS', { from: acc1 })
+    // it("It should vote, finalise START_EMISSIONS", async () => {
+    //     await Dao.newActionProposal('START_EMISSIONS', { from: acc1 })
+    //     let proposalCount = _.BN2Str(await Dao.proposalCount())
+    //     await Dao.voteProposal(proposalCount, { from: acc1 })
+    //     await Dao.voteProposal(proposalCount, { from: acc2 })
+    //     await sleep(3100)
+    //     await Dao.finaliseProposal(proposalCount)
+    //     assert.equal(await base.emitting(), true)
+    //     await base.transfer(acc1, _.getBN(_.BN2Str(1 * _.one)))
+    //     let balance = await base.balanceOf(acc3)
+    //     //console.log(_.BN2Str(balance))
+    // })
+    // it("It should vote, finalise STOP_EMISSIONS", async () => {
+    //     await Dao.newActionProposal('STOP_EMISSIONS', { from: acc1 })
+    //     let proposalCount = _.BN2Str(await Dao.proposalCount())
+    //     await Dao.voteProposal(proposalCount, { from: acc1 })
+    //     await Dao.voteProposal(proposalCount, { from: acc2 })
+    //     await sleep(3100)
+    //     await Dao.finaliseProposal(proposalCount)
+    //     assert.equal(await base.emitting(), false)
+    // })
+    it("It should vote, mint BOND", async () => {
+        let bondSpartaBaLb = _.BN2Str(await base.balanceOf(bond.address));
+        console.log(bondSpartaBaLb/_.one);
+        await Dao.newActionProposal('GET_SPARTA', { from: acc1 })
         let proposalCount = _.BN2Str(await Dao.proposalCount())
         await Dao.voteProposal(proposalCount, { from: acc1 })
+        await Dao.removeVote(proposalCount, { from: acc1 })
+        await sleep(3100)
+        await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!finalising");
+        //await Dao.voteProposal(proposalCount, { from: acc1 })
         await Dao.voteProposal(proposalCount, { from: acc2 })
         await sleep(3100)
         await Dao.finaliseProposal(proposalCount)
-        assert.equal(await base.emitting(), true)
-        await base.transfer(acc1, _.getBN(_.BN2Str(1 * _.one)))
-        let balance = await base.balanceOf(acc3)
-        //console.log(_.BN2Str(balance))
+        let bondSpartaBaL = _.BN2Str(await base.balanceOf(bond.address));
+        console.log(bondSpartaBaL/_.one);
+
     })
-    it("It should vote, finalise STOP_EMISSIONS", async () => {
-        await Dao.newActionProposal('STOP_EMISSIONS', { from: acc1 })
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc1 })
-        await Dao.voteProposal(proposalCount, { from: acc2 })
-        await sleep(3100)
-        await Dao.finaliseProposal(proposalCount)
-        assert.equal(await base.emitting(), false)
-    })
+    // it("It should vote, finalise STOP_EMISSIONS", async () => {
+        
+    //     await Dao.newActionProposal('STOP_EMISSIONS', { from: acc1 })
+    //     let proposalCount = _.BN2Str(await Dao.proposalCount())
+    //     await Dao.voteProposal(proposalCount, { from: acc1 })
+    //     await Dao.voteProposal(proposalCount, { from: acc2 })
+    //     await sleep(3100)
+    //     await Dao.finaliseProposal(proposalCount)
+       
+    // })
 }
 
 async function voteGrant() {
@@ -347,7 +397,7 @@ async function voteUtils() {
         let proposalCount = _.BN2Str(await Dao.proposalCount())
         await Dao.voteProposal(proposalCount, { from: acc2 })
         await Dao.voteProposal(proposalCount, { from: acc1 })
-        await sleep(3100)
+        await sleep(4100)
         await Dao.finaliseProposal(proposalCount);
         assert.equal(await Dao.UTILS(), utils2.address)
     })
@@ -381,19 +431,20 @@ async function voteDao() {
     })
 }
 
+
 async function harvest() {
     it("It should send rewards and check", async () => {
-        await base.transfer(router.address, "10000000000000000000")
+        // await base.transfer(router.address, "10000000000000000000")
         let now = _.getBN((new Date())/1000)
         let lastTime = _.getBN(await Dao.mapMember_lastTime(acc1))
-       // console.log(`acc1 rate: ${await Dao.mapMember_weight(acc1)} ${_.getBN(await Dao.mapMember_weight(acc1)).div(_.getBN(await Dao.totalWeight()))}`)
+       // console.log(`acc1 rate: ${await daoVault.mapMember_weight(acc1)} ${_.getBN(await daoVault.mapMember_weight(acc1)).div(_.getBN(await daoVault.totalWeight()))}`)
         let calcCurrentReward = _.getBN(await Dao.calcCurrentReward(acc1))
         let calcReward = _.getBN(await Dao.calcReward(acc1))
-       // console.log(calcReward)
+     
         assert.exists(_.BN2Str(lastTime.minus(now)))
         assert.exists(_.BN2Str(calcCurrentReward))
         assert.exists(_.BN2Str(calcReward))
-        //console.log(calcReward)
+        
 
         let lastTime2 = _.getBN(await Dao.mapMember_lastTime(acc0))
         let calcCurrentReward2 = _.getBN(await Dao.calcCurrentReward(acc0))
@@ -412,20 +463,22 @@ async function harvest() {
     })
     it("It should harvest acc0", async () => {
         let balBefore = _.getBN(await base.balanceOf(acc0))
-        //console.log(_.BN2Str(balBefore));
-        await sleep(5100)
+       //console.log(_.BN2Str(balBefore)/_.one);
+        await sleep(6300)
         await Dao.harvest({from:acc0});
         let balAfter = _.getBN(await base.balanceOf(acc0))
-        //console.log(_.BN2Str(balAfter));
+       // console.log(_.BN2Str(balAfter)/_.one);
     })
     it("It should harvest acc1", async () => {
         let balBefore = _.getBN(await base.balanceOf(acc1))
+        await sleep(6300)
         await Dao.harvest({from:acc1});
         let balAfter = _.getBN(await base.balanceOf(acc1))
         
     })
     it("It should harvest acc2", async () => {
         let balBefore = _.getBN(await base.balanceOf(acc2))
+        await sleep(6300)
         await Dao.harvest({from:acc2});
         let balAfter = _.getBN(await base.balanceOf(acc2))
         
