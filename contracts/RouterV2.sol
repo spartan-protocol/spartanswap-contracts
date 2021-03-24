@@ -2,7 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
-import "@nomiclabs/buidler/console.sol";
+
 interface iSYNTHFACTORY {
     function isSynth(address) external view returns (bool);
 

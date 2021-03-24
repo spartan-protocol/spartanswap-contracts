@@ -2,7 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./IContracts.sol"; 
-import "@nomiclabs/buidler/console.sol";
+
 contract PoolM is iBEP20 {
     using SafeMath for uint256;
 
@@ -349,7 +349,7 @@ contract RouterM {
     function createPool(uint256 inputBase, uint256 inputToken, address token) public payable onlyDAO returns(address pool){
         require(getPool(token) == address(0), "CreateErr");
         require(token != BASE, "MustBase");
-        //require((inputToken > 0 && inputBase > 0), "Mus");
+        // require((inputToken > 0 && inputBase > 0), "Mus");
         PoolM newPoolM; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         newPoolM = new PoolM(BASE, _token); 

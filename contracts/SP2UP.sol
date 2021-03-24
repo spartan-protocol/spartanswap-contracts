@@ -2,7 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./cInterfaces.sol";
-import "@nomiclabs/buidler/console.sol";
+
 interface iBASE {
     function DAO() external view returns (iDAO);
     function burn(uint) external;
@@ -78,7 +78,8 @@ contract SPARTANUPGRADE {
         uint tokenAll = iROUTER(OLDRouter).tokenCount();
         for(uint i = 0; i < tokenAll; i++){
           address token = iROUTER(OLDRouter).getToken(i);
-          if(token == 0xE49b84771470A87F4D9544685ea0F0517933B2B4){ //decimal check
+          uint decimals = iBEP20(token).decimals();
+          if(decimals != 18){ 
                _oldPool = iROUTER(OLDRouter).getPool(token);//get old pool
                amount = iBEP20(_oldPool).balanceOf(_member);
               if(amount > 0){

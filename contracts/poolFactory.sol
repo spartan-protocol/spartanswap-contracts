@@ -52,9 +52,9 @@ contract PoolFactory {
     }
     function createPool(address token) public onlyDAO payable returns(address pool){
         require(getPool(token) == address(0));
-        require(token != BASE && iBEP20(token).decimals() == 18);
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
+        require(_token != BASE && iBEP20(_token).decimals() == 18);
         newPool = new Pool(BASE, _token, NDAO); 
         pool = address(newPool);
         addPool(_token, pool);

@@ -160,10 +160,10 @@ function constructor(accounts) {
         await wbnb.approve(bondv3.address, supply, {from:acc1}) // approve bond 
         await token1.approve(bondv3.address, supply, {from:acc1}) // approve bond 
 
-        await base.approve(bondv3.address, supply, {from:acc1})
+       
         await wbnb.approve(bondv2.address, supply, {from:acc1}) // approve bond 
         await token1.approve(bondv2.address, supply, {from:acc1}) // approve bond 
-        await base.approve(bondv2.address, supply, {from:acc1})
+      
 
     });
 }
@@ -371,15 +371,15 @@ async function zapLiquidity(acc) {
     it("zap liquidity", async () => {
         let SPT2BNB = _.BN2Str(await poolWBNB.balanceOf(acc))
         let SPT2TKN = _.BN2Str(await poolTKN1.balanceOf(acc))
-        console.log("SPT2BNB bal",SPT2BNB/_.one )
-        console.log("SPT2BTC bal",SPT2TKN/_.one )
+        // console.log("SPT2BNB bal",SPT2BNB/_.one )
+        // console.log("SPT2BTC bal",SPT2TKN/_.one )
         let fromTOKEN = wbnb.address
         let toTOKEN = token1.address
         let tx = await router.zapLiquidity(SPT2BNB, fromTOKEN, toTOKEN, {from:acc})
         let SPT2BNBa = _.BN2Str(await poolWBNB.balanceOf(acc))
         let SPT2TKNa = _.BN2Str(await poolTKN1.balanceOf(acc))
-        console.log("SPT2BNB bal",SPT2BNBa/_.one )
-        console.log("SPT2BTC bal",SPT2TKNa/_.one )
+        // console.log("SPT2BNB bal",SPT2BNBa/_.one )
+        // console.log("SPT2BTC bal",SPT2TKNa/_.one )
         //console.log("Fee in Sparta", fee/_.one)
        
     })
@@ -397,14 +397,14 @@ async function moveliquidity(acc) {
     it("Upgrade Liquidity", async () => {
        
         let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
-        console.log("bnbLP balance",tB/_.one)
+        // console.log("bnbLP balance",tB/_.one)
         let tkn1 = _.BN2Str(await poolTKN1M.balanceOf(acc))
-        console.log("give balance",tkn1/_.one)
+        // console.log("give balance",tkn1/_.one)
         await upgrade.migrateLiquidity({from: acc})
         let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
-        console.log("bnbLP balance After",tBA/_.one)
+        // console.log("bnbLP balance After",tBA/_.one)
         let tkn1A = _.BN2Str(await poolTKN1.balanceOf(acc))
-        console.log("givlp balance After",tkn1A/_.one)
+        // console.log("givlp balance After",tkn1A/_.one)
         
     })
 }
@@ -413,24 +413,24 @@ async function moveBONDv3(acc) {
   
         let mDB = await bondv3.getMemberDetails(acc, token1.address);
         let BLPB = _.BN2Str(mDB.bondedLP)
-        console.log("lockedbondv3tkn1",BLPB/_.one);
+        // console.log("lockedbondv3tkn1",BLPB/_.one);
   
         let mDB1b = await bondv3.getMemberDetails(acc, _.BNB);
         let BLPB3 = _.BN2Str(mDB1b.bondedLP)
-        console.log("lockedbondv3bnb",BLPB3/_.one);
+        // console.log("lockedbondv3bnb",BLPB3/_.one);
         await upgrade.upgradeBONDv3({from: acc})
         let mDA = await bondv3.getMemberDetails(acc, token1.address);
         let BLPA = _.BN2Str(mDA.bondedLP)
-         console.log("lockedToken1V3",BLPA/_.one);
+        //  console.log("lockedToken1V3",BLPA/_.one);
          let mDB1ba = await bondv3.getMemberDetails(acc, _.BNB);
         let BLPB3a = _.BN2Str(mDB1ba.bondedLP)
-         console.log("lockedbondv3bnb",BLPB3a/_.one);
+        //  console.log("lockedbondv3bnb",BLPB3a/_.one);
          let mDB1bad = await bondVault.getMemberDetails(acc, _.BNB);
         let BLPB3ad = _.BN2Str(mDB1bad.bondedLP)
-         console.log("lockedbondv4bnb",BLPB3ad/_.one);
+        //  console.log("lockedbondv4bnb",BLPB3ad/_.one);
          let mDB1badt = await bondVault.getMemberDetails(acc, token1.address);
         let BLPB3adt = _.BN2Str(mDB1badt.bondedLP)
-         console.log("lockedbondv4TKN1",BLPB3adt/_.one);
+        //  console.log("lockedbondv4TKN1",BLPB3adt/_.one);
         
         
     })
@@ -440,22 +440,22 @@ async function upgradeBondUsers(acc) {
         let token = wbnb.address;
         let asset = _.BNB
         let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
-        console.log(tB/_.one)
+        // console.log(tB/_.one)
         let mDB1b = await bondv2.getMemberDetails(acc, _.BNB);
         let BLPB3 = _.BN2Str(mDB1b.bondedLP)
-        console.log("lockedbondv2bnb",BLPB3/_.one);
+        // console.log("lockedbondv2bnb",BLPB3/_.one);
         await bondv2.claim(asset,{from:acc})
         let mDB1b4 = await bondv2.getMemberDetails(acc, _.BNB);
         let BLPB33 = _.BN2Str(mDB1b4.bondedLP)
-        console.log("lockedbondv2bnb",BLPB33/_.one);
+        // console.log("lockedbondv2bnb",BLPB33/_.one);
         let tBd = _.BN2Str(await poolWBNBM.balanceOf(acc))
-        console.log(tBd/_.one)
+        // console.log(tBd/_.one)
         await upgrade.upgradeBond(token, {from: acc} )
         let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
-         console.log(tBA/_.one)
+        //  console.log(tBA/_.one)
          let mDB1bad = await bondVault.getMemberDetails(acc, asset);
         let BLPB3ad = _.BN2Str(mDB1bad.bondedLP)
-         console.log("lockedbondv4bnb",BLPB3ad/_.one);
+        //  console.log("lockedbondv4bnb",BLPB3ad/_.one);
     })
 }
 async function deployerListBNBSPV2(){
@@ -468,7 +468,7 @@ async function deployerListBNBSPV2(){
     })
 }
 async function bondv4Seconds(seconds) {
-    it("Change Seconds", async () => {
+    it("Enable Bond", async () => {
         await bond.changeBondingPeriod(seconds, {from:acc0});
         let secondsPerYearA = _.BN2Str(await bond.bondingPeriodSeconds());
         assert.equal(secondsPerYearA, seconds, 'deployer change bond period in seconds')
@@ -480,29 +480,29 @@ async function bondv4Claim(acc, ms) {
         await sleep(ms)
         let mDb = await bondVault.getMemberDetails(acc, asset);
         let BLPb = _.BN2Str(mDb.bondedLP)
-        console.log("acc locked bnb",BLPb/_.one);
+        // console.log("acc locked bnb",BLPb/_.one);
         let mDA11 = await bondVault.getMemberDetails(acc, token1.address);
         let BLPA11 = _.BN2Str(mDA11.bondedLP)
-        console.log("acc locked tkn1",BLPA11/_.one);
+        // console.log("acc locked tkn1",BLPA11/_.one);
 
         let spBONDBal = _.BN2Str(await poolWBNB.balanceOf(acc))
-        console.log("acc bnb",spBONDBal/_.one);
+        // console.log("acc bnb",spBONDBal/_.one);
         let spBONDBal1 = _.BN2Str(await poolTKN1.balanceOf(acc))
-        console.log("acc tkn1",spBONDBal1/_.one);
+        // console.log("acc tkn1",spBONDBal1/_.one);
 
         
         await bond.claimAllForMember(acc,{from:acc})
         let mDA = await bondVault.getMemberDetails(acc, asset);
          let BLPA = _.BN2Str(mDA.bondedLP)
-         console.log("acc locked bnb",BLPA/_.one);
+        //  console.log("acc locked bnb",BLPA/_.one);
          let mDA1 = await bondVault.getMemberDetails(acc, token1.address);
          let BLPA1 = _.BN2Str(mDA1.bondedLP)
-         console.log("acc locked tkn1",BLPA1/_.one);
+        //  console.log("acc locked tkn1",BLPA1/_.one);
         
          let b = _.BN2Str(await poolWBNB.balanceOf(acc))
-        console.log("acc lp bnb",b/_.one);
+        // console.log("acc lp bnb",b/_.one);
         let b1 = _.BN2Str(await poolTKN1.balanceOf(acc))
-        console.log("acc lp tkn1",b1/_.one);
+        // console.log("acc lp tkn1",b1/_.one);
 
     })
 }
@@ -525,29 +525,29 @@ async function revenue() {
 async function lockTKN(acc, amount) {
     it("It should deposit", async () => {
         let balance = await poolWBNB.balanceOf(acc)
-        console.log(`balance: ${balance}`)
+        // console.log(`balance: ${balance}`)
         // await poolTKN1.approve(Dao.address, balance, { from: acc })
         await Dao.deposit(poolWBNB.address, balance, { from: acc })
         let balancee = await poolWBNB.balanceOf(acc)
-        console.log(`balanceA: ${balancee}`)
-        console.log(`isMember: ${await Dao.isMember(acc)}`)
-        console.log(`mapMemberPool_balance: ${await daoVault.mapMemberPool_balance(acc, poolWBNB.address)}`)
-        console.log(`totalWeight: ${await daoVault.totalWeight()}`)
-        console.log(`mapMember_weight: ${await daoVault.mapMember_weight(acc)}`)
-        console.log(`rate: ${_.getBN(await daoVault.mapMember_weight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
+        // console.log(`balanceA: ${balancee}`)
+        // console.log(`isMember: ${await Dao.isMember(acc)}`)
+        // console.log(`mapMemberPool_balance: ${await daoVault.mapMemberPool_balance(acc, poolWBNB.address)}`)
+        // console.log(`totalWeight: ${await daoVault.totalWeight()}`)
+        // console.log(`mapMember_weight: ${await daoVault.mapMember_weight(acc)}`)
+        // console.log(`rate: ${_.getBN(await daoVault.mapMember_weight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
     })
 }
 async function withdraw(acc) {
-    it("LPMIGRATION", async () => {
+    it("Withdraw from DAO", async () => {
         let bal = _.getBN(await daoVault.mapMemberPool_balance(acc, poolWBNB.address));
         let amount = bal.times(50).div(100);
         await Dao.withdraw(poolWBNB.address, amount, {from:acc})
-        console.log(`mapMemberPool_balance: ${await daoVault.mapMemberPool_balance(acc, poolWBNB.address)}`)
+        // console.log(`mapMemberPool_balance: ${await daoVault.mapMemberPool_balance(acc, poolWBNB.address)}`)
         let balancee = await poolWBNB.balanceOf(acc)
-        console.log(`balanceAA: ${balancee}`)
-        console.log(`totalWeight: ${await daoVault.totalWeight()}`)
-        console.log(`mapMember_weight: ${await daoVault.mapMember_weight(acc)}`)
-        console.log(`rate: ${_.getBN(await daoVault.mapMember_weight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
+        // console.log(`balanceAA: ${balancee}`)
+        // console.log(`totalWeight: ${await daoVault.totalWeight()}`)
+        // console.log(`mapMember_weight: ${await daoVault.mapMember_weight(acc)}`)
+        // console.log(`rate: ${_.getBN(await daoVault.mapMember_weight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
     })
 }
 async function swapBASE(acc, x) {
@@ -873,7 +873,7 @@ async function deployerListBNB(){
     })
 }
 async function deployerChangeSecondsPerYear(seconds){
-    it(`Deployer change bond period to ${seconds} seconds`, async () => {
+    it(`Enable BOND`, async () => {
         await bondv2.changeBondingPeriod(seconds, {from:acc0});
         await bondv3.changeBondingPeriod(seconds, {from:acc0});
         let secondsPerYearA = _.BN2Str(await bondv3.bondingPeriodSeconds());
