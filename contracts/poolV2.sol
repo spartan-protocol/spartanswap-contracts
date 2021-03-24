@@ -65,7 +65,6 @@ contract Pool is iBEP20 {
     mapping(address => mapping(address => uint)) private _allowances;
 
     uint256 public baseAmount;
-    uint256 public unitsAmount;
     uint256 public tokenAmount;
     uint private lastMonth;
     uint public genesis;
@@ -183,7 +182,6 @@ contract Pool is iBEP20 {
     function sync() public {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
-        unitsAmount = balanceOf(address(this));
     }
    
 
@@ -212,7 +210,7 @@ contract Pool is iBEP20 {
 
     // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
-        uint256 _actualInputUnits = _getAddedUnitsAmount();
+        uint256 _actualInputUnits = balanceOf(address(this));
         outputBase = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, BASE, address(this));
         outputToken = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this));
         _decrementPoolBalances(outputBase, outputToken);
@@ -291,15 +289,6 @@ contract Pool is iBEP20 {
     }
     function _getAddedSynthAmount(address synth) internal view returns(uint256 _synthBalance){
         return _synthBalance = iBEP20(synth).balanceOf(address(this)); 
-    }
-    function _getAddedUnitsAmount() internal view returns(uint256 _actual){
-         uint _unitsBalance = balanceOf(address(this)); 
-        if(_unitsBalance > unitsAmount){
-            _actual = _unitsBalance.sub(unitsAmount);
-        } else {
-            _actual = 0;
-        }
-        return _actual;
     }
 
     function _swapBaseToToken(uint256 _x) internal returns (uint256 _y, uint256 _fee){

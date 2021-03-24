@@ -61,7 +61,7 @@ contract('SWAP', function (accounts) {
     createSyntheticBNB() 
     swapLayer1ToSynth(acc1)
     swapSynthToLayer1(acc1)
-    zapLiquidity()
+    zapLiquidity(acc1)
     
 
 })

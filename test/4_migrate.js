@@ -18,6 +18,7 @@ var UTILSV1 = artifacts.require("./UtilsM.sol");
 
 var SYNTH = artifacts.require("./synth.sol");
 var BOND = artifacts.require("./Bond.sol");
+var BONDVault = artifacts.require("./BondVault.sol");
 var BONDv2 = artifacts.require("./BondV2M.sol");
 var BONDv3 = artifacts.require("./BondV3M.sol");
 var TOKEN = artifacts.require("./Token1.sol");
@@ -43,12 +44,12 @@ contract('Test GLOBAL MIGRATION', function (accounts) {
      //=========== SPV1 ===========//
      createPoolWBNBMain() 
      createPoolTKN1Main()
-     addLiquidityMain(acc1, _.BN2Str(_.one * 90), _.BN2Str(_.one * 9)) 
-     addLiquidityTKN1Main(acc0,  _.BN2Str(40*_.one),  _.BN2Str(10*_.one))
+     addLiquidityMain(acc1, _.BN2Str(_.one * 100), _.BN2Str(_.one * 10)) 
+     addLiquidityTKN1Main(acc0,  _.BN2Str(50*_.one),  _.BN2Str(20*_.one))
      curatePoolsMain();
-    //  buyTOKENMain(acc0, _.BN2Str(_.one * 1))
-    //  sellTOKENMain(acc0, _.BN2Str(_.one))
-    //  removeLiquidityBNBMain(1000, acc0)
+     buyTOKENMain(acc0, _.BN2Str(_.one * 1))
+     sellTOKENMain(acc0, _.BN2Str(_.one))
+     removeLiquidityBNBMain(1000, acc0)
      checkLockSupply()
      burnBondv2()
      burnBondv3()
@@ -71,8 +72,8 @@ contract('Test GLOBAL MIGRATION', function (accounts) {
     //   sellTOKEN(acc0, _.BN2Str(_.one))
     //   swapBASE(acc0, _.BN2Str(_.one))
     //   swapTOKEN(acc0, _.BN2Str(_.one * 1))
-      //removeLiquidityBNB(5000, acc0) //SPV2
-      //zapLiquidity(acc1)
+      removeLiquidityBNB(5000, acc0) //SPV2
+      zapLiquidity(acc1)
       //revenue() // SPV2
     //  ShowBNBMPool()
     //  ShowBNBPool()
@@ -84,15 +85,15 @@ contract('Test GLOBAL MIGRATION', function (accounts) {
       moveliquidity(acc0) //SP2UP
       moveliquidity(acc1) //SP2UP
       moveBONDv3(acc1)
-      upgradeBondUsers(acc2) //SP2UP
+      upgradeBondUsers(acc1) //SP2UP
  
       
       
-    //   lockTKN(acc0, _.BN2Str(_.one * 1)) // SPV2
-    //   withdraw(acc0) // SPV2
+       lockTKN(acc0, _.BN2Str(_.one * 1)) // SPV2
+       withdraw(acc0) // SPV2
     //  createSyntheticBNB() // SPV2
-    //    bondv4Seconds(1)
-    //    bondv4Claim(acc1, 2000)
+       bondv4Seconds(1)
+       bondv4Claim(acc1, 2000)
    
 })
 
@@ -123,7 +124,9 @@ function constructor(accounts) {
         utils = await UTILS.new(base.address, routerv1.address, Dao.address) // deploy utilsV2
         router = await ROUTER.new(base.address, wbnb.address, Dao.address) //deploy router
         daoVault = await DAOVAULT.new(base.address, Dao.address);
-        bond = await BOND.new(base.address, wbnb.address, Dao.address);     //deploy new bond
+        bondVault = await BONDVault.new(base.address, Dao.address)  //deploy new bond
+        bond = await BOND.new(base.address, wbnb.address, Dao.address, bondVault.address);
+       
         poolFactory = await POOLFACTORY.new(base.address,  wbnb.address, Dao.address) 
         synthFactory = await SYNTHFACTORY.new(base.address,  wbnb.address, Dao.address) 
         upgrade = await UPGR.new(base.address, routerv1.address, bondv3.address, Dao.address) // deploy wBNB
@@ -364,7 +367,6 @@ async function removeLiquidityBNB(bp, acc) {
        // assert.isAtLeast(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(bnbStart.plus(t).minus(3*10**15)), 'bnb balance')
     })
 }
-
 async function zapLiquidity(acc) {
     it("zap liquidity", async () => {
         let SPT2BNB = _.BN2Str(await poolWBNB.balanceOf(acc))
@@ -393,19 +395,16 @@ async function swapInDao() {
 }
 async function moveliquidity(acc) {
     it("Upgrade Liquidity", async () => {
-        // let tkn2 = _.BN2Str(await poolTKN2M.balanceOf(acc))
-        // console.log("tkn2 balance",tkn2/_.one)
-        // let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
-        // console.log("bnbLP balance",tB/_.one)
-        // let tkn1 = _.BN2Str(await poolTKN1M.balanceOf(acc))
-        // console.log("give balance",tkn1/_.one)
+       
+        let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
+        console.log("bnbLP balance",tB/_.one)
+        let tkn1 = _.BN2Str(await poolTKN1M.balanceOf(acc))
+        console.log("give balance",tkn1/_.one)
         await upgrade.migrateLiquidity({from: acc})
-        // let tkn2A = _.BN2Str(await poolTKN2.balanceOf(acc))
-        // console.log("tkn2lp balance After",tkn2A/_.one)
-        // let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
-        // console.log("bnbLP balance After",tBA/_.one)
-        // let tkn1A = _.BN2Str(await poolTKN1.balanceOf(acc))
-        // console.log("givlp balance After",tkn1A/_.one)
+        let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
+        console.log("bnbLP balance After",tBA/_.one)
+        let tkn1A = _.BN2Str(await poolTKN1.balanceOf(acc))
+        console.log("givlp balance After",tkn1A/_.one)
         
     })
 }
@@ -426,10 +425,10 @@ async function moveBONDv3(acc) {
          let mDB1ba = await bondv3.getMemberDetails(acc, _.BNB);
         let BLPB3a = _.BN2Str(mDB1ba.bondedLP)
          console.log("lockedbondv3bnb",BLPB3a/_.one);
-         let mDB1bad = await bond.getMemberDetails(acc, _.BNB);
+         let mDB1bad = await bondVault.getMemberDetails(acc, _.BNB);
         let BLPB3ad = _.BN2Str(mDB1bad.bondedLP)
          console.log("lockedbondv4bnb",BLPB3ad/_.one);
-         let mDB1badt = await bond.getMemberDetails(acc, token1.address);
+         let mDB1badt = await bondVault.getMemberDetails(acc, token1.address);
         let BLPB3adt = _.BN2Str(mDB1badt.bondedLP)
          console.log("lockedbondv4TKN1",BLPB3adt/_.one);
         
@@ -441,11 +440,22 @@ async function upgradeBondUsers(acc) {
         let token = wbnb.address;
         let asset = _.BNB
         let tB = _.BN2Str(await poolWBNBM.balanceOf(acc))
-       // console.log(tB/_.one)
+        console.log(tB/_.one)
+        let mDB1b = await bondv2.getMemberDetails(acc, _.BNB);
+        let BLPB3 = _.BN2Str(mDB1b.bondedLP)
+        console.log("lockedbondv2bnb",BLPB3/_.one);
         await bondv2.claim(asset,{from:acc})
+        let mDB1b4 = await bondv2.getMemberDetails(acc, _.BNB);
+        let BLPB33 = _.BN2Str(mDB1b4.bondedLP)
+        console.log("lockedbondv2bnb",BLPB33/_.one);
+        let tBd = _.BN2Str(await poolWBNBM.balanceOf(acc))
+        console.log(tBd/_.one)
         await upgrade.upgradeBond(token, {from: acc} )
         let tBA = _.BN2Str(await poolWBNB.balanceOf(acc))
-        // console.log(tBA/_.one)
+         console.log(tBA/_.one)
+         let mDB1bad = await bondVault.getMemberDetails(acc, asset);
+        let BLPB3ad = _.BN2Str(mDB1bad.bondedLP)
+         console.log("lockedbondv4bnb",BLPB3ad/_.one);
     })
 }
 async function deployerListBNBSPV2(){
@@ -468,10 +478,10 @@ async function bondv4Claim(acc, ms) {
     it("Claim all bondv4", async () => {
         let asset = _.BNB
         await sleep(ms)
-        let mDb = await bond.getMemberDetails(acc, asset);
+        let mDb = await bondVault.getMemberDetails(acc, asset);
         let BLPb = _.BN2Str(mDb.bondedLP)
         console.log("acc locked bnb",BLPb/_.one);
-        let mDA11 = await bond.getMemberDetails(acc, token1.address);
+        let mDA11 = await bondVault.getMemberDetails(acc, token1.address);
         let BLPA11 = _.BN2Str(mDA11.bondedLP)
         console.log("acc locked tkn1",BLPA11/_.one);
 
@@ -482,10 +492,10 @@ async function bondv4Claim(acc, ms) {
 
         
         await bond.claimAllForMember(acc,{from:acc})
-        let mDA = await bond.getMemberDetails(acc, asset);
+        let mDA = await bondVault.getMemberDetails(acc, asset);
          let BLPA = _.BN2Str(mDA.bondedLP)
          console.log("acc locked bnb",BLPA/_.one);
-         let mDA1 = await bond.getMemberDetails(acc, token1.address);
+         let mDA1 = await bondVault.getMemberDetails(acc, token1.address);
          let BLPA1 = _.BN2Str(mDA1.bondedLP)
          console.log("acc locked tkn1",BLPA1/_.one);
         
@@ -521,21 +531,23 @@ async function lockTKN(acc, amount) {
         let balancee = await poolWBNB.balanceOf(acc)
         console.log(`balanceA: ${balancee}`)
         console.log(`isMember: ${await Dao.isMember(acc)}`)
-        console.log(`mapMemberPool_balance: ${await Dao.mapMemberPool_balance(acc, poolWBNB.address)}`)
-        console.log(`totalWeight: ${await Dao.totalWeight()}`)
-        console.log(`mapMember_weight: ${await Dao.mapMember_weight(acc)}`)
-        console.log(`rate: ${_.getBN(await Dao.mapMember_weight(acc)).div(_.getBN(await Dao.totalWeight()))}`)
+        console.log(`mapMemberPool_balance: ${await daoVault.mapMemberPool_balance(acc, poolWBNB.address)}`)
+        console.log(`totalWeight: ${await daoVault.totalWeight()}`)
+        console.log(`mapMember_weight: ${await daoVault.mapMember_weight(acc)}`)
+        console.log(`rate: ${_.getBN(await daoVault.mapMember_weight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
     })
 }
 async function withdraw(acc) {
     it("LPMIGRATION", async () => {
-        await Dao.DaoMIGRATION(poolWBNB.address);
-        console.log(`mapMemberPool_balance: ${await Dao.mapMemberPool_balance(acc, poolWBNB.address)}`)
+        let bal = _.getBN(await daoVault.mapMemberPool_balance(acc, poolWBNB.address));
+        let amount = bal.times(50).div(100);
+        await Dao.withdraw(poolWBNB.address, amount, {from:acc})
+        console.log(`mapMemberPool_balance: ${await daoVault.mapMemberPool_balance(acc, poolWBNB.address)}`)
         let balancee = await poolWBNB.balanceOf(acc)
         console.log(`balanceAA: ${balancee}`)
-        //console.log(`totalWeight: ${await Dao.totalWeight()}`)
-        //console.log(`mapMember_weight: ${await Dao.mapMember_weight(acc)}`)
-        //console.log(`rate: ${_.getBN(await Dao.mapMember_weight(acc)).div(_.getBN(await Dao.totalWeight()))}`)
+        console.log(`totalWeight: ${await daoVault.totalWeight()}`)
+        console.log(`mapMember_weight: ${await daoVault.mapMember_weight(acc)}`)
+        console.log(`rate: ${_.getBN(await daoVault.mapMember_weight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
     })
 }
 async function swapBASE(acc, x) {
@@ -622,8 +634,8 @@ async function swapTOKEN(acc, x) {
 //MainNet Replica
 async function createPoolWBNBMain() {
     it("It should deploy BNB Pool", async () => {
-        var _pool = await routerv1.createPool.call(_.BN2Str(_.one * 10), _.BN2Str(_.one * 1), wbnb.address)
-        await routerv1.createPool(_.BN2Str(_.one * 10),_.BN2Str(_.one * 1), wbnb.address)
+        var _pool = await routerv1.createPool.call(_.BN2Str(_.one * 0), _.BN2Str(_.one * 0), wbnb.address)
+        await routerv1.createPool(_.BN2Str(_.one * 0),_.BN2Str(_.one * 0), wbnb.address)
         poolWBNBM = await POOLv1.at(_pool)
         //console.log(`Pools: ${poolWBNB.address}`)
         const baseAddr = await poolWBNBM.BASE()
@@ -636,8 +648,8 @@ async function createPoolWBNBMain() {
 }
 async function createPoolTKN1Main(SPT, token) {
     it("It should deploy TKN1 Pool", async () => {
-        var _pool = await routerv1.createPool.call(_.BN2Str(_.one * 10), _.BN2Str(_.one * 1), token1.address)
-        await routerv1.createPool(_.BN2Str(_.one * 10),_.BN2Str(_.one * 1), token1.address)
+        var _pool = await routerv1.createPool.call(_.BN2Str(_.one * 0), _.BN2Str(_.one * 0), token1.address)
+        await routerv1.createPool(_.BN2Str(_.one * 0),_.BN2Str(_.one * 0), token1.address)
         poolTKN1M = await POOLv1.at(_pool)
         const baseAddr = await poolTKN1M.BASE()
         assert.equal(baseAddr, base.address, "address is correct")
@@ -647,7 +659,6 @@ async function createPoolTKN1Main(SPT, token) {
         await base.approve(poolTKN1M.address, supply, { from: acc1 })
    })
 }
-
 async function addLiquidityMain(acc, b, t) {
 
     it(`It should addLiquidity BNB from ${acc}`, async () => {
@@ -679,7 +690,6 @@ async function addLiquidityTKN1Main(acc, b, t) {
         let tx = await routerv1.addLiquidity(b, t, token, { from: acc})
     })
 }
-
 async function curatePoolsMain() {
     it("Curate POOls", async () => {
         await routerv1.addCuratedPoolM(wbnb.address);
@@ -914,7 +924,7 @@ async function depositINTOBOND(acc){
         // poolUnits = _.getBN((await poolWBNBM.totalSupply()))
         // let units = _.getBN(await utilsv1.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
         // DEPOTime = _.getBN((new Date())/1000)
-        await bondv3.deposit(token1.address, amount,{from:acc, value:amount})
+        await bondv3.deposit(token1.address, amount,{from:acc})
         await bondv3.deposit(_.BNB, amount,{from:acc, value:amount})
         await bondv2.deposit(_.BNB, amount,{from:acc, value:amount})
     //    let memberDetails = await bondv3.getMemberDetails(acc, asset);
@@ -930,24 +940,10 @@ async function claimLPAndLock(acc, ms){
         let balBefore = _.getBN(await poolWBNBM.balanceOf(Daov1.address))
         let mbB = _.BN2Str(await poolWBNBM.balanceOf(acc))
         let spBONDBal = _.getBN(await poolWBNBM.balanceOf(Dao.address))
-       // console.log("accbondv2",mbB);
+        console.log("accbondv2",mbB);
          await bondv2.claim(asset,{from:acc})
         // //let accBal = _.getBN(await poolWBNBM.balanceOf(acc))
-        // let mbA = _.BN2Str(await poolWBNBM.balanceOf(acc))
-         let mDB = await bondv3.getMemberDetails(acc, asset);
-         let BLPB = _.BN2Str(mDB.bondedLP)
-        // console.log("accbondv2",mbA);
-        //console.log("lockedbondv3B",BLPB);
-        await bondv3.claimAndLock(asset,{from:acc})
-        let mDA = await bond.getMemberDetails(acc, asset);
-        let BLPA = _.BN2Str(mDA.bondedLP)
-       // console.log("lockedbondv4A",BLPA);
-        // let claimed = bondedLPB.minus(bondedLPAfter);
-        // let balAfter = _.getBN(await poolWBNBM.balanceOf(Daov1.address))
-        // assert.isAtLeast(_.BN2Int(balBefore.plus(accBal).plus(claimed)), _.BN2Int(balAfter))
-        //  let spDaoBalA = _.getBN(await poolWBNBM.balanceOf(bond.address))
-        //  console.log(_.BN2Int(spDaoBal));
-        //  console.log(_.BN2Int(spDaoBalA));
+      
     })
     
 }

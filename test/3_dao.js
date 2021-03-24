@@ -9,6 +9,7 @@ const help = require('./helper.js');
 var BASE = artifacts.require("./BaseMinted.sol");
 var BOND = artifacts.require("./Bond.sol");
 var DAO = artifacts.require("./Dao.sol");
+var BONDVault = artifacts.require("./BondVault.sol");
 var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
@@ -68,7 +69,9 @@ function constructor(accounts) {
         utils = await UTILS.new(base.address, router.address, Dao.address) // deploy utilsV2
         poolFactory = await POOLFACTORY.new(base.address,  wbnb.address, Dao.address) 
         token1 = await TOKEN.new()    
-        bond = await BOND.new(base.address, wbnb.address, Dao.address);     //deploy new bond 
+        bondVault = await BONDVault.new(base.address, Dao.address)  //deploy new bond
+        bond = await BOND.new(base.address, wbnb.address, Dao.address, bondVault.address);
+         //deploy new bond 
         daoVault = await DAOVAULT.new(base.address, Dao.address);
         await base.listAsset(bond.address, _.BN2Str(allocation* _.one),_.BN2Str(18*_.one) ) // list bond
         await Dao.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, utils.address);

@@ -2,39 +2,8 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./cInterfaces.sol";
+import "./bondVault.sol";
 import "@nomiclabs/buidler/console.sol";
-interface iBASE {
-    function DAO() external view returns (iDAO);
-    function burn(uint) external;
-    function claim(address asset, uint256 amount) external payable;  
-}
-interface iDAO {
-     function ROUTER() external view returns(address);
-     function UTILS() external view returns(address);
-     function DAO() external view returns (address);
-     function MSTATUS() external view returns(bool);
-     function POOLFACTORY() external view returns(address);
-     function depositForMember(address pool, uint256 amount, address member) external;
-}
-interface iNDAO {
-    function DAO() external view returns (iDAO);
- 
-}
-interface iROUTER {
-    function addLiquidity(uint inputBase, uint inputToken, address token) external payable returns (uint units);
-}
-interface iUTILS {
-    function calcSwapValueInBase(address pool, uint256 amount) external view returns (uint256 value);
-}
-interface iPOOL {
-    function TOKEN() external view returns(address);
-}
-interface iPOOLFACTORY {
-    function getPool(address token) external returns (address);
-}
-
-
-
 
     //======================================SPARTA=========================================//
 contract Bond is iBEP20 {
@@ -49,25 +18,11 @@ contract Bond is iBEP20 {
     mapping(address => mapping(address => uint256)) private _allowances;
 
 
-    struct ListedAssets {
-        bool isListed;
-        address[] members;
-        mapping(address => bool) isMember;
-        mapping(address => uint256) bondedLP;
-        mapping(address => uint256) claimRate;
-        mapping(address => uint256) lastBlockTime;
-    }
-    struct MemberDetails {
-        bool isMember;
-        uint256 bondedLP;
-        uint256 claimRate;
-        uint256 lastBlockTime;
-    }
-
   // Parameters
     address public BASE;
+    address public bondVault;
     address public WBNB;
-      address private NDAO;
+    address private NDAO;
     address [] public arrayMembers;
     address public DEPLOYER;
     uint public one = 10**18;
@@ -76,8 +31,6 @@ contract Bond is iBEP20 {
     uint256 private basisPoints = 10000;
     uint256 public totalWeight;
 
-
-    mapping(address => ListedAssets) public mapAddress_listedAssets;
     mapping(address => bool) public isListed;
 
     event ListedAsset(address indexed DAO, address indexed asset);
@@ -89,17 +42,13 @@ contract Bond is iBEP20 {
         _;
     }
 
-    modifier onlyDEPLOYER() {
-        require(msg.sender == DEPLOYER );
-        _;
-    }
-
     //=====================================CREATION=========================================//
     // Constructor
-    constructor(address _base, address _wbnb, address _newDao) public {
+    constructor(address _base, address _wbnb, address _newDao, address _bondVault) public {
         BASE = _base;
         WBNB = _wbnb;
         NDAO = _newDao;
+        bondVault = _bondVault;
         name = "SpartanBondTokenV4";
         symbol  = "SPT-BOND-V4";
         decimals = 18;
@@ -183,18 +132,7 @@ contract Bond is iBEP20 {
         totalSupply = totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
-
-    //================================MIGRATION==============================//
-    function migrateMemberDetails(address member, address asset, address oldBond) public onlyDEPLOYER returns (bool){
-        MemberDetails memory memberDetails = Bond(oldBond).getMemberDetails(member, asset);
-        mapAddress_listedAssets[asset].isMember[member] = memberDetails.isMember;
-        mapAddress_listedAssets[asset].bondedLP[member] = memberDetails.bondedLP;
-        mapAddress_listedAssets[asset].claimRate[member] = memberDetails.claimRate;
-        mapAddress_listedAssets[asset].lastBlockTime[member] = memberDetails.lastBlockTime;
-        return true;
-    }
-    
-
+  
 
     //====================================ONLY DAO================================//
     function listBondAsset(address asset) public onlyDAO returns (bool){
@@ -231,12 +169,6 @@ contract Bond is iBEP20 {
          iBEP20(BASE).transfer(newBond, baseBal);
          return true;
     }
-    function moveBondLPS(address asset, address newBond) public onlyDAO returns(bool){
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset);
-         uint256 poolBal = iBEP20(_pool).balanceOf(address(this));
-         iBEP20(BASE).transfer(newBond, poolBal);
-         return true;
-    }
     function approveRouter() public returns (bool){
        uint256 baseSupply = iBEP20(BASE).balanceOf(address(this));
         iBEP20(BASE).approve(_DAO().ROUTER(), baseSupply);
@@ -256,49 +188,32 @@ contract Bond is iBEP20 {
         require(amount > 0, '!asset');
         require(isListed[asset], '!listed');
         uint256 liquidityUnits = handleTransferIn(asset, amount);
-        if(!mapAddress_listedAssets[asset].isMember[msg.sender]){
-          mapAddress_listedAssets[asset].isMember[msg.sender] = true;
-          arrayMembers.push(msg.sender);
-          mapAddress_listedAssets[asset].members.push(msg.sender);
-        }
-        if(mapAddress_listedAssets[asset].bondedLP[msg.sender] > 0){
-            claimForMember(asset, msg.sender);
-        }
-        mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(liquidityUnits);
-        mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = block.timestamp;
-        mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(bondingPeriodSeconds);
+        BondVault(bondVault).depForMember(asset, msg.sender, liquidityUnits);
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
     function depositInit(address lptoken, uint256 amount, address member) public onlyDAO returns (bool success) {
-       iBEP20(lptoken).transferFrom(msg.sender, address(this), amount);
+       iBEP20(lptoken).transferFrom(msg.sender, bondVault, amount);
        address asset = iPOOL(lptoken).TOKEN();
         if(asset == WBNB){
            asset = address(0);
         }
-        if(!mapAddress_listedAssets[asset].isMember[member]){
-          mapAddress_listedAssets[asset].isMember[member] = true;
-          arrayMembers.push(member);
-          mapAddress_listedAssets[asset].members.push(member);
-        }
-        mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].add(amount);
-        mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
-        mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[member].div(23328000);
-        return true;
+        BondVault(bondVault).depINIT(asset, member, amount);
+       return true;
     }
 
     function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
         uint256 spartaAllocation = iUTILS(_DAO().UTILS()).calcSwapValueInBase(_token, _amount); 
         if(_token == address(0)){
                 require((_amount == msg.value), "InputErr");
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidity{value:_amount}(spartaAllocation, _amount, _token);
+                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, msg.sender);
             } else {
                 iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
                 if(iBEP20(_token).allowance(address(this), iDAO(_DAO()).ROUTER()) < _amount){
                     uint256 approvalTNK = iBEP20(_token).totalSupply();  
                     iBEP20(_token).approve(_DAO().ROUTER(), approvalTNK);  
                 }
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidity(spartaAllocation, _amount, _token);
+                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember(spartaAllocation, _amount, _token, msg.sender);
             } 
     }
     function claimAllForMember(address member) public returns (bool){
@@ -306,33 +221,15 @@ contract Bond is iBEP20 {
         for(uint i =0; i<listedAssets.length; i++){
             uint claimA = calcClaimBondedLP(member,listedAssets[i]);
             if(claimA>0){
-                claimForMember(listedAssets[i],member);
+               BondVault(bondVault).cFMember(listedAssets[i],member);
             }
         }
         return true;
     }
-    function claimForMember(address asset, address member) public returns (bool){
-        require(mapAddress_listedAssets[asset].bondedLP[member] > 0, '!bondedlps');
-        require(mapAddress_listedAssets[asset].isMember[member], '!deposited');
-        uint256 claimable = calcClaimBondedLP(member, asset); 
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset);
-        require(claimable <= mapAddress_listedAssets[asset].bondedLP[member],'attempted to overclaim');
-        mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
-        mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].sub(claimable);
-        iBEP20(_pool).transfer(member, claimable); // send LPs to user
-        return true;
-    }
+    
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
         require(isListed[asset], '!listed');
-        uint256 secondsSinceClaim = block.timestamp.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
-        uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
-        uint claimAmount;
-        if(secondsSinceClaim >= bondingPeriodSeconds){
-            mapAddress_listedAssets[asset].claimRate[bondedMember] = 0;
-            claimAmount = mapAddress_listedAssets[asset].bondedLP[bondedMember];
-        }else {
-            claimAmount = secondsSinceClaim.mul(rate);
-        }
+        uint claimAmount = BondVault(bondVault).cBLP(bondedMember, asset);
         return claimAmount;
     }
 
@@ -349,15 +246,7 @@ contract Bond is iBEP20 {
     function allMembers() public view returns (address[] memory _allMembers){
         return arrayMembers;
     }
-    function getMemberDetails(address member, address asset) public view returns (MemberDetails memory memberDetails){
-        memberDetails.isMember = mapAddress_listedAssets[asset].isMember[member];
-        memberDetails.bondedLP = mapAddress_listedAssets[asset].bondedLP[member];
-        memberDetails.claimRate = mapAddress_listedAssets[asset].claimRate[member];
-        memberDetails.lastBlockTime = mapAddress_listedAssets[asset].lastBlockTime[member];
-        return memberDetails;
-    }
-    
-      function destroyMe() public onlyDEPLOYER {
+      function destroyMe() public onlyDAO {
          selfdestruct(msg.sender);
     }
     

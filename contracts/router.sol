@@ -148,25 +148,23 @@ contract PoolM is iBEP20 {
         return liquidityUnits;
     }
 
-    // Remove Liquidity
+     // Remove Liquidity
     function removeLiquidity() public returns (uint outputBase, uint outputToken) {
         return removeLiquidityForMember(msg.sender);
     } 
 
     // Remove Liquidity for a member
     function removeLiquidityForMember(address member) public returns (uint outputBase, uint outputToken) {
-        uint256 _actualInputUnits = _getAddedUnitsAmount();
-        outputBase = _DAO().UTILS().calcLiquidityShare(_actualInputUnits, BASE, address(this), member);
-        outputToken = _DAO().UTILS().calcLiquidityShare(_actualInputUnits, TOKEN, address(this), member);
+        uint units = balanceOf(address(this));
+        outputBase = _DAO().UTILS().calcLiquidityShare(units, BASE, address(this), member);
+        outputToken = _DAO().UTILS().calcLiquidityShare(units, TOKEN, address(this), member);
         _decrementPoolMBalances(outputBase, outputToken);
-        _burn(address(this), _actualInputUnits);
-        iBEP20(BASE).transfer(member, outputBase); 
+        _burn(address(this), units);
+        iBEP20(BASE).transfer(member, outputBase);
         iBEP20(TOKEN).transfer(member, outputToken);
-        sync();
-        emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
+        emit RemoveLiquidity(member, outputBase, outputToken, units);
         return (outputBase, outputToken);
     }
-
 
     function swap(address token) public returns (uint outputAmount, uint fee){
         (outputAmount, fee) = swapTo(token, msg.sender);
@@ -351,7 +349,7 @@ contract RouterM {
     function createPool(uint256 inputBase, uint256 inputToken, address token) public payable onlyDAO returns(address pool){
         require(getPool(token) == address(0), "CreateErr");
         require(token != BASE, "MustBase");
-        require((inputToken > 0 && inputBase > 0), "Mus");
+        //require((inputToken > 0 && inputBase > 0), "Mus");
         PoolM newPoolM; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         newPoolM = new PoolM(BASE, _token); 
