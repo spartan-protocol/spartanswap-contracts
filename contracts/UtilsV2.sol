@@ -246,12 +246,12 @@ contract Utils {
     function getPoolShareAssym(address token, address member, bool toBase) public view returns(uint baseAmount, uint tokenAmount, uint outputAmt){
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         if(toBase){
-            baseAmount = calcAsymmetricShare(token, member);
+            baseAmount = calcAsymmetricShare(pool, member);
             tokenAmount = 0;
             outputAmt = baseAmount;
         } else {
             baseAmount = 0;
-            tokenAmount = calcAsymmetricShare(token, member);
+            tokenAmount = calcAsymmetricShare(pool, member);
             outputAmt = tokenAmount;
         }
         return (baseAmount, tokenAmount, outputAmt);
