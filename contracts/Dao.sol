@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-import "@nomiclabs/buidler/console.sol";
+
 interface iBEP20 {
     function totalSupply() external view returns (uint);
     function balanceOf(address) external view returns (uint);

@@ -23,7 +23,6 @@ contract Bond is iBEP20 {
     address public bondVault;
     address public WBNB;
     address private NDAO;
-    address [] public arrayMembers;
     address public DEPLOYER;
     uint public one = 10**18;
     address [] listedBondAssets;
@@ -239,12 +238,6 @@ contract Bond is iBEP20 {
     }
     function allListedAssets() public view returns (address[] memory _allListedAssets){
         return listedBondAssets;
-    }
-    function memberCount() public view returns (uint256 count){
-        return arrayMembers.length;
-    }
-    function allMembers() public view returns (address[] memory _allMembers){
-        return arrayMembers;
     }
       function destroyMe() public onlyDAO {
          selfdestruct(msg.sender);

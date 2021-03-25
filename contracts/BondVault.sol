@@ -64,11 +64,6 @@ contract BondVault {
         NDAO = _newDAO;
         DEPLOYER = msg.sender;
     }
-    mapping(address => bool) public isMember; // Is Member
-    mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's balance in pool
-    mapping(address => uint256) public mapMember_weight; // Value of weight
-    mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of weight for pool
-    mapping(address => address[]) public mapMember_poolArray;
 
     modifier onlyDAO() {
         require(msg.sender == _DAO().BOND() || msg.sender == DEPLOYER );
@@ -145,6 +140,12 @@ function _DAO() internal view returns(iDAO) {
         mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].sub(claimable);
         iBEP20(_pool).transfer(member, claimable); // send LPs to user
         return true;
+    }
+     function memberCount() public view returns (uint256 count){
+        return arrayMembers.length;
+    }
+    function allMembers() public view returns (address[] memory _allMembers){
+        return arrayMembers;
     }
 
     function getMemberDetails(address member, address asset) public view returns (MemberDetails memory memberDetails){
