@@ -21,6 +21,8 @@ interface iPOOLFACTORY {
     function getPool(address) external view returns(address payable);
     function getPoolArray(uint) external view returns(address payable);
     function poolCount() external view returns(uint);
+    function getToken(uint) external view returns(address);
+    function tokenCount() external view returns(uint);
     function getCuratedPoolsLength() external view returns (uint);
 
 }
@@ -173,6 +175,23 @@ contract Utils {
     function getPool(address token) public view returns(address pool){
         return iROUTER(oldRouter).getPool(token);
     }
+    function tokenCount() public view returns (uint256 count){
+        return iPOOLFACTORY(_DAO().POOLFACTORY()).tokenCount();
+    }
+    function allTokens() public view returns (address[] memory _allTokens){
+        return tokensInRange(0, iPOOLFACTORY(_DAO().POOLFACTORY()).tokenCount()) ;
+    }
+    function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
+        if(start.add(count) > tokenCount()){
+            count = tokenCount().sub(start);
+        }
+        address[] memory result = new address[](count);
+        for (uint i = 0; i < count; i++){
+            result[i] = iPOOLFACTORY(_DAO().POOLFACTORY()).getToken(i);
+        }
+        return result;
+    }
+
     function poolCount() public view returns (uint256 count){
         return iPOOLFACTORY(_DAO().POOLFACTORY()).poolCount();
     }

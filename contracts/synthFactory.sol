@@ -77,8 +77,14 @@ contract SynthFactory {
     //======================================HELPERS========================================//
     // Helper Functions
 
-      function getSynth(address token) public view returns(address synth){
+    function getSynth(address token) public view returns(address synth){
         return mapToken_Synth[token];
+    }
+    function synthCount() public view returns(uint256){
+        return arraySynths.length;
+    }
+    function getPoolArray(uint256 i) public view returns(address){
+        return arraySynths[i];
     }
    
 

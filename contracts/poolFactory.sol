@@ -14,6 +14,7 @@ contract PoolFactory {
 
     address[] public curatedPools;
     address[] public arrayPools;
+    address[] public arrayTokens;
 
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isListedPool;
@@ -62,15 +63,17 @@ contract PoolFactory {
     }
 
     function migratePOOLData(address payable oldPoolFactory) public onlyDAO {
-        uint256 poolTotalCount = PoolFactory(oldPoolFactory).poolCount();
-        for(uint256 i = 0; i<poolTotalCount; i++){
-            address pool = PoolFactory(oldPoolFactory).getPoolArray(i);
-            address _token = Pool(pool).TOKEN();
+         uint256 tknCount = PoolFactory(oldPoolFactory).tokenCount();
+         for(uint256 i = 0; i<tknCount; i++){
+            address _token = PoolFactory(oldPoolFactory).getToken(i);
+            address pool = PoolFactory(oldPoolFactory).getPool(_token);
+            arrayTokens.push(_token);
             isListedPool[pool] = true;
             arrayPools.push(pool);
             mapToken_Pool[_token] = pool;
         }
     }
+
     function sortCuratedPoolsByDepth() internal{
          for (uint i = 0; i < curatedPools.length; ++i) 
         {
@@ -121,6 +124,7 @@ contract PoolFactory {
         require(_token != BASE);
         mapToken_Pool[_token] = pool;
         arrayPools.push(pool);
+        arrayTokens.push(_token);
         isListedPool[pool] = true;
     }
 
@@ -151,6 +155,12 @@ contract PoolFactory {
     }
     function poolCount() public view returns(uint256){
         return arrayPools.length;
+    }
+    function tokenCount() public view returns(uint256){
+        return arrayTokens.length;
+    }
+    function getToken(uint256 i) public view returns(address){
+        return arrayTokens[i];
     }
     function getPoolArray(uint256 i) public view returns(address){
         return arrayPools[i];

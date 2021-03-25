@@ -46,15 +46,18 @@ contract DaoVault {
     address public BASE;
     address public NDAO;
     uint256 public totalWeight;
+
      constructor (address _base, address _newDAO) public payable {
         BASE = _base;
          NDAO = _newDAO;
     }
-    mapping(address => bool) public isMember; // Is Member
+
     mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's balance in pool
     mapping(address => uint256) public mapMember_weight; // Value of weight
     mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of weight for pool
     mapping(address => address[]) public mapMember_poolArray;
+
+       
 modifier onlyDAO() {
         require(msg.sender == _DAO().DAO());
         _;
