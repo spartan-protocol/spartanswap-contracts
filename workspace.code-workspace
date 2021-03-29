@@ -7,5 +7,7 @@
 			"path": "../spartanpools-dapp"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"solidity.compileUsingRemoteVersion": "v0.7.4+commit.3f05b770"
+	}
 }

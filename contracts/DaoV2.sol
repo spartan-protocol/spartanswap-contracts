@@ -3,7 +3,6 @@ pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./DaoVault.sol";
 
-
 interface iDAOVAULT {
     function withdraw(address, uint, address) external  returns (bool);
     function depositLP(address, uint, address) external  returns (bool);
@@ -29,7 +28,7 @@ interface iBOND {
     function changeBondingPeriod(uint) external returns (bool);
     function depositInit(address, uint, address) external;
 }
-interface iMASTERLOAN {
+interface iLEND {
     
 }
 
@@ -78,7 +77,7 @@ contract Dao {
 
     iROUTER private _ROUTER;
     iUTILS private _UTILS;
-    iMASTERLOAN private _MASTERLOAN;
+    iLEND private _LEND;
     iBOND private _BOND;
     iDAOVAULT private _DAOVAULT;
     iPOOLFACTORY private _POOLFACTORY;
@@ -129,10 +128,10 @@ contract Dao {
         // secondsPerEra = iBASE(BASE).secondsPerEra();
         secondsPerEra = 30;
     }
-    function setGenesisAddresses(address _router, address _utils, address _masterLoan, address _bond, address _daoVault, address _poolFactory,address _synthFactory ) public onlyDAO {
+    function setGenesisAddresses(address _router, address _utils, address _lend, address _bond, address _daoVault, address _poolFactory,address _synthFactory ) public onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
-        _MASTERLOAN = iMASTERLOAN(_masterLoan);
+        _LEND = iLEND(_lend);
         _BOND = iBOND(_bond);
         _DAOVAULT = iDAOVAULT(_daoVault);
         _POOLFACTORY = iPOOLFACTORY(_poolFactory);
@@ -550,11 +549,11 @@ contract Dao {
             return _UTILS;
         }
     }
-    function MASTERLOAN() public view returns(iMASTERLOAN){
+    function LEND() public view returns(iLEND){
         if(daoHasMoved){
-            return Dao(DAO).MASTERLOAN();
+            return Dao(DAO).LEND();
         } else {
-            return _MASTERLOAN;
+            return _LEND;
         }
     }
     function BOND() public view returns(iBOND){

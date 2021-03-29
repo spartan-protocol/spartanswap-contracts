@@ -147,7 +147,6 @@ function _DAO() internal view returns(iDAO) {
     function allMembers() public view returns (address[] memory _allMembers){
         return arrayMembers;
     }
-
     function getMemberDetails(address member, address asset) public view returns (MemberDetails memory memberDetails){
         memberDetails.isMember = mapAddress_listedAssets[asset].isMember[member];
         memberDetails.bondedLP = mapAddress_listedAssets[asset].bondedLP[member];

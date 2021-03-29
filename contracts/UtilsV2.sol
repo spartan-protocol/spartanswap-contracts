@@ -28,6 +28,7 @@ interface iPOOLFACTORY {
 }
 interface iSYNTHFACTORY {
     function getSynth(address) external view returns(address payable);
+    
 }
 interface iDAO {
     function ROUTER() external view returns(address);
@@ -52,6 +53,7 @@ interface iPOOL {
 interface iSYNTH {
     function genesis() external view returns(uint);
     function totalMinted() external view returns(uint);
+    function LayerONE()external view returns(address);
 }
 
 
@@ -355,6 +357,11 @@ contract Utils {
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         return  calcSwapValueInBaseWithPool(pool, amount);
    }
+   function calcSwapValueInBaseWithSYNTH(address synth, uint amount) public view returns (uint _output){
+       address token = iSYNTH(synth).LayerONE();
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        return  calcSwapValueInBaseWithPool(pool, amount);
+   }
 
     function calcSwapValueInToken(address token, uint amount) public view returns (uint _output){
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
@@ -479,6 +486,13 @@ contract Utils {
         tokenValue = tokenAmount.add(baseSwapped);
         return tokenValue;
     }
+    function calcAsymmetricSpotValueBase(address pool, uint amount) public view returns (uint baseValue){
+         uint baseAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
+        uint tokenAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
+        uint tokenSwapped = calcSpotValueInBaseWithPool(pool, tokenAmount);
+        baseValue = baseAmount.add(tokenSwapped);
+        return baseValue;
+    }
     function calcSynthsValue(address pool, uint amount) public view returns (uint units){
         uint amountHalved = amount.div(2);
         uint baseSwapped = calcSwapValueInBaseWithPool(pool, amountHalved);
@@ -508,12 +522,12 @@ contract Utils {
         uint two = 2;
          return (totalSupply.mul(Amount)).div((two.mul(Amount.add(baseAmount))));
      }
-     function calcLiquidityUnitsAsymToken(uint Amount, address pool) public view returns (uint units){
-        uint tokenAmount = iPOOL(pool).tokenAmount();
-        uint totalSupply = iBEP20(pool).totalSupply();
-        uint two = 2;
-         return (totalSupply.mul(Amount)).div((two.mul(Amount.add(tokenAmount))));
-     }
+    //  function calcLiquidityUnitsAsymToken(uint Amount, address pool) public view returns (uint units){
+    //     uint tokenAmount = iPOOL(pool).tokenAmount();
+    //     uint totalSupply = iBEP20(pool).totalSupply();
+    //     uint two = 2;
+    //      return (totalSupply.mul(Amount)).div((two.mul(Amount.add(tokenAmount))));
+    //  }
 
     
  //===============================OlD Utils functions =====================//
