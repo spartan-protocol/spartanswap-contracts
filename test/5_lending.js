@@ -52,9 +52,10 @@ contract('Test Lending', function (accounts) {
      createSyntheticBNB()
      swapLayer1ToSynth(acc0,_.BN2Str(50*_.one))
     //  swapSynthToLayer1(acc1)
-     BorrowTKNwithBASE(acc0,_.BN2Str(1*_.one))
+     BorrowTKNwithBASE(acc0,_.BN2Str(100*_.one))
      BorrowTKNwithSPT2BNB(acc0,_.BN2Str(1*_.one))
      BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(1*_.one))
+     RepayTKN(acc0, _.BN2Str(1*_.one))
    
 })
 
@@ -391,6 +392,57 @@ async function BorrowTKNwithASYNTHBNB(acc, x) {
         assert.equal(_.BN2Str(lpsBalA), _.BN2Str(lpsBal.plus(input)))
     })
 }
+
+async function RepayTKN(acc, x) {
+    it("Return Debt & get base collateral", async () => {
+        let input = _.getBN(x);
+        let assetC = base.address;
+        let assetD = token1.address;
+        let baseBal = _.getBN(await base.balanceOf(acc))
+        let tokenBal = _.getBN(await token1.balanceOf(acc))
+        let reserve = _.getBN(await base.balanceOf(lend.address))
+
+        let poolDataTKN1 = await utils.getPoolData(assetD);
+        const B = _.getBN(poolDataTKN1.baseAmount)
+        const Z = _.getBN(poolDataTKN1.tokenAmount)
+        let z = math.calcSwapOutput(x, Z, B)
+        let memberDeets =await lend.getMemberDetails(acc, assetC, assetD)
+        let mAC = _.getBN(memberDeets.assetCollateral);
+        let mAD = _.getBN(memberDeets.assetDebt);
+        // let mAB = memberDeets.timeBorrowed;
+        //  console.log(_.BN2Str(mAC)/_.one,_.BN2Str(mAD)/_.one );
+
+        await sleep(3100)
+        await token1.approve(lend.address, _.BN2Str(500000*_.one))
+        await lend.repayDebt(input, assetC, assetD, {from:acc})
+        let removedCollateral = _.getBN(input.times(mAC).div(mAD))
+
+
+        poolDataTKN1 = await utils.getPoolData(assetD);
+        let baseBalA = _.getBN(await base.balanceOf(acc))
+        let tokenBalA = _.getBN(await token1.balanceOf(acc))
+        let reserveA = _.getBN(await base.balanceOf(lend.address))
+        let memberDeetsA =await lend.getMemberDetails( acc, assetC, assetD)
+        let mACA = memberDeetsA.assetCollateral;
+        let mADA = memberDeetsA.assetDebt;
+        //   console.log(_.BN2Str(mACA)/_.one,_.BN2Str(mADA)/_.one);
+     
+
+        assert.equal(_.BN2Str(poolDataTKN1.baseAmount), _.BN2Str(B.minus(z)))
+        assert.equal(_.BN2Str(poolDataTKN1.tokenAmount), _.BN2Str(Z.plus(x)))
+        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(Z.plus(x)), 'token balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(B.minus(z)), 'base balance')
+        assert.equal(_.BN2Str(baseBalA), _.BN2Str(_.floorBN(baseBal.plus(removedCollateral))))
+        assert.equal(_.BN2Str(tokenBalA), _.BN2Str(tokenBal.minus(x)))
+        assert.equal(_.BN2Str(reserveA), _.BN2Str(_.ceilBN(reserve.plus(z).minus(removedCollateral))))
+        assert.equal(_.BN2Str(mACA), _.BN2Str(_.ceilBN(mAC.minus(removedCollateral))))
+        assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.minus(x)))
+        
+
+
+    })
+}
+
 
 
 //helpers

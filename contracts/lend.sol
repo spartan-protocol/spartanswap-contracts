@@ -12,6 +12,7 @@ contract SpartanLend {
     address public LENDROUTER;
     uint public nextDayTime;
     uint public currentDay;
+    uint public OneHR;
 
     struct CollateralDetails {
         uint ID;
@@ -46,6 +47,7 @@ contract SpartanLend {
     constructor (address _base, address _lendRouter) public payable {
         BASE = _base;
         LENDROUTER = _lendRouter;
+        OneHR = 1;
         DEPLOYER = msg.sender;
     }
 
@@ -85,16 +87,16 @@ contract SpartanLend {
     }
      // Remove collateral for member
     function repayDebtForMember(uint _amount,address _assetC, address _assetD, address _member) public returns (uint _assetCollateralRemoved){
-         require(block.timestamp >= mapMember_Details[_member].mapMember_Debt[_assetC].timeBorrowed[_assetD].add(3600));// min 1hr withdraw period 
+         require(block.timestamp >= mapMember_Details[_member].mapMember_Debt[_assetC].timeBorrowed[_assetD].add(OneHR));// min 1hr withdraw period 
          require(mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD] > 0, 'MEMBERPURGED');
-         require(mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD] <= _amount, 'INPUTERR');
+         require(mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD] >= _amount, 'INPUTERR');
          uint actualInputAssetD = _handleTransferInDebt(_assetD, _amount, _member); 
-         uint debtRepaid = LendRouter(LENDROUTER).removeForMember(_assetD);
-          _assetCollateralRemoved = iUTILS(_DAO().UTILS()).calcShare(actualInputAssetD,mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD], mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD]);
-          _decrCDP(_assetCollateralRemoved,_assetC, debtRepaid, _assetD);
-         _decrMemberDetails(_assetCollateralRemoved, _assetC, _member, debtRepaid, _assetD);
+         LendRouter(LENDROUTER).removeForMember(_assetD);
+          _assetCollateralRemoved = iUTILS(_DAO().UTILS()).calcShare(mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD], mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD], actualInputAssetD);
+          _decrCDP(_assetCollateralRemoved,_assetC, actualInputAssetD, _assetD);
+         _decrMemberDetails(_assetCollateralRemoved, _assetC, _member, actualInputAssetD, _assetD);
          iBEP20(_assetC).transfer(_member, _assetCollateralRemoved);
-        emit RemoveCollateral(_assetCollateralRemoved, _assetD, debtRepaid);
+        emit RemoveCollateral(_assetCollateralRemoved, _assetD, actualInputAssetD);
         return (_assetCollateralRemoved);
     }
 
@@ -121,9 +123,9 @@ contract SpartanLend {
     // handle input LP transfers 
     function _handleTransferInDebt(address _assetC, uint256 _amount, address _member) internal returns(uint256 actual){
         if(_amount > 0) {
-                uint startBal = iBEP20(_assetC).balanceOf(address(this));
-                    iBEP20(_assetC).transferFrom(_member, address(this), _amount); 
-                actual = iBEP20(_assetC).balanceOf(address(this)).sub(startBal);
+                uint startBal = iBEP20(_assetC).balanceOf(LENDROUTER);
+                    iBEP20(_assetC).transferFrom(_member, LENDROUTER, _amount); 
+                actual = iBEP20(_assetC).balanceOf(LENDROUTER).sub(startBal);
         }
         return actual;
     }
@@ -172,9 +174,9 @@ contract SpartanLend {
 
   //===================================HELPERS===============================================
     function getMemberDetails(address member, address assetC, address assetD) public view returns (MemberDetails memory memberDetails){
-        memberDetails.assetCollateral =  mapMember_Details[member].mapMember_Debt[assetC].assetCollateral[assetD];
-         memberDetails.assetDebt =  mapMember_Details[member].mapMember_Debt[assetC].assetDebt[assetD];
-          memberDetails.timeBorrowed =  mapMember_Details[member].mapMember_Debt[assetC].timeBorrowed[assetD];
+        memberDetails.assetCollateral = mapMember_Details[member].mapMember_Debt[assetC].assetCollateral[assetD];
+        memberDetails.assetDebt = mapMember_Details[member].mapMember_Debt[assetC].assetDebt[assetD];
+        memberDetails.timeBorrowed = mapMember_Details[member].mapMember_Debt[assetC].timeBorrowed[assetD];
         return memberDetails;
     }
 
