@@ -98,11 +98,11 @@ function getSlipAdustment(b, B, t,  T){
     return (numerator.div(part5)).integerValue(1);
 }
 
-function calcShare(s, T, A, V){
-  const share = s.div(T)
-  const a = A.mul(share)
-  const v = V.mul(share)
-  return ({'token':a, 'spartan':v})
+function calcShare(s, T, A){
+  const _s = new BigNumber(s)
+  const _A = new BigNumber(A)
+  const _T = new BigNumber(T)
+  return (_s.times(_A)).div(_T);
 }
 
 function calcValueIn(a, A, V) {
@@ -111,8 +111,17 @@ function calcValueIn(a, A, V) {
   const _V = new BigNumber(V)
   const numerator = _a.times(_V)
   const _v = numerator.div(_A)
-  return (new BigNumber(_v)).integerValue(1);;
+  return (new BigNumber(_v)).integerValue(1);
 }
+
+function calcLiquidityUnitsAsym( a, bA, tS ){
+  const _a = new BigNumber(a)
+  const _bA = new BigNumber(bA)
+  const _tS = new BigNumber(tS)
+  const two = new BigNumber(2)
+   return (_tS.times(_a)).div((two.times(_a.plus(_bA)))).integerValue(1);
+}
+
 
 module.exports = {
   calcSwapOutput: function(x, X, Y) {
@@ -133,11 +142,14 @@ getSlipAdustment: function(a, A, v, V) {
 calcAsymmetricShare: function(s, T, A) {
   return calcAsymmetricShare(s, T, A)
 },
-calcShare: function(s, T, A, V) {
-  return calcShare(s, T, A, V)
+calcShare: function(s, T, A) {
+  return calcShare(s, T, A)
 },
 calcValueIn: function(a, A, V) {
   return calcValueIn(a, A, V)
+},
+calcLiquidityUnitsAsym: function(a, bA, tS) {
+  return calcLiquidityUnitsAsym(a, bA, tS)
 }
 };
 

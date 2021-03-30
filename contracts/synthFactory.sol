@@ -12,6 +12,7 @@ contract SynthFactory {
     address[] public arraySynths;
     mapping(address => address) private mapToken_Synth;
     mapping(address => bool) public isSynth;
+    event CreateSynth(address indexed token, address indexed pool);
 
 
     // Only DAO can execute
@@ -53,6 +54,7 @@ contract SynthFactory {
         newSynth = new Synth(BASE,token, NDAO);  
         synth = address(newSynth);
         addSynth(token, synth);
+        emit CreateSynth(token, synth);
         return synth;
     }
 

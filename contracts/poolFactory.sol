@@ -19,7 +19,9 @@ contract PoolFactory {
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isListedPool;
     mapping(address=>bool) public isCuratedPool;
-
+    event CreatePool(address indexed token, address indexed pool);
+    event AddCuratePool(address indexed pool, bool Curated);
+    event RemoveCuratePool(address indexed pool, bool Curated);
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -59,6 +61,7 @@ contract PoolFactory {
         newPool = new Pool(BASE, _token, NDAO); 
         pool = address(newPool);
         addPool(_token, pool);
+        emit CreatePool(token,pool);
         return pool;
     }
 
@@ -112,12 +115,14 @@ contract PoolFactory {
         require(isListedPool[_pool] == true);
         isCuratedPool[_pool] = true;
         curatedPools.push(_pool);
+        emit AddCuratePool(_pool, isCuratedPool[_pool]);
     }
     function removeCuratedPool(address token) public onlyDAO {
         require(token != BASE);
         address _pool = getPool(token);
         require(isCuratedPool[_pool] == true);
         isCuratedPool[_pool] = false;
+        emit RemoveCuratePool(_pool, isCuratedPool[_pool]);
     }
 
     function addPool(address _token, address pool) internal {

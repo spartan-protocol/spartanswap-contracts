@@ -5,6 +5,7 @@ import "./cInterfaces.sol";
 import "@nomiclabs/buidler/console.sol";
 interface iBASE {
     function DAO() external view returns (iDAO);
+    function transferTo(address, uint256 ) external payable returns(bool);
 }
 interface iROUTER {
     function swap(uint, address, address) external returns(uint);
@@ -31,8 +32,13 @@ interface iDAO {
 }
 interface iPOOL {
     function TOKEN() external view returns(address);
+    function transferTo(address, uint256 ) external payable returns(bool);
     function sync() external; 
 }
+interface iSYNTH {
+    function transferTo(address, uint256 ) external payable returns(bool);
+}
+
 interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
     function getPool(address) external view returns(address payable);
@@ -52,10 +58,8 @@ contract LendRouter {
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 
-
-   
-    event Liquidated(address pool, uint units, uint outputAmount);
-    event InterestPayment(address pool, uint units, uint outputAmount);
+    event Liquidated(address indexed asset, uint units, uint outputAmount);
+    event InterestPayment(address indexed asset, uint units, uint outputAmount);
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
@@ -65,7 +69,7 @@ contract LendRouter {
         _;
     }
 
-    constructor (address _base,address _token) public payable {
+    constructor (address _base) public payable {
         BASE = _base;
         DEPLOYER = msg.sender;
     }
@@ -98,24 +102,6 @@ contract LendRouter {
         }
     }
 
-
-    // function _liquidate(address pool) public {
-    //     uint256 baseValueCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValue(pool, totalCollateral[pool]);
-    //     uint256 baseValueDebt = iUTILS(_DAO().UTILS()).calcSwapValueInBaseWithPool(pool, totalDebt[pool]);//get asym share in sparta
-    //     if(baseValueDebt > baseValueCollateral){
-    //         uint liqAmount = totalCollateral[pool].mul(liqFactor).div(10000);
-    //         totalCollateral[pool] = totalCollateral[pool].sub(liqAmount);
-    //         address token = iPOOL(pool).TOKEN();
-    //         iBEP20(pool).approve(_DAO().ROUTER(),liqAmount);
-    //         (uint _outputBase, uint _outputToken) = iROUTER(_DAO().ROUTER()).removeLiquidityExact(liqAmount,token);
-    //         iBEP20(token).approve(_DAO().ROUTER(),_outputToken); 
-    //         (uint _baseBought,) = iROUTER(_DAO().ROUTER()).swap(_outputToken,token, BASE);
-    //         uint outputAmount = _baseBought.add(_outputBase); 
-    //         iBEP20(BASE).transfer(pool, outputAmount); // send base to pool for arb 
-    //         iPOOL(pool).sync(); //sync balances for pool
-    //         emit Liquidated(pool, liqAmount, outputAmount);
-    //     }
-    // }
 
     // function globalSettleMent() public onlyDAO {
     //     address [] memory getCuratedPools = iUTILS(_DAO().UTILS()).allCuratedPools(); 

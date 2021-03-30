@@ -34,7 +34,7 @@ contract Bond is iBEP20 {
 
     event ListedAsset(address indexed DAO, address indexed asset);
     event DelistedAsset(address indexed DAO, address indexed asset);
-    event DepositAsset(address indexed owner, uint256 indexed depositAmount, uint256 indexed bondedLP);
+    event DepositAsset(address indexed owner, uint256 depositAmount, uint256 bondedLP);
     
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "Must be DAO");

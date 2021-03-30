@@ -9,7 +9,6 @@ contract SpartanLend {
     using SafeMath for uint256;
     address public BASE;
     address public DEPLOYER;
-    address public WBNB;
     address public LENDROUTER;
     uint public nextDayTime;
     uint public currentDay;
@@ -26,12 +25,17 @@ contract SpartanLend {
         mapping(address =>uint256) timeBorrowed; // assetC > AssetD > time
         // mapping(address =>uint256) nextDayTime; // assetC > AssetD > time
     }
+    struct MemberDetails {
+        uint assetCollateral;
+        uint assetDebt;
+        uint timeBorrowed;
+    }
     mapping(address => CollateralDetails) private mapMember_Details;
     mapping(address => mapping(address => uint)) public totalCollateral;
     mapping(address => mapping(address => uint)) public totalDebt;
 
-    event AddCollateral(uint inputToken, address Debt, uint DebtIssued);
-    event RemoveCollateral(uint inputToken, address Debt, uint DebtReturned);
+    event AddCollateral(uint inputToken, address indexed Debt, uint DebtIssued);
+    event RemoveCollateral(uint inputToken, address indexed Debt, uint DebtReturned);
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -39,9 +43,8 @@ contract SpartanLend {
         _; 
     }
 
-    constructor (address _base, address _wbnb, address _lendRouter) public payable {
+    constructor (address _base, address _lendRouter) public payable {
         BASE = _base;
-        WBNB = _wbnb;
         LENDROUTER = _lendRouter;
         DEPLOYER = msg.sender;
     }
@@ -63,18 +66,7 @@ contract SpartanLend {
     }
     // Add collateral for member
     function drawDebtForMember(uint _amount, address _assetC, address _assetD, address _member) public payable returns (uint256 _assetDebtIssued) {
-        uint actualInputAssetC = _handleTransferIn(_assetC, _amount, _member); 
-        uint collateralAdjusted = actualInputAssetC.mul(6666).div(10000); //150% collateral Ratio
-        uint baseBorrow;
-        if(_assetC == BASE){
-            baseBorrow = collateralAdjusted;
-        }else if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_assetC) == true){
-            baseBorrow = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(_assetC, collateralAdjusted);// calc units to BASE
-        }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_assetC) == true){
-            baseBorrow = iUTILS(_DAO().UTILS()).calcSwapValueInBaseWithSYNTH(_assetC, collateralAdjusted);
-        }else{
-            return 0;
-        }
+        (uint actualInputAssetC, uint baseBorrow) = _handleTransferInCol(_amount,_assetC);
         require(baseBorrow < iBEP20(BASE).balanceOf(address(this)));
         iBEP20(BASE).transfer(LENDROUTER,baseBorrow);
         _assetDebtIssued = LendRouter(LENDROUTER).depositForMember(_assetD);
@@ -96,7 +88,7 @@ contract SpartanLend {
          require(block.timestamp >= mapMember_Details[_member].mapMember_Debt[_assetC].timeBorrowed[_assetD].add(3600));// min 1hr withdraw period 
          require(mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD] > 0, 'MEMBERPURGED');
          require(mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD] <= _amount, 'INPUTERR');
-         uint actualInputAssetD = _handleTransferIn(_assetD, _amount, _member); 
+         uint actualInputAssetD = _handleTransferInDebt(_assetD, _amount, _member); 
          uint debtRepaid = LendRouter(LENDROUTER).removeForMember(_assetD);
           _assetCollateralRemoved = iUTILS(_DAO().UTILS()).calcShare(actualInputAssetD,mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD], mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD]);
           _decrCDP(_assetCollateralRemoved,_assetC, debtRepaid, _assetD);
@@ -106,27 +98,28 @@ contract SpartanLend {
         return (_assetCollateralRemoved);
     }
 
-    function purgeCDP() public returns(uint fee){
+    // function purgeCDP() public returns(uint fee){
 
-    }
+    // }
 
-    function _interestPayment() internal returns (uint interestPaid){
+    // function _interestPayment() internal returns (uint interestPaid){
 
-    }
-    function calcInterestAmount() internal returns (uint){
+    // }
+    // function calcInterestAmount() internal returns (uint){
 
-    }
+    // }
 
-     function _checkInterest() private {
-        if (block.timestamp >= nextDayTime) {                                          
-            nextDayTime = block.timestamp + 86400;                                           
-            uint256 _interestPayable = calcInterestAmount();                               
-             _interestPayment();                            
-            //emit InterestPaid();                              
-        }
-    }
+    //  function _checkInterest() private {
+    //     if (block.timestamp >= nextDayTime) {                                          
+    //         nextDayTime = block.timestamp + 86400;                                           
+    //         uint256 _interestPayable = calcInterestAmount();                               
+    //          _interestPayment();                            
+    //         //emit InterestPaid();                              
+    //     }
+    // }
+
     // handle input LP transfers 
-    function _handleTransferIn(address _assetC, uint256 _amount, address _member) internal returns(uint256 actual){
+    function _handleTransferInDebt(address _assetC, uint256 _amount, address _member) internal returns(uint256 actual){
         if(_amount > 0) {
                 uint startBal = iBEP20(_assetC).balanceOf(address(this));
                     iBEP20(_assetC).transferFrom(_member, address(this), _amount); 
@@ -134,6 +127,27 @@ contract SpartanLend {
         }
         return actual;
     }
+    function _handleTransferInCol( uint256 _amount, address _assetC) internal returns(uint256 actual, uint baseBorrow){
+        if(_amount > 0) {
+                uint collateralAdjusted = _amount.mul(6666).div(10000); //150% collateral Ratio
+                uint startBal = iBEP20(_assetC).balanceOf(address(this));
+            if(_assetC == BASE){
+                baseBorrow = collateralAdjusted;
+                iBASE(_assetC).transferTo(address(this), _amount); 
+            }else if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_assetC) == true){
+                 baseBorrow = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(_assetC, collateralAdjusted);// calc units to BASE
+                iPOOL(_assetC).transferTo(address(this), _amount); 
+            }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_assetC) == true){
+                baseBorrow = iUTILS(_DAO().UTILS()).calcSwapValueInBaseWithSYNTH(_assetC, collateralAdjusted);
+                iSYNTH(_assetC).transferTo(address(this), _amount); 
+            }else{
+                 return (0,0);
+            }
+             actual = iBEP20(_assetC).balanceOf(address(this)).sub(startBal);
+        }
+        return (actual, baseBorrow);
+    }
+    
 
     function _incrMemberDetails(uint actualInputAssetC,address _assetC, address _member, uint _assetDebtIssued, address _assetD) internal {
        mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD] = mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD].add(_assetDebtIssued);
@@ -157,10 +171,12 @@ contract SpartanLend {
     }
 
   //===================================HELPERS===============================================
-    // function getMemberDetails(address member, address assetD) public view returns (uint MemberDebt){
-    //     MemberDebt = mapMember_Details[member].assetDebt[assetD];
-    //     return MemberDebt;
-    // }
+    function getMemberDetails(address member, address assetC, address assetD) public view returns (MemberDetails memory memberDetails){
+        memberDetails.assetCollateral =  mapMember_Details[member].mapMember_Debt[assetC].assetCollateral[assetD];
+         memberDetails.assetDebt =  mapMember_Details[member].mapMember_Debt[assetC].assetDebt[assetD];
+          memberDetails.timeBorrowed =  mapMember_Details[member].mapMember_Debt[assetC].timeBorrowed[assetD];
+        return memberDetails;
+    }
 
     function destroyMe() public onlyDAO returns(bool){
          selfdestruct(msg.sender);
