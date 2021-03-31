@@ -2,7 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
-import "@nomiclabs/buidler/console.sol";
+
 interface iSYNTHFACTORY {
     function isSynth(address) external view returns (bool);
 
@@ -95,18 +95,18 @@ contract Router {
        return addLiquidityAsymForMember(inputToken,fromBase, token, msg.sender);
     }
 
-    function zapLiquidity(uint unitsLP, address fromToken, address toToken) public payable returns (uint units, uint fee){
+    function zapLiquidity(uint unitsLP, address fromToken, address toToken) public payable returns (uint units){
         address _poolTo = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_poolTo) == true);
         address _poolFrom = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(fromToken);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_poolFrom) == true);
         address _member = msg.sender; 
-        Pool(_poolFrom).transferTo(_poolFrom, unitsLP);//RPTAF
         require(unitsLP <= iBEP20(_poolFrom).totalSupply());
-        (uint _outputBase, uint _outputToken) = Pool(_poolFrom).removeLiquidityForMember(_member);
-        (uint _tokenBought,uint _feey) = swapTo(_outputToken,fromToken, toToken, _member);
-        units = addLiquidityForMember(_outputBase, _tokenBought, toToken, _member); 
-         return (units, _feey);
+        (uint outputBase,) = removeLiquidityAsymForMember(unitsLP, true,  fromToken, address(this));
+        iBEP20(BASE).transfer(_poolTo,outputBase);
+        units = Pool(_poolTo).addLiquidityForMember(_member);
+         emit AddLiquidity(_member, outputBase,0, units);
+         return (units);
     }
     // Add Asymmetrically
     function addLiquidityAsymForMember(uint inputToken, bool fromBase, address token, address member) public payable returns (uint units) {
@@ -122,6 +122,7 @@ contract Router {
              getsDividend(_pool,token, fee);
              emit Swapped(token, BASE, halfInput, _tokenBought, fee, member);
              iBEP20(BASE).transfer(_pool,halfInput);
+             iBEP20(_token).transfer(_pool,_tokenBought);
              units = Pool(_pool).addLiquidityForMember(member);
              emit AddLiquidity(member, halfInput,_tokenBought, units);
         } else {
@@ -131,6 +132,7 @@ contract Router {
             getsDividend(_pool,token, fee);
             emit Swapped(token, BASE, halfInput, _baseBought, fee, member);
             iBEP20(_token).transfer(_pool,halfInput);
+            iBEP20(BASE).transfer(_pool,_baseBought);
             units = Pool(_pool).addLiquidityForMember(member);
             emit AddLiquidity(member, halfInput,_baseBought, units);
         }

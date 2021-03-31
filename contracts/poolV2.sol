@@ -1,6 +1,6 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-import "@nomiclabs/buidler/console.sol";
+
 import "./cInterfaces.sol";
 interface iDAO {
     function ROUTER() external view returns(address);
@@ -240,6 +240,7 @@ contract Pool is iBEP20 {
         }
         emit Swapped(_fromToken, token, _amount, outputAmount, fee, member);
         iBEP20(token).transfer(member, outputAmount);
+        sync();
         return (outputAmount, fee);
     }
 
@@ -316,8 +317,8 @@ contract Pool is iBEP20 {
     } 
     // Increment internal balances
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
-        baseAmount = baseAmount.add(_baseAmount);
-        tokenAmount = tokenAmount.add(_tokenAmount);
+        baseAmount += _baseAmount;
+        tokenAmount += _tokenAmount;
     }
     function _setPoolAmounts(uint256 _baseAmount, uint256 _tokenAmount) internal  {
         baseAmount = _baseAmount;
@@ -325,8 +326,8 @@ contract Pool is iBEP20 {
     }
     // Decrement internal balances
     function _decrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
-        baseAmount = baseAmount.sub(_baseAmount);
-        tokenAmount = tokenAmount.sub(_tokenAmount); 
+        baseAmount -= _baseAmount;
+        tokenAmount -= _tokenAmount; 
     }
 
     function _addPoolMetrics(uint256 _fee) internal {

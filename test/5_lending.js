@@ -46,8 +46,8 @@ contract('Test Lending', function (accounts) {
      createPoolTKN1()
      addLiquidityBNB(acc0,_.BN2Str(10*_.one),  _.BN2Str(1*_.one)); //SPV2
      addLiquidityBNB(acc1,_.BN2Str(90*_.one),  _.BN2Str(9*_.one)); //SPV2
-     addLiquidityTKN1(acc0,_.BN2Str(10*_.one),  _.BN2Str(1*_.one)); //SPV2
-     addLiquidityTKN1(acc1,_.BN2Str(100*_.one),  _.BN2Str(10*_.one)); //SPV2
+     addLiquidityTKN1(acc0,_.BN2Str(100*_.one),  _.BN2Str(1*_.one)); //SPV2
+     addLiquidityTKN1(acc1,_.BN2Str(1000*_.one),  _.BN2Str(10*_.one)); //SPV2
      curatePools()
      createSyntheticBNB()
      swapLayer1ToSynth(acc0,_.BN2Str(50*_.one))
@@ -55,9 +55,12 @@ contract('Test Lending', function (accounts) {
      BorrowTKNwithBASE(acc0,_.BN2Str(100*_.one))
      BorrowTKNwithSPT2BNB(acc0,_.BN2Str(1*_.one))
      BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(1*_.one))
-     RepayTKNgetBase(acc0, "2584486258721574915")
-     RepayTKNgetSPT2BNB(acc0, "79648011604902472")
-     RepayTKNgetSynthBNB(acc0, "373053626552086436")
+    //  RepayTKNgetBase(acc0, "2584486258721574915")
+    //  RepayTKNgetSPT2BNB(acc0, "79648011604902472")
+    //  RepayTKNgetSynthBNB(acc0, "373053626552086436")
+     ShowTKNPool()
+     payInterestForTKN(acc0)
+     ShowTKNPool()
 })
 
 //################################################################
@@ -86,6 +89,7 @@ function constructor(accounts) {
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(lend.address, _.getBN(_.BN2Str(100000 * _.one)))
+        await lend.addToReserve(_.BN2Str(100000 * _.one),{from:acc0})
         await base.transfer(router.address, _.getBN(_.BN2Str(100000 * _.one)))
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
@@ -266,9 +270,9 @@ async function BorrowTKNwithBASE(acc, x) {
         const B = _.getBN(poolDataTKN1.baseAmount)
         const Z = _.getBN(poolDataTKN1.tokenAmount)
         let z = math.calcSwapOutput(colRat, B, Z)
-        let memberDeets =await lend.getMemberDetails( acc, assetC, assetD)
-        let mAC = _.getBN(memberDeets.assetCollateral);
-        let mAD = _.getBN(memberDeets.assetDebt);
+        // let memberDeets =await lend.getMemberDetails( acc, assetC, assetD)
+        // let mAC = _.getBN(memberDeets.assetCollateral);
+        // let mAD = _.getBN(memberDeets.assetDebt);
         // let mAB = memberDeets.timeBorrowed;
         // console.log(_.BN2Str(mAC),_.BN2Str(mAD), _.BN2Str(mAB) );
 
@@ -291,8 +295,8 @@ async function BorrowTKNwithBASE(acc, x) {
         assert.equal(_.BN2Str(baseBalA), _.BN2Str(baseBal.minus(input)))
         assert.equal(_.BN2Str(tokenBalA), _.BN2Str(tokenBal.plus(z)))
         assert.equal(_.BN2Str(reserveA), _.BN2Str(reserve.plus(input).minus(colRat)))
-        assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.plus(input)))
-        assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.plus(z)))
+        // assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.plus(input)))
+        // assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.plus(z)))
 
     })
 }
@@ -313,9 +317,9 @@ async function BorrowTKNwithSPT2BNB(acc, x) {
         const B = _.getBN(poolDataTKN1.baseAmount)
         const Z = _.getBN(poolDataTKN1.tokenAmount)
         let z = math.calcSwapOutput(colRat, B, Z)
-        let memberDeets =await lend.getMemberDetails( acc, assetC, assetD)
-        let mAC = _.getBN(memberDeets.assetCollateral);
-        let mAD = _.getBN(memberDeets.assetDebt);
+        // let memberDeets =await lend.getMemberDetails( acc, assetC, assetD)
+        // let mAC = _.getBN(memberDeets.assetCollateral);
+        // let mAD = _.getBN(memberDeets.assetDebt);
         // let mAB = memberDeets.timeBorrowed;
         // console.log(_.BN2Str(mAC),_.BN2Str(mAD), _.BN2Str(mAB) );
 
@@ -339,8 +343,8 @@ async function BorrowTKNwithSPT2BNB(acc, x) {
         assert.equal(_.BN2Str(baseBalA), _.BN2Str(baseBal.minus(input)))
         assert.equal(_.BN2Str(tokenBalA), _.BN2Str(tokenBal.plus(z)))
         assert.equal(_.BN2Str(reserveA), _.BN2Str(reserve.minus(colRat)))
-        assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.plus(input)))
-        assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.plus(z)))
+        // assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.plus(input)))
+        // assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.plus(z)))
         assert.equal(_.BN2Str(lpsBalA), _.BN2Str(lpsBal.plus(input)))
 
     })
@@ -362,9 +366,9 @@ async function BorrowTKNwithASYNTHBNB(acc, x) {
         const B = _.getBN(poolDataTKN1.baseAmount)
         const Z = _.getBN(poolDataTKN1.tokenAmount)
         let z = math.calcSwapOutput(colRat, B, Z)
-        let memberDeets =await lend.getMemberDetails( acc, assetC, assetD)
-        let mAC = _.getBN(memberDeets.assetCollateral);
-        let mAD = _.getBN(memberDeets.assetDebt);
+        // let memberDeets =await lend.getMemberDetails( acc, assetC, assetD)
+        // let mAC = _.getBN(memberDeets.assetCollateral);
+        // let mAD = _.getBN(memberDeets.assetDebt);
         // let mAB = memberDeets.timeBorrowed;
         // console.log(_.BN2Str(mAC),_.BN2Str(mAD), _.BN2Str(mAB) );
 
@@ -388,8 +392,8 @@ async function BorrowTKNwithASYNTHBNB(acc, x) {
         assert.equal(_.BN2Str(baseBalA), _.BN2Str(baseBal.minus(input)))
         assert.equal(_.BN2Str(tokenBalA), _.BN2Str(tokenBal.plus(z)))
         assert.equal(_.BN2Str(reserveA), _.BN2Str(reserve.minus(colRat)))
-        assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.plus(input)))
-        assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.plus(z)))
+        // assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.plus(input)))
+        // assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.plus(z)))
         assert.equal(_.BN2Str(lpsBalA), _.BN2Str(lpsBal.plus(input)))
     })
 }
@@ -530,6 +534,17 @@ async function RepayTKNgetSynthBNB(acc, x) {
         assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.minus(removedCollateral)))
         assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.minus(x)))
     
+    })
+}
+
+async function payInterestForTKN(acc, x) {
+    it("Pay Interest", async () => {
+        let assetC = base.address;
+        let assetD = token1.address;
+        await truffleAssert.reverts(lend._checkInterest(assetC, assetD), "!DAY");
+        await sleep(10000)
+        await lend._checkInterest(assetC, assetD);
+
     })
 }
 

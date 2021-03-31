@@ -522,34 +522,8 @@ contract Utils {
         uint two = 2;
          return (totalSupply.mul(Amount)).div((two.mul(Amount.add(baseAmount))));
      }
-    //  function calcLiquidityUnitsAsymToken(uint Amount, address pool) public view returns (uint units){
-    //     uint tokenAmount = iPOOL(pool).tokenAmount();
-    //     uint totalSupply = iBEP20(pool).totalSupply();
-    //     uint two = 2;
-    //      return (totalSupply.mul(Amount)).div((two.mul(Amount.add(tokenAmount))));
-    //  }
 
-    
- //===============================OlD Utils functions =====================//
 
-//     function getPoolROI(address token) public view returns (uint roi){
-//         address pool = getPool(token);
-//         uint _baseStart = iPOOL(pool).baseAmountPooled().mul(2);
-//         uint _baseEnd = iPOOL(pool).baseAmount().mul(2);
-//         uint _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
-//         uint _tokenStart = iPOOL(pool).tokenAmountPooled().mul(2);
-//         uint _tokenEnd = iPOOL(pool).tokenAmount().mul(2);
-//         uint _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
-//         return (_ROIS + _ROIA).div(2);
-//    }
-
-//    function getPoolAPY(address token) public view returns (uint apy){
-//         uint avgROI = getPoolROI(token);
-//         uint poolAge = getPoolAge(token);
-//         return (avgROI.mul(365)).div(poolAge);
-//    }
-
-   
     //====================================PRICING====================================//
 
     function calcValueInBase(address token, uint amount) public view returns (uint value){

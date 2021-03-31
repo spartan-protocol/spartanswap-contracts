@@ -46,22 +46,22 @@ contract('SWAP', function (accounts) {
     sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
     buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
     sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    swapTKN1ToBNB(acc2, _.BN2Str(_.one * 1))//double swaps
-    swapBNBToTKN1(acc2, _.BN2Str(_.one * 1))//double swaps
-    swapBASE(acc0, _.BN2Str(_.one)) // dividends
-    swapTOKEN(acc0, _.BN2Str(_.one * 1))// dividends
-    swapBASE(acc0, _.BN2Str(_.one)) // dividends
-    swapTOKEN(acc0, _.BN2Str(_.one * 1))// dividends
-    createSyntheticBNB() 
-    swapLayer1ToSynth(acc1)
-    swapSynthToLayer1(acc1)
-    zapLiquidity(acc1)
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // swapTKN1ToBNB(acc2, _.BN2Str(_.one * 1))//double swaps
+    // swapBNBToTKN1(acc2, _.BN2Str(_.one * 1))//double swaps
+    // swapBASE(acc0, _.BN2Str(_.one)) // dividends
+    // swapTOKEN(acc0, _.BN2Str(_.one * 1))// dividends
+    // swapBASE(acc0, _.BN2Str(_.one)) // dividends
+    // swapTOKEN(acc0, _.BN2Str(_.one * 1))// dividends
+    // createSyntheticBNB() 
+    // swapLayer1ToSynth(acc1)
+    // swapSynthToLayer1(acc1)
+    zapLiquidity(acc1,  _.BN2Str(_.one * 10))
     
 
 })
@@ -530,20 +530,40 @@ async function swapLayer1ToSynth(acc) {
         
     })
 }
-async function zapLiquidity(acc) {
+async function zapLiquidity(acc, x) {
     it("zap liquidity", async () => {
-        let SPT2BNB = _.BN2Str(await poolWBNB.balanceOf(acc))
         let SPT2TKN = _.BN2Str(await poolTKN1.balanceOf(acc))
-        console.log("SPT2BNB bal",SPT2BNB/_.one )
-        console.log("SPT2BTC bal",SPT2TKN/_.one )
+        // let baseP = _.BN2Str(await base.balanceOf(poolWBNB.address))
+        // let wbnbb = _.BN2Str(await wbnb.balanceOf(poolWBNB.address))
+        // let TOKENN = _.BN2Str(await token1.balanceOf(poolTKN1.address))
+        //  let baset = _.BN2Str(await base.balanceOf(poolTKN1.address))
+        // console.log("SPT2BTC bal",SPT2TKN/_.one )
         let fromTOKEN = wbnb.address
         let toTOKEN = token1.address
-        let tx = await router.zapLiquidity(SPT2BNB, fromTOKEN, toTOKEN, {from:acc})
-        let SPT2BNBa = _.BN2Str(await poolWBNB.balanceOf(acc))
-        let SPT2TKNa = _.BN2Str(await poolTKN1.balanceOf(acc))
-        console.log("SPT2BNB bal",SPT2BNBa/_.one )
-        console.log("SPT2BTC bal",SPT2TKNa/_.one )
-        //console.log("Fee in Sparta", fee/_.one)
+        // console.log("BASE BALANCE poolWBNB",baseP/_.one )
+        // console.log("WBNB BALANCE poolWBNB", wbnbb/_.one)
+        // console.log("BASE BALANCE poolTKN", baset/_.one)
+        // console.log("TOKEN BALANCE poolTKN", TOKENN/_.one)
+
+        let tx = await router.zapLiquidity(x, fromTOKEN, toTOKEN, {from:acc})
+        // console.log(_.BN2Str(tx.logs[0].args.outputBase))
+        // console.log(_.BN2Str(tx.logs[0].args.outputToken))
+        // console.log(_.BN2Str(tx.logs[2].args.inputAmount))
+        // console.log(_.BN2Str(tx.logs[2].args.outputAmount))
+        // console.log(_.BN2Str(tx.logs[4].args.inputBase))
+        // console.log(_.BN2Str(tx.logs[4].args.inputToken))
+        // let basePA = _.BN2Str(await base.balanceOf(poolWBNB.address))
+        // let wbnbbA = _.BN2Str(await wbnb.balanceOf(poolWBNB.address))
+        // let TOKENNA = _.BN2Str(await token1.balanceOf(poolTKN1.address))
+        //  let basetA = _.BN2Str(await base.balanceOf(poolTKN1.address))
+        // let SPT2BNBa = _.BN2Str(await poolWBNB.balanceOf(acc))
+        // let SPT2TKNa = _.BN2Str(await poolTKN1.balanceOf(acc))
+        // console.log("SPT2BNB bal",SPT2BNBa/_.one )
+        // console.log("SPT2BTC bal",SPT2TKNa/_.one )
+        // console.log("BASE BALANCE poolWBNB",basePA/_.one )
+        // console.log("WBNB BALANCE poolWBNB", wbnbbA/_.one)
+        // console.log("BASE BALANCE poolTKN", basetA/_.one)
+        // console.log("TOKEN BALANCE poolTKN", TOKENNA/_.one)
        
     })
 }

@@ -10,15 +10,18 @@ interface iBASE {
 interface iROUTER {
     function swap(uint, address, address) external returns(uint);
     function removeLiquidityExact(uint, address) external returns(uint, uint);
+    function removeLiquidityAsym(uint units, bool toBase, address token) external returns(uint outputAmount, uint fee);
+    function swapSynthToBase(uint inputAmount, address synthIN) external returns (uint outPut);
 }
 interface iUTILS {
    function calcSwapValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
-    function calcAsymmetricValueBase(address token, uint units) external view returns(uint amount);
+    function calcAsymmetricValueToken(address pool, uint amount) external pure returns (uint units);
+    function calcAsymmetricValueBase(address pool, uint units) external view returns(uint amount);
     function calcShare(uint units,uint total, uint amount ) external view returns (uint unitShare);
     function calcSwapValueInBaseWithSYNTH(address token, uint units) external view returns (uint amount);
     function calcSpotValueInBase(address token, uint units) external view returns (uint amount);
     function allCuratedPools() external view returns (address [] memory);
-    function calcLiquidityUnitsAsym() external view returns (uint);
+    function calcLiquidityUnitsAsym(uint amount, address pool) external view returns (uint);
    
 }
 interface iDAO {
@@ -34,6 +37,8 @@ interface iPOOL {
     function TOKEN() external view returns(address);
     function transferTo(address, uint256 ) external payable returns(bool);
     function sync() external; 
+    function baseAmount() external view returns(uint);
+    function tokenAmount() external view returns(uint);
 }
 interface iSYNTH {
     function transferTo(address, uint256 ) external payable returns(bool);
@@ -91,7 +96,7 @@ contract LendRouter {
         iBEP20(_assetD).approve(address(_DAO().ROUTER()), inputDebt);
         uint outputBase = iROUTER(_DAO().ROUTER()).swap(inputDebt, _assetD, BASE);
          iBEP20(BASE).transfer(msg.sender,outputBase);
-        return  DebtReturned;
+        return  outputBase;
     }
 
     function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 actual){
@@ -102,26 +107,6 @@ contract LendRouter {
         }
     }
 
-
-    // function globalSettleMent() public onlyDAO {
-    //     address [] memory getCuratedPools = iUTILS(_DAO().UTILS()).allCuratedPools(); 
-    //       if(membersActiveCount < 10){
-    //         for(uint x=0;x < membersActive.length;x++){
-    //         for(uint i=0;i < getCuratedPools.length;i++){
-    //             if(mapMember_Details[membersActive[x]].isActiveMember[getCuratedPools[i]] ){
-    //                 uint256 outputCollateral = iUTILS(_DAO().UTILS()).calcDebtShare(mapMember_Details[membersActive[x]].assetDebt[getCuratedPools[i]], totalDebt[getCuratedPools[i]], getCuratedPools[i], address(this)); 
-    //                 totalMinted = totalMinted.sub(mapMember_Details[membersActive[x]].assetDebt[getCuratedPools[i]]); //map synthetic debt
-    //                 _decrementCDPDebt(outputCollateral, mapMember_Details[membersActive[x]].assetDebt[getCuratedPools[i]], getCuratedPools[i] );
-    //                 _decrementMemberDetails(getCuratedPools[i], membersActive[x], mapMember_Details[membersActive[x]].assetDebt[getCuratedPools[i]]); //update member details
-    //                 iBEP20(getCuratedPools[i]).transfer(membersActive[x], outputCollateral); //return their collateral
-    //                 emit RemoveCollateral(membersActive[x], outputCollateral, mapMember_Details[membersActive[x]].assetDebt[getCuratedPools[i]], getCuratedPools[i]);
-    //             }
-    //           }
-    //           }
-    //         totalMinted = 0;
-    //         selfdestruct(msg.sender);
-    // }
-    // }
     function destroyMe() public onlyLEND {
         selfdestruct(msg.sender);
     } 
