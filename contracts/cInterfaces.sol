@@ -1,5 +1,6 @@
 //iBEP20 Interface
 pragma solidity 0.7.4;
+
 interface iBEP20 {
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);

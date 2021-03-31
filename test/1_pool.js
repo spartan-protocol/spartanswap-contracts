@@ -27,8 +27,11 @@ contract('ADD LIQUIDITY', function (accounts) {
     constructor(accounts)
     wrapBNB()
     createPoolWBNB()
-    addLiquidity(acc1, _.BN2Str(_.one * 10), _.dot1BN)
-    removeLiquidityBNB(10000, acc0)
+    addLiquidity(acc1, _.BN2Str(_.one * 100), _.BN2Str(_.one * 10))
+     removeLiquidityBNB(1000, acc1)
+    addLiquidity(acc0, _.BN2Str(_.one * 50), _.BN2Str(_.one * 5))
+     addLiquidityAsym(acc1,_.BN2Str(_.one * 1) )
+     removeLiquidityBNBASYM(0, acc0)
 
 })
 
@@ -103,15 +106,29 @@ async function addLiquidity(acc, b, t) {
         var B = _.getBN(poolData.baseAmount)
         var T = _.getBN(poolData.tokenAmount)
         poolUnits = _.getBN((await poolWBNB.totalSupply()))
+        let before = _.getBN(await poolWBNB.balanceOf(acc))
         let units = math.calcLiquidityUnits(b, B, t, T, poolUnits)
         let tx = await router.addLiquidity(b, t, token, { from: acc, value:t})
         poolData = await utils.getPoolData(token);
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.plus(b)))
         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.plus(t)))
         assert.equal(_.BN2Str((await poolWBNB.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
-        assert.equal(_.BN2Str(await poolWBNB.balanceOf(acc)), _.BN2Str(units), 'units')
+        assert.equal(_.BN2Str(await poolWBNB.balanceOf(acc)), _.BN2Str(before.plus(units)), 'units')
         assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(B.plus(b)), 'base balance')
         assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(T.plus(t)), 'wbnb balance')
+    })
+}
+async function addLiquidityAsym(acc, b) {
+
+    it(`It should addLiquidity ASYM BNB from ${acc}`, async () => {
+        let token = wbnb.address
+        // let poolData = await utils.getPoolData(token);
+        // var B = _.getBN(poolData.baseAmount)
+        // var T = _.getBN(poolData.tokenAmount)
+        // poolUnits = _.getBN((await poolWBNB.totalSupply()))
+        // let before = _.getBN(await poolWBNB.balanceOf(acc))
+        // let units = math.calcLiquidityUnits(b, B, t, T, poolUnits)
+        let tx = await router.addLiquidityAsym(b,false, token,{from: acc, value:b})
     })
 }
 async function removeLiquidityBNB(bp, acc) {
@@ -137,6 +154,16 @@ async function removeLiquidityBNB(bp, acc) {
         assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Int(B.minus(b)), 'base balance')
         assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(T.minus(t)), 'wbnb balance')
         assert.equal(_.BN2Str(await poolWBNB.balanceOf(acc)), _.BN2Str(addLiquidityUnits.minus(share)), 'addLiquidityrUnits')
+    })
+}
+async function removeLiquidityBNBASYM(bp, acc) {
+    it(`It should removeLiquidity asym BNB for ${acc}`, async () => {
+        let token = _.BNB
+        let addLiquidityUnits = _.getBN(await poolWBNB.balanceOf(acc))
+
+        let tx = await router.removeLiquidityAsym(addLiquidityUnits,true, token,{ from: acc})
+        
+
     })
 }
 

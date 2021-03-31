@@ -2,7 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
-
+import "@nomiclabs/buidler/console.sol";
 interface iSYNTHFACTORY {
     function isSynth(address) external view returns (bool);
 
@@ -42,7 +42,6 @@ contract Router {
     event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address indexed tokenFrom, address indexed tokenTo, uint inputAmount, uint outputAmount, uint fee, address indexed recipient);
-    event DoubleSwapped(address indexed tokenFrom, address indexed tokenTo, uint inputAmount, uint outputAmount, uint fee, address indexed recipient);
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -113,12 +112,27 @@ contract Router {
     function addLiquidityAsymForMember(uint inputToken, bool fromBase, address token, address member) public payable returns (uint units) {
         require(inputToken > 0);
         uint halfInput = inputToken.mul(5000).div(10000);
-        if(!fromBase){
-            (uint _baseBought, ) = swapTo(halfInput, token, BASE, member);
-            units = addLiquidityForMember(_baseBought, halfInput, token, member); 
+         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+         address _token = token;
+        if(token == address(0)){_token = WBNB;} // Handle BNB
+        if(fromBase){
+             _handleTransferIn(BASE, inputToken, address(this));
+             iBEP20(BASE).transfer(_pool,halfInput);
+             (uint _tokenBought,uint fee ) = Pool(_pool).swap(_token);
+             getsDividend(_pool,token, fee);
+             emit Swapped(token, BASE, halfInput, _tokenBought, fee, member);
+             iBEP20(BASE).transfer(_pool,halfInput);
+             units = Pool(_pool).addLiquidityForMember(member);
+             emit AddLiquidity(member, halfInput,_tokenBought, units);
         } else {
-            (uint _tokenBought, ) = swapTo(halfInput, BASE, token,  member);
-            units = addLiquidityForMember(halfInput, _tokenBought, token, member); 
+            _handleTransferIn(_token, inputToken, address(this));
+             iBEP20(_token).transfer(_pool,halfInput);
+            (uint _baseBought, uint fee ) = Pool(_pool).swap(BASE);
+            getsDividend(_pool,token, fee);
+            emit Swapped(token, BASE, halfInput, _baseBought, fee, member);
+            iBEP20(_token).transfer(_pool,halfInput);
+            units = Pool(_pool).addLiquidityForMember(member);
+            emit AddLiquidity(member, halfInput,_baseBought, units);
         }
         return units;
     }
@@ -133,9 +147,12 @@ contract Router {
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true);
+        require(units <= iBEP20(_pool).totalSupply());
         address _member = msg.sender;
         Pool(_pool).transferTo(_pool, units);//RPTAF
-        (outputBase, outputToken) = Pool(_pool).removeLiquidityForMember(_member);
+        (outputBase, outputToken) = Pool(_pool).removeLiquidity();
+        _handleTransferOut(token, outputToken, _member);
+        _handleTransferOut(BASE, outputBase, _member);
         emit RemoveLiquidity(_member,outputBase, outputToken,units);
         return (outputBase, outputToken);
     }
@@ -146,19 +163,23 @@ contract Router {
     }
     // Remove Asymmetrically
     function removeLiquidityAsymForMember(uint units, bool toBase, address token, address member) public returns (uint outputAmount, uint fee){
-        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(pool) == true);
-        require(units <= iBEP20(pool).totalSupply());
-        Pool(pool).transferTo(pool, units);//RPTAF
-        (uint _outputBase, uint _outputToken) = Pool(pool).removeLiquidityForMember(member);
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true);
+         Pool(_pool).transferTo(_pool, units);//RPTAF
+        (uint outputBase, uint outputToken) = Pool(_pool).removeLiquidity();
+        emit RemoveLiquidity(member,outputBase, outputToken,units);
+         address _token = token;
+        if(token == address(0)){_token = WBNB;} // Handle BNB
         if(toBase){
-            (uint _baseBought,uint _feey) = swapTo(_outputToken,token, BASE, member);
-            outputAmount = _baseBought.add(_outputBase);
+            (uint _baseBought,uint _feey) = swapTo(outputToken,_token, BASE, address(this));
+            outputAmount = _baseBought.add(outputBase);
             fee = _feey;
+            _handleTransferOut(BASE, outputAmount, member);
         } else {
-            (uint _tokenBought,uint _feez) = swapTo(_outputBase, BASE,token, member);
-            outputAmount = _tokenBought.add(_outputToken);
+            (uint _tokenBought,uint _feez) = swapTo(outputBase, BASE,_token, address(this));
+            outputAmount = _tokenBought.add(outputToken);
             fee = _feez;
+            _handleTransferOut(token, outputAmount, member);
         } 
         return (outputAmount, fee);
     }
@@ -205,7 +226,7 @@ contract Router {
             getsDividend(_poolTo,toToken, fee);
             outputAmount = _zz; 
             _handleTransferOut(toToken, outputAmount, member);
-            emit DoubleSwapped(fromToken, toToken, inputAmount, outputAmount, fee, member);
+            emit Swapped(fromToken, toToken, inputAmount, outputAmount, fee, member);
         }
         return (outputAmount, fee);
     }
