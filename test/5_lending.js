@@ -55,8 +55,9 @@ contract('Test Lending', function (accounts) {
      BorrowTKNwithBASE(acc0,_.BN2Str(100*_.one))
      BorrowTKNwithSPT2BNB(acc0,_.BN2Str(1*_.one))
      BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(1*_.one))
-     RepayTKN(acc0, _.BN2Str(1*_.one))
-   
+     RepayTKNgetBase(acc0, "2584486258721574915")
+     RepayTKNgetSPT2BNB(acc0, "79648011604902472")
+     RepayTKNgetSynthBNB(acc0, "373053626552086436")
 })
 
 //################################################################
@@ -393,7 +394,7 @@ async function BorrowTKNwithASYNTHBNB(acc, x) {
     })
 }
 
-async function RepayTKN(acc, x) {
+async function RepayTKNgetBase(acc, x) {
     it("Return Debt & get base collateral", async () => {
         let input = _.getBN(x);
         let assetC = base.address;
@@ -410,11 +411,11 @@ async function RepayTKN(acc, x) {
         let mAC = _.getBN(memberDeets.assetCollateral);
         let mAD = _.getBN(memberDeets.assetDebt);
         // let mAB = memberDeets.timeBorrowed;
-        //  console.log(_.BN2Str(mAC)/_.one,_.BN2Str(mAD)/_.one );
+        //   console.log(_.BN2Str(mAC)/_.one,_.BN2Str(mAD) );
 
         await sleep(3100)
         await token1.approve(lend.address, _.BN2Str(500000*_.one))
-        await lend.repayDebt(input, assetC, assetD, {from:acc})
+        await lend.repayDebt(x, assetC, assetD, {from:acc})
         let removedCollateral = _.getBN(input.times(mAC).div(mAD))
 
 
@@ -425,21 +426,110 @@ async function RepayTKN(acc, x) {
         let memberDeetsA =await lend.getMemberDetails( acc, assetC, assetD)
         let mACA = memberDeetsA.assetCollateral;
         let mADA = memberDeetsA.assetDebt;
-        //   console.log(_.BN2Str(mACA)/_.one,_.BN2Str(mADA)/_.one);
+        //    console.log(_.BN2Str(mACA)/_.one,_.BN2Str(mADA)/_.one);
      
-
         assert.equal(_.BN2Str(poolDataTKN1.baseAmount), _.BN2Str(B.minus(z)))
         assert.equal(_.BN2Str(poolDataTKN1.tokenAmount), _.BN2Str(Z.plus(x)))
         assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(Z.plus(x)), 'token balance')
         assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(B.minus(z)), 'base balance')
         assert.equal(_.BN2Str(baseBalA), _.BN2Str(_.floorBN(baseBal.plus(removedCollateral))))
         assert.equal(_.BN2Str(tokenBalA), _.BN2Str(tokenBal.minus(x)))
-        assert.equal(_.BN2Str(reserveA), _.BN2Str(_.ceilBN(reserve.plus(z).minus(removedCollateral))))
-        assert.equal(_.BN2Str(mACA), _.BN2Str(_.ceilBN(mAC.minus(removedCollateral))))
+        assert.equal(_.BN2Str(reserveA), _.BN2Str((reserve.plus(z).minus(removedCollateral))))
+        assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.minus(removedCollateral)))
         assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.minus(x)))
-        
+    
+    })
+}
+async function RepayTKNgetSPT2BNB(acc, x) {
+    it("Return Debt & get SPT2bnb collateral", async () => {
+        let input = _.getBN(x);
+        let assetC = poolWBNB.address;
+        let assetD = token1.address;
+        let baseBal = _.getBN(await poolWBNB.balanceOf(acc))
+        let tokenBal = _.getBN(await token1.balanceOf(acc))
+        let reserve = _.getBN(await base.balanceOf(lend.address))
+
+        let poolDataTKN1 = await utils.getPoolData(assetD);
+        const B = _.getBN(poolDataTKN1.baseAmount)
+        const Z = _.getBN(poolDataTKN1.tokenAmount)
+        let z = math.calcSwapOutput(x, Z, B)
+        let memberDeets =await lend.getMemberDetails(acc, assetC, assetD)
+        let mAC = _.getBN(memberDeets.assetCollateral);
+        let mAD = _.getBN(memberDeets.assetDebt);
+        // let mAB = memberDeets.timeBorrowed;
+        //   console.log(_.BN2Str(mAC)/_.one,_.BN2Str(mAD) );
+
+        await sleep(3100)
+        await token1.approve(lend.address, _.BN2Str(500000*_.one))
+        await lend.repayDebt(x, assetC, assetD, {from:acc})
+        let removedCollateral = _.getBN(input.times(mAC).div(mAD))
 
 
+        poolDataTKN1 = await utils.getPoolData(assetD);
+        let baseBalA = _.getBN(await poolWBNB.balanceOf(acc))
+        let tokenBalA = _.getBN(await token1.balanceOf(acc))
+        let reserveA = _.getBN(await base.balanceOf(lend.address))
+        let memberDeetsA =await lend.getMemberDetails( acc, assetC, assetD)
+        let mACA = memberDeetsA.assetCollateral;
+        let mADA = memberDeetsA.assetDebt;
+           console.log(_.BN2Str(mACA)/_.one,_.BN2Str(mADA)/_.one);
+     
+        assert.equal(_.BN2Str(poolDataTKN1.baseAmount), _.BN2Str(B.minus(z)))
+        assert.equal(_.BN2Str(poolDataTKN1.tokenAmount), _.BN2Str(Z.plus(x)))
+        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(Z.plus(x)), 'token balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(B.minus(z)), 'base balance')
+        assert.equal(_.BN2Str(baseBalA), _.BN2Str(_.floorBN(baseBal.plus(removedCollateral))))
+        assert.equal(_.BN2Str(tokenBalA), _.BN2Str(tokenBal.minus(x)))
+        assert.equal(_.BN2Str(reserveA), _.BN2Str((reserve.plus(z))))
+        assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.minus(removedCollateral)))
+        assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.minus(x)))
+    
+    })
+}
+async function RepayTKNgetSynthBNB(acc, x) {
+    it("Return Debt & get Synth Collateral", async () => {
+        let input = _.getBN(x);
+        let assetC = synthBNB.address;
+        let assetD = token1.address;
+        let baseBal = _.getBN(await synthBNB.balanceOf(acc))
+        let tokenBal = _.getBN(await token1.balanceOf(acc))
+        let reserve = _.getBN(await base.balanceOf(lend.address))
+
+        let poolDataTKN1 = await utils.getPoolData(assetD);
+        const B = _.getBN(poolDataTKN1.baseAmount)
+        const Z = _.getBN(poolDataTKN1.tokenAmount)
+        let z = math.calcSwapOutput(x, Z, B)
+        let memberDeets =await lend.getMemberDetails(acc, assetC, assetD)
+        let mAC = _.getBN(memberDeets.assetCollateral);
+        let mAD = _.getBN(memberDeets.assetDebt);
+        // let mAB = memberDeets.timeBorrowed;
+        //   console.log(_.BN2Str(mAC)/_.one,_.BN2Str(mAD) );
+
+        await sleep(3100)
+        await token1.approve(lend.address, _.BN2Str(500000*_.one))
+        await lend.repayDebt(x, assetC, assetD, {from:acc})
+        let removedCollateral = _.getBN(input.times(mAC).div(mAD))
+
+
+        poolDataTKN1 = await utils.getPoolData(assetD);
+        let baseBalA = _.getBN(await synthBNB.balanceOf(acc))
+        let tokenBalA = _.getBN(await token1.balanceOf(acc))
+        let reserveA = _.getBN(await base.balanceOf(lend.address))
+        let memberDeetsA =await lend.getMemberDetails( acc, assetC, assetD)
+        let mACA = memberDeetsA.assetCollateral;
+        let mADA = memberDeetsA.assetDebt;
+        //    console.log(_.BN2Str(mACA)/_.one,_.BN2Str(mADA)/_.one);
+     
+        assert.equal(_.BN2Str(poolDataTKN1.baseAmount), _.BN2Str(B.minus(z)))
+        assert.equal(_.BN2Str(poolDataTKN1.tokenAmount), _.BN2Str(Z.plus(x)))
+        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(Z.plus(x)), 'token balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(B.minus(z)), 'base balance')
+        assert.equal(_.BN2Str(baseBalA), _.BN2Str(_.floorBN(baseBal.plus(removedCollateral))))
+        assert.equal(_.BN2Str(tokenBalA), _.BN2Str(tokenBal.minus(x)))
+        assert.equal(_.BN2Str(reserveA), _.BN2Str((reserve.plus(z))))
+        assert.equal(_.BN2Str(mACA), _.BN2Str(mAC.minus(removedCollateral)))
+        assert.equal(_.BN2Str(mADA), _.BN2Str(mAD.minus(x)))
+    
     })
 }
 
