@@ -126,7 +126,7 @@ contract Router {
              units = Pool(_pool).addLiquidityForMember(member);
              emit AddLiquidity(member, halfInput,_tokenBought, units);
         } else {
-            _handleTransferIn(_token, inputToken, address(this));
+            _handleTransferIn(token, inputToken, address(this));
              iBEP20(_token).transfer(_pool,halfInput);
             (uint _baseBought, uint fee ) = Pool(_pool).swap(BASE);
             getsDividend(_pool,token, fee);
