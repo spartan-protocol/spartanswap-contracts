@@ -2,7 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
-
+import "@nomiclabs/buidler/console.sol";
 interface iSYNTHFACTORY {
     function isSynth(address) external view returns (bool);
 
@@ -189,6 +189,7 @@ contract Router {
             fee = _feez;
             _handleTransferOut(token, outputAmount, member);
         } 
+        
         return (outputAmount, fee);
     }
 
@@ -283,13 +284,23 @@ contract Router {
          _handleTransferOut(synthOUT,outputSynth,msg.sender);
          emit Swapped(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
          return outputSynth;
-         
     }
     function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
         address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthINLayer1);
         iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF
+        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
+        getsDividend(_poolIN, synthINLayer1, fee);
+        _handleTransferOut(BASE, outputBase, msg.sender);
+        emit Swapped(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
+        return outputBase;
+    }
+    function swapSynthToBaseSAFE(uint inputAmount, address synthIN) public returns (uint outPut){
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
+        address synthINLayer1 = iSYNTH(synthIN).LayerONE();
+        address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthINLayer1);
+        iBEP20(synthIN).transferFrom(msg.sender, _poolIN, inputAmount); 
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         getsDividend(_poolIN, synthINLayer1, fee);
         _handleTransferOut(BASE, outputBase, msg.sender);

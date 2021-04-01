@@ -93,7 +93,7 @@ contract SpartanLend {
      // Remove collateral for member
     function repayDebtForMember(uint _amount,address _assetC, address _assetD, address _member) public returns (uint _assetCollateralRemoved){
          require(block.timestamp >= mapMember_Details[_member].mapMember_Debt[_assetC].timeBorrowed[_assetD].add(OneHR));// min 1hr withdraw period 
-         require(totalCollateral[_assetC][_assetD] > 0, 'MEMBERPURGED');
+         require(totalCollateral[_assetC][_assetD] > 0, 'PURGED');
          require(totalDebt[_assetC][_assetD] >= _amount, 'INPUTERR');
          uint actualInputAssetD = _handleTransferInDebt(_assetD, _amount, _member); 
          uint baseReturned = LendRouter(LENDROUTER).removeForMember(_assetD);
@@ -119,8 +119,8 @@ contract SpartanLend {
     }
 
      function _checkInterest(address assetC, address assetD) public {
-         require(block.timestamp >= currentDay.add(OneDAY), '!DAY');                             
-            currentDay = block.timestamp;                                        
+        //  require(block.timestamp >= currentDay.add(OneDAY), '!DAY');                             
+        //     currentDay = block.timestamp;                                        
             uint256 _interestPayable = calcInterestAmount(assetC, assetD);                             
              _payInterest(assetC, _interestPayable, assetD);                         
             emit InterestPaid(assetC,_interestPayable, assetD );                              
@@ -155,32 +155,41 @@ contract SpartanLend {
         }
         return (actual, baseBorrow);
     }
-    function _payInterest(address _assetC, uint256 _interest, address _assetD) internal {
+    function _payInterest(address _assetC, uint256 _interest, address _assetD) internal returns (uint InterestAmount){
         address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_assetD);   
          uint _IR = _interest.div(31536000).mul(86400);//per day
+         console.log("_IR",_IR);   
          uint _percentAmount = totalCollateral[_assetC][_assetD].mul(_IR).div(10**18);
           console.log("% collateral to send per day ",_percentAmount);   
             if(_assetC == BASE){
-                iBEP20(BASE).transfer(_assetDPool, _percentAmount); 
-                console.log("base col",_percentAmount);
+                InterestAmount = _percentAmount;
+                _decrCDP(InterestAmount,_assetC, iUTILS(_DAO().UTILS()).calcSwapValueInToken(_assetD,InterestAmount), _assetD); 
+                iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             }else if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_assetC) == true){ 
-                 (uint baseAmount,) = iROUTER(_DAO().ROUTER()).removeLiquidityAsym(_percentAmount, true,_assetD);
-                 console.log("base from lps",baseAmount);
-                 iBEP20(BASE).transfer(_assetDPool, baseAmount); 
+                address token = iPOOL(_assetC).TOKEN();  
+                iBEP20(_assetC).transfer(_assetC, _percentAmount);
+                 (uint outputBase, uint outputToken) = iPOOL(_assetC).removeLiquidity(); 
+                 iBEP20(token).approve(address(_DAO().ROUTER()),outputToken);
+                 uint baseAmount = iROUTER(_DAO().ROUTER()).swap(outputToken, token, BASE);
+                  InterestAmount = baseAmount.add(outputBase);
+                  _decrCDP(_percentAmount,_assetC, iUTILS(_DAO().UTILS()).calcSwapValueInToken(_assetD,InterestAmount), _assetD); 
+                 iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_assetC) == true){
-                 uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(_assetDPool, _percentAmount);
-                 uint baseAmount = iROUTER(_DAO().ROUTER()).swapSynthToBase(tokenValue,_assetC);
-                 console.log("base from synth",baseAmount);
-                 iBEP20(BASE).transfer(_assetDPool, baseAmount); 
+                 iBEP20(_assetC).approve(address(_DAO().ROUTER()),_percentAmount);
+                  InterestAmount = iROUTER(_DAO().ROUTER()).swapSynthToBaseSAFE(_percentAmount,_assetC); 
+                 console.log("base bought",InterestAmount);
+                 _decrCDP(_percentAmount,_assetC, iUTILS(_DAO().UTILS()).calcSwapValueInToken(_assetD,InterestAmount), _assetD); 
+                 iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             } 
             iPOOL(_assetDPool).sync();
+            return InterestAmount;
     }
 
     function _incrMemberDetails(uint actualInputAssetC,address _assetC, address _member, uint _assetDebtIssued, address _assetD) internal {
        mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD] = mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD].add(_assetDebtIssued);
        mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD] = mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD].add(actualInputAssetC);
        mapMember_Details[_member].mapMember_Debt[_assetC].timeBorrowed[_assetD] = block.timestamp;
-       mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateralDeposit[_assetD] = actualInputAssetC;
+       mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateralDeposit[_assetD] = mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateralDeposit[_assetD].add(actualInputAssetC);
     }
 
     function _decrMemberDetails(uint _assetCOutput, address _assetC, address _member, uint debtRepaid, address _assetD) internal {
@@ -194,7 +203,7 @@ contract SpartanLend {
     }
     function _decrCDP(uint _outputCollateral,address _assetC, uint _assetDebtInput, address _assetD) internal  {
         totalDebt[_assetC][_assetD] = totalDebt[_assetC][_assetD].sub(_assetDebtInput);
-         totalCollateral[_assetC][_assetD] = totalCollateral[_assetC][_assetD].sub(_outputCollateral);
+        totalCollateral[_assetC][_assetD] = totalCollateral[_assetC][_assetD].sub(_outputCollateral);
     }
 
     function addToReserve(uint amount) public{

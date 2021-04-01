@@ -11,7 +11,7 @@ interface iROUTER {
     function swap(uint, address, address) external returns(uint);
     function removeLiquidityExact(uint, address) external returns(uint, uint);
     function removeLiquidityAsym(uint units, bool toBase, address token) external returns(uint outputAmount, uint fee);
-    function swapSynthToBase(uint inputAmount, address synthIN) external returns (uint outPut);
+    function swapSynthToBaseSAFE(uint inputAmount, address synthIN) external returns (uint outPut);
 }
 interface iUTILS {
    function calcSwapValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
@@ -21,7 +21,9 @@ interface iUTILS {
     function calcSwapValueInBaseWithSYNTH(address token, uint units) external view returns (uint amount);
     function calcSpotValueInBase(address token, uint units) external view returns (uint amount);
     function allCuratedPools() external view returns (address [] memory);
+    function calcSwapValueInToken(address, uint) external view returns(uint);
     function calcLiquidityUnitsAsym(uint amount, address pool) external view returns (uint);
+
    
 }
 interface iDAO {
@@ -39,8 +41,12 @@ interface iPOOL {
     function sync() external; 
     function baseAmount() external view returns(uint);
     function tokenAmount() external view returns(uint);
+    function removeLiquidity() external returns (uint, uint);
 }
 interface iSYNTH {
+    function LayerONE() external view returns(address);
+    function mintSynth(address, address) external returns (uint);
+    function redeemSynth(uint) external returns(uint);
     function transferTo(address, uint256 ) external payable returns(bool);
 }
 

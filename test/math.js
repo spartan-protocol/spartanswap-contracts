@@ -10,17 +10,16 @@ var BigNumber = require('bignumber.js');
 const one = new BigNumber(10**18);
 
 function calcSwapOutput(x, X, Y) {
-    // y = (x * Y * X)/(x + X)^2
+    // y = (x * X * Y )/(x + X)^2
     const _x = new BigNumber(x)
     const _X = new BigNumber(X)
     const _Y = new BigNumber(Y)
-    const numerator = _x.times(_Y).times(_X)
+    const numerator = _x.times(_X).times(_Y)
     const denominator = (_x.plus(_X)).times(_x.plus(_X))
     const _y = numerator.div(denominator)
     const y = (new BigNumber(_y)).integerValue(1);
     return y;
   }
-  
    function calcSwapFee(x, X, Y) {
     // y = (x * Y * x) / (x + X)^2
     const _x = new BigNumber(x)
@@ -97,7 +96,7 @@ function getSlipAdustment(b, B, t,  T){
     const part5 = T.times(T).times(T);
     return (numerator.div(part5)).integerValue(1);
 }
-
+  // share = amount * part/total
 function calcShare(s, T, A){
   const _s = new BigNumber(s)
   const _A = new BigNumber(A)
