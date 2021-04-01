@@ -44,23 +44,26 @@ contract('Test Lending', function (accounts) {
      wrapBNB()
      createPoolWBNB()
      createPoolTKN1()
-     addLiquidityBNB(acc0,_.BN2Str(10*_.one),  _.BN2Str(1*_.one)); //SPV2
-     addLiquidityBNB(acc1,_.BN2Str(90*_.one),  _.BN2Str(9*_.one)); //SPV2
-     addLiquidityTKN1(acc0,_.BN2Str(100*_.one),  _.BN2Str(1*_.one)); //SPV2
-     addLiquidityTKN1(acc1,_.BN2Str(1000*_.one),  _.BN2Str(10*_.one)); //SPV2
+     addLiquidityBNB(acc0,_.BN2Str(1000*_.one),  _.BN2Str(50*_.one)); //SPV2
+     addLiquidityBNB(acc1,_.BN2Str(1500*_.one),  _.BN2Str(70*_.one)); //SPV2
+     addLiquidityTKN1(acc0,_.BN2Str(1500*_.one),  _.BN2Str(60*_.one)); //SPV2
+     addLiquidityTKN1(acc1,_.BN2Str(1500*_.one),  _.BN2Str(60*_.one)); //SPV2
      curatePools()
      createSyntheticBNB()
-     swapLayer1ToSynth(acc0,_.BN2Str(50*_.one))
+     swapLayer1ToSynth(acc0,_.BN2Str(10000*_.one))
     //  swapSynthToLayer1(acc1)
      BorrowTKNwithBASE(acc0,_.BN2Str(100*_.one))
-     BorrowTKNwithSPT2BNB(acc0,_.BN2Str(1*_.one))
-     BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(1*_.one))
+    //  BorrowTKNwithBASE(acc1,_.BN2Str(100*_.one))
+    //  BorrowTKNwithSPT2BNB(acc0,_.BN2Str(100*_.one))
+    //  BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(20*_.one))
     //  RepayTKNgetBase(acc0, "2584486258721574915")
     //  RepayTKNgetSPT2BNB(acc0, "79648011604902472")
     //  RepayTKNgetSynthBNB(acc0, "373053626552086436")
-     ShowTKNPool()
-     payInterestForTKN(acc0)
-     ShowTKNPool()
+    //  ShowTKNPool()
+    payInterestForTKNBASE()
+    // payInterestForTKNSPT()
+    // payInterestForTKNSYNTH()
+    //  ShowTKNPool()
 })
 
 //################################################################
@@ -108,9 +111,11 @@ function constructor(accounts) {
 async function wrapBNB() {
     it("It should wrap", async () => {
         await web3.eth.sendTransaction({to: wbnb.address, value:_.BN2Str(_.one*100), from:acc0});
-        await wbnb.transfer(acc0, _.getBN(_.BN2Int(_.one * 30)))
-        await wbnb.transfer(acc1, _.getBN(_.BN2Int(_.one * 30)))
-        await wbnb.transfer(acc2, _.getBN(_.BN2Int(_.one * 30)))
+        await web3.eth.sendTransaction({to: wbnb.address, value:_.BN2Str(_.one*100), from:acc1});
+        await web3.eth.sendTransaction({to: wbnb.address, value:_.BN2Str(_.one*100), from:acc2});
+        await wbnb.transfer(acc0, _.getBN(_.BN2Int(_.one * 100)), {from:acc0})
+        await wbnb.transfer(acc1, _.getBN(_.BN2Int(_.one * 100)), {from:acc1})
+        await wbnb.transfer(acc2, _.getBN(_.BN2Int(_.one * 100)), {from:acc2})
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
@@ -219,7 +224,7 @@ async function swapSynthToLayer1(acc, ) {
     })
 }
 async function swapLayer1ToSynth(acc, x) {
-    it("Swap BASE to Synthetic BNB", async () => {
+    it("Swap SPARTA to Synthetic BNB", async () => {
         let synthOUT = synthBNB.address;
         let synthStart = _.BN2Str(await synthBNB.balanceOf(acc));
         let token = await synthBNB.LayerONE();
@@ -257,7 +262,7 @@ async function swapLayer1ToSynth(acc, x) {
     })
 }
 async function BorrowTKNwithBASE(acc, x) {
-    it("Borrow TKN with BASE", async () => {
+    it("Borrow USDs with SPARTA", async () => {
         let input = _.getBN(x);
         let assetC = base.address;
         let assetD = token1.address;
@@ -301,7 +306,7 @@ async function BorrowTKNwithBASE(acc, x) {
     })
 }
 async function BorrowTKNwithSPT2BNB(acc, x) {
-    it("Borrow TKN with SPT2s", async () => {
+    it("Borrow USDs with SPT2-BNB", async () => {
         let input = _.getBN(x);
         let assetC = poolWBNB.address;
         let assetD = token1.address;
@@ -350,7 +355,7 @@ async function BorrowTKNwithSPT2BNB(acc, x) {
     })
 }
 async function BorrowTKNwithASYNTHBNB(acc, x) {
-    it("Borrow TKN with SYNTHS", async () => {
+    it("Borrow USDs with SyntheticBNB", async () => {
         let input = _.getBN(x);
         let assetC = synthBNB.address;
         let assetD = token1.address;
@@ -399,7 +404,7 @@ async function BorrowTKNwithASYNTHBNB(acc, x) {
 }
 
 async function RepayTKNgetBase(acc, x) {
-    it("Return Debt & get base collateral", async () => {
+    it("Return USDs & get SPARTA collateral", async () => {
         let input = _.getBN(x);
         let assetC = base.address;
         let assetD = token1.address;
@@ -445,7 +450,7 @@ async function RepayTKNgetBase(acc, x) {
     })
 }
 async function RepayTKNgetSPT2BNB(acc, x) {
-    it("Return Debt & get SPT2bnb collateral", async () => {
+    it("Return USDs & receive SPT2-BNB collateral", async () => {
         let input = _.getBN(x);
         let assetC = poolWBNB.address;
         let assetD = token1.address;
@@ -491,7 +496,7 @@ async function RepayTKNgetSPT2BNB(acc, x) {
     })
 }
 async function RepayTKNgetSynthBNB(acc, x) {
-    it("Return Debt & get Synth Collateral", async () => {
+    it("Return USDs & recieve Synth Collateral", async () => {
         let input = _.getBN(x);
         let assetC = synthBNB.address;
         let assetD = token1.address;
@@ -537,12 +542,31 @@ async function RepayTKNgetSynthBNB(acc, x) {
     })
 }
 
-async function payInterestForTKN(acc, x) {
-    it("Pay Interest", async () => {
+async function payInterestForTKNBASE(acc, x) {
+    it("Pay Interest - collateral BASE", async () => {
         let assetC = base.address;
         let assetD = token1.address;
-        await truffleAssert.reverts(lend._checkInterest(assetC, assetD), "!DAY");
-        await sleep(10000)
+        let poolDataTKN1 = await utils.getPoolData(assetD);
+        const B = _.getBN(poolDataTKN1.baseAmount)
+        const Z = _.getBN(poolDataTKN1.tokenAmount)
+        let collateralDebt = await lend.totalCollateral(assetC,assetD)
+        await lend._checkInterest(assetC, assetD);
+
+    })
+}
+async function payInterestForTKNSPT(acc, x) {
+    it("Pay Interest - collateral SPT2-BNB", async () => {
+        let assetC = poolWBNB.address;
+        let assetD = token1.address;
+        await lend._checkInterest(assetC, assetD);
+
+    })
+}
+async function payInterestForTKNSYNTH(acc, x) {
+    it("Pay Interest - collateral SYNTH-BNB", async () => {
+        let assetC = synthBNB.address;
+        let assetD = token1.address;
+   
         await lend._checkInterest(assetC, assetD);
 
     })
