@@ -1,6 +1,6 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 
 import "./cInterfaces.sol";
 interface iDAO {
@@ -44,8 +44,8 @@ interface iSYNTHROUTER {
 }
 interface iSYNTH {
     function LayerONE() external view returns(address);
-    function mintSynth(address, address) external returns (uint);
-    function redeemSynth(uint) external returns(uint);
+    function mintSynth(address) external returns (uint);
+    function redeemSynth() external returns(uint);
     function transferTo(address, uint256 ) external payable returns(bool);
 }
 
@@ -74,7 +74,8 @@ contract Pool is iBEP20 {
     event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address indexed tokenFrom, address indexed tokenTo, uint inputAmount, uint outputAmount, uint fee, address indexed recipient);
-
+     event Burn(address indexed from, address indexed to, uint256 value);
+     event Mint(address indexed from, address indexed to, uint256 value);
     function _DAO() internal view returns(iDAO) {
         bool status = iDAO(NDAO).MSTATUS();
         if(status == true){
@@ -96,8 +97,8 @@ contract Pool is iBEP20 {
         BASE = _base;
          NDAO = _newDAO;
         TOKEN = _token;
-        string memory poolName = "SpartanPoolV2-";
-        string memory poolSymbol = "SPT2-";
+        string memory poolName = "SpartanPoolv2-";
+        string memory poolSymbol = "SP-p";
         _name = string(abi.encodePacked(poolName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
         decimals = 18;
@@ -155,7 +156,7 @@ contract Pool is iBEP20 {
     function _mint(address account, uint256 amount) internal {
         totalSupply = totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
-        emit Transfer(address(0), account, amount);
+        emit Mint(address(0), account, amount);
     }
     // Burn supply
     function burn(uint256 amount) public virtual {
@@ -169,7 +170,7 @@ contract Pool is iBEP20 {
     function _burn(address account, uint256 amount) internal virtual {
         _balances[account] = _balances[account].sub(amount, "BalanceErr");
         totalSupply = totalSupply.sub(amount);
-        emit Transfer(account, address(0), amount);
+        emit Burn(account, address(0), amount);
     }
 
     // TransferTo function
@@ -252,17 +253,17 @@ contract Pool is iBEP20 {
       uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount);
       fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN,_fee );
       _mint(synthOut, liquidityUnits); 
-      outputAmount = iSYNTH(synthOut).mintSynth(TOKEN, msg.sender); //mintSynth to Router
+      outputAmount = iSYNTH(synthOut).mintSynth(msg.sender); //mintSynth to Router
       _addPoolMetrics(fee);
       return (outputAmount, fee);
     }
 
     function swapSynthIN(address synthIN) public onlyRouter returns(uint outputAmount, uint fee) {
-      uint inputSynth = _getAddedSynthAmount(synthIN);
+      uint inputSynth = iBEP20(synthIN).balanceOf(address(this));
       uint baseOutput = iUTILS(_DAO().UTILS()).calcSwapValueInBase(TOKEN, inputSynth);//get swapValue from synths input
       fee = iUTILS(_DAO().UTILS()).calcSwapFee(inputSynth, tokenAmount, baseAmount);
-      iBEP20(synthIN).approve(synthIN, inputSynth); 
-      iSYNTH(synthIN).redeemSynth(inputSynth); //redeem Synth
+      iBEP20(synthIN).transfer(synthIN, inputSynth);
+      iSYNTH(synthIN).redeemSynth(); //redeem Synth
       _decrementPoolBalances(baseOutput, 0);
       iBEP20(BASE).transfer(msg.sender, baseOutput);
       _addPoolMetrics(fee);
@@ -287,9 +288,6 @@ contract Pool is iBEP20 {
             _actual = 0;
         }
         return _actual;
-    }
-    function _getAddedSynthAmount(address synth) internal view returns(uint256 _synthBalance){
-        return _synthBalance = iBEP20(synth).balanceOf(address(this)); 
     }
 
     function _swapBaseToToken(uint256 _x) internal returns (uint256 _y, uint256 _fee){

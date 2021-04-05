@@ -50,16 +50,16 @@ contract('Test Lending', function (accounts) {
      addLiquidityTKN1(acc1,_.BN2Str(1500*_.one),  _.BN2Str(60*_.one)); //SPV2
      curatePools()
      createSyntheticBNB()
-     swapLayer1ToSynth(acc0,_.BN2Str(10000*_.one))
+     swapLayer1ToSynth(acc0,_.BN2Str(1000*_.one))
     //  swapSynthToLayer1(acc1)
      BorrowTKNwithBASE(acc0,_.BN2Str(100*_.one))
-    //  BorrowTKNwithBASE(acc1,_.BN2Str(100*_.one))
+    // //  BorrowTKNwithBASE(acc1,_.BN2Str(100*_.one))
      BorrowTKNwithSPT2BNB(acc0,_.BN2Str(100*_.one))
-      BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(20*_.one))
+     BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(20*_.one))
     
-    //  ShowTKNPool()
-    payInterestForTKNBASE(acc0)
-     payInterestForTKNSPT(acc0)
+    // //  ShowTKNPool()
+      payInterestForTKNBASE(acc0)
+       payInterestForTKNSPT(acc0)
       payInterestForTKNSYNTH(acc0)
 
       RepayTKNgetBase(acc0, "25517773151982793")
@@ -228,7 +228,7 @@ async function swapSynthToLayer1(acc, ) {
     })
 }
 async function swapLayer1ToSynth(acc, x) {
-    it("Swap SPARTA to Synthetic BNB", async () => {
+    it("Swap SPARTA to SP-sBNB ", async () => {
         let synthOUT = synthBNB.address;
         let synthStart = _.BN2Str(await synthBNB.balanceOf(acc));
         let token = await synthBNB.LayerONE();
@@ -310,7 +310,7 @@ async function BorrowTKNwithBASE(acc, x) {
     })
 }
 async function BorrowTKNwithSPT2BNB(acc, x) {
-    it("Borrow USDs with SPT2-BNB", async () => {
+    it("Borrow USDs with SP-pBNB", async () => {
         let input = _.getBN(x);
         let assetC = poolWBNB.address;
         let assetD = token1.address;
@@ -359,7 +359,7 @@ async function BorrowTKNwithSPT2BNB(acc, x) {
     })
 }
 async function BorrowTKNwithASYNTHBNB(acc, x) {
-    it("Borrow USDs with SyntheticBNB", async () => {
+    it("Borrow USDs with SP-sBNB", async () => {
         let input = _.getBN(x);
         let assetC = synthBNB.address;
         let assetD = token1.address;
@@ -454,7 +454,7 @@ async function RepayTKNgetBase(acc, x) {
     })
 }
 async function RepayTKNgetSPT2BNB(acc, x) {
-    it("Return USDs & receive SPT2-BNB collateral", async () => {
+    it("Return USDs & receive SP-pBNB collateral", async () => {
         let input = _.getBN(x);
         let assetC = poolWBNB.address;
         let assetD = token1.address;
@@ -500,7 +500,7 @@ async function RepayTKNgetSPT2BNB(acc, x) {
     })
 }
 async function RepayTKNgetSynthBNB(acc, x) {
-    it("Return USDs & recieve Synth Collateral", async () => {
+    it("Return USDs & recieve SP-sBNB collateral", async () => {
         let input = _.getBN(x);
         let assetC = synthBNB.address;
         let assetD = token1.address;
@@ -562,7 +562,7 @@ async function payInterestForTKNBASE(acc, x) {
         let collateralAmount = _.getBN(await lend.totalCollateral(assetC,assetD))
         // console.log("collateral",collateralAmount);
         let interestAmount = _.floorBN(collateralDebt.times(10**18).div(Z));
-        let IRperDay = 82489102963200
+        let IRperDay = 68042687990400
         let _percentAmount = collateralAmount.times(IRperDay).div(10**18);
 
         let z = math.calcSwapOutput(_percentAmount, B, Z)
@@ -603,7 +603,7 @@ async function payInterestForTKNSPT(acc, x) {
         let collateralAmount = _.getBN(await lend.totalCollateral(assetC,assetD))
         // console.log("collateral",collateralAmount);
         let interestAmount = _.floorBN(collateralDebt.times(10**18).div(Z));
-        let IRperDay = _.getBN(444019343760000)
+        let IRperDay = _.getBN(150750393580800)
         let _percentAmount = collateralAmount.times(IRperDay).div(10**18);
         // console.log(_.BN2Str(_percentAmount))
         let shareB = _.floorBN(math.calcShare(_.getBN(_percentAmount),tokenBal, X))
@@ -654,7 +654,7 @@ async function payInterestForTKNSYNTH(acc, x) {
         let interestAmount = _.floorBN(collateralDebt.times(10**18).div(Z));
         // console.log("% amount",_.BN2Str(interestAmount));
         // console.log("interestAmount",_.BN2Str(interestAmount.div(365)));
-        let IRperDay = 612957511728000
+        let IRperDay = 241305359558400
 
         let _percentAmount = collateralAmount.times(IRperDay).div(10**18);
         // console.log("% amount",_.BN2Str(_percentAmount));

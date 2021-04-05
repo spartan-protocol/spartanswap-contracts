@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../spartanpools-dapp"
+		},
+		{
+			"path": "../SpartanProtocol-DAppV2"
 		}
 	],
 	"settings": {

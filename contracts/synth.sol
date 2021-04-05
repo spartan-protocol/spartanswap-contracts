@@ -5,6 +5,7 @@ import "./poolV2.sol";
 interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
     function getPool(address) external view returns (address);
+    function isPool(address) external view returns(bool);
 }
 
 contract Synth is iBEP20 {
@@ -22,6 +23,8 @@ contract Synth is iBEP20 {
     // ERC-20 Mappings
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
+    event Burn(address indexed from, address indexed to, uint256 value);
+    event Mint(address indexed from, address indexed to, uint256 value);
     uint public totalCollateral;
 
     function _DAO() internal view returns(iDAO) {
@@ -45,8 +48,8 @@ contract Synth is iBEP20 {
          BASE = _base;
          NDAO = _newDAO;
          LayerONE = _token;
-        string memory synthName = "SpartanSynthV1-";
-        string memory synthSymbol = "SST1-s";
+        string memory synthName = "SpartanSynthv1-";
+        string memory synthSymbol = "SP-s";
         _name = string(abi.encodePacked(synthName, iBEP20(_token).name()));
         _symbol = string(abi.encodePacked(synthSymbol, iBEP20(_token).symbol()));
         decimals = 18;
@@ -100,7 +103,7 @@ contract Synth is iBEP20 {
     function _mint(address account, uint256 amount) internal {
         totalSupply = totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
-        emit Transfer(address(0), account, amount);
+        emit Mint(address(0), account, amount);
     }
     // Burn supply
     function burn(uint256 amount) public virtual {
@@ -114,7 +117,7 @@ contract Synth is iBEP20 {
     function _burn(address account, uint256 amount) internal virtual {
         _balances[account] = _balances[account].sub(amount, "BalanceErr");
         totalSupply = totalSupply.sub(amount);
-        emit Transfer(account, address(0), amount);
+        emit Burn(account, address(0), amount);
     }
     // TransferTo function
     function transferTo(address recipient, uint256 amount) public returns (bool) {
@@ -122,20 +125,19 @@ contract Synth is iBEP20 {
         return true;
     }
 
-     function mintSynth(address token, address member) public returns (uint syntheticAmount){
-        require(token != BASE, '!BASE');
+     function mintSynth(address member) public returns (uint syntheticAmount){
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
-        uint lpUnits = _getAddedLPAmount(msg.sender);
+        uint lpUnits = iBEP20(msg.sender).balanceOf(address(this));
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
         _mint(member, tokenValue); 
         return tokenValue;
     }
     
-    function redeemSynth(uint amount) public returns (bool){
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
-        uint syntheticAmount = _handleTransferIn(address(this), amount);
+    function redeemSynth() public returns (bool){
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, '!POOL');
+        uint syntheticAmount = balanceOf(address(this));
          uint LPBalance = Pool(msg.sender).balanceOf(address(this));
-         uint _amountUnits = (amount.mul(LPBalance)).div(totalSupply);// share = amount * part/total
+         uint _amountUnits = (syntheticAmount.mul(LPBalance)).div(totalSupply);// share = amount * part/total
          _burn(address(this), syntheticAmount); 
          Pool(msg.sender).burn(_amountUnits);
         return true;

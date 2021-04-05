@@ -22,6 +22,7 @@ interface iUTILS {
     function calcSpotValueInBase(address token, uint units) external view returns (uint amount);
     function allCuratedPools() external view returns (address [] memory);
     function calcSwapValueInToken(address, uint) external view returns(uint);
+    function calcSwapValueInBase(address, uint) external view returns(uint);
     function calcLiquidityUnitsAsym(uint amount, address pool) external view returns (uint);
 
    
@@ -52,6 +53,7 @@ interface iSYNTH {
 
 interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
+     function isPool(address) external view returns (bool);
     function getPool(address) external view returns(address payable);
 }
 interface iSYNTHFACTORY {

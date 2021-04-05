@@ -29,7 +29,7 @@ contract SynthFactory {
         BASE = _base;
         WBNB = _wbnb;
         NDAO = _newDAO;
-        DEPLOYER = msg.sender;
+        DEPLOYER = msg.sender; 
     }
 
     function _DAO() internal view returns(iDAO) {
@@ -80,12 +80,17 @@ contract SynthFactory {
     // Helper Functions
 
     function getSynth(address token) public view returns(address synth){
-        return mapToken_Synth[token];
+         if(token == address(0)){
+            synth = mapToken_Synth[WBNB];   // Handle BNB
+        } else {
+            synth = mapToken_Synth[token];  // Handle normal token
+        } 
+        return synth;
     }
     function synthCount() public view returns(uint256){
         return arraySynths.length;
     }
-    function getPoolArray(uint256 i) public view returns(address){
+    function getSynthsArray(uint256 i) public view returns(address){
         return arraySynths[i];
     }
    

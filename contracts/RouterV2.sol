@@ -281,7 +281,7 @@ contract Router {
          iBASE(BASE).transferTo(_poolOUT, inputAmount); //RPTAF
          (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
          getsDividend( _poolOUT,  synthOUTLayer1,  fee);
-         _handleTransferOut(synthOUT,outputSynth,msg.sender);
+          iBEP20(synthOUT).transfer(msg.sender, outputSynth);
          emit Swapped(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
          return outputSynth;
     }
@@ -292,7 +292,7 @@ contract Router {
         iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         getsDividend(_poolIN, synthINLayer1, fee);
-        _handleTransferOut(BASE, outputBase, msg.sender);
+        iBEP20(BASE).transfer(msg.sender, outputBase);
         emit Swapped(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
         return outputBase;
     }
@@ -303,7 +303,7 @@ contract Router {
         iBEP20(synthIN).transferFrom(msg.sender, _poolIN, inputAmount); 
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         getsDividend(_poolIN, synthINLayer1, fee);
-        _handleTransferOut(BASE, outputBase, msg.sender);
+        iBEP20(BASE).transfer(msg.sender, outputBase);
         emit Swapped(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
         return outputBase;
     }

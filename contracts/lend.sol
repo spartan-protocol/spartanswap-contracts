@@ -110,20 +110,41 @@ contract SpartanLend {
     function calcInterestAmount(address assetC, address assetD) internal returns (uint){
         address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(assetD); 
         uint poolDepth = iPOOL(_assetDPool).tokenAmount();
-        console.log("Pool Depth",poolDepth/10**18);
+        //   console.log("Pool Depth",poolDepth/10**18);
         uint poolDebt = totalDebt[assetC][assetD];
-        console.log("Pool debt",poolDebt/10**18);
+        //  console.log("Pool debt",poolDebt/10**18);
         uint interest = poolDebt.mul(10**18).div(poolDepth);
-        console.log("interest %",interest);
+        //  console.log("interest %",interest);
         return interest;
     }
 
      function _checkInterest(address assetC, address assetD) public {
         //  require(block.timestamp >= currentDay.add(OneDAY), '!DAY');                             
         //     currentDay = block.timestamp;                                        
-            uint256 _interestPayable = calcInterestAmount(assetC, assetD);                             
-             _payInterest(assetC, _interestPayable, assetD);                         
-            emit InterestPaid(assetC,_interestPayable, assetD );                              
+            uint256 _interestPayable = calcInterestAmount(assetC, assetD);    
+             uint _IR = _interestPayable.div(31536000).mul(86400);//per day 
+             uint _percentAmount = totalCollateral[assetC][assetD].mul(_IR).div(10**18);                        
+             _payInterest(assetC, _percentAmount, assetD);                         
+            emit InterestPaid(assetC,_interestPayable, assetD);                              
+    }
+
+    function _purge(address assetC, address assetD) public returns (uint fee){
+        uint baseCollateral; uint baseDebt;
+        if(assetC == BASE){
+              baseCollateral = totalCollateral[assetC][assetD];
+            }else if(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(assetC) == true){   
+              baseCollateral = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(assetC, totalCollateral[assetC][assetD]);
+            }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(assetC) == true){
+              baseCollateral = iUTILS(_DAO().UTILS()).calcSwapValueInBase(assetC, totalCollateral[assetC][assetD]); 
+            }
+        baseDebt = iUTILS(_DAO().UTILS()).calcSwapValueInBase(assetD, totalDebt[assetC][assetD]);
+        if(baseCollateral < baseDebt){
+         fee = baseCollateral.mul(100).div(10000);//100 bp fee 
+         removeFromReserve(fee);
+         iBEP20(BASE).transfer(msg.sender, fee);
+         _payInterest(assetC,totalCollateral[assetC][assetD], assetD);
+        }
+        return fee;
     }
 
     // handle input LP transfers 
@@ -155,17 +176,13 @@ contract SpartanLend {
         }
         return (actual, baseBorrow);
     }
-    function _payInterest(address _assetC, uint256 _interest, address _assetD) internal returns (uint InterestAmount){
+    function _payInterest(address _assetC, uint256 _percentAmount, address _assetD) internal returns (uint InterestAmount){
         address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_assetD);   
-         uint _IR = _interest.div(31536000).mul(86400);//per day
-         console.log("_IR",_IR);   
-         uint _percentAmount = totalCollateral[_assetC][_assetD].mul(_IR).div(10**18);
-          console.log("% collateral to send per day ",_percentAmount);   
             if(_assetC == BASE){
                 InterestAmount = _percentAmount;
                 _decrCDP(InterestAmount,_assetC, iUTILS(_DAO().UTILS()).calcSwapValueInToken(_assetD,InterestAmount), _assetD); 
                 iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
-            }else if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_assetC) == true){ 
+            }else if(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_assetC) == true){ 
                 address token = iPOOL(_assetC).TOKEN();  
                 iBEP20(_assetC).transfer(_assetC, _percentAmount);
                  (uint outputBase, uint outputToken) = iPOOL(_assetC).removeLiquidity(); 
@@ -177,11 +194,11 @@ contract SpartanLend {
             }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_assetC) == true){
                  iBEP20(_assetC).approve(address(_DAO().ROUTER()),_percentAmount);
                   InterestAmount = iROUTER(_DAO().ROUTER()).swapSynthToBaseSAFE(_percentAmount,_assetC); 
-                 console.log("base bought",InterestAmount);
                  _decrCDP(_percentAmount,_assetC, iUTILS(_DAO().UTILS()).calcSwapValueInToken(_assetD,InterestAmount), _assetD); 
                  iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             } 
             iPOOL(_assetDPool).sync();
+                // console.log("InterestAmount in BASE",InterestAmount);   
             return InterestAmount;
     }
 
