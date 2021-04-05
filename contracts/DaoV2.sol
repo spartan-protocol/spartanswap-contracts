@@ -40,7 +40,6 @@ contract Dao {
     address public DEPLOYER;
     address public BASE;
 
-    
     uint256 public secondsPerEra;
     uint256 public coolOffPeriod;
     uint256 public proposalCount;
@@ -162,7 +161,7 @@ contract Dao {
     }
 
     // Contract deposits some LP tokens for member
-    function depositLPForMember(address pool, uint256 amount, address member) public {
+    function depositLPForMember(address pool, uint256 amount, address member) public payable{
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!Curated");
         require(amount > 0, "!Amount");
         if (!isMember[member]) {

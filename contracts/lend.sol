@@ -193,7 +193,7 @@ contract SpartanLend {
                  iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_assetC) == true){
                  iBEP20(_assetC).approve(address(_DAO().ROUTER()),_percentAmount);
-                  InterestAmount = iROUTER(_DAO().ROUTER()).swapSynthToBaseSAFE(_percentAmount,_assetC); 
+                  InterestAmount = iROUTER(_DAO().ROUTER()).swapSynthToBase(_percentAmount,_assetC, true); 
                  _decrCDP(_percentAmount,_assetC, iUTILS(_DAO().UTILS()).calcSwapValueInToken(_assetD,InterestAmount), _assetD); 
                  iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             } 
@@ -201,19 +201,16 @@ contract SpartanLend {
                 // console.log("InterestAmount in BASE",InterestAmount);   
             return InterestAmount;
     }
-
     function _incrMemberDetails(uint actualInputAssetC,address _assetC, address _member, uint _assetDebtIssued, address _assetD) internal {
        mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD] = mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD].add(_assetDebtIssued);
        mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD] = mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD].add(actualInputAssetC);
        mapMember_Details[_member].mapMember_Debt[_assetC].timeBorrowed[_assetD] = block.timestamp;
        mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateralDeposit[_assetD] = mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateralDeposit[_assetD].add(actualInputAssetC);
     }
-
     function _decrMemberDetails(uint _assetCOutput, address _assetC, address _member, uint debtRepaid, address _assetD) internal {
        mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD] = mapMember_Details[_member].mapMember_Debt[_assetC].assetDebt[_assetD].sub(debtRepaid);
        mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD] = mapMember_Details[_member].mapMember_Debt[_assetC].assetCollateral[_assetD].sub(_assetCOutput);
     }
-
     function _incrCDP(uint _inputCollateral,address _assetC, uint _assetDebtOutput, address _assetD) internal  {
          totalDebt[_assetC][_assetD] = totalDebt[_assetC][_assetD].add(_assetDebtOutput);
          totalCollateral[_assetC][_assetD] = totalCollateral[_assetC][_assetD].add(_inputCollateral);
@@ -222,14 +219,12 @@ contract SpartanLend {
         totalDebt[_assetC][_assetD] = totalDebt[_assetC][_assetD].sub(_assetDebtInput);
         totalCollateral[_assetC][_assetD] = totalCollateral[_assetC][_assetD].sub(_outputCollateral);
     }
-
     function addToReserve(uint amount) public{
        reserve = reserve.add(amount);
     }
     function removeFromReserve(uint amount) public{
        reserve = reserve.sub(amount);
     }
-
   //===================================HELPERS===============================================
     function getMemberDetails(address member, address assetC, address assetD) public view returns (MemberDetails memory memberDetails){
         memberDetails.assetCurrentCollateral = iUTILS(_DAO().UTILS()).calcShare(totalCollateral[assetC][assetD], totalDebt[assetC][assetD], mapMember_Details[member].mapMember_Debt[assetC].assetDebt[assetD]);

@@ -2,7 +2,7 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
-import "@nomiclabs/buidler/console.sol";
+
 interface iSYNTHFACTORY {
     function isSynth(address) external view returns (bool);
 
@@ -16,19 +16,14 @@ interface iPOOLFACTORY {
     function getPool(address) external view returns(address payable);
 }
 
-
-
 contract Router {
     using SafeMath for uint256;
-
     address public BASE;
     address private NDAO;
     address public WBNB;
     address public DEPLOYER;
-
     uint public secondsPerEra;
     uint public nextEraTime;
-   
     uint private maxTrades;
     uint private eraLength;
     uint public normalAverageFee;
@@ -70,11 +65,6 @@ contract Router {
     }
 
     receive() external payable {}
-
-    // In case of new router can migrate metrics
-    function migrateRouterData(address payable oldRouter) public onlyDAO {
-        normalAverageFee = Router(oldRouter).normalAverageFee();
-    }
 
     // Add liquidity for self
     function addLiquidity(uint inputBase, uint inputToken, address token) public payable returns (uint units) {
@@ -196,7 +186,6 @@ contract Router {
     //==================================================================================//
     // Swapping Functions
     function buyTo(uint amount, address token, address member) public returns (uint outputAmount, uint fee) {
-        require(token != BASE);
         address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
@@ -208,7 +197,6 @@ contract Router {
         return (outputAmount, fee);
     }
     function sellTo(uint amount, address token, address member) public payable returns (uint outputAmount, uint fee) {
-        require(token != BASE);
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         _handleTransferIn(token, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
@@ -285,22 +273,15 @@ contract Router {
          emit Swapped(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
          return outputSynth;
     }
-    function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
+    function swapSynthToBase(uint inputAmount, address synthIN, bool safe) public returns (uint outPut){
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
         address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthINLayer1);
-        iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF
-        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
-        getsDividend(_poolIN, synthINLayer1, fee);
-        iBEP20(BASE).transfer(msg.sender, outputBase);
-        emit Swapped(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
-        return outputBase;
-    }
-    function swapSynthToBaseSAFE(uint inputAmount, address synthIN) public returns (uint outPut){
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
-        address synthINLayer1 = iSYNTH(synthIN).LayerONE();
-        address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthINLayer1);
-        iBEP20(synthIN).transferFrom(msg.sender, _poolIN, inputAmount); 
+        if(safe ==true ){
+            iBEP20(synthIN).transferFrom(msg.sender, _poolIN, inputAmount); 
+        }else{
+            iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF
+        }
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         getsDividend(_poolIN, synthINLayer1, fee);
         iBEP20(BASE).transfer(msg.sender, outputBase);
@@ -345,7 +326,6 @@ contract Router {
         }
          feeArray[0] = fee;
     }
-
     function revenueDetails(uint fees, address pool) internal {
         if(lastMonth == 0){
             lastMonth = Pool(pool).genesis();
@@ -360,7 +340,6 @@ contract Router {
         }
         
     }
-
     //=================================onlyDAO=====================================//
     function changeArrayFeeSize(uint _size) public onlyDAO {
         arrayFeeSize = _size;
@@ -381,7 +360,6 @@ contract Router {
         iBEP20(BASE).transfer(grantee, amount);
         return true;
     }
-
     function destroyRouter() public onlyDAO {
          selfdestruct(msg.sender);
     }

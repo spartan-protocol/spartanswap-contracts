@@ -10,22 +10,20 @@ interface iBASE {
 interface iROUTER {
     function swap(uint, address, address) external returns(uint);
     function removeLiquidityExact(uint, address) external returns(uint, uint);
-    function removeLiquidityAsym(uint units, bool toBase, address token) external returns(uint outputAmount, uint fee);
-    function swapSynthToBaseSAFE(uint inputAmount, address synthIN) external returns (uint outPut);
+    function removeLiquidityAsym(uint, bool, address ) external returns(uint, uint);
+    function swapSynthToBase(uint, address, bool) external returns (uint );
 }
 interface iUTILS {
-   function calcSwapValueInBaseWithPool(address pool, uint amount) external view returns (uint value);
-    function calcAsymmetricValueToken(address pool, uint amount) external pure returns (uint units);
-    function calcAsymmetricValueBase(address pool, uint units) external view returns(uint amount);
-    function calcShare(uint units,uint total, uint amount ) external view returns (uint unitShare);
-    function calcSwapValueInBaseWithSYNTH(address token, uint units) external view returns (uint amount);
-    function calcSpotValueInBase(address token, uint units) external view returns (uint amount);
+   function calcSwapValueInBaseWithPool(address, uint) external view returns (uint );
+    function calcAsymmetricValueToken(address, uint) external pure returns (uint );
+    function calcAsymmetricValueBase(address, uint ) external view returns(uint );
+    function calcShare(uint ,uint , uint  ) external view returns (uint );
+    function calcSwapValueInBaseWithSYNTH(address , uint ) external view returns (uint );
+    function calcSpotValueInBase(address , uint ) external view returns (uint );
     function allCuratedPools() external view returns (address [] memory);
     function calcSwapValueInToken(address, uint) external view returns(uint);
     function calcSwapValueInBase(address, uint) external view returns(uint);
-    function calcLiquidityUnitsAsym(uint amount, address pool) external view returns (uint);
-
-   
+    function calcLiquidityUnitsAsym(uint , address ) external view returns (uint); 
 }
 interface iDAO {
     function ROUTER() external view returns(address);

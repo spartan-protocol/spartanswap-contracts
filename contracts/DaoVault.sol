@@ -38,15 +38,17 @@ interface iUTILS {
 }
 interface iPOOL {
      function removeLiquidity() external returns (uint, uint);
-    function transferTo(address, uint) external payable returns(bool);
-       function TOKEN() external view returns(address);
+     function transferTo(address, uint) external payable returns(bool);
+     function TOKEN() external view returns(address);
 }
+
 contract DaoVault {
     using SafeMath for uint;
     address public BASE;
     address public NDAO;
     uint256 public totalWeight;
-     constructor (address _base, address _newDAO) public payable {
+
+constructor (address _base, address _newDAO) public payable {
         BASE = _base;
          NDAO = _newDAO;
     }
@@ -55,6 +57,7 @@ contract DaoVault {
     mapping(address => uint256) public mapMember_weight; // Value of weight
     mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of weight for pool
     mapping(address => address[]) public mapMember_poolArray;
+
 modifier onlyDAO() {
         require(msg.sender == _DAO().DAO());
         _;
@@ -77,8 +80,7 @@ function depositLP(address pool, uint amount, address member) public onlyDAO ret
 }
 
  // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
-    function increaseWeight(address pool, address member) public returns(uint){
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(pool), "!pool");
+    function increaseWeight(address pool, address member) internal returns(uint){
         if(mapMemberPool_weight[member][pool] > 0){ // Remove previous weights
             totalWeight = totalWeight.sub(mapMemberPool_weight[member][pool]);
             mapMember_weight[member] = mapMember_weight[member].sub(mapMemberPool_weight[member][pool]);
