@@ -1,6 +1,5 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-import "@nomiclabs/buidler/console.sol";
 
 import "./cInterfaces.sol";
 interface iDAO {
@@ -74,8 +73,7 @@ contract Pool is iBEP20 {
     event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address indexed tokenFrom, address indexed tokenTo, uint inputAmount, uint outputAmount, uint fee, address indexed recipient);
-     event Burn(address indexed from, address indexed to, uint256 value);
-     event Mint(address indexed from, address indexed to, uint256 value);
+
     function _DAO() internal view returns(iDAO) {
         bool status = iDAO(NDAO).MSTATUS();
         if(status == true){
@@ -156,7 +154,7 @@ contract Pool is iBEP20 {
     function _mint(address account, uint256 amount) internal {
         totalSupply = totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
-        emit Mint(address(0), account, amount);
+        emit Transfer(address(0), account, amount);
     }
     // Burn supply
     function burn(uint256 amount) public virtual {
@@ -170,7 +168,7 @@ contract Pool is iBEP20 {
     function _burn(address account, uint256 amount) internal virtual {
         _balances[account] = _balances[account].sub(amount, "BalanceErr");
         totalSupply = totalSupply.sub(amount);
-        emit Burn(account, address(0), amount);
+        emit Transfer(account, address(0), amount);
     }
 
     // TransferTo function

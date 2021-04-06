@@ -245,7 +245,7 @@ contract Utils {
     function getPoolShareWeight(address token, uint units) public view returns(uint weight){
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         weight = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
-        return (weight);
+        return weight;
     }
     function getDepth(address _pool) public view returns (uint _baseAmount){
         _baseAmount = iPOOL(_pool).baseAmount();

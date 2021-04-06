@@ -33,10 +33,6 @@ contract Router {
 
     mapping(address=> uint) public map30DPoolRevenue;
     mapping(address=> uint) public mapPast30DPoolRevenue;
-  
-    event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
-    event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
-    event Swapped(address indexed tokenFrom, address indexed tokenTo, uint inputAmount, uint outputAmount, uint fee, address indexed recipient);
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -78,7 +74,6 @@ contract Router {
         uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         uint256 _actualInputtoken =  _handleTransferIn(token, inputToken, pool);
         units = Pool(pool).addLiquidityForMember(member);
-        emit AddLiquidity(member, _actualInputBase,_actualInputtoken, units );
         return units;
     }
     function addLiquidityAsym(uint inputToken, bool fromBase, address token) public payable returns (uint units) {
@@ -95,7 +90,6 @@ contract Router {
         (uint outputBase,) = removeLiquidityAsymForMember(unitsLP, true,  fromToken, address(this));
         iBEP20(BASE).transfer(_poolTo,outputBase);
         units = Pool(_poolTo).addLiquidityForMember(_member);
-         emit AddLiquidity(_member, outputBase,0, units);
          return (units);
     }
     // Add Asymmetrically
@@ -110,21 +104,17 @@ contract Router {
              iBEP20(BASE).transfer(_pool,halfInput);
              (uint _tokenBought,uint fee ) = Pool(_pool).swap(_token);
              getsDividend(_pool,token, fee);
-             emit Swapped(token, BASE, halfInput, _tokenBought, fee, member);
              iBEP20(BASE).transfer(_pool,halfInput);
              iBEP20(_token).transfer(_pool,_tokenBought);
              units = Pool(_pool).addLiquidityForMember(member);
-             emit AddLiquidity(member, halfInput,_tokenBought, units);
         } else {
             _handleTransferIn(token, inputToken, address(this));
              iBEP20(_token).transfer(_pool,halfInput);
             (uint _baseBought, uint fee ) = Pool(_pool).swap(BASE);
             getsDividend(_pool,token, fee);
-            emit Swapped(token, BASE, halfInput, _baseBought, fee, member);
             iBEP20(_token).transfer(_pool,halfInput);
             iBEP20(BASE).transfer(_pool,_baseBought);
             units = Pool(_pool).addLiquidityForMember(member);
-            emit AddLiquidity(member, halfInput,_baseBought, units);
         }
         return units;
     }
@@ -145,7 +135,6 @@ contract Router {
         (outputBase, outputToken) = Pool(_pool).removeLiquidity();
         _handleTransferOut(token, outputToken, _member);
         _handleTransferOut(BASE, outputBase, _member);
-        emit RemoveLiquidity(_member,outputBase, outputToken,units);
         return (outputBase, outputToken);
     }
 
@@ -159,14 +148,12 @@ contract Router {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true);
          Pool(_pool).transferTo(_pool, units);//RPTAF
         (uint outputBase, uint outputToken) = Pool(_pool).removeLiquidity();
-        emit RemoveLiquidity(member,outputBase, outputToken,units);
          address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         if(toBase){
              iBEP20(_token).transfer(_pool, outputToken);
              (uint _baseBought,uint _feey) = Pool(_pool).swapTo(BASE, address(this));
              getsDividend(_pool,_token, _feey);
-             emit Swapped(_token, BASE, outputToken, _baseBought, _feey, member);
             outputAmount = _baseBought.add(outputBase);
             fee = _feey;
             _handleTransferOut(BASE, outputAmount, member);
@@ -174,7 +161,6 @@ contract Router {
             iBEP20(BASE).transfer(_pool, outputBase);
             (uint _tokenBought,uint _feez) = Pool(_pool).swapTo(_token, address(this));
              getsDividend(_pool,_token, _feez);
-             emit Swapped(BASE, _token, outputBase, _tokenBought, _feez, member);
             outputAmount = _tokenBought.add(outputToken);
             fee = _feez;
             _handleTransferOut(token, outputAmount, member);
@@ -193,7 +179,6 @@ contract Router {
         (outputAmount, fee) = Pool(_pool).swap(_token);
         _handleTransferOut(token, outputAmount, member);
         getsDividend(_pool,token, fee);
-        emit Swapped(_token, BASE, amount, outputAmount, fee, member);
         return (outputAmount, fee);
     }
     function sellTo(uint amount, address token, address member) public payable returns (uint outputAmount, uint fee) {
@@ -201,7 +186,6 @@ contract Router {
         _handleTransferIn(token, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
         getsDividend(_pool,token, fee);
-        emit Swapped(BASE, token, amount, outputAmount, fee, member);
         return (outputAmount, fee);
     }
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
@@ -223,7 +207,6 @@ contract Router {
             getsDividend(_poolTo,toToken, fee);
             outputAmount = _zz; 
             _handleTransferOut(toToken, outputAmount, member);
-            emit Swapped(fromToken, toToken, inputAmount, outputAmount, fee, member);
         }
         return (outputAmount, fee);
     }
@@ -270,7 +253,6 @@ contract Router {
          (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
          getsDividend( _poolOUT,  synthOUTLayer1,  fee);
           iBEP20(synthOUT).transfer(msg.sender, outputSynth);
-         emit Swapped(BASE, synthOUT, inputAmount, outputSynth, fee, msg.sender);
          return outputSynth;
     }
     function swapSynthToBase(uint inputAmount, address synthIN, bool safe) public returns (uint outPut){
@@ -285,7 +267,6 @@ contract Router {
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         getsDividend(_poolIN, synthINLayer1, fee);
         iBEP20(BASE).transfer(msg.sender, outputBase);
-        emit Swapped(synthIN, BASE, inputAmount, outputBase, fee, msg.sender);
         return outputBase;
     }
     

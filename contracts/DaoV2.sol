@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import "./DaoVault.sol";
 
 interface iDAOVAULT {
-    function withdraw(address, uint, address) external  returns (bool);
+    function withdraw(address,address) external  returns (bool);
     function depositLP(address, uint, address) external  returns (bool);
     function updateWeight(address) external ;
     function mapMember_weight(address) external returns(uint); 
@@ -167,6 +167,8 @@ contract Dao {
         if (!isMember[member]) {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
+        }else{
+            harvest();
         }
         _DAOVAULT.depositLP(pool, amount, member);
         mapMember_lastTime[member] = block.timestamp;
@@ -187,15 +189,9 @@ contract Dao {
     }
 
     // Member withdraws all from a pool
-    function withdraw(address pool, uint amount) public {
-        require(_DAOVAULT.withdraw(pool, amount, msg.sender), "!transfer"); // Then transfer
-        uint256 poolBal = _DAOVAULT.mapMemberPool_balance(msg.sender, pool);
-        if(poolBal == 0){
-            mapMember_lastTime[msg.sender] = 0; //Zero out seconds 
-        }
-        emit MemberWithdraws(msg.sender, pool, amount);
+    function withdraw(address pool) public {
+        require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Then transfer
     }
-
 
     //============================== REWARDS ================================//
     // Rewards
