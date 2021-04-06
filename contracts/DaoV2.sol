@@ -167,8 +167,8 @@ contract Dao {
         if (!isMember[member]) {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
-        }else{
-            harvest();
+        }else if(_DAOVAULT.mapMemberPool_balance(member, pool) > 0) {
+                harvest();
         }
         _DAOVAULT.depositLP(pool, amount, member);
         mapMember_lastTime[member] = block.timestamp;

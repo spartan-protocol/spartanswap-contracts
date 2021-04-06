@@ -23,8 +23,6 @@ contract Synth is iBEP20 {
     // ERC-20 Mappings
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
-    event Burn(address indexed from, address indexed to, uint256 value);
-    event Mint(address indexed from, address indexed to, uint256 value);
     uint public totalCollateral;
 
     function _DAO() internal view returns(iDAO) {
@@ -103,7 +101,7 @@ contract Synth is iBEP20 {
     function _mint(address account, uint256 amount) internal {
         totalSupply = totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
-        emit Mint(address(0), account, amount);
+        emit Transfer(address(0), account, amount);
     }
     // Burn supply
     function burn(uint256 amount) public virtual {
@@ -117,7 +115,7 @@ contract Synth is iBEP20 {
     function _burn(address account, uint256 amount) internal virtual {
         _balances[account] = _balances[account].sub(amount, "BalanceErr");
         totalSupply = totalSupply.sub(amount);
-        emit Burn(account, address(0), amount);
+        emit Transfer(account, address(0), amount);
     }
     // TransferTo function
     function transferTo(address recipient, uint256 amount) public returns (bool) {

@@ -51,9 +51,16 @@ contract('DAO', function (accounts) {
     // voteUtils()
     // voteRouter()
     //voteDao()
-    //  withdrawBNB(acc0)
-    //  withdrawTKN1(acc1)
-    harvest()
+     withdrawBNB(acc0)
+     withdrawTKN1(acc0)
+     withdrawTKN1(acc1)
+     withdrawTKN1(acc2)
+
+     lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
+     lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
+     lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
+     lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
+   harvest()
 
 })
 
@@ -203,7 +210,7 @@ async function withdrawBNB(acc) {
         let balBefore = _.getBN(await poolWBNB.balanceOf(acc))
          let balBeforeD = _.getBN(await poolWBNB.balanceOf(daoVault.address))
         console.log(_.BN2Str(balBeforeD));
-        await Dao.withdraw(poolWBNB.address,_.BN2Str(1 * _.one), {from:acc});
+        await Dao.withdraw(poolWBNB.address,{from:acc});
         let balAfter = _.getBN(await poolWBNB.balanceOf(acc))
         assert.isAbove(_.BN2Int(balAfter), _.BN2Int(balBefore))
         console.log(_.BN2Str(balAfter));
@@ -214,7 +221,7 @@ async function withdrawTKN1(acc) {
         let balBefore = _.getBN(await poolTKN1.balanceOf(acc))
          let balBeforeD = _.getBN(await poolTKN1.balanceOf(daoVault.address))
         console.log(_.BN2Str(balBeforeD));
-        await Dao.withdraw(poolTKN1.address,_.BN2Str(1 * _.one), {from:acc});
+        await Dao.withdraw(poolTKN1.address, {from:acc});
         let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
         assert.isAbove(_.BN2Int(balAfter), _.BN2Int(balBefore))
         console.log(_.BN2Str(balAfter));

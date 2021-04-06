@@ -90,8 +90,6 @@ function _DAO() internal view returns(iDAO) {
         mapAddress_listedAssets[asset].lastBlockTime[member] = memberDetails.lastBlockTime;
         return true;
     }
-    
-
 
     function depForMember(address asset, address member, uint LPS) public onlyDAO returns(bool){
          if(!mapAddress_listedAssets[asset].isMember[member]){
