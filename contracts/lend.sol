@@ -35,6 +35,7 @@ contract SpartanLend {
     mapping(address => CollateralDetails) private mapMember_Details;
     mapping(address => mapping(address => uint)) public totalCollateral;
     mapping(address => mapping(address => uint)) public totalDebt;
+    mapping(address => mapping(address => uint)) public TimeLoaned;
 
     event AddCollateral(uint inputToken, address indexed Debt, uint DebtIssued);
     event RemoveCollateral(uint inputToken, address indexed Debt, uint DebtReturned);
@@ -74,6 +75,9 @@ contract SpartanLend {
     function drawDebtForMember(uint _amount, address _assetC, address _assetD, address _member) public payable returns (uint256 _assetDebtIssued) {
         (uint actualInputAssetC, uint baseBorrow) = _handleTransferInCol(_amount,_assetC);
         require(baseBorrow <= reserve,'!Reserve');
+        if(totalDebt[_assetC][_assetD] == 0){
+            TimeLoaned[_assetC][_assetD] == block.timestamp;
+        }
         removeFromReserve(baseBorrow);
         iBEP20(BASE).transfer(LENDROUTER,baseBorrow);
         _assetDebtIssued = LendRouter(LENDROUTER).depositForMember(_assetD);
@@ -102,6 +106,9 @@ contract SpartanLend {
           _decrCDP(_assetCollateralRemoved,_assetC, actualInputAssetD, _assetD);
          _decrMemberDetails(_assetCollateralRemoved, _assetC, _member, actualInputAssetD, _assetD);
          iBEP20(_assetC).transfer(_member, _assetCollateralRemoved);
+          if(totalDebt[_assetC][_assetD] == 0){
+            TimeLoaned[_assetC][_assetD] == 0;
+        }
         emit RemoveCollateral(_assetCollateralRemoved, _assetD, actualInputAssetD);
         return (_assetCollateralRemoved);
     }
@@ -118,17 +125,17 @@ contract SpartanLend {
         return interest;
     }
 
-     function _checkInterest(address assetC, address assetD) public {
-        //  require(block.timestamp >= currentDay.add(OneDAY), '!DAY');                             
-        //     currentDay = block.timestamp;                                        
+     function checkInterest(address assetC, address assetD) public {
+          require(block.timestamp >=  TimeLoaned[_assetC][_assetD].add(OneDAY), '!DAY');                                                                  
             uint256 _interestPayable = calcInterestAmount(assetC, assetD);    
              uint _IR = _interestPayable.div(31536000).mul(86400);//per day 
              uint _percentAmount = totalCollateral[assetC][assetD].mul(_IR).div(10**18);                      
-             _payInterest(assetC, _percentAmount, assetD);                         
+             _payInterest(assetC, _percentAmount, assetD);     
+             TimeLoaned[_assetC][_assetD] = block.timestamp;                       
             emit InterestPaid(assetC,_interestPayable, assetD);                              
     }
 
-    function _liquidate(address assetC, address assetD, uint _interestBase) public returns (uint fee){
+    function _liquidate(address assetC, address assetD, uint _interestBase) internal returns (uint fee){
         uint baseCollateral; uint baseDebt;
         if(assetC == BASE){
               baseCollateral = totalCollateral[assetC][assetD];
@@ -137,9 +144,17 @@ contract SpartanLend {
             }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(assetC) == true){
               baseCollateral = iUTILS(_DAO().UTILS()).calcSwapValueInBase(assetC, totalCollateral[assetC][assetD]); 
             }
-        baseDebt = iUTILS(_DAO().UTILS()).calcSwapValueInBase(assetD, totalDebt[assetC][assetD]);
-        if(baseCollateral < baseDebt){
+            baseDebt = iUTILS(_DAO().UTILS()).calcSwapValueInBase(assetD, totalDebt[assetC][assetD]);
+        if(baseCollateral <= baseDebt){
             if(baseCollateral <= _interestBase){
+                fee = baseCollateral.mul(100).div(10000);
+                if(reserve <= fee){
+                iBEP20(BASE).transfer(msg.sender, reserve);//send reserve to caller
+                removeFromReserve(reserve);
+                }else{
+                 iBEP20(BASE).transfer(msg.sender, fee);//send fee to caller 
+                removeFromReserve(fee);
+                }
                  _payInterest(assetC,totalCollateral[assetC][assetD], assetD);//100%
             }else{
                  _payInterest(assetC,totalCollateral[assetC][assetD].mul(1000).div(10000), assetD);//10%
@@ -198,7 +213,7 @@ contract SpartanLend {
                  _decrCDP(_percentAmount,_assetC, iUTILS(_DAO().UTILS()).calcSwapValueInToken(_assetD,InterestAmount), _assetD); 
                  iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             } 
-             _liquidate(assetC, assetD, InterestAmount);  
+             _liquidate(assetC, assetD, InterestAmount);  //check solvency
             iPOOL(_assetDPool).sync();
                 // console.log("InterestAmount in BASE",InterestAmount);   
             return InterestAmount;
