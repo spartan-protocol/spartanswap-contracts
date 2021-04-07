@@ -50,21 +50,31 @@ contract('Test Lending', function (accounts) {
      addLiquidityTKN1(acc1,_.BN2Str(1500*_.one),  _.BN2Str(60*_.one)); //SPV2
      curatePools()
      createSyntheticBNB()
-     swapLayer1ToSynth(acc0,_.BN2Str(1000*_.one))
+     swapLayer1ToSynth(acc0,_.BN2Str(500*_.one))
     //  swapSynthToLayer1(acc1)
      BorrowTKNwithBASE(acc0,_.BN2Str(100*_.one))
-    // //  BorrowTKNwithBASE(acc1,_.BN2Str(100*_.one))
      BorrowTKNwithSPT2BNB(acc0,_.BN2Str(100*_.one))
-     BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(20*_.one))
-    
-    // //  ShowTKNPool()
-      payInterestForTKNBASE(acc0)
-       payInterestForTKNSPT(acc0)
-      payInterestForTKNSYNTH(acc0)
+     BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(10*_.one))
 
-      RepayTKNgetBase(acc0, "25517773151982793")
-      RepayTKNgetSPT2BNB(acc0, "796480116002472")
-      RepayTKNgetSynthBNB(acc0, "3730536262086436")
+     swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
+     addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
+
+     _checkliquidate(acc0);
+
+    //  swapBNBtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    //  swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    //  addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
+      swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
+      _checkliquidate(acc0);
+    // //  ShowTKNPool()
+    //   payInterestForTKNBASE(acc0)
+    //    payInterestForTKNSPT(acc0)
+    //   payInterestForTKNSYNTH(acc0)
+
+
+    //   RepayTKNgetBase(acc0, "25517773151982793")
+    //   RepayTKNgetSPT2BNB(acc0, "796480116002472")
+    //   RepayTKNgetSynthBNB(acc0, "3730536262086436")
 
      
     //  ShowTKNPool()
@@ -95,7 +105,6 @@ function constructor(accounts) {
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
-        await base.transfer(lend.address, _.getBN(_.BN2Str(100000 * _.one)))
         await lend.addToReserve(_.BN2Str(100000 * _.one),{from:acc0})
         // await base.transfer(router.address, _.getBN(_.BN2Str(100000 * _.one)))
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
@@ -238,7 +247,7 @@ async function swapLayer1ToSynth(acc, x) {
         let tS = _.getBN(await poolWBNB.totalSupply())
 
         let lpsAsym = math.calcLiquidityUnitsAsym(x, X, tS)
-    
+       
         await router.swapBaseToSynth(x,synthOUT,{from:acc});
         let lpBal = _.getBN(await poolWBNB.balanceOf(synthBNB.address))
         let synthBal = _.getBN(await synthBNB.balanceOf(acc))
@@ -380,7 +389,7 @@ async function BorrowTKNwithASYNTHBNB(acc, x) {
         // let mAD = _.getBN(memberDeets.assetDebt);
         // let mAB = memberDeets.timeBorrowed;
         // console.log(_.BN2Str(mAC),_.BN2Str(mAD), _.BN2Str(mAB) );
-
+      
         await lend.drawDebt(input, assetC, assetD, {from:acc})
         let memberDeetsA =await lend.getMemberDetails( acc, assetC, assetD)
         let mACA = memberDeetsA.assetCurrentCollateral;
@@ -675,6 +684,134 @@ async function payInterestForTKNSYNTH(acc, x) {
         assert.equal(_.BN2Str(collateralDebtA), _.BN2Str(collateralDebt.minus(a)));
 
 
+    })
+}
+
+async function swapBNBToTKN1(acc, x) {
+    it(`It should buy BNB with TKN1 from ${acc}`, async () => {
+       let wbnbStart = _.getBN(await wbnb.balanceOf(acc))
+        let tokenStart = _.getBN(await token1.balanceOf(acc))
+
+        let fromToken = _.BNB
+        let toToken = token1.address
+        let poolDataWBNB = await utils.getPoolData(fromToken);
+        let poolDataTKN1 = await utils.getPoolData(toToken);
+        const X = _.getBN(poolDataWBNB.tokenAmount)
+        const Y = _.getBN(poolDataWBNB.baseAmount)
+        const B = _.getBN(poolDataTKN1.baseAmount)
+        const Z = _.getBN(poolDataTKN1.tokenAmount)
+        //console.log('start data', _.BN2Str(X), _.BN2Str(Y))
+
+        let y = math.calcSwapOutput(x, X, Y)
+        let feey = math.calcSwapFee(x, X, Y)
+        let z = math.calcSwapOutput(y, B, Z)
+        let feez = math.calcSwapFee(y, B, Z)
+        let fee = math.calcValueIn(feey, B.plus(y), Z.minus(z)).plus(feez)
+        // console.log(_.BN2Str(y), _.BN2Str(Y), _.BN2Str(X), _.BN2Str(x), _.BN2Str(fee))
+        
+        let tx = await router.swap(x, fromToken, toToken, {value:x, from:acc})
+        // console.log(tx)
+        poolDataWBNB = await utils.getPoolData(fromToken);
+        poolDataTKN1 = await utils.getPoolData(toToken);
+
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(x))
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(y))
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
+        
+        assert.equal(_.BN2Str(poolDataWBNB.tokenAmount), _.BN2Str(X.plus(x)))
+        assert.equal(_.BN2Str(poolDataWBNB.baseAmount), _.BN2Str(Y.minus(y)))
+        assert.equal(_.BN2Str(poolDataTKN1.baseAmount), _.BN2Str(B.plus(y)))
+        assert.equal(_.BN2Str(poolDataTKN1.tokenAmount), _.BN2Str(Z.minus(z)))
+
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(X.plus(x)), 'wbnb balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(Y.minus(y)), 'base balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(B.plus(y)), 'base balance')
+        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(Z.minus(z)), 'token1 balance')
+        
+        // assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(wbnbStart.minus(x)), 'wbnb balance')
+        assert.equal(_.BN2Str(await token1.balanceOf(acc)), _.BN2Str(tokenStart.plus(z)), 'token1 balance')
+        //await help.logPool(utils, _.BNB, 'BNB')
+    })
+}
+async function swapTKN1ToBNB(acc, x) {
+    it(`It should buy BNB with TKN1 from ${acc}`, async () => {
+        let bnbStart = _.getBN(await web3.eth.getBalance(acc))
+        let tokenStart = _.getBN(await token1.balanceOf(acc))
+
+        let fromToken = token1.address
+        let toToken = _.BNB
+        let poolDataWBNB = await utils.getPoolData(fromToken);
+        let poolDataTKN1 = await utils.getPoolData(toToken);
+        const X = _.getBN(poolDataWBNB.tokenAmount)
+        const Y = _.getBN(poolDataWBNB.baseAmount)
+        const B = _.getBN(poolDataTKN1.baseAmount)
+        const Z = _.getBN(poolDataTKN1.tokenAmount)
+        //console.log('start data', _.BN2Str(X), _.BN2Str(Y))
+
+        let y = math.calcSwapOutput(x, X, Y)
+        let feey = math.calcSwapFee(x, X, Y)
+        let z = math.calcSwapOutput(y, B, Z)
+        let feez = math.calcSwapFee(y, B, Z)
+        let fee = math.calcValueIn(feey, B.plus(y), Z.minus(z)).plus(feez)
+        // console.log(_.BN2Str(y), _.BN2Str(Y), _.BN2Str(X), _.BN2Str(x), _.BN2Str(fee))
+        
+        let tx = await router.swap(x, fromToken, toToken, {from:acc})
+        // console.log(tx)
+        poolDataWBNB = await utils.getPoolData(fromToken);
+        poolDataTKN1 = await utils.getPoolData(toToken);
+
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(x))
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(y))
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
+        
+        assert.equal(_.BN2Str(poolDataWBNB.tokenAmount), _.BN2Str(X.plus(x)))
+        assert.equal(_.BN2Str(poolDataWBNB.baseAmount), _.BN2Str(Y.minus(y)))
+        assert.equal(_.BN2Str(poolDataTKN1.baseAmount), _.BN2Str(B.plus(y)))
+        assert.equal(_.BN2Str(poolDataTKN1.tokenAmount), _.BN2Str(Z.minus(z)))
+
+        assert.equal(_.BN2Str(await token1.balanceOf(poolTKN1.address)), _.BN2Str(X.plus(x)), 'wbnb balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(Y.minus(y)), 'base balance')
+        assert.equal(_.BN2Str(await base.balanceOf(poolWBNB.address)), _.BN2Str(B.plus(y)), 'base balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(Z.minus(z)), 'token1 balance')
+        
+        assert.equal(_.BN2Str(await wbnb.balanceOf(acc)), _.BN2Str(0), 'wbnb balance')
+       // assert.isAtLeast(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(bnbStart.plus(y)), 'bnb balance')
+        // await help.logPool(utils, token, 'WBNB')
+    })
+}
+async function createSyntheticBNB() {
+    it("It should Create Synthetic BNB ", async () => {
+        var _synth =  await synthFactory.createSynth.call(wbnb.address);
+        await synthFactory.createSynth(wbnb.address);
+        synthBNB = await SYNTH.at(_synth)
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
+        await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+    })
+}
+async function swapBASEToBNB(acc, x) {
+    it(`It should buy BNB with BASE from ${acc}`, async () => {
+        console.log("routerBal ", _.BN2Str(await base.balanceOf(router.address)))
+        await sleep(10000)
+        console.log('begin');
+        let token = wbnb.address
+        let tx = await router.swap(x, base.address, token, {from:acc})
+        console.log("routerBal after", _.BN2Str(await base.balanceOf(router.address)))
+
+    })
+}
+
+async function swapTKNtoBASE(acc, x) {
+    it(`It should swap TKN to BASE from ${acc}`, async () => {
+        let token = token1.address
+        let tx = await router.swap(x, token, base.address, {from:acc})
+    })
+}
+async function _checkliquidate(acc) {
+    it(`It should check liquidation`, async () => {
+
+
+        let tx = await lend._checkliquidate(base.address, {from:acc});
     })
 }
 

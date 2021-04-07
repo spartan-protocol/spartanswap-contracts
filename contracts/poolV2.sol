@@ -5,6 +5,7 @@ import "./cInterfaces.sol";
 interface iDAO {
     function ROUTER() external view returns(address);
     function UTILS() external view returns(address);
+    function LEND() external view returns(address);
     function SYNTHROUTER() external view returns(address);
     function MSTATUS() external view returns(bool);
     function DAO() external view returns (address);

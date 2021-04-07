@@ -15,6 +15,9 @@ interface iPOOLFACTORY {
     function isPool(address) external view returns (bool);
     function getPool(address) external view returns(address payable);
 }
+interface iLEND {
+    function checkInterest(address) external ;
+}
 
 contract Router {
     using SafeMath for uint256;
@@ -195,8 +198,10 @@ contract Router {
         require(fromToken != toToken);
         if(fromToken == BASE){
             (outputAmount, fee) = buyTo(inputAmount, toToken, member);
+            iLEND(_DAO().LEND()).checkInterest(fromToken);
         } else if(toToken == BASE) {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
+             iLEND(_DAO().LEND()).checkInterest(toToken);
         } else {
             address _poolTo = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
             (,uint feey) = sellTo(inputAmount, fromToken, _poolTo);
