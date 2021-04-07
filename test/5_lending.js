@@ -57,13 +57,19 @@ contract('Test Lending', function (accounts) {
      BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(10*_.one))
 
      swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
+
      addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
 
      _checkliquidate(acc0);
+     zapLiquidity(acc1)
 
+     addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
+     _checkliquidate(acc0);
     //  swapBNBtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
     //  swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
     //  addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
+      swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
+      _checkliquidate(acc0);
       swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
       _checkliquidate(acc0);
     // //  ShowTKNPool()
@@ -800,7 +806,39 @@ async function swapBASEToBNB(acc, x) {
 
     })
 }
-
+async function zapLiquidity(acc) {
+    it("zap liquidity", async () => {
+        let SPT2BNB = _.BN2Str(await poolWBNB.balanceOf(acc))
+        let SPT2TKN = _.BN2Str(await poolTKN1.balanceOf(acc))
+        // let baseP = _.BN2Str(await base.balanceOf(poolWBNB.address))
+        // let wbnb = _.BN2Str(await wbnb.balanceOf(poolWBNB.address))
+        // let TOKEN = _.BN2Str(await token1.balanceOf(poolTKN1.address))
+        // let base = _.BN2Str(await base.balanceOf(poolTKN1.address))
+        // console.log("SPT2BNB bal",SPT2BNB/_.one )
+        // console.log("SPT2BTC bal",SPT2TKN/_.one )
+        let fromTOKEN = token1.address 
+        let toTOKEN = wbnb.address
+        // console.log("BASE BALANCE wbnbP",baseP/_.one )
+        // console.log("WBNB BALANCE wbnbP", wbnb/_.one)
+        // console.log("BASE BALANCE tokenP", base/_.one)
+        // console.log("TOKEN BALANCE tokenP", TOKEN/_.one)
+        let tx = await router.zapLiquidity(SPT2BNB, fromTOKEN, toTOKEN, {from:acc})
+        // let basePA = _.BN2Str(await base.balanceOf(poolWBNB.address))
+        // let wbnbA = _.BN2Str(await wbnb.balanceOf(poolWBNB.address))
+        // let TOKENA = _.BN2Str(await token1.balanceOf(poolTKN1.address))
+        // let baseA = _.BN2Str(await base.balanceOf(poolTKN1.address))
+        // let SPT2BNBa = _.BN2Str(await poolWBNB.balanceOf(acc))
+        // let SPT2TKNa = _.BN2Str(await poolTKN1.balanceOf(acc))
+        // console.log("SPT2BNB bal",SPT2BNBa/_.one )
+        // console.log("SPT2BTC bal",SPT2TKNa/_.one )
+        // console.log("Fee in Sparta", fee/_.one)
+        // console.log("BASE BALANCE wbnb A",basePA/_.one )
+        // console.log("WBNB BALANCE A", wbnbA/_.one)
+        // console.log("BASE BALANCE A", baseA/_.one)
+        // console.log("TOKEN BALANCE A", TOKENA/_.one)
+       
+    })
+}
 async function swapTKNtoBASE(acc, x) {
     it(`It should swap TKN to BASE from ${acc}`, async () => {
         let token = token1.address

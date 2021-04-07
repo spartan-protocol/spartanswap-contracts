@@ -93,6 +93,8 @@ contract Router {
         (uint outputBase,) = removeLiquidityAsymForMember(unitsLP, true,  fromToken, address(this));
         iBEP20(BASE).transfer(_poolTo,outputBase);
         units = Pool(_poolTo).addLiquidityForMember(_member);
+        iLEND(_DAO().LEND()).checkInterest(_poolFrom);
+        iLEND(_DAO().LEND()).checkInterest(_poolTo);
          return (units);
     }
     // Add Asymmetrically
@@ -258,6 +260,7 @@ contract Router {
          (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
          getsDividend( _poolOUT,  synthOUTLayer1,  fee);
           iBEP20(synthOUT).transfer(msg.sender, outputSynth);
+          iLEND(_DAO().LEND()).checkInterest(synthOUT);
          return outputSynth;
     }
     function swapSynthToBase(uint inputAmount, address synthIN, bool safe) public returns (uint outPut){
@@ -271,6 +274,7 @@ contract Router {
         }
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         getsDividend(_poolIN, synthINLayer1, fee);
+        iLEND(_DAO().LEND()).checkInterest(synthIN);
         iBEP20(BASE).transfer(msg.sender, outputBase);
         return outputBase;
     }
