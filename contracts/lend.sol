@@ -123,12 +123,12 @@ contract SpartanLend {
         //     currentDay = block.timestamp;                                        
             uint256 _interestPayable = calcInterestAmount(assetC, assetD);    
              uint _IR = _interestPayable.div(31536000).mul(86400);//per day 
-             uint _percentAmount = totalCollateral[assetC][assetD].mul(_IR).div(10**18);                        
+             uint _percentAmount = totalCollateral[assetC][assetD].mul(_IR).div(10**18);                      
              _payInterest(assetC, _percentAmount, assetD);                         
             emit InterestPaid(assetC,_interestPayable, assetD);                              
     }
 
-    function _purge(address assetC, address assetD) public returns (uint fee){
+    function _liquidate(address assetC, address assetD, uint _interestBase) public returns (uint fee){
         uint baseCollateral; uint baseDebt;
         if(assetC == BASE){
               baseCollateral = totalCollateral[assetC][assetD];
@@ -139,10 +139,11 @@ contract SpartanLend {
             }
         baseDebt = iUTILS(_DAO().UTILS()).calcSwapValueInBase(assetD, totalDebt[assetC][assetD]);
         if(baseCollateral < baseDebt){
-         fee = baseCollateral.mul(100).div(10000);//100 bp fee 
-         removeFromReserve(fee);
-         iBEP20(BASE).transfer(msg.sender, fee);
-         _payInterest(assetC,totalCollateral[assetC][assetD], assetD);
+            if(baseCollateral <= _interestBase){
+                 _payInterest(assetC,totalCollateral[assetC][assetD], assetD);//100%
+            }else{
+                 _payInterest(assetC,totalCollateral[assetC][assetD].mul(1000).div(10000), assetD);//10%
+            }
         }
         return fee;
     }
@@ -197,6 +198,7 @@ contract SpartanLend {
                  _decrCDP(_percentAmount,_assetC, iUTILS(_DAO().UTILS()).calcSwapValueInToken(_assetD,InterestAmount), _assetD); 
                  iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             } 
+             _liquidate(assetC, assetD, InterestAmount);  
             iPOOL(_assetDPool).sync();
                 // console.log("InterestAmount in BASE",InterestAmount);   
             return InterestAmount;
