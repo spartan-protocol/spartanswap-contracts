@@ -23,7 +23,9 @@ contract Synth is iBEP20 {
     // ERC-20 Mappings
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
-    uint public totalCollateral;
+    mapping(address => uint) private _collateralBalance;
+    mapping(address => uint) private _synthDebtFromLP;
+   
 
     function _DAO() internal view returns(iDAO) {
         bool status = iDAO(NDAO).MSTATUS();
@@ -123,21 +125,23 @@ contract Synth is iBEP20 {
         return true;
     }
 
-     function mintSynth(address member, address pool) public returns (uint syntheticAmount){
-        // require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
-        uint lpUnits = iBEP20(pool).balanceOf(address(this));
+     function mintSynth(address member) public returns (uint syntheticAmount){
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
+        uint lpUnits = _getAddedLPAmount(msg.sender);
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
+        _synthDebtFromLP[msg.sender] = _synthDebtFromLP[msg.sender].add(tokenValue);
         _mint(member, tokenValue); 
         return tokenValue;
     }
     
-    function redeemSynth(address pool) public returns (bool){
-        // require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, '!POOL');
+    function redeemSynth() public returns (bool){
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, '!POOL');
         uint syntheticAmount = balanceOf(address(this));
-         uint LPBalance = Pool(pool).balanceOf(address(this));
-         uint _amountUnits = (syntheticAmount.mul(LPBalance)).div(totalSupply);// share = amount * part/total
+         uint _amountUnits = (syntheticAmount.mul(_collateralBalance[msg.sender])).div(_synthDebtFromLP[msg.sender]);// share = amount * part/total
+         _collateralBalance[msg.sender] = _collateralBalance[msg.sender].sub(_amountUnits);
+         _synthDebtFromLP[msg.sender] = _synthDebtFromLP[msg.sender].sub(syntheticAmount);
          _burn(address(this), syntheticAmount); 
-         Pool(pool).burn(_amountUnits);
+         Pool(msg.sender).burn(_amountUnits);
         return true;
     }
 
@@ -151,8 +155,8 @@ contract Synth is iBEP20 {
     }
     function _getAddedLPAmount(address pool) internal view returns(uint256 _actual){
         uint _lpCollateralBalance = iBEP20(pool).balanceOf(address(this)); 
-        if(_lpCollateralBalance > totalCollateral){
-            _actual = _lpCollateralBalance.sub(totalCollateral);
+        if(_lpCollateralBalance > _collateralBalance[pool]){
+            _actual = _lpCollateralBalance.sub(_collateralBalance[pool]);
         } else {
             _actual = 0;
         }

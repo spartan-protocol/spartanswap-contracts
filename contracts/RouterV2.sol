@@ -193,26 +193,29 @@ contract Router {
         //iLEND(_DAO().LEND()).checkInterest(BASE);
         return (outputAmount, fee);
     }
-    // function swapSynthTo(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
-    //     require(fromToken != toToken);
-    //     if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(fromToken) == true){
-    //         if(toToken != BASE){
-    //             address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
-    //             uint outputBase = swapSynthToBaseFM(inputAmount, fromToken, false, address(this));
-    //             iBEP20(BASE).transfer(_pool, outputBase);
-    //              (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
-    //             getsDividend(_pool,token, fee);
-    //         }else{
-    //             swapSynthToBase(inputAmount, fromToken, false);
+    function swapSynthTo(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
+        require(fromToken != toToken);
+        if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(fromToken) == true){
+            if(toToken != BASE){
+                address _token = toToken;
+                if(toToken == address(0)){_token = WBNB;} // Handle BNB
+                address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
+                uint outputBase = swapSynthToBaseFM(inputAmount, fromToken, false, address(this));
+                iBEP20(BASE).transfer(_pool, outputBase);
+                  (outputAmount, fee) = Pool(_pool).swap(_token);
+                _handleTransferOut(toToken, outputAmount, msg.sender);
+                getsDividend(_pool,toToken, fee);
+            }else{
+                swapSynthToBase(inputAmount, fromToken, false);
                 
-    //         }
+            }
 
 
-    //     }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(toToken) == true){
+        }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(toToken) == true){
 
-    //     }
-    //     return swapTo(inputAmount, fromToken, toToken, msg.sender);
-    // }
+        }
+        return swapTo(inputAmount, fromToken, toToken, msg.sender);
+    }
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
         return swapTo(inputAmount, fromToken, toToken, msg.sender);
     }
