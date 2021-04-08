@@ -254,6 +254,7 @@ contract Pool is iBEP20 {
       _mint(synthOut, liquidityUnits); 
       outputAmount = iSYNTH(synthOut).mintSynth(msg.sender); //mintSynth to Router
       _addPoolMetrics(fee);
+      sync();
       return (outputAmount, fee);
     }
 
@@ -266,6 +267,7 @@ contract Pool is iBEP20 {
       _decrementPoolBalances(baseOutput, 0);
       iBEP20(BASE).transfer(msg.sender, baseOutput);
       _addPoolMetrics(fee);
+      sync();
       return (baseOutput, fee);
     }
 

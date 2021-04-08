@@ -123,21 +123,21 @@ contract Synth is iBEP20 {
         return true;
     }
 
-     function mintSynth(address member) public returns (uint syntheticAmount){
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
-        uint lpUnits = iBEP20(msg.sender).balanceOf(address(this));
+     function mintSynth(address member, address pool) public returns (uint syntheticAmount){
+        // require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
+        uint lpUnits = iBEP20(pool).balanceOf(address(this));
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
         _mint(member, tokenValue); 
         return tokenValue;
     }
     
-    function redeemSynth() public returns (bool){
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, '!POOL');
+    function redeemSynth(address pool) public returns (bool){
+        // require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, '!POOL');
         uint syntheticAmount = balanceOf(address(this));
-         uint LPBalance = Pool(msg.sender).balanceOf(address(this));
+         uint LPBalance = Pool(pool).balanceOf(address(this));
          uint _amountUnits = (syntheticAmount.mul(LPBalance)).div(totalSupply);// share = amount * part/total
          _burn(address(this), syntheticAmount); 
-         Pool(msg.sender).burn(_amountUnits);
+         Pool(pool).burn(_amountUnits);
         return true;
     }
 
