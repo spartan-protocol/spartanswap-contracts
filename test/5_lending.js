@@ -53,34 +53,35 @@ contract('Test Lending', function (accounts) {
      swapLayer1ToSynth(acc0,_.BN2Str(500*_.one))
     //  swapSynthToLayer1(acc1)
      BorrowTKNwithBASE(acc0,_.BN2Str(100*_.one))
-     BorrowTKNwithSPT2BNB(acc0,_.BN2Str(100*_.one))
-     BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(10*_.one))
+      BorrowTKNwithSPT2BNB(acc0,_.BN2Str(100*_.one))
+       BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(10*_.one))
 
-     swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
-
+      swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    // swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
      addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
-
-     _checkliquidate(acc0);
-     zapLiquidity(acc1)
-
-     addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
-     _checkliquidate(acc0);
-    //  swapBNBtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
-    //  swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
-    //  addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
-      swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
       _checkliquidate(acc0);
-      swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
-      _checkliquidate(acc0);
+      zapLiquidity(acc1)
+       swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
+      addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
+     _checkliquidate(acc0);
+     //swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
     // //  ShowTKNPool()
-    //   payInterestForTKNBASE(acc0)
-    //    payInterestForTKNSPT(acc0)
-    //   payInterestForTKNSYNTH(acc0)
+       payInterestForTKNBASE(acc0)
+      // _checkliquidate(acc0);
+       payInterestForTKNSPT(acc0)
+       swapBASEtoTKN(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    //    _checkliquidate(acc0);
+       payInterestForTKNSYNTH(acc0)
+        addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
+      _checkliquidate(acc0);
+       swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    //    _checkliquidate(acc0);
+   
+    //    _checkliquidate(acc0);
 
-
-    //   RepayTKNgetBase(acc0, "25517773151982793")
-    //   RepayTKNgetSPT2BNB(acc0, "796480116002472")
-    //   RepayTKNgetSynthBNB(acc0, "3730536262086436")
+      RepayTKNgetBase(acc0, "25517773151982793")
+      RepayTKNgetSPT2BNB(acc0, "796480116002472")
+      RepayTKNgetSynthBNB(acc0, "3730536262086436")
 
      
     //  ShowTKNPool()
@@ -575,14 +576,15 @@ async function payInterestForTKNBASE(acc, x) {
 
         let collateralDebt = _.getBN(await lend.totalDebt(assetC,assetD))
         let collateralAmount = _.getBN(await lend.totalCollateral(assetC,assetD))
-        // console.log("collateral",collateralAmount);
-        let interestAmount = _.floorBN(collateralDebt.times(10**18).div(Z));
-        let IRperDay = 68042687990400
-        let _percentAmount = collateralAmount.times(IRperDay).div(10**18);
+        //  console.log("collateral",_.BN2Str(collateralAmount));
+        let interestAmount = _.getBN(collateralDebt.times(10**18).div(Z));
+        let IRperDay = _.BN2Str(interestAmount.div(365).times(1));
+        let _percentAmount =  _.BN2Str(collateralAmount.times(IRperDay).div(10**18));
+        // console.log("_percentAmount ", _.BN2Str(_percentAmount))
 
         let z = math.calcSwapOutput(_percentAmount, B, Z)
-        //await sleep(10000)
-        await lend._checkInterest(assetC, assetD);
+        await sleep(6000)
+        await lend.checkInterest(assetC);
         let collateralDebtA = _.getBN(await lend.totalDebt(assetC,assetD))
         let collateralAmountA = _.getBN(await lend.totalCollateral(assetC,assetD))
         let reserveA = _.getBN(await lend.reserve())
@@ -603,10 +605,7 @@ async function payInterestForTKNSPT(acc, x) {
         let poolDataTKN1 = await utils.getPoolData(assetD);
         const B = _.getBN(poolDataTKN1.baseAmount)
         const Z = _.getBN(poolDataTKN1.tokenAmount)
-        let poolDataBNB = await utils.getPoolData(wbnb.address);
-        const X =  _.getBN(poolDataBNB.baseAmount)
-        const Y =  _.getBN(poolDataBNB.tokenAmount)
-     
+       
 
         let baseBal = _.getBN(await base.balanceOf(poolTKN1.address))
         let lps = _.getBN(await poolWBNB.balanceOf(lend.address))
@@ -616,25 +615,34 @@ async function payInterestForTKNSPT(acc, x) {
 
         let collateralDebt = _.getBN(await lend.totalDebt(assetC,assetD))
         let collateralAmount = _.getBN(await lend.totalCollateral(assetC,assetD))
-        // console.log("collateral",collateralAmount);
-        let interestAmount = _.floorBN(collateralDebt.times(10**18).div(Z));
-        let IRperDay = _.getBN(150750393580800)
-        let _percentAmount = collateralAmount.times(IRperDay).div(10**18);
+        //  console.log("collateral",_.BN2Str(collateralAmount));
+        let interestAmount = _.getBN(collateralDebt.times(10**18).div(Z));
+        let IRperDay = _.BN2Str(interestAmount.div(365).times(1));
+        let _percentAmount =  _.BN2Str(collateralAmount.times(IRperDay).div(10**18));
+      //   console.log("_percentAmount ", _.BN2Str(_percentAmount))
+
         // console.log(_.BN2Str(_percentAmount))
-        let shareB = _.floorBN(math.calcShare(_.getBN(_percentAmount),tokenBal, X))
-        let shareT = _.floorBN(math.calcShare(_.getBN(_percentAmount),tokenBal, Y))
-        let z = _.BN2Str(await utils.calcSwapOutput(shareT,Y.minus(shareT),X.minus(shareB)))
+        
+        
+
+        let poolDataBNB = await utils.getPoolData(wbnb.address);
+        const X =  _.getBN(poolDataBNB.baseAmount)
+        const Y =  _.getBN(poolDataBNB.tokenAmount)
+     
+        let shareB = _.getBN(math.calcShare(_percentAmount,tokenBal, X))
+        let shareT = _.getBN(math.calcShare(_percentAmount,tokenBal, Y))
+        let z = _.BN2Str(await utils.calcSwapOutput(_.BN2Str(shareT),_.BN2Str(Y.minus(shareT)),_.BN2Str(X.minus(shareB))))
         // console.log("shareB ",_.BN2Str(shareB))
         // console.log("shareT ",_.BN2Str(shareT))
         // console.log("z ",_.BN2Str(z))
-        let final = shareB.plus(z);
-        
-
-        //console.log("Final ",_.BN2Str(final))
-
+        let final = _.BN2Str(shareB.plus(z));
         let y = math.calcSwapOutput(final,B,Z)
-        //await sleep(10000)
-        await lend._checkInterest(assetC, assetD);
+
+        
+        // console.log("Final ",_.BN2Str(final))
+        await sleep(6000)
+        await lend.checkInterest(assetC);
+        
         let collateralDebtA = _.getBN(await lend.totalDebt(assetC,assetD))
         let collateralAmountA = _.getBN(await lend.totalCollateral(assetC,assetD))
         let reserveA = _.getBN(await lend.reserve())
@@ -666,19 +674,17 @@ async function payInterestForTKNSYNTH(acc, x) {
 
         let collateralDebt = _.getBN(await lend.totalDebt(assetC,assetD))
         let collateralAmount = _.getBN(await lend.totalCollateral(assetC,assetD))
-        let interestAmount = _.floorBN(collateralDebt.times(10**18).div(Z));
-        // console.log("% amount",_.BN2Str(interestAmount));
-        // console.log("interestAmount",_.BN2Str(interestAmount.div(365)));
-        let IRperDay = 241305359558400
-
-        let _percentAmount = collateralAmount.times(IRperDay).div(10**18);
-        // console.log("% amount",_.BN2Str(_percentAmount));
-
+        //  console.log("collateral",_.BN2Str(collateralAmount));
+        let interestAmount = _.getBN(collateralDebt.times(10**18).div(Z));
+        let IRperDay = _.BN2Str(interestAmount.div(365).times(1));
+        let _percentAmount =  _.BN2Str(collateralAmount.times(IRperDay).div(10**18));
+        // console.log("_percentAmount ", _.BN2Str(_percentAmount))
         let z = math.calcSwapOutput(_percentAmount, Y, X)
         let a = math.calcSwapOutput(z, B, Z)
         //  console.log("base boght",_.BN2Str(z));
-        //await sleep(10000)
-        await lend._checkInterest(assetC, assetD);
+        await sleep(6000)
+
+        await lend.checkInterest(assetC);
         let collateralDebtA = _.getBN(await lend.totalDebt(assetC,assetD))
         let collateralAmountA = _.getBN(await lend.totalCollateral(assetC,assetD))
         let reserveA = _.getBN(await lend.reserve())
@@ -797,12 +803,12 @@ async function createSyntheticBNB() {
 }
 async function swapBASEToBNB(acc, x) {
     it(`It should buy BNB with BASE from ${acc}`, async () => {
-        console.log("routerBal ", _.BN2Str(await base.balanceOf(router.address)))
+        // console.log("routerBal ", _.BN2Str(await base.balanceOf(router.address)))
         await sleep(10000)
-        console.log('begin');
+        // console.log('begin');
         let token = wbnb.address
         let tx = await router.swap(x, base.address, token, {from:acc})
-        console.log("routerBal after", _.BN2Str(await base.balanceOf(router.address)))
+        // console.log("routerBal after", _.BN2Str(await base.balanceOf(router.address)))
 
     })
 }
@@ -842,14 +848,21 @@ async function zapLiquidity(acc) {
 async function swapTKNtoBASE(acc, x) {
     it(`It should swap TKN to BASE from ${acc}`, async () => {
         let token = token1.address
+        await sleep(10000);
         let tx = await router.swap(x, token, base.address, {from:acc})
+    })
+}
+async function swapBASEtoTKN(acc, x) {
+    it(`It should swap TKN to BASE from ${acc}`, async () => {
+        let token = token1.address
+        let tx = await router.swap(x,base.address,token, {from:acc})
     })
 }
 async function _checkliquidate(acc) {
     it(`It should check liquidation`, async () => {
 
 
-        let tx = await lend._checkliquidate(base.address, {from:acc});
+        let tx = await lend.checkliquidate(base.address, {from:acc});
     })
 }
 

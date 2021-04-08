@@ -74,8 +74,8 @@ contract Router {
     // Add liquidity for member
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable returns (uint units) {
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); 
-        uint256 _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
-        uint256 _actualInputtoken =  _handleTransferIn(token, inputToken, pool);
+        _handleTransferIn(BASE, inputBase, pool);
+        _handleTransferIn(token, inputToken, pool);
         units = Pool(pool).addLiquidityForMember(member);
         return units;
     }
@@ -93,8 +93,7 @@ contract Router {
         (uint outputBase,) = removeLiquidityAsymForMember(unitsLP, true,  fromToken, address(this));
         iBEP20(BASE).transfer(_poolTo,outputBase);
         units = Pool(_poolTo).addLiquidityForMember(_member);
-        iLEND(_DAO().LEND()).checkInterest(_poolFrom);
-        iLEND(_DAO().LEND()).checkInterest(_poolTo);
+         Pool(_poolTo).sync();
          return (units);
     }
     // Add Asymmetrically
@@ -191,6 +190,7 @@ contract Router {
         _handleTransferIn(token, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
         getsDividend(_pool,token, fee);
+        //iLEND(_DAO().LEND()).checkInterest(BASE);
         return (outputAmount, fee);
     }
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
@@ -200,10 +200,8 @@ contract Router {
         require(fromToken != toToken);
         if(fromToken == BASE){
             (outputAmount, fee) = buyTo(inputAmount, toToken, member);
-            iLEND(_DAO().LEND()).checkInterest(fromToken);
         } else if(toToken == BASE) {
             (outputAmount, fee) = sellTo(inputAmount, fromToken, member);
-             iLEND(_DAO().LEND()).checkInterest(toToken);
         } else {
             address _poolTo = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
             (,uint feey) = sellTo(inputAmount, fromToken, _poolTo);
@@ -260,7 +258,6 @@ contract Router {
          (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
          getsDividend( _poolOUT,  synthOUTLayer1,  fee);
           iBEP20(synthOUT).transfer(msg.sender, outputSynth);
-          iLEND(_DAO().LEND()).checkInterest(synthOUT);
          return outputSynth;
     }
     function swapSynthToBase(uint inputAmount, address synthIN, bool safe) public returns (uint outPut){
@@ -274,7 +271,6 @@ contract Router {
         }
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
         getsDividend(_poolIN, synthINLayer1, fee);
-        iLEND(_DAO().LEND()).checkInterest(synthIN);
         iBEP20(BASE).transfer(msg.sender, outputBase);
         return outputBase;
     }
