@@ -48,10 +48,10 @@ contract Synth is iBEP20 {
          BASE = _base;
          NDAO = _newDAO;
          LayerONE = _token;
-        string memory synthName = "SpartanSynthv1-";
-        string memory synthSymbol = "SP-s";
-        _name = string(abi.encodePacked(synthName, iBEP20(_token).name()));
-        _symbol = string(abi.encodePacked(synthSymbol, iBEP20(_token).symbol()));
+        string memory synthName = "-SpartanSyntheticToken";
+        string memory synthSymbol = "-SST";
+        _name = string(abi.encodePacked(iBEP20(_token).name(), synthName));
+        _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), synthSymbol));
         decimals = 18;
         DEPLOYER = msg.sender;
         genesis = block.timestamp ;

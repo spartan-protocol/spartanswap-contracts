@@ -129,6 +129,8 @@ async function createPoolWBNB(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
         await base.approve(poolWBNB.address, supply, { from: acc1 })
+        console.log("Symbol ",await poolWBNB.symbol());
+        console.log("Name ", await poolWBNB.name());
 
     })
 }
@@ -515,6 +517,8 @@ async function createSyntheticBNB() {
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        console.log("Symbol ",await synthBNB.symbol());
+        console.log("Name ", await synthBNB.name());
     })
 }
 async function swapLayer1ToSynth(acc, x) {

@@ -121,7 +121,7 @@ contract Dao {
         DAO = address(this);
         erasToEarn = 30;
         majorityFactor = 6666;
-        daoClaim = 1000;
+        daoClaim = 2000;
         daoFee = 100;
         mStatus =false;
         // secondsPerEra = iBASE(BASE).secondsPerEra();

@@ -208,9 +208,15 @@ contract Router {
             }else{
                 swapSynthToBase(inputAmount, fromToken);
             }
-
-
         }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(toToken) == true){
+            if(fromToken != BASE){
+                address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
+                (outputAmount, fee) = sellTo(inputAmount, fromToken, address(this));
+                swapSynthToBaseFM(outputAmount, toToken, msg.sender);
+                getsDividend(_pool,toToken, fee);
+            }else{
+                swapBaseToSynth(inputAmount, fromToken);
+            }
 
         }
         return swapTo(inputAmount, fromToken, toToken, msg.sender);

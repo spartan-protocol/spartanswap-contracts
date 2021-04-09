@@ -96,10 +96,10 @@ contract Pool is iBEP20 {
         BASE = _base;
          NDAO = _newDAO;
         TOKEN = _token;
-        string memory poolName = "SpartanPoolv2-";
-        string memory poolSymbol = "SP-p";
-        _name = string(abi.encodePacked(poolName, iBEP20(_token).name()));
-        _symbol = string(abi.encodePacked(poolSymbol, iBEP20(_token).symbol()));
+        string memory poolName = "-SpartanPoolToken";
+        string memory poolSymbol = "-SPT";
+        _name = string(abi.encodePacked(iBEP20(_token).name(),poolName));
+        _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), poolSymbol));
         decimals = 18;
         genesis = block.timestamp;
         DEPLOYER = msg.sender;
