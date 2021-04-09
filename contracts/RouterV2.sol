@@ -200,14 +200,13 @@ contract Router {
                 address _token = toToken;
                 if(toToken == address(0)){_token = WBNB;} // Handle BNB
                 address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
-                uint outputBase = swapSynthToBaseFM(inputAmount, fromToken, false, address(this));
+                uint outputBase = swapSynthToBaseFM(inputAmount, fromToken, address(this));
                 iBEP20(BASE).transfer(_pool, outputBase);
-                  (outputAmount, fee) = Pool(_pool).swap(_token);
+                (outputAmount, fee) = Pool(_pool).swap(_token);
                 _handleTransferOut(toToken, outputAmount, msg.sender);
                 getsDividend(_pool,toToken, fee);
             }else{
-                swapSynthToBase(inputAmount, fromToken, false);
-                
+                swapSynthToBase(inputAmount, fromToken);
             }
 
 
@@ -281,28 +280,24 @@ contract Router {
          address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
          address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthOUTLayer1);
          iBASE(BASE).transferTo(_poolOUT, inputAmount); //RPTAF
-         (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT);
+         (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT, member); 
          getsDividend( _poolOUT,  synthOUTLayer1,  fee);
-          iBEP20(synthOUT).transfer(member, outputSynth);
          return outputSynth;
     }
-    function swapSynthToBase(uint inputAmount, address synthIN, bool safe) public returns (uint outPut){
-        return swapSynthToBaseFM(inputAmount,  synthIN,  safe,  msg.sender);
+    function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
+        return swapSynthToBaseFM(inputAmount,  synthIN, msg.sender);
     }
-    function swapSynthToBaseFM(uint inputAmount, address synthIN, bool safe, address member) public returns (uint outPut){
+    function swapSynthToBaseFM(uint inputAmount, address synthIN, address member) public returns (uint outPut){
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
         address synthINLayer1 = iSYNTH(synthIN).LayerONE();
         address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthINLayer1);
-        if(safe ==true ){
-            iBEP20(synthIN).transferFrom(member, _poolIN, inputAmount); 
-        }else{
+        if(tx.origin == member){
             iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF
+        }else{
+            iBEP20(synthIN).transferFrom(member, _poolIN, inputAmount); 
         }
-        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN); 
+        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN, member); 
         getsDividend(_poolIN, synthINLayer1, fee);
-        if(member != address(this)){
-          iBEP20(BASE).transfer(member, outputBase);
-        }
         return outputBase;
     }
     

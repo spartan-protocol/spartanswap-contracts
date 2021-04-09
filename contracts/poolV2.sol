@@ -1,6 +1,6 @@
 pragma solidity 0.7.4;
 pragma experimental ABIEncoderV2;
-
+import "@nomiclabs/buidler/console.sol";
 import "./cInterfaces.sol";
 interface iDAO {
     function ROUTER() external view returns(address);
@@ -245,27 +245,27 @@ contract Pool is iBEP20 {
         return (outputAmount, fee);
     }
 
-    function swapSynthOUT(address synthOut) public onlyRouter returns(uint outputAmount, uint fee) {
+    function swapSynthOUT(address synthOut, address member) public onlyRouter returns(uint outputAmount, uint fee) {
       uint256 _actualInputBase = _getAddedBaseAmount();
       uint liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); 
       _incrementPoolBalances(_actualInputBase, 0);
       uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount);
       fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN,_fee );
       _mint(synthOut, liquidityUnits); 
-      outputAmount = iSYNTH(synthOut).mintSynth(msg.sender); //mintSynth to Router
+      outputAmount = iSYNTH(synthOut).mintSynth(member); //mintSynth to Router
       _addPoolMetrics(fee);
       sync();
       return (outputAmount, fee);
     }
 
-    function swapSynthIN(address synthIN) public onlyRouter returns(uint outputAmount, uint fee) {
+    function swapSynthIN(address synthIN, address member) public onlyRouter returns(uint outputAmount, uint fee) {
       uint inputSynth = iBEP20(synthIN).balanceOf(address(this));
       uint baseOutput = iUTILS(_DAO().UTILS()).calcSwapValueInBase(TOKEN, inputSynth);//get swapValue from synths input
       fee = iUTILS(_DAO().UTILS()).calcSwapFee(inputSynth, tokenAmount, baseAmount);
       iBEP20(synthIN).transfer(synthIN, inputSynth);
       iSYNTH(synthIN).redeemSynth(); //redeem Synth
       _decrementPoolBalances(baseOutput, 0);
-      iBEP20(BASE).transfer(msg.sender, baseOutput);
+      iBEP20(BASE).transfer(member, baseOutput);
       _addPoolMetrics(fee);
       sync();
       return (baseOutput, fee);

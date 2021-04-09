@@ -23,8 +23,8 @@ contract Synth is iBEP20 {
     // ERC-20 Mappings
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
-    mapping(address => uint) private _collateralBalance;
-    mapping(address => uint) private _synthDebtFromLP;
+    mapping(address => uint) public _collateralBalance;
+    mapping(address => uint) public _synthDebtFromLP;
    
 
     function _DAO() internal view returns(iDAO) {
@@ -130,6 +130,7 @@ contract Synth is iBEP20 {
         uint lpUnits = _getAddedLPAmount(msg.sender);
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
         _synthDebtFromLP[msg.sender] = _synthDebtFromLP[msg.sender].add(tokenValue);
+        _collateralBalance[msg.sender] = _collateralBalance[msg.sender].add(lpUnits);
         _mint(member, tokenValue); 
         return tokenValue;
     }

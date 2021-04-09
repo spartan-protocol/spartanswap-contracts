@@ -256,7 +256,7 @@ contract SpartanLend {
                  iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_assetC) == true){
                  iBEP20(_assetC).approve(address(_DAO().ROUTER()),_percentAmount);
-                  InterestAmount = iROUTER(_DAO().ROUTER()).swapSynthToBase(_percentAmount,_assetC, true); 
+                  InterestAmount = iROUTER(_DAO().ROUTER()).swapSynthToBase(_percentAmount,_assetC);  
                  _decrCDP(_percentAmount,_assetC, iUTILS(_DAO().UTILS()).calcSwapValueInToken(_assetD,InterestAmount), _assetD); 
                  iBEP20(BASE).transfer(_assetDPool, InterestAmount); 
             } 
