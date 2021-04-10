@@ -186,40 +186,12 @@ contract Router {
         return (outputAmount, fee);
     }
     function sellTo(uint amount, address token, address member) public payable returns (uint outputAmount, uint fee) {
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
-        _handleTransferIn(token, amount, _pool);
-        (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
-        getsDividend(_pool,token, fee);
+            address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+             _handleTransferIn(token, amount, _pool);
+            (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
+            getsDividend(_pool,token, fee);
+            return (outputAmount, fee);
         //iLEND(_DAO().LEND()).checkInterest(BASE);
-        return (outputAmount, fee);
-    }
-    function swapSynthTo(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
-        require(fromToken != toToken);
-        if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(fromToken) == true){
-            if(toToken != BASE){
-                address _token = toToken;
-                if(toToken == address(0)){_token = WBNB;} // Handle BNB
-                address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
-                uint outputBase = swapSynthToBaseFM(inputAmount, fromToken, address(this));
-                iBEP20(BASE).transfer(_pool, outputBase);
-                (outputAmount, fee) = Pool(_pool).swap(_token);
-                _handleTransferOut(toToken, outputAmount, msg.sender);
-                getsDividend(_pool,toToken, fee);
-            }else{
-                swapSynthToBase(inputAmount, fromToken);
-            }
-        }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(toToken) == true){
-            if(fromToken != BASE){
-                address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
-                (outputAmount, fee) = sellTo(inputAmount, fromToken, address(this));
-                swapSynthToBaseFM(outputAmount, toToken, msg.sender);
-                getsDividend(_pool,toToken, fee);
-            }else{
-                swapBaseToSynth(inputAmount, fromToken);
-            }
-
-        }
-        return swapTo(inputAmount, fromToken, toToken, msg.sender);
     }
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
         return swapTo(inputAmount, fromToken, toToken, msg.sender);
@@ -285,7 +257,11 @@ contract Router {
          require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOUT) == true, "!synth");
          address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
          address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthOUTLayer1);
+         if(tx.origin == member){
          iBASE(BASE).transferTo(_poolOUT, inputAmount); //RPTAF
+         }else{
+          iBEP20(BASE).transferFrom(member, _poolOUT, inputAmount); 
+         }
          (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT, member); 
          getsDividend( _poolOUT,  synthOUTLayer1,  fee);
          return outputSynth;

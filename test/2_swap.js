@@ -606,6 +606,7 @@ async function swapSynthToLayer1(acc, x) {
         
     })
 }
+
 async function zapLiquidity(acc, x) {
     it("zap liquidity", async () => {
         let SPT2TKN = _.BN2Str(await poolTKN1.balanceOf(acc))
