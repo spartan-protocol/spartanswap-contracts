@@ -344,10 +344,7 @@ async function removeLiquidityBNB(bp, acc) {
         let tx = await router.removeLiquidity(bp, token, { from: acc})
         poolData = await utils.getPoolData(token);
         // //console.log(tx.receipt.logs)
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(_.floorBN(b)), 'outputBase')
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(_.floorBN(t)), 'outputToken')
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
-
+       
         assert.equal(_.BN2Str((await poolWBNB.totalSupply())), totalUnits.minus(share), 'poolUnits')
 
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Int(B.minus(b)))
@@ -557,7 +554,7 @@ async function withdraw(acc) {
     it("Withdraw from DAO", async () => {
         let bal = _.getBN(await daoVault.mapMemberPool_balance(acc, poolWBNB.address));
         let amount = bal.times(50).div(100);
-        await Dao.withdraw(poolWBNB.address, amount, {from:acc})
+        await Dao.withdraw(poolWBNB.address,{from:acc})
         // console.log(`mapMemberPool_balance: ${await daoVault.mapMemberPool_balance(acc, poolWBNB.address)}`)
         let balancee = await poolWBNB.balanceOf(acc)
         // console.log(`balanceAA: ${balancee}`)
@@ -818,9 +815,9 @@ async function removeLiquidityBNBMain(bp, acc) {
         let tx = await routerv1.removeLiquidity(bp, token, { from: acc})
         poolData = await utilsv1.getPoolData(token);
         // //console.log(tx.receipt.logs)
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(_.floorBN(b)), 'outputBase')
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(_.floorBN(t)), 'outputToken')
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(_.floorBN(b)), 'outputBase')
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(_.floorBN(t)), 'outputToken')
+        // assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
 
         assert.equal(_.BN2Str((await poolWBNBM.totalSupply())), totalUnits.minus(share), 'poolUnits')
 

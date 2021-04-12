@@ -124,8 +124,8 @@ contract Dao {
         daoClaim = 2000;
         daoFee = 100;
         mStatus =false;
-        // secondsPerEra = iBASE(BASE).secondsPerEra();
-        secondsPerEra = 30;
+        secondsPerEra = iBASE(BASE).secondsPerEra();
+       // secondsPerEra = 30;
     }
     function setGenesisAddresses(address _router, address _utils, address _lend, address _bond, address _daoVault, address _poolFactory,address _synthFactory ) public onlyDAO {
         _ROUTER = iROUTER(_router);
@@ -167,7 +167,7 @@ contract Dao {
         if (!isMember[member]) {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
-        }else if(_DAOVAULT.mapMemberPool_balance(member, pool) > 0) {
+        }else if(_DAOVAULT.mapMember_weight(member) > 0) {
                 harvest();
         }
         _DAOVAULT.depositLP(pool, amount, member);
@@ -216,11 +216,11 @@ contract Dao {
     }
 
     function calcReward(address member) public returns(uint){
-        _DAOVAULT.updateWeight(member);
         uint weight = _DAOVAULT.mapMember_weight(member);
         uint _totalWeight = _DAOVAULT.totalWeight();
         uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER)).div(erasToEarn); // Aim to deplete reserve over a number of days
-        return _UTILS.calcShare(weight, _totalWeight, reserve); // Get member's share of that
+        uint daoReward = reserve.mul(daoClaim).div(10000);
+        return _UTILS.calcShare(weight, _totalWeight, daoReward); // Get member's share of that
     }
     //============================== CREATE PROPOSALS ================================//
 

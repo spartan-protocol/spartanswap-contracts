@@ -23,8 +23,8 @@ contract Synth is iBEP20 {
     // ERC-20 Mappings
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
-    mapping(address => uint) public _collateralBalance;
-    mapping(address => uint) public _synthDebtFromLP;
+    mapping(address => uint) public lpBalance;
+    mapping(address => uint) public lpDebt;
    
 
     function _DAO() internal view returns(iDAO) {
@@ -48,8 +48,8 @@ contract Synth is iBEP20 {
          BASE = _base;
          NDAO = _newDAO;
          LayerONE = _token;
-        string memory synthName = "-SpartanSyntheticToken";
-        string memory synthSymbol = "-SST";
+        string memory synthName = "-SpartanProtocolSynthetic";
+        string memory synthSymbol = "-SPS";
         _name = string(abi.encodePacked(iBEP20(_token).name(), synthName));
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), synthSymbol));
         decimals = 18;
@@ -129,8 +129,8 @@ contract Synth is iBEP20 {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
         uint lpUnits = _getAddedLPAmount(msg.sender);
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
-        _synthDebtFromLP[msg.sender] = _synthDebtFromLP[msg.sender].add(tokenValue);
-        _collateralBalance[msg.sender] = _collateralBalance[msg.sender].add(lpUnits);
+        lpDebt[msg.sender] = lpDebt[msg.sender].add(tokenValue);
+        lpBalance[msg.sender] = lpBalance[msg.sender].add(lpUnits);
         _mint(member, tokenValue); 
         return tokenValue;
     }
@@ -138,9 +138,9 @@ contract Synth is iBEP20 {
     function redeemSynth() public returns (bool){
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, '!POOL');
         uint syntheticAmount = balanceOf(address(this));
-         uint _amountUnits = (syntheticAmount.mul(_collateralBalance[msg.sender])).div(_synthDebtFromLP[msg.sender]);// share = amount * part/total
-         _collateralBalance[msg.sender] = _collateralBalance[msg.sender].sub(_amountUnits);
-         _synthDebtFromLP[msg.sender] = _synthDebtFromLP[msg.sender].sub(syntheticAmount);
+         uint _amountUnits = (syntheticAmount.mul(lpBalance[msg.sender])).div(lpDebt[msg.sender]);// share = amount * part/total
+         lpBalance[msg.sender] = lpBalance[msg.sender].sub(_amountUnits);
+         lpDebt[msg.sender] = lpDebt[msg.sender].sub(syntheticAmount);
          _burn(address(this), syntheticAmount); 
          Pool(msg.sender).burn(_amountUnits);
         return true;
@@ -156,14 +156,20 @@ contract Synth is iBEP20 {
     }
     function _getAddedLPAmount(address pool) internal view returns(uint256 _actual){
         uint _lpCollateralBalance = iBEP20(pool).balanceOf(address(this)); 
-        if(_lpCollateralBalance > _collateralBalance[pool]){
-            _actual = _lpCollateralBalance.sub(_collateralBalance[pool]);
+        if(_lpCollateralBalance > lpBalance[pool]){
+            _actual = _lpCollateralBalance.sub(lpBalance[pool]);
         } else {
             _actual = 0;
         }
         return _actual;
     }
 
+    function getlpBalance(address pool) public returns (uint){
+        return lpBalance[pool];
+    }
+    function getlpDebt(address pool) public returns (uint){
+        return lpDebt[pool];
+    }
     function destroyMe() public onlyDAO {
         selfdestruct(msg.sender);
     } 

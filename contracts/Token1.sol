@@ -76,8 +76,8 @@ contract Token1 is iBEP20 {
     // Minting event
     constructor() public{
         balanceOf[msg.sender] = totalSupply;
-        name = "Token";
-        symbol  = "TKN";
+        name = "Binance USD";
+        symbol  = "BUSD";
         emit Transfer(address(0), msg.sender, totalSupply);
     }
     

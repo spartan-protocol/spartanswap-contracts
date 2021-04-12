@@ -93,12 +93,6 @@ function depositLP(address pool, uint amount, address member) public onlyDAO ret
         totalWeight = totalWeight.add(weight);
         return weight;
     }
-    function updateWeight(address member) public {
-       uint memberPool =  mapMember_poolArray[member].length;
-       for(uint i = 0; i < memberPool; i++){
-           increaseWeight(mapMember_poolArray[member][i], member);
-       }
-    }
 
  function decreaseWeight(address pool, address member) internal {
         uint weight = mapMemberPool_weight[member][pool];

@@ -470,7 +470,7 @@ async function RepayTKNgetBase(acc, x) {
     })
 }
 async function RepayTKNgetSPT2BNB(acc, x) {
-    it("Return USDs & receive SP-pBNB collateral", async () => {
+    it("Return USDs & receive BNB-SPP collateral", async () => {
         let input = _.getBN(x);
         let assetC = poolWBNB.address;
         let assetD = token1.address;
@@ -516,7 +516,7 @@ async function RepayTKNgetSPT2BNB(acc, x) {
     })
 }
 async function RepayTKNgetSynthBNB(acc, x) {
-    it("Return USDs & recieve SP-sBNB collateral", async () => {
+    it("Return USDs & recieve BNB-SPS collateral", async () => {
         let input = _.getBN(x);
         let assetC = synthBNB.address;
         let assetD = token1.address;
@@ -599,7 +599,7 @@ async function payInterestForTKNBASE(acc, x) {
     })
 }
 async function payInterestForTKNSPT(acc, x) {
-    it("Pay Interest - collateral SPT2-BNB", async () => {
+    it("Pay Interest - collateral BNB-SPT", async () => {
         let assetC = poolWBNB.address;
         let assetD = token1.address;
         let poolDataTKN1 = await utils.getPoolData(assetD);
@@ -657,7 +657,7 @@ async function payInterestForTKNSPT(acc, x) {
     })
 }
 async function payInterestForTKNSYNTH(acc, x) {
-    it("Pay Interest - collateral SYNTH-BNB", async () => {
+    it("Pay Interest - collateral BNB-SPS", async () => {
         let assetC = synthBNB.address;
         let assetD = token1.address;
         let poolDataTKN1 = await utils.getPoolData(assetD);

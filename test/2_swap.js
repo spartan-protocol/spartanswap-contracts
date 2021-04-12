@@ -42,7 +42,7 @@ contract('SWAP', function (accounts) {
     sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
     buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
     sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
     // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
     // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
     // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
@@ -129,8 +129,8 @@ async function createPoolWBNB(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolWBNB.address, supply, { from: acc0 })
         await base.approve(poolWBNB.address, supply, { from: acc1 })
-        console.log("Symbol ",await poolWBNB.symbol());
-        console.log("Name ", await poolWBNB.name());
+        console.log(await poolWBNB.symbol());
+        console.log(await poolWBNB.name());
 
     })
 }
@@ -145,7 +145,7 @@ async function createPoolTKN1(SPT, token) {
         let supply = await base.totalSupply()
         await base.approve(poolTKN1.address, supply, { from: acc0 })
         await base.approve(poolTKN1.address, supply, { from: acc1 })
-
+        
 
     })
 }
@@ -517,8 +517,10 @@ async function createSyntheticBNB() {
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        console.log("Symbol ",await synthBNB.symbol());
-        console.log("Name ", await synthBNB.name());
+        console.log("Symbol: ",await synthBNB.symbol());
+         console.log("  Name: ",await synthBNB.name());
+        console.log("Symbol: ",await poolTKN1.symbol());
+         console.log("  Name: ",await poolTKN1.name());
     })
 }
 async function swapLayer1ToSynth(acc, x) {
@@ -528,8 +530,8 @@ async function swapLayer1ToSynth(acc, x) {
         let basBal = _.getBN(await base.balanceOf(acc));
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
-        let _collateralBalance = _.getBN(await synthBNB._collateralBalance(poolWBNB.address));
-        let _synthDebtFromLP =_.getBN( await synthBNB._synthDebtFromLP(poolWBNB.address));
+        let lpBalance = _.getBN(await synthBNB.lpBalance(poolWBNB.address));
+        let lpDebt =_.getBN( await synthBNB.lpDebt(poolWBNB.address));
         const X = _.getBN(poolData.baseAmount)
         const Y = _.getBN(poolData.tokenAmount)
         let asymAdd = _.getBN(await utils.calcLiquidityUnitsAsym(x, poolWBNB.address))
@@ -541,13 +543,13 @@ async function swapLayer1ToSynth(acc, x) {
         let synthMint = _.getBN(await utils.calcAsymmetricValueToken(poolWBNB.address,asymAdd));
 
         poolData = await utils.getPoolData(token);
-        let _collateralBalanceA = _.getBN(await synthBNB._collateralBalance(poolWBNB.address));
-        let _synthDebtFromLPA =_.getBN( await synthBNB._synthDebtFromLP(poolWBNB.address));
+        let lpBalanceA = _.getBN(await synthBNB.lpBalance(poolWBNB.address));
+        let lpDebtA =_.getBN( await synthBNB.lpDebt(poolWBNB.address));
 
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(X.plus(x)))
         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(Y))
-        assert.equal(_.BN2Str(_collateralBalanceA), _.BN2Str(_collateralBalance.plus(asymAdd)))
-        assert.equal(_.BN2Str(_synthDebtFromLPA), _.BN2Str(_synthDebtFromLP.plus(synthMint)))
+        assert.equal(_.BN2Str(lpBalanceA), _.BN2Str(lpBalance.plus(asymAdd)))
+        assert.equal(_.BN2Str(lpDebtA), _.BN2Str(lpDebt.plus(synthMint)))
         assert.equal(_.BN2Str(await poolWBNB.balanceOf(synthBNB.address)), _.BN2Str(poolSynBal.plus(asymAdd)))
         assert.equal(_.BN2Str(await synthBNB.totalSupply()), _.BN2Str(totalSynth.plus(synthMint)))
         assert.equal(_.BN2Str(await synthBNB.balanceOf(acc)), _.BN2Str(synBal.plus(synthMint)))
@@ -568,8 +570,8 @@ async function swapSynthToLayer1(acc, x) {
         let synBal = _.getBN(await synthBNB.balanceOf(acc));
         let basBal = _.getBN(await base.balanceOf(acc));
 
-        let _collateralBalance = _.getBN(await synthBNB._collateralBalance(poolWBNB.address));
-        let _synthDebtFromLP =_.getBN( await synthBNB._synthDebtFromLP(poolWBNB.address));
+        let lpBalance = _.getBN(await synthBNB.lpBalance(poolWBNB.address));
+        let lpDebt =_.getBN( await synthBNB.lpDebt(poolWBNB.address));
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
         const X = _.getBN(poolData.tokenAmount)
@@ -583,20 +585,20 @@ async function swapSynthToLayer1(acc, x) {
         let poolSynBal = _.getBN(await poolWBNB.balanceOf(synthBNB.address));
         let totalSynth = _.getBN(await synthBNB.totalSupply());
 
-        let amountSynths = _.BN2Str((_.getBN(x).times(_collateralBalance)).div(_synthDebtFromLP));
+        let amountSynths = _.BN2Str((_.getBN(x).times(lpBalance)).div(lpDebt));
 
         await router.swapSynthToBase(x,synthIN,{from:acc});
         
        
         poolData = await utils.getPoolData(token);
 
-        let _collateralBalanceA = _.getBN(await synthBNB._collateralBalance(poolWBNB.address));
-        let _synthDebtFromLPA =_.getBN( await synthBNB._synthDebtFromLP(poolWBNB.address));
+        let lpBalanceA = _.getBN(await synthBNB.lpBalance(poolWBNB.address));
+        let lpDebtA =_.getBN( await synthBNB.lpDebt(poolWBNB.address));
 
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y.minus(baseSwapped)))
         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X))
-        assert.equal(_.BN2Str(_collateralBalanceA), _.BN2Str(_collateralBalance.minus(amountSynths)))
-        assert.equal(_.BN2Str(_synthDebtFromLPA), _.BN2Str(_synthDebtFromLP.minus(x)))
+        assert.equal(_.BN2Str(lpBalanceA), _.BN2Str(lpBalance.minus(amountSynths)))
+        assert.equal(_.BN2Str(lpDebtA), _.BN2Str(lpDebt.minus(x)))
         assert.equal(_.BN2Str(await poolWBNB.balanceOf(synthBNB.address)), _.BN2Str(poolSynBal.minus(amountSynths)))
         assert.equal(_.BN2Str(await synthBNB.totalSupply()), _.BN2Str(totalSynth.minus(x)))
         assert.equal(_.BN2Str(await synthBNB.balanceOf(acc)), _.BN2Str(synBal.minus(x)))
