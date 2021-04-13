@@ -125,7 +125,6 @@ contract Dao {
         daoFee = 100;
         mStatus =false;
         secondsPerEra = iBASE(BASE).secondsPerEra();
-       // secondsPerEra = 30;
     }
     function setGenesisAddresses(address _router, address _utils, address _lend, address _bond, address _daoVault, address _poolFactory,address _synthFactory ) public onlyDAO {
         _ROUTER = iROUTER(_router);

@@ -31,6 +31,7 @@ interface iPOOL {
     function transferTo(address, uint) external returns (bool);
     function removeLiquidity() external returns (uint outputBase, uint outputToken);
     function removeLiquidityForMember(address) external returns (uint outputBase, uint outputToken);
+    function addLiquidityForMember(address) external payable returns (uint);
 }
 interface iPOOLFACTORY {
     function getPool(address token) external returns (address);
@@ -79,25 +80,24 @@ contract SPARTANUPGRADE {
         for(uint i = 0; i < tokenAll; i++){
           address token = iROUTER(OLDRouter).getToken(i);
           uint decimals = iBEP20(token).decimals();
+           _oldPool = iROUTER(OLDRouter).getPool(token);//get old pool
+            amount = iBEP20(_oldPool).balanceOf(_member);
           if(decimals != 18){ 
-               _oldPool = iROUTER(OLDRouter).getPool(token);//get old pool
-               amount = iBEP20(_oldPool).balanceOf(_member);
               if(amount > 0){
               iPOOL(_oldPool).transferTo(_oldPool, amount);//RPTAF
               iPOOL(_oldPool).removeLiquidityForMember(_member);
               }
             }else{
-              _oldPool = iROUTER(OLDRouter).getPool(token);//get old pool
-              amount = iBEP20(_oldPool).balanceOf(_member);
              if(amount > 0){
               address newPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); //get new pool
-              require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(newPool) == true, "!POOL");
-              iPOOL(_oldPool).transferTo(_oldPool, amount);//RPTAF
+              if(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(newPool) == true){
+               iPOOL(_oldPool).transferTo(_oldPool, amount);//RPTAF
               (uint outputBase, uint outputToken) = iPOOL(_oldPool).removeLiquidity();
-              iBEP20(BASE).approve(address(_DAO().ROUTER()), outputBase);
-              iBEP20(token).approve(address(_DAO().ROUTER()), outputToken);
-              iROUTER(_DAO().ROUTER()).addLiquidityForMember(outputBase, outputToken, token, _member); 
-             }
+                iBEP20(BASE).transfer(newPool, outputBase);
+                iBEP20(token).transfer(newPool, outputToken);
+                iPOOL(newPool).addLiquidityForMember(_member);
+              }
+              }
             }
          }
          return true;

@@ -422,7 +422,7 @@ async function moveliquidity(acc) {
     })
 }
 async function moveBONDv3(acc) {
-    it("Upgrade Liquidity", async () => {
+    it("Upgrade BOND", async () => {
   
         let mDB = await bondv3.getMemberDetails(acc, token1.address);
         let BLPB = _.BN2Str(mDB.bondedLP)

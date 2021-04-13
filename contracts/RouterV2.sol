@@ -191,7 +191,7 @@ contract Router {
             (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
             getsDividend(_pool,token, fee);
             return (outputAmount, fee);
-        //iLEND(_DAO().LEND()).checkInterest(BASE);
+            //iLEND(_DAO().LEND()).checkInterest(BASE);
     }
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
         return swapTo(inputAmount, fromToken, toToken, msg.sender);
@@ -356,6 +356,13 @@ contract Router {
     }
     function destroyRouter() public onlyDAO {
          selfdestruct(msg.sender);
+    }
+    //==================================Helpers=================================//
+    function currentPoolRevenue(address pool) public returns(uint256) {
+      return map30DPoolRevenue[pool];
+    }
+    function pastPoolRevenue(address pool) public returns(uint256) {
+      return mapPast30DPoolRevenue[pool];
     }
 
 

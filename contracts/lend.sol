@@ -228,10 +228,10 @@ contract SpartanLend {
                 iBASE(_assetC).transferTo(address(this), _amount); 
             }else if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_assetC) == true){
                  baseBorrow = iUTILS(_DAO().UTILS()).calcAsymmetricValueBase(_assetC, collateralAdjusted);// calc units to BASE
-                iPOOL(_assetC).transferTo(address(this), _amount); 
+                iBASE(_assetC).transferTo(address(this), _amount); 
             }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_assetC) == true){
                 baseBorrow = iUTILS(_DAO().UTILS()).calcSwapValueInBaseWithSYNTH(_assetC, collateralAdjusted);
-                iSYNTH(_assetC).transferTo(address(this), _amount); 
+                iBASE(_assetC).transferTo(address(this), _amount); 
             }else{
                  return (0,0);
             }
@@ -239,6 +239,8 @@ contract SpartanLend {
         }
         return (actual, baseBorrow);
     }
+
+    
     function _payInterest(address _assetC, uint256 _percentAmount, address _assetD) internal returns (uint InterestAmount){
         address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_assetD);   
             if(_assetC == BASE){

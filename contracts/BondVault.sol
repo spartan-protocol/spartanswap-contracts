@@ -112,7 +112,7 @@ function _DAO() internal view returns(iDAO) {
         }
         mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].add(LPS);
         mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
-        mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[member].div(23328000);//must be changed for mainet
+        mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[member].div(20736000);//must be changed for mainet
         
     }
 
