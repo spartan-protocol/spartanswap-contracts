@@ -156,14 +156,16 @@ contract Router {
         if(token == address(0)){_token = WBNB;} // Handle BNB
         if(toBase){
              iBEP20(_token).transfer(_pool, outputToken);
-             (uint _baseBought,uint _feey) = Pool(_pool).swapTo(BASE, address(this));
+             (uint _baseBought,uint _feey) = Pool(_pool).swap(BASE);
              getsDividend(_pool,_token, _feey);
             outputAmount = _baseBought.add(outputBase);
             fee = _feey;
-            _handleTransferOut(BASE, outputAmount, member);
+            if(member != address(this)){
+                _handleTransferOut(BASE, outputAmount, member);
+            }
         } else {
             iBEP20(BASE).transfer(_pool, outputBase);
-            (uint _tokenBought,uint _feez) = Pool(_pool).swapTo(_token, address(this));
+            (uint _tokenBought,uint _feez) = Pool(_pool).swap(_token);
              getsDividend(_pool,_token, _feez);
             outputAmount = _tokenBought.add(outputToken);
             fee = _feez;
