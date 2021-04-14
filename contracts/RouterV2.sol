@@ -82,7 +82,6 @@ contract Router {
     function addLiquidityAsym(uint inputToken, bool fromBase, address token) public payable returns (uint units) {
        return addLiquidityAsymForMember(inputToken,fromBase, token, msg.sender);
     }
-
     function zapLiquidity(uint unitsLP, address fromToken, address toToken) public payable returns (uint units){
         address _poolTo = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_poolTo) == true);
@@ -99,30 +98,20 @@ contract Router {
     // Add Asymmetrically
     function addLiquidityAsymForMember(uint inputToken, bool fromBase, address token, address member) public payable returns (uint units) {
         require(inputToken > 0);
-        uint halfInput = inputToken.mul(5000).div(10000);
          address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
          address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         if(fromBase){
              _handleTransferIn(BASE, inputToken, address(this));
-             iBEP20(BASE).transfer(_pool,halfInput);
-             (uint _tokenBought,uint fee ) = Pool(_pool).swap(_token);
-             getsDividend(_pool,token, fee);
-             iBEP20(BASE).transfer(_pool,halfInput);
-             iBEP20(_token).transfer(_pool,_tokenBought);
+             iBEP20(BASE).transfer(_pool,inputToken);
              units = Pool(_pool).addLiquidityForMember(member);
         } else {
             _handleTransferIn(token, inputToken, address(this));
-             iBEP20(_token).transfer(_pool,halfInput);
-            (uint _baseBought, uint fee ) = Pool(_pool).swap(BASE);
-            getsDividend(_pool,token, fee);
-            iBEP20(_token).transfer(_pool,halfInput);
-            iBEP20(BASE).transfer(_pool,_baseBought);
+             iBEP20(_token).transfer(_pool,inputToken);
             units = Pool(_pool).addLiquidityForMember(member);
         }
         return units;
     }
-
     // Remove % for self
     function removeLiquidity(uint basisPoints, address token) public returns (uint outputBase, uint outputToken) {
         require((basisPoints > 0 && basisPoints <= 10000));
