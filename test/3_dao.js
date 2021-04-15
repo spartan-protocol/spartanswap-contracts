@@ -51,11 +51,12 @@ contract('DAO', function (accounts) {
     // voteUtils()
     // voteRouter()
     //voteDao()
+    RemCuratePools()
      withdrawBNB(acc0)
      withdrawTKN1(acc0)
      withdrawTKN1(acc1)
      withdrawTKN1(acc2)
-
+     curatePools()
      lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
      lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
      lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
@@ -176,6 +177,13 @@ async function curatePools() {
     it("Curate POOls", async () => {
         await poolFactory.addCuratedPool(wbnb.address);
         await poolFactory.addCuratedPool(token1.address);
+       
+    })
+}
+async function RemCuratePools() {
+    it("Remove Curated POOls", async () => {
+        await poolFactory.removeCuratedPool(wbnb.address);
+        await poolFactory.removeCuratedPool(token1.address);
        
     })
 }
