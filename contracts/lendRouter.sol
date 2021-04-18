@@ -88,9 +88,9 @@ contract LendRouter {
     function depositForMember(address assetD) public onlyLEND returns(uint256 _debtIssued){
         address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(assetD); 
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_assetDPool) == true, "!Curated"); // only curated pools 
-        uint inputBASE = iBEP20(BASE).balanceOf(address(this));
-        iBEP20(BASE).approve(address(_DAO().ROUTER()), inputBASE);
-         _debtIssued = iROUTER(_DAO().ROUTER()).swap(inputBASE, BASE, assetD);
+        uint _inputBASE = iBEP20(BASE).balanceOf(address(this));
+        iBEP20(BASE).approve(address(_DAO().ROUTER()), _inputBASE);
+         _debtIssued = iROUTER(_DAO().ROUTER()).swap(_inputBASE, BASE, assetD);
         iBEP20(assetD).transfer(msg.sender,_debtIssued);
         return _debtIssued;
     }
@@ -117,8 +117,7 @@ contract LendRouter {
     } 
 
     function getMemberLength() public view returns (uint memberCount){
-        memberCount = membersActive.length;
-        return memberCount;
+        return membersActive.length;
     }
 
 }

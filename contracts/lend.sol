@@ -98,8 +98,7 @@ contract SpartanLend {
 
     // Remove collateral for self
     function repayDebt(uint amount, address assetC, address assetD) public returns (uint _assetCollateralRemoved){
-        _assetCollateralRemoved = repayDebtForMember(amount, assetC, assetD, msg.sender);
-        return _assetCollateralRemoved;
+        return repayDebtForMember(amount, assetC, assetD, msg.sender);
     }
      // Remove collateral for member
     function repayDebtForMember(uint amount,address assetC, address assetD, address member) public returns (uint _assetCollateralRemoved){
@@ -117,7 +116,7 @@ contract SpartanLend {
             mapAddress_timeLoaned[assetC][assetD] = 0;
         }
         emit RemoveCollateral(_assetCollateralRemoved, assetD, actualInputAssetD);
-        return (_assetCollateralRemoved);
+        return _assetCollateralRemoved;
     }
 
 
@@ -129,9 +128,8 @@ contract SpartanLend {
         //    console.log("Pool Depth Base",poolDepthBase/10**18);
         uint _poolDebt = mapAddress_totalDebt[_assetC][_assetD];
         //   console.log("Pool debt",poolDebt/10**18);
-        uint _interest = _poolDebt*(10**18)/(_poolDepth);
         //   console.log("interest %",interest);
-        return _interest;
+        return _poolDebt*(10**18)/(_poolDepth);
     }
 
      function checkInterest(address assetC) public {
@@ -196,14 +194,14 @@ contract SpartanLend {
         return _baseCollateral;
     }
 
-    function _checkPurge(address _assetC, uint _interestBase, address _assetD) internal returns (uint){
+    function _checkPurge(address _assetC, uint _interestBase, address _assetD) internal returns (bool){
         uint baseCollateral = getBaseValue(_assetC,_assetD);
         if(baseCollateral <= _interestBase){
             _feeReward(baseCollateral*(100)/(10000));
             _payInterest(_assetC,mapAddress_totalCollateral[_assetC][_assetD], _assetD);//100%
             mapAddress_totalDebt[_assetC][_assetD] = 0;
             mapAddress_totalCollateral[_assetC][_assetD] = 0;
-           
+         return true;
         }
     }
 
