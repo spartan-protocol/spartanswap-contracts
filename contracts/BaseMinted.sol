@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 //iERC20 Interface
 interface iBEP20 {
@@ -97,8 +97,8 @@ contract BaseMinted is iBEP20 {
     event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 emission);
 
     // Only DAO can execute
-    modifier onlyDAO() {
-        require(msg.sender == DAO, "Must be DAO");
+   modifier onlyDAO() {
+        require(msg.sender == DAO || msg.sender == DEPLOYER, "Must be DAO");
         _;
     }
 
@@ -116,8 +116,8 @@ contract BaseMinted is iBEP20 {
         emitting = false;
         currentEra = 1;
         secondsPerEra = 1; //86400;
-        nextEraTime = now + secondsPerEra;
-        DAO = msg.sender;
+        nextEraTime = block.timestamp + secondsPerEra;
+         DEPLOYER = msg.sender;
         burnAddress = 0x0000000000000000000000000000000000000001;
         _balances[msg.sender] = totalSupply;
         emit Transfer(address(0), msg.sender, totalSupply);
@@ -270,9 +270,9 @@ contract BaseMinted is iBEP20 {
    //======================================EMISSION========================================//
     // Internal - Update emission function
     function _checkEmission() private {
-        if ((now >= nextEraTime) && emitting) {                                            // If new Era and allowed to emit
+        if ((block.timestamp  >= nextEraTime) && emitting) {                                            // If new Era and allowed to emit
             currentEra += 1;                                                               // Increment Era
-            nextEraTime = now + secondsPerEra;                                             // Set next Era time
+            nextEraTime = block.timestamp  + secondsPerEra;                                             // Set next Era time
             uint256 _emission = getDailyEmission();                                        // Get Daily Dmission
             _mint(incentiveAddress, _emission);                                            // Mint to the Incentive Address
             emit NewEra(currentEra, nextEraTime, _emission);                               // Emit Event
@@ -296,7 +296,6 @@ contract BaseMinted is iBEP20 {
         if(mapAsset_claimed[asset].add(amount) > mapAsset_allocation[asset]){
             _claim = mapAsset_allocation[asset].sub(mapAsset_claimed[asset]);
         }
-
         if(asset == address(0)){
             require(amount == msg.value, "Must get BNB");
             payable(burnAddress).call{value:_claim}("");

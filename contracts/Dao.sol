@@ -1,5 +1,9 @@
+/**
+ *Submitted for verification at BscScan.com on 2020-09-27
+*/
+
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 
 interface iBEP20 {
@@ -69,7 +73,7 @@ library SafeMath {
 }
 
 
-contract Dao {
+contract DaoM {
 
     using SafeMath for uint;
 
@@ -184,7 +188,7 @@ contract Dao {
         require(_ROUTER.isPool(pool) == true, "Must be listed");
         require(amount > 0, "Must get some");
         if (!isMember[member]) {
-            mapMember_lastTime[member] = now;
+            mapMember_lastTime[member] = block.timestamp;
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
@@ -238,12 +242,12 @@ contract Dao {
 
     function harvest() public {
         uint reward = calcCurrentReward(msg.sender);
-        mapMember_lastTime[msg.sender] = now;
+        mapMember_lastTime[msg.sender] = block.timestamp;
         iBEP20(BASE).transfer(msg.sender, reward);
     }
 
     function calcCurrentReward(address member) public view returns(uint){
-        uint secondsSinceClaim = now.sub(mapMember_lastTime[member]); // Get time since last claim
+        uint secondsSinceClaim = block.timestamp.sub(mapMember_lastTime[member]); // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
         uint reward = share.mul(secondsSinceClaim).div(secondsPerEra);    // Get owed amount, based on per-day rates
         uint reserve = iBEP20(BASE).balanceOf(address(this));
@@ -336,8 +340,8 @@ contract Dao {
     function _finalise(uint _proposalID) internal {
         bytes memory _type = bytes(mapPID_type[_proposalID]);
         mapPID_finalising[_proposalID] = true;
-        mapPID_timeStart[_proposalID] = now;
-        emit ProposalFinalising(msg.sender, _proposalID, now+coolOffPeriod, string(_type));
+        mapPID_timeStart[_proposalID] = block.timestamp;
+        emit ProposalFinalising(msg.sender, _proposalID, block.timestamp+coolOffPeriod, string(_type));
     }
 
     // If an existing proposal, allow a minority to cancel
@@ -351,7 +355,7 @@ contract Dao {
 
     // Proposal with quorum can finalise after cool off period
     function finaliseProposal(uint proposalID) public  {
-        require((now - mapPID_timeStart[proposalID]) > coolOffPeriod, "Must be after cool off");
+        require((block.timestamp - mapPID_timeStart[proposalID]) > coolOffPeriod, "Must be after cool off");
         require(mapPID_finalising[proposalID] == true, "Must be finalising");
         if(!hasQuorum(proposalID)){
             mapPID_finalising[proposalID] = false;
@@ -420,7 +424,7 @@ contract Dao {
     function listAsset(uint _proposalID) internal {
         ListDetails memory _list = mapPID_list[_proposalID];
         require(iBEP20(BASE).totalSupply() <= 100 * 10**6 * one, "Must not list over 100m");
-        //require(_list.claimRate.mul(_list.allocation) <= 10 * 10**6 * one * one, "Must not list over 10m");
+        require(_list.claimRate.mul(_list.allocation) <= 10 * 10**6 * one, "Must not list over 10m");
         iBASE(BASE).listAsset(_list.asset, _list.claimRate, _list.allocation);
         completeProposal(_proposalID);
     }
@@ -522,7 +526,7 @@ contract Dao {
 
     function ROUTER() public view returns(iROUTER){
         if(daoHasMoved){
-            return Dao(DAO).ROUTER();
+            return DaoM(DAO).ROUTER();
         } else {
             return _ROUTER;
         }
@@ -530,7 +534,7 @@ contract Dao {
 
     function UTILS() public view returns(iUTILS){
         if(daoHasMoved){
-            return Dao(DAO).UTILS();
+            return DaoM(DAO).UTILS();
         } else {
             return _UTILS;
         }
@@ -571,6 +575,3 @@ contract Dao {
     }
 
 }
-
-
-   

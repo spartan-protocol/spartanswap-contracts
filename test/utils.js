@@ -20,7 +20,7 @@ function getBN(BN) { return (new BigNumber(BN))}
 
 function BN2Int(BN) { return +(new BigNumber(BN)).toFixed() }
 
-function BN2Str(BN) { return (new BigNumber(BN)).toFixed() }
+function BN2Str(BN) { return (new BigNumber(BN)).decimalPlaces(0, 1).toFixed()   }
 
 function BN2Token(BN) { return ((new BigNumber(BN)).dividedBy(one)).toFixed(2) }
 

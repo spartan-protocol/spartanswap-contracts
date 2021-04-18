@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.8.3;
 //IERC20 Interface
 interface iBEP20  {
     function totalSupply() external view returns (uint256);
@@ -73,16 +73,11 @@ contract Token1 is iBEP20 {
     // Mapping
     mapping(address => uint256) public override balanceOf;                          // Map balanceOf
     mapping(address => mapping(address => uint256)) public override allowance;    // Map allowances
-    
-    // Events
-    event Approval(address indexed owner, address indexed spender, uint value); // ERC20
-    event Transfer(address indexed from, address indexed to, uint256 value);    // ERC20
-
     // Minting event
     constructor() public{
         balanceOf[msg.sender] = totalSupply;
-        name = "Token";
-        symbol  = "TKN";
+        name = "Binance USD";
+        symbol  = "BUSD";
         emit Transfer(address(0), msg.sender, totalSupply);
     }
     

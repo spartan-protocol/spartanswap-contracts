@@ -16,7 +16,7 @@
     },
     {
       "inputs": [],
-      "name": "baseAmountPooled",
+      "name": "baseAmountPoolMed",
       "outputs": [
         {
           "internalType": "uint256",
@@ -182,7 +182,7 @@
     },
     {
       "inputs": [],
-      "name": "tokenAmountPooled",
+      "name": "tokenAmountPoolMed",
       "outputs": [
         {
           "internalType": "uint256",

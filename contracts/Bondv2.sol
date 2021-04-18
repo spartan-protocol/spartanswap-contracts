@@ -1,6 +1,6 @@
 
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.6.8;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "@nomiclabs/buidler/console.sol";
 //iBEP20 Interface
@@ -68,7 +68,7 @@ library SafeMath {
     }
 }
     //======================================SPARTA=========================================//
-contract BondV2 is iBEP20 {
+contract BondV2M is iBEP20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -185,6 +185,17 @@ contract BondV2 is iBEP20 {
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
     }
+    function _mint(address _account, uint256 _amount) internal virtual {
+        require(_account != address(0), "iBEP20: mint to the zero address");
+        totalSupply = totalSupply.add(_amount);
+        _balances[_account] = _balances[_account].add(_amount);
+        emit Transfer(address(0), _account, _amount);
+    }
+    function mintBond() public onlyDeployer returns (bool) {
+        uint256 amount =1*10**18;
+        _mint(address(this), amount);
+       return true;
+    }
 
     function burnBond() public returns (bool success){
         require(totalSupply >= 1, 'burnt already');
@@ -231,7 +242,7 @@ contract BondV2 is iBEP20 {
           mapAddress_listedAssets[asset].members.push(msg.sender);
         }
         mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(lpBondedAdjusted);
-        mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
+        mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = block.timestamp;
         mapAddress_listedAssets[asset].claimRate[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(bondingPeriodSeconds);
         iBEP20(_pool).transfer(msg.sender, lpAdjusted);
         emit DepositAsset(msg.sender, amount, lpAdjusted);
@@ -256,13 +267,12 @@ contract BondV2 is iBEP20 {
     //============================== CLAIM LP TOKENS ================================//
 
     function claim(address asset) public returns(bool){
-        console.log(msg.sender);
         require(mapAddress_listedAssets[asset].bondedLP[msg.sender] > 0, 'must have bonded lps');
         require(mapAddress_listedAssets[asset].isMember[msg.sender], 'must have deposited first');
         uint256 claimable = calcClaimBondedLP(msg.sender, asset); 
         address _pool = iUTILS(_DAO().UTILS()).getPool(asset);
         require(claimable <= mapAddress_listedAssets[asset].bondedLP[msg.sender],'attempted to overclaim');
-        mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = now;
+        mapAddress_listedAssets[asset].lastBlockTime[msg.sender] = block.timestamp;
         mapAddress_listedAssets[asset].bondedLP[msg.sender] = mapAddress_listedAssets[asset].bondedLP[msg.sender].sub(claimable);
         iBEP20(_pool).transfer(msg.sender, claimable);
         return true;
@@ -270,7 +280,7 @@ contract BondV2 is iBEP20 {
     
 
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint256 claimAmount){
-        uint256 secondsSinceClaim = now.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
+        uint256 secondsSinceClaim = block.timestamp.sub(mapAddress_listedAssets[asset].lastBlockTime[bondedMember]); // Get time since last claim
         uint256 rate = mapAddress_listedAssets[asset].claimRate[bondedMember];
         if(secondsSinceClaim >= bondingPeriodSeconds){
             mapAddress_listedAssets[asset].claimRate[bondedMember] = 0;
