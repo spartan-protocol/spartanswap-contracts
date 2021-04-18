@@ -1,7 +1,7 @@
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 
-import "./cInterfaces.sol"; 
+import "./iBEP20.sol"; 
 interface iBASE {
     function DAO() external view returns (iDAO);
     function burn(uint) external;
@@ -37,7 +37,6 @@ interface iPOOLFACTORY {
 }
 
 contract BondVault {
-    using SafeMath for uint;
     address public BASE;
     address public NDAO;
     address public DEPLOYER;
@@ -74,8 +73,8 @@ contract BondVault {
     }
 
 function _DAO() internal view returns(iDAO) {
-        bool status = iDAO(NDAO).MSTATUS();
-        if(status == true){
+        bool _status = iDAO(NDAO).MSTATUS();
+        if(_status == true){
          return iBASE(BASE).DAO();
         }else{
           return iNDAO(NDAO).DAO();
@@ -100,9 +99,10 @@ function _DAO() internal view returns(iDAO) {
         if(mapAddress_listedAssets[asset].bondedLP[member] > 0){
             cFMember(asset, member);
         }
-        mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[msg.sender].add(LPS);
+        mapAddress_listedAssets[asset].bondedLP[member] += LPS;
         mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
-        mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[msg.sender].div(iBOND(_DAO().BOND()).bondingPeriodSeconds());
+        mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[msg.sender]/(iBOND(_DAO().BOND()).bondingPeriodSeconds());
+        return true;
     }
     function depINIT(address asset, address member, uint LPS) public onlyDAO returns (bool){
          if(!mapAddress_listedAssets[asset].isMember[member]){
@@ -110,33 +110,33 @@ function _DAO() internal view returns(iDAO) {
           arrayMembers.push(member);
           mapAddress_listedAssets[asset].members.push(member);
         }
-        mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].add(LPS);
+        mapAddress_listedAssets[asset].bondedLP[member] += LPS;
         mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
-        mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[member].div(20736000);//must be changed for mainet
-        
+        mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[member]/(20736000);//must be changed for mainet
+        return true;
     }
 
      function cBLP(address member, address asset) public onlyDAO returns (uint){
-        uint256 secondsSinceClaim = block.timestamp.sub(mapAddress_listedAssets[asset].lastBlockTime[member]); // Get time since last claim
+        uint256 _secondsSinceClaim = block.timestamp - (mapAddress_listedAssets[asset].lastBlockTime[member]); // Get time since last claim
         uint256 rate = mapAddress_listedAssets[asset].claimRate[member];
         uint claimAmount;
-        if(secondsSinceClaim >= iBOND(_DAO().BOND()).bondingPeriodSeconds()){
+        if(_secondsSinceClaim >= iBOND(_DAO().BOND()).bondingPeriodSeconds()){
             mapAddress_listedAssets[asset].claimRate[member] = 0;
             claimAmount = mapAddress_listedAssets[asset].bondedLP[member];
         }else {
-            claimAmount = secondsSinceClaim.mul(rate);
+            claimAmount = _secondsSinceClaim * rate;
         }
         return claimAmount;
     }
     function cFMember(address asset, address member) public onlyDAO returns (bool){
         require(mapAddress_listedAssets[asset].bondedLP[member] > 0, '!bondedlps');
         require(mapAddress_listedAssets[asset].isMember[member], '!deposited');
-        uint256 claimable = cBLP(member, asset); 
+        uint256 _claimable = cBLP(member, asset); 
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset);
-        require(claimable <= mapAddress_listedAssets[asset].bondedLP[member],'attempted to overclaim');
+        require(_claimable <= mapAddress_listedAssets[asset].bondedLP[member],'attempted to overclaim');
         mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
-        mapAddress_listedAssets[asset].bondedLP[member] = mapAddress_listedAssets[asset].bondedLP[member].sub(claimable);
-        iBEP20(_pool).transfer(member, claimable); // send LPs to user
+        mapAddress_listedAssets[asset].bondedLP[member] -= _claimable;
+        iBEP20(_pool).transfer(member, _claimable); // send LPs to user
         return true;
     }
      function memberCount() public view returns (uint256 count){

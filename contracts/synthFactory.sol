@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./synth.sol";  
 
@@ -69,7 +69,7 @@ contract SynthFactory {
 
 
     function destroyMe() public onlyDEPLOYER {
-         selfdestruct(msg.sender);
+         selfdestruct(payable(msg.sender));
     }
 
     function destroySynth(address synth) public onlyDAO returns(bool){

@@ -574,8 +574,8 @@ async function payInterestForTKNBASE(acc, x) {
         let tokenBal = _.getBN(await token1.balanceOf(acc))
         let reserve = _.getBN(await lend.reserve())
 
-        let collateralDebt = _.getBN(await lend.totalDebt(assetC,assetD))
-        let collateralAmount = _.getBN(await lend.totalCollateral(assetC,assetD))
+        let collateralDebt = _.getBN(await lend.mapAddress_totalDebt(assetC,assetD))
+        let collateralAmount = _.getBN(await lend.mapAddress_totalCollateral(assetC,assetD))
         //  console.log("collateral",_.BN2Str(collateralAmount));
         let interestAmount = _.getBN(collateralDebt.times(10**18).div(Z));
         let IRperDay = _.BN2Str(interestAmount.div(365).times(1));
@@ -585,8 +585,8 @@ async function payInterestForTKNBASE(acc, x) {
         let z = math.calcSwapOutput(_percentAmount, B, Z)
         await sleep(6000)
         await lend.checkInterest(assetC);
-        let collateralDebtA = _.getBN(await lend.totalDebt(assetC,assetD))
-        let collateralAmountA = _.getBN(await lend.totalCollateral(assetC,assetD))
+        let collateralDebtA = _.getBN(await lend.mapAddress_totalDebt(assetC,assetD))
+        let collateralAmountA = _.getBN(await lend.mapAddress_totalCollateral(assetC,assetD))
         let reserveA = _.getBN(await lend.reserve())
 
         assert.equal(_.BN2Str(await base.balanceOf(poolTKN1.address)), _.BN2Str(baseBal.plus(_percentAmount)));
@@ -613,8 +613,8 @@ async function payInterestForTKNSPT(acc, x) {
         let tokenBal = _.getBN(await poolWBNB.totalSupply())
         let reserve = _.getBN(await lend.reserve())
 
-        let collateralDebt = _.getBN(await lend.totalDebt(assetC,assetD))
-        let collateralAmount = _.getBN(await lend.totalCollateral(assetC,assetD))
+        let collateralDebt = _.getBN(await lend.mapAddress_totalDebt(assetC,assetD))
+        let collateralAmount = _.getBN(await lend.mapAddress_totalCollateral(assetC,assetD))
         //  console.log("collateral",_.BN2Str(collateralAmount));
         let interestAmount = _.getBN(collateralDebt.times(10**18).div(Z));
         let IRperDay = _.BN2Str(interestAmount.div(365).times(1));
@@ -643,8 +643,8 @@ async function payInterestForTKNSPT(acc, x) {
         await sleep(6000)
         await lend.checkInterest(assetC);
         
-        let collateralDebtA = _.getBN(await lend.totalDebt(assetC,assetD))
-        let collateralAmountA = _.getBN(await lend.totalCollateral(assetC,assetD))
+        let collateralDebtA = _.getBN(await lend.mapAddress_totalDebt(assetC,assetD))
+        let collateralAmountA = _.getBN(await lend.mapAddress_totalCollateral(assetC,assetD))
         let reserveA = _.getBN(await lend.reserve())
         let lpsA = _.getBN(await poolWBNB.balanceOf(lend.address))
 
@@ -672,8 +672,8 @@ async function payInterestForTKNSYNTH(acc, x) {
         let tokenBal = _.getBN(await token1.balanceOf(acc))
         let reserve = _.getBN(await lend.reserve())
 
-        let collateralDebt = _.getBN(await lend.totalDebt(assetC,assetD))
-        let collateralAmount = _.getBN(await lend.totalCollateral(assetC,assetD))
+        let collateralDebt = _.getBN(await lend.mapAddress_totalDebt(assetC,assetD))
+        let collateralAmount = _.getBN(await lend.mapAddress_totalCollateral(assetC,assetD))
         //  console.log("collateral",_.BN2Str(collateralAmount));
         let interestAmount = _.getBN(collateralDebt.times(10**18).div(Z));
         let IRperDay = _.BN2Str(interestAmount.div(365).times(1));
@@ -685,8 +685,8 @@ async function payInterestForTKNSYNTH(acc, x) {
         await sleep(6000)
 
         await lend.checkInterest(assetC);
-        let collateralDebtA = _.getBN(await lend.totalDebt(assetC,assetD))
-        let collateralAmountA = _.getBN(await lend.totalCollateral(assetC,assetD))
+        let collateralDebtA = _.getBN(await lend.mapAddress_totalDebt(assetC,assetD))
+        let collateralAmountA = _.getBN(await lend.mapAddress_totalCollateral(assetC,assetD))
         let reserveA = _.getBN(await lend.reserve())
 
         assert.equal(_.BN2Str(await synthBNB.balanceOf(lend.address)), _.BN2Str(synthBal.minus(_percentAmount)));

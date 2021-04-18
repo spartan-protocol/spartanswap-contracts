@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "./cInterfaces.sol";
+import "./iBEP20.sol";
 
 interface iBASE {
     function DAO() external view returns (iDAO);
@@ -127,6 +127,6 @@ contract SPARTANUPGRADE {
     }
 
   function destroyMe() public onlyDEPLOYER {
-         selfdestruct(msg.sender);
+         selfdestruct(payable(msg.sender));
     }
 }

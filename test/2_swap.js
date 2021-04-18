@@ -530,8 +530,8 @@ async function swapLayer1ToSynth(acc, x) {
         let basBal = _.getBN(await base.balanceOf(acc));
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
-        let lpBalance = _.getBN(await synthBNB.lpBalance(poolWBNB.address));
-        let lpDebt =_.getBN( await synthBNB.lpDebt(poolWBNB.address));
+        let lpBalance = _.getBN(await synthBNB.mapAddress_LPBalance(poolWBNB.address));
+        let lpDebt =_.getBN( await synthBNB.mapAddress_LPDebt(poolWBNB.address));
         const X = _.getBN(poolData.baseAmount)
         const Y = _.getBN(poolData.tokenAmount)
         let asymAdd = _.getBN(await utils.calcLiquidityUnitsAsym(x, poolWBNB.address))
@@ -543,8 +543,8 @@ async function swapLayer1ToSynth(acc, x) {
         let synthMint = _.getBN(await utils.calcAsymmetricValueToken(poolWBNB.address,asymAdd));
 
         poolData = await utils.getPoolData(token);
-        let lpBalanceA = _.getBN(await synthBNB.lpBalance(poolWBNB.address));
-        let lpDebtA =_.getBN( await synthBNB.lpDebt(poolWBNB.address));
+        let lpBalanceA = _.getBN(await synthBNB.mapAddress_LPBalance(poolWBNB.address));
+        let lpDebtA =_.getBN( await synthBNB.mapAddress_LPDebt(poolWBNB.address));
 
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(X.plus(x)))
         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(Y))
@@ -570,8 +570,8 @@ async function swapSynthToLayer1(acc, x) {
         let synBal = _.getBN(await synthBNB.balanceOf(acc));
         let basBal = _.getBN(await base.balanceOf(acc));
 
-        let lpBalance = _.getBN(await synthBNB.lpBalance(poolWBNB.address));
-        let lpDebt =_.getBN( await synthBNB.lpDebt(poolWBNB.address));
+        let lpBalance = _.getBN(await synthBNB.mapAddress_LPBalance(poolWBNB.address));
+        let lpDebt =_.getBN( await synthBNB.mapAddress_LPDebt(poolWBNB.address));
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
         const X = _.getBN(poolData.tokenAmount)
@@ -592,8 +592,8 @@ async function swapSynthToLayer1(acc, x) {
        
         poolData = await utils.getPoolData(token);
 
-        let lpBalanceA = _.getBN(await synthBNB.lpBalance(poolWBNB.address));
-        let lpDebtA =_.getBN( await synthBNB.lpDebt(poolWBNB.address));
+        let lpBalanceA = _.getBN(await synthBNB.mapAddress_LPBalance(poolWBNB.address));
+        let lpDebtA =_.getBN( await synthBNB.mapAddress_LPDebt(poolWBNB.address));
 
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y.minus(baseSwapped)))
         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X))

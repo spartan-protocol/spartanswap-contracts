@@ -1,7 +1,7 @@
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 // import "@nomiclabs/buidler/console.sol";
-import "./cInterfaces.sol";
+import "./iBEP20.sol";
 interface iDAO {
     function ROUTER() external view returns(address);
     function UTILS() external view returns(address);
@@ -51,7 +51,6 @@ interface iSYNTH {
 
 
 contract Pool is iBEP20 {
-    using SafeMath for uint256;
 
     address public BASE;
     address public NDAO;
@@ -137,7 +136,7 @@ contract Pool is iBEP20 {
     // iBEP20 TransferFrom function
     function transferFrom(address from, address to, uint256 value) public override returns (bool success) {
         require(value <= _allowances[from][msg.sender], 'AllowanceErr');
-        _allowances[from][msg.sender] = _allowances[from][msg.sender].sub(value);
+        _allowances[from][msg.sender] -= value;
         _transfer(from, to, value);
         return true;
     }
@@ -153,8 +152,8 @@ contract Pool is iBEP20 {
 
     // Contract can mint
     function _mint(address account, uint256 amount) internal {
-        totalSupply = totalSupply.add(amount);
-        _balances[account] = _balances[account].add(amount);
+        totalSupply += amount;
+        _balances[account] += amount;
         emit Transfer(address(0), account, amount);
     }
     // Burn supply
@@ -167,8 +166,8 @@ contract Pool is iBEP20 {
         _burn(from, value);
     }
     function _burn(address account, uint256 amount) internal virtual {
-        _balances[account] = _balances[account].sub(amount, "BalanceErr");
-        totalSupply = totalSupply.sub(amount);
+        _balances[account] -= amount;
+        totalSupply -= amount;
         emit Transfer(account, address(0), amount);
     }
 
@@ -247,11 +246,11 @@ contract Pool is iBEP20 {
 
     function swapSynthOUT(address synthOut, address member) public onlyRouter returns(uint outputAmount, uint fee) {
       uint256 _actualInputBase = _getAddedBaseAmount();
-      uint liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); 
+      uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); 
       _incrementPoolBalances(_actualInputBase, 0);
       uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount);
       fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN,_fee );
-      _mint(synthOut, liquidityUnits); 
+      _mint(synthOut, _liquidityUnits); 
       outputAmount = iSYNTH(synthOut).mintSynth(member); //mintSynth to Router
       _addPoolMetrics(fee);
       sync();
@@ -259,22 +258,22 @@ contract Pool is iBEP20 {
     }
 
     function swapSynthIN(address synthIN, address member) public onlyRouter returns(uint outputAmount, uint fee) {
-      uint inputSynth = iBEP20(synthIN).balanceOf(address(this));
-      uint baseOutput = iUTILS(_DAO().UTILS()).calcSwapValueInBase(TOKEN, inputSynth);//get swapValue from synths input
-      fee = iUTILS(_DAO().UTILS()).calcSwapFee(inputSynth, tokenAmount, baseAmount);
-      iBEP20(synthIN).transfer(synthIN, inputSynth);
+      uint _inputSynth = iBEP20(synthIN).balanceOf(address(this));
+      uint _baseOutput = iUTILS(_DAO().UTILS()).calcSwapValueInBase(TOKEN, _inputSynth);//get swapValue from synths input
+      fee = iUTILS(_DAO().UTILS()).calcSwapFee(_inputSynth, tokenAmount, baseAmount);
+      iBEP20(synthIN).transfer(synthIN, _inputSynth);
       iSYNTH(synthIN).redeemSynth(); //redeem Synth
-      _decrementPoolBalances(baseOutput, 0);
-      iBEP20(BASE).transfer(member, baseOutput);
+      _decrementPoolBalances(_baseOutput, 0);
+      iBEP20(BASE).transfer(member, _baseOutput);
       _addPoolMetrics(fee);
       sync();
-      return (baseOutput, fee);
+      return (_baseOutput, fee);
     }
 
     function _getAddedBaseAmount() internal view returns(uint256 _actual){
         uint _baseBalance = iBEP20(BASE).balanceOf(address(this)); 
         if(_baseBalance > baseAmount){
-            _actual = _baseBalance.sub(baseAmount);
+            _actual = _baseBalance-(baseAmount);
         } else {
             _actual = 0;
         }
@@ -284,7 +283,7 @@ contract Pool is iBEP20 {
     function _getAddedTokenAmount() internal view returns(uint256 _actual){
         uint _tokenBalance = iBEP20(TOKEN).balanceOf(address(this)); 
         if(_tokenBalance > tokenAmount){
-            _actual = _tokenBalance.sub(tokenAmount);
+            _actual = _tokenBalance-(tokenAmount);
         } else {
             _actual = 0;
         }
@@ -297,7 +296,7 @@ contract Pool is iBEP20 {
         _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
         uint fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
         _fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, fee);
-        _setPoolAmounts(_X.add(_x), _Y.sub(_y));
+        _setPoolAmounts(_X+(_x), _Y-(_y));
         _addPoolMetrics(_fee);
         return (_y, _fee);
     }
@@ -307,13 +306,13 @@ contract Pool is iBEP20 {
         uint256 _Y = baseAmount;
         _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
         _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
-        _setPoolAmounts(_Y.sub(_y), _X.add(_x));
+        _setPoolAmounts(_Y-(_y), _X+(_x));
         _addPoolMetrics(_fee);
         return (_y, _fee);
     }
 
      function destroyMe() public onlyDAO {
-        selfdestruct(msg.sender);
+        selfdestruct(payable(msg.sender));
     } 
     // Increment internal balances
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
@@ -334,30 +333,30 @@ contract Pool is iBEP20 {
         if(lastMonth == 0){
             lastMonth = genesis;
         }
-        if(block.timestamp <= lastMonth.add(2592000)){//30Days
-            map30DPoolRevenue = map30DPoolRevenue.add(_fee);
+        if(block.timestamp <= lastMonth+(2592000)){//30Days
+            map30DPoolRevenue = map30DPoolRevenue+(_fee);
         }else{
-            lastMonth = lastMonth.add(2592000);
+            lastMonth = lastMonth+(2592000);
             mapPast30DPoolRevenue = map30DPoolRevenue;
             addRevenue(mapPast30DPoolRevenue);
             map30DPoolRevenue = 0;
-            map30DPoolRevenue = map30DPoolRevenue.add(_fee);
+            map30DPoolRevenue = map30DPoolRevenue+(_fee);
         }
     }
-    function addRevenue(uint totalRev) internal {
+    function addRevenue(uint _totalRev) internal {
         if(!(revenueArray.length == 2)){
-            revenueArray.push(totalRev);
+            revenueArray.push(_totalRev);
         }else {
-            addFee(totalRev);
+            addFee(_totalRev);
         }
         }
     
-    function addFee(uint rev) internal {
-        uint n = revenueArray.length;//2
-        for (uint i = n - 1; i > 0; i--) {
+    function addFee(uint _rev) internal {
+        uint _n = revenueArray.length;//2
+        for (uint i = _n - 1; i > 0; i--) {
         revenueArray[i] = revenueArray[i - 1];
         }
-         revenueArray[0] = rev;
+         revenueArray[0] = _rev;
     }
 
     

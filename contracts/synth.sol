@@ -1,4 +1,4 @@
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 
 import "./poolV2.sol";  
@@ -9,7 +9,6 @@ interface iPOOLFACTORY {
 }
 
 contract Synth is iBEP20 {
-    using SafeMath for uint256;
     address public BASE;
     address public LayerONE;
     uint public genesis;
@@ -23,8 +22,8 @@ contract Synth is iBEP20 {
     // ERC-20 Mappings
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
-    mapping(address => uint) public lpBalance;
-    mapping(address => uint) public lpDebt;
+    mapping(address => uint) public mapAddress_LPBalance;
+    mapping(address => uint) public mapAddress_LPDebt;
    
 
     function _DAO() internal view returns(iDAO) {
@@ -64,6 +63,7 @@ contract Synth is iBEP20 {
     function symbol() public view override returns (string memory) {
         return _symbol;
     }
+
     function balanceOf(address account) public view override returns (uint256) {
         return _balances[account];
     }
@@ -87,10 +87,11 @@ contract Synth is iBEP20 {
     // iBEP20 TransferFrom function
     function transferFrom(address from, address to, uint256 value) public override returns (bool success) {
         require(value <= _allowances[from][msg.sender], 'AllowanceErr');
-        _allowances[from][msg.sender] = _allowances[from][msg.sender].sub(value);
+        _allowances[from][msg.sender] -= value;
         _transfer(from, to, value);
         return true;
     }
+
     // Internal transfer function
     function _transfer(address _from, address _to, uint256 _value) private {
         require(_balances[_from] >= _value, 'BalanceErr');
@@ -99,10 +100,11 @@ contract Synth is iBEP20 {
         _balances[_to] += _value;
         emit Transfer(_from, _to, _value);
     }
+
     // Contract can mint
-    function _mint(address account, uint256 amount) internal {
-        totalSupply = totalSupply.add(amount);
-        _balances[account] = _balances[account].add(amount);
+     function _mint(address account, uint256 amount) internal {
+        totalSupply += amount;
+        _balances[account] += amount;
         emit Transfer(address(0), account, amount);
     }
     // Burn supply
@@ -115,8 +117,8 @@ contract Synth is iBEP20 {
         _burn(from, value);
     }
     function _burn(address account, uint256 amount) internal virtual {
-        _balances[account] = _balances[account].sub(amount, "BalanceErr");
-        totalSupply = totalSupply.sub(amount);
+        _balances[account] -= amount;
+        totalSupply -= amount;
         emit Transfer(account, address(0), amount);
     }
     // TransferTo function
@@ -129,49 +131,49 @@ contract Synth is iBEP20 {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
         uint lpUnits = _getAddedLPAmount(msg.sender);
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
-        lpDebt[msg.sender] = lpDebt[msg.sender].add(tokenValue);
-        lpBalance[msg.sender] = lpBalance[msg.sender].add(lpUnits);
+        mapAddress_LPDebt[msg.sender] += tokenValue;
+        mapAddress_LPBalance[msg.sender] += lpUnits;
         _mint(member, tokenValue); 
         return tokenValue;
     }
     
     function redeemSynth() public returns (bool){
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, '!POOL');
-        uint syntheticAmount = balanceOf(address(this));
-         uint _amountUnits = (syntheticAmount.mul(lpBalance[msg.sender])).div(lpDebt[msg.sender]);// share = amount * part/total
-         lpBalance[msg.sender] = lpBalance[msg.sender].sub(_amountUnits);
-         lpDebt[msg.sender] = lpDebt[msg.sender].sub(syntheticAmount);
-         _burn(address(this), syntheticAmount); 
+        uint _syntheticAmount = balanceOf(address(this));
+         uint _amountUnits = (_syntheticAmount*(mapAddress_LPBalance[msg.sender]))/(mapAddress_LPDebt[msg.sender]);// share = amount * part/total
+         mapAddress_LPBalance[msg.sender] -= _amountUnits;
+         mapAddress_LPDebt[msg.sender] -= _syntheticAmount;
+         _burn(address(this), _syntheticAmount); 
          Pool(msg.sender).burn(_amountUnits);
         return true;
     }
 
-    function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 actual){
+    function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 _actual){
         if(_amount > 0) {
                 uint startBal = iBEP20(_token).balanceOf(address(this)); 
                 iBEP20(_token).transferFrom(msg.sender, address(this), _amount); 
-                actual = iBEP20(_token).balanceOf(address(this)).sub(startBal);
+                _actual = iBEP20(_token).balanceOf(address(this))-startBal;
         }
-        return actual;
+        return _actual;
     }
-    function _getAddedLPAmount(address pool) internal view returns(uint256 _actual){
-        uint _lpCollateralBalance = iBEP20(pool).balanceOf(address(this)); 
-        if(_lpCollateralBalance > lpBalance[pool]){
-            _actual = _lpCollateralBalance.sub(lpBalance[pool]);
+    function _getAddedLPAmount(address _pool) internal view returns(uint256 _actual){
+        uint _lpCollateralBalance = iBEP20(_pool).balanceOf(address(this)); 
+        if(_lpCollateralBalance > mapAddress_LPBalance[_pool]){
+            _actual = _lpCollateralBalance-(mapAddress_LPBalance[_pool]);
         } else {
             _actual = 0;
         }
         return _actual;
     }
 
-    function getlpBalance(address pool) public returns (uint){
-        return lpBalance[pool];
+    function getmapAddress_LPBalance(address pool) public returns (uint){
+        return mapAddress_LPBalance[pool];
     }
-    function getlpDebt(address pool) public returns (uint){
-        return lpDebt[pool];
+    function getmapAddress_LPDebt(address pool) public returns (uint){
+        return mapAddress_LPDebt[pool];
     }
     function destroyMe() public onlyDAO {
-        selfdestruct(msg.sender);
+        selfdestruct(payable(msg.sender));
     } 
 
 }

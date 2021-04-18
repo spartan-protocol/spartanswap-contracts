@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
 
@@ -20,7 +20,7 @@ interface iLEND {
 }
 
 contract Router {
-    using SafeMath for uint256;
+
     address public BASE;
     address private NDAO;
     address public WBNB;
@@ -34,8 +34,8 @@ contract Router {
     uint [] private feeArray;
     uint private lastMonth;
 
-    mapping(address=> uint) public map30DPoolRevenue;
-    mapping(address=> uint) public mapPast30DPoolRevenue;
+    mapping(address=> uint) public mapAddress_30DayDividends;
+    mapping(address=> uint) public mapAddress_Past30DayPoolDividends;
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -146,8 +146,7 @@ contract Router {
         if(toBase){
              iBEP20(_token).transfer(_pool, outputToken);
              (uint _baseBought,uint _feey) = Pool(_pool).swap(BASE);
-             getsDividend(_pool,_token, _feey);
-            outputAmount = _baseBought.add(outputBase);
+            outputAmount = _baseBought+(outputBase);
             fee = _feey;
             if(member != address(this)){
                 _handleTransferOut(BASE, outputAmount, member);
@@ -155,8 +154,7 @@ contract Router {
         } else {
             iBEP20(BASE).transfer(_pool, outputBase);
             (uint _tokenBought,uint _feez) = Pool(_pool).swap(_token);
-             getsDividend(_pool,_token, _feez);
-            outputAmount = _tokenBought.add(outputToken);
+            outputAmount = _tokenBought+(outputToken);
             fee = _feez;
             _handleTransferOut(token, outputAmount, member);
         } 
@@ -199,7 +197,7 @@ contract Router {
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} 
              (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
-            fee = feey.add(_feez);
+            fee = feey+(_feez);
             getsDividend(_poolTo,toToken, fee);
             outputAmount = _zz; 
             _handleTransferOut(toToken, outputAmount, member);
@@ -224,7 +222,7 @@ contract Router {
             } else {
                 uint startBal = iBEP20(_token).balanceOf(_pool);
                 iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
-                actual = iBEP20(_token).balanceOf(_pool).sub(startBal);
+                actual = iBEP20(_token).balanceOf(_pool)-(startBal);
             }
         }
     }
@@ -246,15 +244,15 @@ contract Router {
     }
     function swapBaseToSynthFM(uint inputAmount, address synthOUT, address member) public returns (uint output){
          require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOUT) == true, "!synth");
-         address synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
-         address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthOUTLayer1);
+         address _synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
+         address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthOUTLayer1);
          if(tx.origin == member){
          iBASE(BASE).transferTo(_poolOUT, inputAmount); //RPTAF
          }else{
           iBEP20(BASE).transferFrom(member, _poolOUT, inputAmount); 
          }
          (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT, member); 
-         getsDividend( _poolOUT,  synthOUTLayer1,  fee);
+         getsDividend( _poolOUT,  _synthOUTLayer1,  fee);
          return outputSynth;
     }
     function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
@@ -262,15 +260,15 @@ contract Router {
     }
     function swapSynthToBaseFM(uint inputAmount, address synthIN, address member) public returns (uint outPut){
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
-        address synthINLayer1 = iSYNTH(synthIN).LayerONE();
-        address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(synthINLayer1);
+        address _synthINLayer1 = iSYNTH(synthIN).LayerONE();
+        address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthINLayer1);
         if(tx.origin == member){
             iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF
         }else{
             iBEP20(synthIN).transferFrom(member, _poolIN, inputAmount); 
         }
         (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN, member); 
-        getsDividend(_poolIN, synthINLayer1, fee);
+        getsDividend(_poolIN, _synthINLayer1, fee);
         return outputBase;
     }
     
@@ -281,9 +279,9 @@ contract Router {
              uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance
             if(!(reserve == 0)){
             address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token);
-            uint dailyAllocation = reserve.div(eraLength).div(maxTrades); // get max dividend for reserve/30/100 
-            uint numerator = _fees.mul(dailyAllocation);
-            uint feeDividend = numerator.div(_fees.add(normalAverageFee));
+            uint dailyAllocation = reserve/(eraLength)/(maxTrades); // get max dividend for reserve/30/100 
+            uint numerator = _fees*(dailyAllocation);
+            uint feeDividend = numerator/(_fees+(normalAverageFee));
             revenueDetails(feeDividend,_pool);
             iBEP20(BASE).transfer(_pool,feeDividend);   
             Pool(_pool).sync();
@@ -291,37 +289,37 @@ contract Router {
         }
        
     }
-    function addTradeFee(uint fee) internal {
+    function addTradeFee(uint _fee) internal {
         uint totalTradeFees = 0;
         uint arrayFeeLength = feeArray.length;
         if(!(arrayFeeLength == arrayFeeSize)){
-            feeArray.push(fee);
+            feeArray.push(_fee);
         }else {
-            addFee(fee);
+            addFee(_fee);
             for(uint i = 0; i<arrayFeeSize; i++){
-            totalTradeFees = totalTradeFees.add(feeArray[i]);
+            totalTradeFees = totalTradeFees+(feeArray[i]);
         }
         }
-        normalAverageFee = totalTradeFees.div(arrayFeeSize); 
+        normalAverageFee = totalTradeFees/(arrayFeeSize); 
     }
-    function addFee(uint fee) internal {
+    function addFee(uint _fee) internal {
         uint n = feeArray.length;//20
         for (uint i = n - 1; i > 0; i--) {
         feeArray[i] = feeArray[i - 1];
         }
-         feeArray[0] = fee;
+         feeArray[0] = _fee;
     }
-    function revenueDetails(uint fees, address pool) internal {
+    function revenueDetails(uint _fees, address _pool) internal {
         if(lastMonth == 0){
-            lastMonth = Pool(pool).genesis();
+            lastMonth = Pool(_pool).genesis();
         }
-        if(block.timestamp <= lastMonth.add(2592000)){//30days
-            map30DPoolRevenue[pool] = map30DPoolRevenue[pool].add(fees);
+        if(block.timestamp <= lastMonth+(2592000)){//30days
+            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool]+_fees;
         }else{
-            lastMonth = lastMonth.add(2592000);
-            mapPast30DPoolRevenue[pool] = map30DPoolRevenue[pool];
-            map30DPoolRevenue[pool] = 0;
-            map30DPoolRevenue[pool] = map30DPoolRevenue[pool].add(fees);
+            lastMonth = lastMonth+(2592000);
+            mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
+            mapAddress_30DayDividends[_pool] = 0;
+            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool]+_fees;
         }
         
     }
@@ -346,14 +344,14 @@ contract Router {
         return true;
     }
     function destroyRouter() public onlyDAO {
-         selfdestruct(msg.sender);
+         selfdestruct(payable(msg.sender));
     }
     //==================================Helpers=================================//
     function currentPoolRevenue(address pool) public returns(uint256) {
-      return map30DPoolRevenue[pool];
+      return mapAddress_30DayDividends[pool];
     }
     function pastPoolRevenue(address pool) public returns(uint256) {
-      return mapPast30DPoolRevenue[pool];
+      return mapAddress_Past30DayPoolDividends[pool];
     }
 
 

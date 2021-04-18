@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./DaoVault.sol";
 
@@ -35,7 +35,6 @@ interface iLEND {
 
 
 contract Dao {
-    using SafeMath for uint;
 
     address public DEPLOYER;
     address public BASE;
@@ -203,11 +202,11 @@ contract Dao {
 
     function calcCurrentReward(address member) public returns(uint){
         require(isMember[member], "!member");
-        uint secondsSinceClaim = block.timestamp.sub(mapMember_lastTime[member]); // Get time since last claim
+        uint secondsSinceClaim = block.timestamp-mapMember_lastTime[member]; // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
-        uint reward = share.mul(secondsSinceClaim).div(secondsPerEra);    // Get owed amount, based on per-day rates
+        uint reward = share*(secondsSinceClaim)/(secondsPerEra);    // Get owed amount, based on per-day rates
         uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER));
-        uint daoReward = reserve.mul(daoClaim).div(10000);
+        uint daoReward = reserve*(daoClaim)/(10000);
         if(reward >= daoReward) {
             reward = daoReward; // Send full reserve if the last person
         }
@@ -217,8 +216,8 @@ contract Dao {
     function calcReward(address member) public returns(uint){
         uint weight = _DAOVAULT.mapMember_weight(member);
         uint _totalWeight = _DAOVAULT.totalWeight();
-        uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER)).div(erasToEarn); // Aim to deplete reserve over a number of days
-        uint daoReward = reserve.mul(daoClaim).div(10000);
+        uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER))/(erasToEarn); // Aim to deplete reserve over a number of days
+        uint daoReward = reserve*(daoClaim)/(10000);
         return _UTILS.calcShare(weight, _totalWeight, daoReward); // Get member's share of that
     }
     //============================== CREATE PROPOSALS ================================//
@@ -269,7 +268,7 @@ contract Dao {
     }
     
     function payFee() internal returns(bool){
-        uint _amount = daoFee.mul(10**18);
+        uint _amount = daoFee*(10**18);
         require(iBASE(BASE).transferTo(address(_ROUTER), _amount), '!fee' ); 
         return true;
     } 
@@ -489,7 +488,7 @@ contract Dao {
     //============================== CONSENSUS ================================//
 
     function countVotes(uint _proposalID) internal returns (uint voteWeight){
-        mapPID_votes[_proposalID] = mapPID_votes[_proposalID].sub(mapPIDMember_votes[_proposalID][msg.sender]);
+        mapPID_votes[_proposalID] -= mapPIDMember_votes[_proposalID][msg.sender];
          _DAOVAULT.updateWeight(msg.sender);
         voteWeight = _DAOVAULT.mapMember_weight(msg.sender);
         mapPID_votes[_proposalID] += voteWeight;
@@ -499,7 +498,7 @@ contract Dao {
     function hasMajority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
          uint _totalWeight = _DAOVAULT.totalWeight();
-        uint consensus = _totalWeight.mul(majorityFactor).div(10000); // > 66.66%
+        uint consensus = _totalWeight*(majorityFactor)/(10000); // > 66.66%
         if(votes > consensus){
             return true;
         } else {
@@ -509,7 +508,7 @@ contract Dao {
     function hasQuorum(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
         uint _totalWeight = _DAOVAULT.totalWeight();
-        uint consensus = _totalWeight.div(3); // >33%
+        uint consensus = _totalWeight/(3); // >33%
         if(votes > consensus){
             return true;
         } else {
@@ -519,7 +518,7 @@ contract Dao {
     function hasMinority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
          uint _totalWeight = _DAOVAULT.totalWeight();
-        uint consensus = _totalWeight.div(6); // >16%
+        uint consensus = _totalWeight/(6); // >16%
         if(votes > consensus){
             return true;
         } else {
@@ -611,7 +610,7 @@ contract Dao {
     }
 
     function destroyMe() public onlyDAO {
-         selfdestruct(msg.sender);
+         selfdestruct(payable(msg.sender));
     }
 
 }

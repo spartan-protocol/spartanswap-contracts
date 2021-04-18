@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "./cInterfaces.sol";
+import "./iBEP20.sol";
 import "./BondVault.sol";
 
 
     //======================================SPARTA=========================================//
 contract Bond is iBEP20 {
-    using SafeMath for uint256;
+
 
     // ERC-20 Parameters
     string public override name; string public override symbol;
@@ -86,11 +86,11 @@ contract Bond is iBEP20 {
         return true;
     }
     function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].add(addedValue));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender]+(addedValue));
         return true;
     }
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, "iBEP20: decreased allowance below zero"));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender]-(subtractedValue));
         return true;
     }
     function _approve(address owner, address spender, uint256 amount) internal virtual {
@@ -103,22 +103,22 @@ contract Bond is iBEP20 {
     // iBEP20 TransferFrom function
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "iBEP20: transfer amount exceeds allowance"));
+        _approve(sender, msg.sender, _allowances[sender][msg.sender]-(amount));
         return true;
     }
 
     // Internal transfer function
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
         require(sender != address(0), "iBEP20: transfer from the zero address");
-        _balances[sender] = _balances[sender].sub(amount);
-        _balances[recipient] = _balances[recipient].add(amount);
+        _balances[sender] -= amount;
+        _balances[recipient] += amount;
         emit Transfer(sender, recipient, amount);
     }
     // Internal mint 
     function _mint(address _account, uint256 _amount) internal virtual {
         require(_account != address(0), "iBEP20: mint to the zero address");
-        totalSupply = totalSupply.add(_amount);
-        _balances[_account] = _balances[_account].add(_amount);
+        totalSupply +=_amount;
+        _balances[_account] += _amount;
         emit Transfer(address(0), _account, _amount);
     }
      function burnFrom(address from, uint256 value) public virtual override {
@@ -127,8 +127,8 @@ contract Bond is iBEP20 {
         _burn(from, value);
     }
     function _burn(address account, uint256 amount) internal virtual {
-        _balances[account] = _balances[account].sub(amount, "BalanceErr");
-        totalSupply = totalSupply.sub(amount);
+        _balances[account] -= amount;
+        totalSupply -= amount;
         emit Transfer(account, address(0), amount);
     }
   
@@ -179,7 +179,7 @@ contract Bond is iBEP20 {
         require(totalSupply > 0, '!Available');
         _approve(address(this), BASE, totalSupply);
         iBASE(BASE).claim(address(this), totalSupply);
-        totalSupply = totalSupply.sub(totalSupply);
+        totalSupply = totalSupply-(totalSupply);
         approveRouter();
         return true;
     }
@@ -240,7 +240,7 @@ contract Bond is iBEP20 {
         return listedBondAssets;
     }
       function destroyMe() public onlyDAO {
-         selfdestruct(msg.sender);
+         selfdestruct(payable(msg.sender));
     }
     
 }

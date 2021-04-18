@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-
 import "./poolV2.sol";  
 
 contract PoolFactory { 
@@ -141,7 +140,7 @@ contract PoolFactory {
     }
 
     function destroyMe() public onlyDEPLOYER {
-         selfdestruct(msg.sender);
+         selfdestruct(payable(msg.sender));
     }
 
      function destroyPool(address pool) public onlyDAO {

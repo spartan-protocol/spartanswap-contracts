@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.7.4;
+pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "./cInterfaces.sol";
+import "./iBEP20.sol";
 import "@nomiclabs/buidler/console.sol";
 interface iBASE {
     function DAO() external view returns (iDAO);
@@ -59,7 +59,6 @@ interface iSYNTHFACTORY {
 }
 
 contract LendRouter {
-    using SafeMath for uint256;
     uint32 private membersActiveCount;
     address public BASE;
     address public DEPLOYER;
@@ -86,21 +85,21 @@ contract LendRouter {
     }
     
     // add collateral for member
-    function depositForMember(address _assetD) public onlyLEND returns(uint256 _debtIssued){
-        address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_assetD); 
+    function depositForMember(address assetD) public onlyLEND returns(uint256 _debtIssued){
+        address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(assetD); 
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_assetDPool) == true, "!Curated"); // only curated pools 
         uint inputBASE = iBEP20(BASE).balanceOf(address(this));
         iBEP20(BASE).approve(address(_DAO().ROUTER()), inputBASE);
-         _debtIssued = iROUTER(_DAO().ROUTER()).swap(inputBASE, BASE, _assetD);
-        iBEP20(_assetD).transfer(msg.sender,_debtIssued);
+         _debtIssued = iROUTER(_DAO().ROUTER()).swap(inputBASE, BASE, assetD);
+        iBEP20(assetD).transfer(msg.sender,_debtIssued);
         return _debtIssued;
     }
 
     // Remove Collateral for a member
-    function removeForMember(address _assetD) public onlyLEND returns (uint256 DebtReturned) {
-        uint inputDebt = iBEP20(_assetD).balanceOf(address(this));
-        iBEP20(_assetD).approve(address(_DAO().ROUTER()), inputDebt);
-        uint outputBase = iROUTER(_DAO().ROUTER()).swap(inputDebt, _assetD, BASE);
+    function removeForMember(address assetD) public onlyLEND returns (uint256 DebtReturned) {
+        uint inputDebt = iBEP20(assetD).balanceOf(address(this));
+        iBEP20(assetD).approve(address(_DAO().ROUTER()), inputDebt);
+        uint outputBase = iROUTER(_DAO().ROUTER()).swap(inputDebt, assetD, BASE);
          iBEP20(BASE).transfer(msg.sender,outputBase);
         return  outputBase;
     }
@@ -109,12 +108,12 @@ contract LendRouter {
         if(_amount > 0) {
                 uint startBal = iBEP20(_token).balanceOf(address(this)); 
                 iBEP20(_token).transferFrom(msg.sender, address(this), _amount); 
-                actual = iBEP20(_token).balanceOf(address(this)).sub(startBal);
+                actual = iBEP20(_token).balanceOf(address(this))-(startBal);
         }
     }
 
     function destroyMe() public onlyLEND {
-        selfdestruct(msg.sender);
+        selfdestruct(payable(msg.sender));
     } 
 
     function getMemberLength() public view returns (uint memberCount){
