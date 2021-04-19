@@ -230,7 +230,6 @@ contract SpartanLend {
         return (_actual, _baseBorrow);
     }
 
-    
     function _payInterest(address _assetC, uint256 _percentAmount, address _assetD) internal returns (uint _InterestAmount){
         address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_assetD);   
             if(_assetC == BASE){

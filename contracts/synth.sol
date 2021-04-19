@@ -127,7 +127,7 @@ contract Synth is iBEP20 {
         return true;
     }
 
-     function mintSynth(address member) external onlyPool returns (uint syntheticAmount){
+    function mintSynth(address member) external onlyPool returns (uint syntheticAmount){
         uint lpUnits = _getAddedLPAmount(msg.sender);
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
         mapAddress_LPDebt[msg.sender] += tokenValue;
