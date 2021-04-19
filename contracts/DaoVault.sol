@@ -103,7 +103,7 @@ function depositLP(address pool, uint amount, address member) public onlyDAO ret
 
 
 function withdraw(address pool, address member) public onlyDAO returns (bool ){
-          uint256 _balance = mapMemberPool_balance[member][pool];
+        uint256 _balance = mapMemberPool_balance[member][pool];
         require(_balance > 0, "!balance");
         decreaseWeight(pool, member);
         require(iBEP20(pool).transfer(member, _balance), "Must transfer"); // Then transfer

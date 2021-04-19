@@ -59,17 +59,12 @@ interface iSYNTHFACTORY {
 }
 
 contract LendRouter {
-    uint32 private membersActiveCount;
     address public BASE;
     address public DEPLOYER;
-    address [] public membersActive;
 
     // ERC-20 Mappings
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
-
-    event Liquidated(address indexed asset, uint units, uint outputAmount);
-    event InterestPayment(address indexed asset, uint units, uint outputAmount);
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
@@ -116,8 +111,5 @@ contract LendRouter {
         selfdestruct(payable(msg.sender));
     } 
 
-    function getMemberLength() public view returns (uint memberCount){
-        return membersActive.length;
-    }
 
 }

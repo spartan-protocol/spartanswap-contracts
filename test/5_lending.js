@@ -301,7 +301,7 @@ async function BorrowTKNwithBASE(acc, x) {
         // let mAB = memberDeets.timeBorrowed;
         // console.log(_.BN2Str(mAC),_.BN2Str(mAD), _.BN2Str(mAB) );
 
-        await lend.drawDebt(input, assetC, assetD, {from:acc})
+        await lend.borrow(input, assetC, assetD, {from:acc})
         let memberDeetsA =await lend.getMemberDetails( acc, assetC, assetD)
         let mACA = memberDeetsA.assetCurrentCollateral;
         let mADA = memberDeetsA.assetDebt;
@@ -348,7 +348,7 @@ async function BorrowTKNwithSPT2BNB(acc, x) {
         // let mAB = memberDeets.timeBorrowed;
         // console.log(_.BN2Str(mAC),_.BN2Str(mAD), _.BN2Str(mAB) );
 
-        await lend.drawDebt(input, assetC, assetD, {from:acc})
+        await lend.borrow(input, assetC, assetD, {from:acc})
         let memberDeetsA =await lend.getMemberDetails( acc, assetC, assetD)
         let mACA = memberDeetsA.assetCurrentCollateral;
         let mADA = memberDeetsA.assetDebt;
@@ -397,7 +397,7 @@ async function BorrowTKNwithASYNTHBNB(acc, x) {
         // let mAB = memberDeets.timeBorrowed;
         // console.log(_.BN2Str(mAC),_.BN2Str(mAD), _.BN2Str(mAB) );
       
-        await lend.drawDebt(input, assetC, assetD, {from:acc})
+        await lend.borrow(input, assetC, assetD, {from:acc})
         let memberDeetsA =await lend.getMemberDetails( acc, assetC, assetD)
         let mACA = memberDeetsA.assetCurrentCollateral;
         let mADA = memberDeetsA.assetDebt;
@@ -444,7 +444,7 @@ async function RepayTKNgetBase(acc, x) {
 
         await sleep(3100)
         await token1.approve(lend.address, _.BN2Str(500000*_.one))
-        await lend.repayDebt(x, assetC, assetD, {from:acc})
+        await lend.payBack(x, assetC, assetD, {from:acc})
         let removedCollateral = _.getBN(input.times(mAC).div(mAD))
 
 
@@ -490,7 +490,7 @@ async function RepayTKNgetSPT2BNB(acc, x) {
 
         await sleep(3100)
         await token1.approve(lend.address, _.BN2Str(500000*_.one))
-        await lend.repayDebt(x, assetC, assetD, {from:acc})
+        await lend.payBack(x, assetC, assetD, {from:acc})
         let removedCollateral = _.getBN(input.times(mAC).div(mAD))
 
 
@@ -536,7 +536,7 @@ async function RepayTKNgetSynthBNB(acc, x) {
 
         await sleep(3100)
         await token1.approve(lend.address, _.BN2Str(500000*_.one))
-        await lend.repayDebt(x, assetC, assetD, {from:acc})
+        await lend.payBack(x, assetC, assetD, {from:acc})
         let removedCollateral = _.getBN(input.times(mAC).div(mAD))
 
 
