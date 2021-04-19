@@ -28,6 +28,7 @@ interface iBOND {
     function changeBondingPeriod(uint) external returns (bool);
     function depositInit(address, uint, address) external;
 }
+
 interface iLEND {
     
 }
@@ -210,11 +211,6 @@ contract Dao {
         uint secondsSinceClaim = block.timestamp - mapMember_lastTime[member]; // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
         uint reward = (share * secondsSinceClaim) / secondsPerEra;    // Get owed amount, based on per-day rates
-        uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE));
-        uint daoReward = (reserve * daoClaim) / 10000 ;
-        if(reward >= daoReward) {
-            reward = daoReward; // Send full reserve if the last person
-        }
         return reward;
     }
 

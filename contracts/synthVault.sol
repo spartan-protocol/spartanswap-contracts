@@ -7,11 +7,15 @@ interface iSYNTHFACTORY {
 }
 interface iDAO {
     function ROUTER() external view returns(address);
+    function RESERVE() external view returns(address);
     function UTILS() external view returns(address);
     function DAO() external view returns (address);
     function LEND() external view returns (address);
     function POOLFACTORY() external view returns (address);
     function SYNTHFACTORY() external view returns (address);
+}
+interface iRESERVE {
+    function grantFunds(uint, address) external returns(bool); 
 }
 interface iBASE {
     function DAO() external view returns (iDAO);
@@ -36,6 +40,9 @@ interface iSYNTH {
     function redeemSynth(uint) external returns(uint);
     function transferTo(address, uint256 ) external payable returns(bool);
 }
+interface iROUTER {
+    function swapBaseToSynthFM(uint, address, address) external returns (uint );
+}
 
 
 contract SynthVault { 
@@ -45,10 +52,25 @@ contract SynthVault {
     uint public minimumDepositTime;
     uint public totalWeight;
     uint public totalRewards;
+    uint public erasToEarn;
+    uint public blockDelay;
+    uint256 public synthClaim;
+
     
+ // Only DAO can execute
+    modifier onlyDAO() {
+        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "Must be DAO");
+        _; 
+    }
+
+
     constructor (address _base) public {
         BASE = _base;
         DEPLOYER = msg.sender; 
+        erasToEarn = 30;
+        minimumDepositTime = 1;
+        blockDelay = 0;
+        synthClaim = 1000;
     }
 
     function _DAO() internal view returns(iDAO) {
@@ -66,12 +88,20 @@ contract SynthVault {
     event MemberWithdraws(address indexed token, address indexed member, uint amount, uint weight, uint totalWeight);
     event MemberHarvests(address indexed token, address indexed member, uint amount, uint weight, uint totalWeight);
 
+   function setParams(uint one, uint two, uint three, uint four) external onlyDAO {
+        erasToEarn = one;
+        minimumDepositTime = two;
+        blockDelay = three;
+        synthClaim = four;
+    }
+
    //======================================DEPOSITS========================================//
 
     // Holders to deposit for Interest Payments
     function deposit(address token, uint amount) external {
         depositForMember(token, msg.sender, amount);
     }
+    
 
     function depositForMember(address token, address member, uint amount) public {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(token), "!synth");
@@ -97,8 +127,9 @@ contract SynthVault {
         mapMemberToken_reward[_member][token] += reward;
         totalRewards += reward;
         uint _weight = iUTILS(_DAO().UTILS()).calcSwapValueInBase(iSYNTH(token).LayerONE(), reward);
-        mapMember_weight[_member] += _weight;
-        totalWeight += _weight;
+        iRESERVE(_DAO().RESERVE()).grantFunds(reward, address(this));
+        iBEP20(BASE).approve(address(_DAO().ROUTER()),reward);
+        iROUTER(_DAO().ROUTER()).swapBaseToSynthFM(reward,iSYNTH(token).LayerONE(), _member);
         emit MemberHarvests(token, _member, reward, _weight, totalWeight);
         return reward;
     }
@@ -107,17 +138,14 @@ contract SynthVault {
         uint _secondsSinceClaim = block.timestamp - mapMemberToken_lastTime[member][token];        // Get time since last claim
         uint _share = calcReward(member);                                              // Get share of rewards for member
         reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra();   // Get owed amount, based on per-day rates
-        // uint _reserve = reserveUSDV();
-        // if(reward >= _reserve) {
-        //     reward = _reserve;                                                         // Send full reserve if the last
-        // }
         return reward;
     }
 
     function calcReward(address member) public view returns(uint) {
         uint _weight = mapMember_weight[member];
-    //     uint _reserve = reserveUSDV() / erasToEarn;                               // Deplete reserve over a number of eras
-    //     return iUTILS(UTILS()).calcShare(_weight, totalWeight, _reserve);         // Get member's share of that
+        uint _reserve = reserveBASE() / erasToEarn;  
+        uint _daoReward = (_reserve * synthClaim) / 10000;                             // Deplete reserve over a number of eras
+        return iUTILS(_DAO().UTILS()).calcShare(_weight, totalWeight, _daoReward);         // Get member's share of that
      }
 
     //============================== ASSETS ================================//
@@ -130,9 +158,9 @@ contract SynthVault {
     }
 
     //================================ HELPERS ===============================//
-    // function reserveBASE() public view returns(uint) {
-    //     return iBEP20(BASE).balanceOf(address(this)) - mapToken_totalFunds[address(this)] - totalRewards; // Balance - deposits - rewards
-    // }
+    function reserveBASE() public view returns(uint) {
+        return iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Balance - deposits - rewards
+    }
 
 
 
