@@ -31,6 +31,9 @@ interface iBOND {
 interface iLEND {
     
 }
+interface iRESERVE {
+    function grantFunds(uint, address) external returns(bool); 
+}
 
 
 
@@ -73,13 +76,14 @@ contract Dao {
     bool public mStatus;
     address public DAO;
 
-    iROUTER private _ROUTER;
-    iUTILS private _UTILS;
-    iLEND private _LEND;
-    iBOND private _BOND;
-    iDAOVAULT private _DAOVAULT;
-    iPOOLFACTORY private _POOLFACTORY;
-    iSYNTHFACTORY private _SYNTHFACTORY;
+    iROUTER public _ROUTER;
+    iUTILS public _UTILS;
+    iLEND public _LEND;
+    iBOND public _BOND;
+    iDAOVAULT public _DAOVAULT;
+    iPOOLFACTORY public _POOLFACTORY;
+    iSYNTHFACTORY public _SYNTHFACTORY;
+    iRESERVE public _RESERVE;
 
     address[] public arrayMembers;
     
@@ -125,7 +129,7 @@ contract Dao {
         mStatus =false;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
-    function setGenesisAddresses(address _router, address _utils, address _lend, address _bond, address _daoVault, address _poolFactory,address _synthFactory ) public onlyDAO {
+    function setGenesisAddresses(address _router, address _utils, address _lend, address _bond, address _daoVault, address _poolFactory,address _synthFactory, address _reserve ) public onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
         _LEND = iLEND(_lend);
@@ -133,6 +137,7 @@ contract Dao {
         _DAOVAULT = iDAOVAULT(_daoVault);
         _POOLFACTORY = iPOOLFACTORY(_poolFactory);
         _SYNTHFACTORY = iSYNTHFACTORY(_synthFactory);
+        _RESERVE = iRESERVE(_reserve);
     }
 
     function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) public onlyDAO {
@@ -197,16 +202,16 @@ contract Dao {
     function harvest() public {
         uint reward = calcCurrentReward(msg.sender);
         mapMember_lastTime[msg.sender] = block.timestamp;
-        _ROUTER.grantFunds(reward, msg.sender);
+        _RESERVE.grantFunds(reward, msg.sender);
     }
 
     function calcCurrentReward(address member) public returns(uint){
         require(isMember[member], "!member");
-        uint secondsSinceClaim = block.timestamp-mapMember_lastTime[member]; // Get time since last claim
+        uint secondsSinceClaim = block.timestamp - mapMember_lastTime[member]; // Get time since last claim
         uint share = calcReward(member);    // get share of rewards for member
-        uint reward = share*(secondsSinceClaim)/(secondsPerEra);    // Get owed amount, based on per-day rates
-        uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER));
-        uint daoReward = reserve*(daoClaim)/(10000);
+        uint reward = (share * secondsSinceClaim) / secondsPerEra;    // Get owed amount, based on per-day rates
+        uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE));
+        uint daoReward = (reserve * daoClaim) / 10000 ;
         if(reward >= daoReward) {
             reward = daoReward; // Send full reserve if the last person
         }
@@ -216,8 +221,8 @@ contract Dao {
     function calcReward(address member) public returns(uint){
         uint weight = _DAOVAULT.mapMember_weight(member);
         uint _totalWeight = _DAOVAULT.totalWeight();
-        uint reserve = iBEP20(BASE).balanceOf(address(_ROUTER))/(erasToEarn); // Aim to deplete reserve over a number of days
-        uint daoReward = reserve*(daoClaim)/(10000);
+        uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)) / erasToEarn; // Aim to deplete reserve over a number of days
+        uint daoReward = (reserve * daoClaim) / 10000;
         return _UTILS.calcShare(weight, _totalWeight, daoReward); // Get member's share of that
     }
     //============================== CREATE PROPOSALS ================================//
@@ -429,7 +434,7 @@ contract Dao {
     }
     function grantFunds(uint _proposalID) internal {
         GrantDetails memory _grant = mapPID_grant[_proposalID];
-        _ROUTER.grantFunds(_grant.amount, _grant.recipient);
+        _RESERVE.grantFunds(_grant.amount, _grant.recipient);
         completeProposal(_proposalID);
     }
     function _increaseSpartaAllocation(uint _proposalID) internal {
@@ -575,6 +580,13 @@ contract Dao {
             return Dao(DAO).SYNTHFACTORY();
         } else {
             return _SYNTHFACTORY;
+        }
+    }
+    function RESERVE() public view returns(iRESERVE){
+        if(daoHasMoved){
+            return Dao(DAO).RESERVE();
+        } else {
+            return _RESERVE;
         }
     }
     

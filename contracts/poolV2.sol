@@ -10,6 +10,7 @@ interface iDAO {
     function MSTATUS() external view returns(bool);
     function DAO() external view returns (address);
     function POOLFACTORY() external view returns(address);
+    function RESERVE() external returns(address);
     function SYNTHFACTORY() external view returns(address);
 }
 interface iNDAO {

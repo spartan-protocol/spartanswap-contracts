@@ -10,6 +10,7 @@ var BASE = artifacts.require("./BaseMinted.sol");
 var DAO = artifacts.require("./Dao.sol");
 var DAOV1 = artifacts.require("./DaoM.sol");
 var ROUTER = artifacts.require("./Router.sol");
+var RESERVE = artifacts.require("./Reserve.sol");
 var ROUTERV1 = artifacts.require("./RouterM.sol");
 var POOL = artifacts.require("./Pool.sol");
 var POOLv1 = artifacts.require("./PoolM.sol");
@@ -126,12 +127,17 @@ function constructor(accounts) {
         daoVault = await DAOVAULT.new(base.address, Dao.address);
         bondVault = await BONDVault.new(base.address, Dao.address)  //deploy new bond
         bond = await BOND.new(base.address, wbnb.address, Dao.address, bondVault.address);
+        SPReserve = await RESERVE.new(base.address) // deploy base 
        
         poolFactory = await POOLFACTORY.new(base.address,  wbnb.address, Dao.address) 
         synthFactory = await SYNTHFACTORY.new(base.address,  wbnb.address, Dao.address) 
         upgrade = await UPGR.new(base.address, routerv1.address, bondv3.address, Dao.address) // deploy wBNB
-        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address);
+        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address, SPReserve.address);
         // Dao2 = await DAO.new(base.address)     // deploy daoV3
+
+        await SPReserve.setIncentiveAddresses(router.address, utils.address,utils.address);
+        await SPReserve.start();
+    
        
        // await base.changeDAO(Dao.address)  
        let supply = await token1.totalSupply()
@@ -142,7 +148,7 @@ function constructor(accounts) {
         await base.approve(routerv1.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(routerv1.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(routerv1.address, _.BN2Str(500000 * _.one), { from: acc2 })
-        await base.transfer(router.address, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(SPReserve.address, _.getBN(_.BN2Str(100000 * _.one)))
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })

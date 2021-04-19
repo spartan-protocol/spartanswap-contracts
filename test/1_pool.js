@@ -9,6 +9,7 @@ const help = require('./helper.js');
 var BASE = artifacts.require("./BaseMinted.sol");
 var DAO = artifacts.require("./Dao.sol");
 var ROUTER = artifacts.require("./Router.sol");
+var RESERVE = artifacts.require("./Reserve.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var POOLFACTORY = artifacts.require("./poolFactory.sol");
@@ -43,20 +44,19 @@ function constructor(accounts) {
     it("constructor events", async () => {
         //SPARTANPROTOCOLv2
         base = await BASE.new() // deploy base
+        reserve = await RESERVE.new(base.address) // deploy base
         wbnb = await WBNB.new() // deploy wBNB
         Dao = await DAO.new(base.address)     // deploy daoV2
         router = await ROUTER.new(base.address, wbnb.address, Dao.address) //deploy router
         utils = await UTILS.new(base.address, router.address, Dao.address) // deploy utilsV2
         poolFactory = await POOLFACTORY.new(base.address,  wbnb.address, Dao.address) 
         token1 = await TOKEN.new()     
-        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, utils.address, utils.address,poolFactory.address, utils.address);
-    
-       
+        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, utils.address, utils.address,poolFactory.address, utils.address, reserve.address);
     
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
-        await base.transfer(router.address, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(reserve.address, _.getBN(_.BN2Str(100000 * _.one)))
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })

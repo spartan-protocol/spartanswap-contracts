@@ -15,8 +15,19 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "burnSynth",
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "mintSynth",
       "outputs": [
         {
           "internalType": "uint256",
@@ -30,12 +41,12 @@
     {
       "inputs": [
         {
-          "internalType": "address",
+          "internalType": "uint256",
           "name": "",
-          "type": "address"
+          "type": "uint256"
         }
       ],
-      "name": "mintSynth",
+      "name": "redeemSynth",
       "outputs": [
         {
           "internalType": "uint256",
@@ -67,7 +78,7 @@
           "type": "bool"
         }
       ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "payable",
       "type": "function"
     }
   ],

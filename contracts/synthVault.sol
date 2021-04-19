@@ -1,27 +1,141 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "./synth.sol";  
+import "./iBEP20.sol";
+interface iSYNTHFACTORY {
+    function isSynth(address) external view returns(bool);
+}
+interface iDAO {
+    function ROUTER() external view returns(address);
+    function UTILS() external view returns(address);
+    function DAO() external view returns (address);
+    function LEND() external view returns (address);
+    function POOLFACTORY() external view returns (address);
+    function SYNTHFACTORY() external view returns (address);
+}
+interface iBASE {
+    function DAO() external view returns (iDAO);
+    function transferTo(address, uint256 ) external payable returns(bool);
+    function secondsPerEra() external view returns (uint256);
+}
+interface iUTILS {
+    function calcSwapValueInBaseWithPool(address, uint) external view returns (uint );
+    function calcAsymmetricValueToken(address, uint) external pure returns (uint );
+    function calcAsymmetricValueBase(address, uint ) external view returns(uint );
+    function calcShare(uint ,uint , uint  ) external view returns (uint );
+    function calcSwapValueInBaseWithSYNTH(address , uint ) external view returns (uint );
+    function calcSpotValueInBase(address , uint ) external view returns (uint );
+    function allCuratedPools() external view returns (address [] memory);
+    function calcSwapValueInToken(address, uint) external view returns(uint);
+    function calcSwapValueInBase(address, uint) external view returns(uint);
+    function calcLiquidityUnitsAsym(uint , address ) external view returns (uint); 
+}
+interface iSYNTH {
+    function LayerONE() external view returns(address);
+    function mintSynth(address, address) external returns (uint);
+    function redeemSynth(uint) external returns(uint);
+    function transferTo(address, uint256 ) external payable returns(bool);
+}
+
 
 contract SynthVault { 
     address public BASE;
     address public DEPLOYER;
-    address public NDAO;
 
-    constructor (address _base, address _newDAO) public {
+    uint public minimumDepositTime;
+    uint public totalWeight;
+    uint public totalRewards;
+    
+    constructor (address _base) public {
         BASE = _base;
-        NDAO = _newDAO;
         DEPLOYER = msg.sender; 
     }
 
     function _DAO() internal view returns(iDAO) {
-        bool status = iDAO(NDAO).MSTATUS();
-        if(status == true){
-         return iBASE(BASE).DAO();
+        return iBASE(BASE).DAO();
+    }
+    mapping(address => uint) private mapToken_totalFunds;
+    mapping(address => uint) private mapMember_weight;
+    mapping(address => mapping(address => uint)) private mapMemberToken_deposit;
+    mapping(address => mapping(address => uint)) private mapMemberToken_reward;
+    mapping(address => mapping(address => uint)) private mapMemberToken_lastTime;
+    mapping(address => uint) public lastBlock;
+
+    // Events
+    event MemberDeposits(address indexed token, address indexed member, uint newDeposit, uint totalDeposit, uint weight, uint totalWeight);
+    event MemberWithdraws(address indexed token, address indexed member, uint amount, uint weight, uint totalWeight);
+    event MemberHarvests(address indexed token, address indexed member, uint amount, uint weight, uint totalWeight);
+
+   //======================================DEPOSITS========================================//
+
+    // Holders to deposit for Interest Payments
+    function deposit(address token, uint amount) external {
+        depositForMember(token, msg.sender, amount);
+    }
+
+    function depositForMember(address token, address member, uint amount) public {
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(token), "!synth");
+         getFunds(token, amount);
+        _deposit(token, member, amount);
+    }
+    function _deposit(address _token, address _member, uint _amount) internal {
+        mapMemberToken_lastTime[_member][_token] = block.timestamp;
+        mapMemberToken_deposit[_member][_token] += _amount; // Record balance for member
+        uint _weight = iUTILS(_DAO().UTILS()).calcSwapValueInBase(iSYNTH(_token).LayerONE(), _amount);
+        mapToken_totalFunds[_token] += _amount;
+        mapMember_weight[_member] += _weight;
+        totalWeight += _weight;
+        emit MemberDeposits(_token, _member, _amount, mapToken_totalFunds[_token], _weight, totalWeight);
+    }
+
+     //====================================== HARVEST ========================================//
+
+    function harvest(address token) external returns(uint reward) {
+        address _member = msg.sender;
+        reward = calcCurrentReward(token, _member);
+        mapMemberToken_lastTime[_member][token] = block.timestamp;
+        mapMemberToken_reward[_member][token] += reward;
+        totalRewards += reward;
+        uint _weight = iUTILS(_DAO().UTILS()).calcSwapValueInBase(iSYNTH(token).LayerONE(), reward);
+        mapMember_weight[_member] += _weight;
+        totalWeight += _weight;
+        emit MemberHarvests(token, _member, reward, _weight, totalWeight);
+        return reward;
+    }
+
+    function calcCurrentReward(address token, address member) public view returns(uint reward) {
+        uint _secondsSinceClaim = block.timestamp - mapMemberToken_lastTime[member][token];        // Get time since last claim
+        uint _share = calcReward(member);                                              // Get share of rewards for member
+        reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra();   // Get owed amount, based on per-day rates
+        // uint _reserve = reserveUSDV();
+        // if(reward >= _reserve) {
+        //     reward = _reserve;                                                         // Send full reserve if the last
+        // }
+        return reward;
+    }
+
+    function calcReward(address member) public view returns(uint) {
+        uint _weight = mapMember_weight[member];
+    //     uint _reserve = reserveUSDV() / erasToEarn;                               // Deplete reserve over a number of eras
+    //     return iUTILS(UTILS()).calcShare(_weight, totalWeight, _reserve);         // Get member's share of that
+     }
+
+    //============================== ASSETS ================================//
+    function getFunds(address _token, uint _amount) internal {
+        if(tx.origin==msg.sender){
+                require(iSYNTH(_token).transferTo(address(this), _amount));
         }else{
-          return iNDAO(NDAO).DAO();
+                require(iBEP20(_token).transferFrom(msg.sender, address(this), _amount));
         }
     }
+
+    //================================ HELPERS ===============================//
+    // function reserveBASE() public view returns(uint) {
+    //     return iBEP20(BASE).balanceOf(address(this)) - mapToken_totalFunds[address(this)] - totalRewards; // Balance - deposits - rewards
+    // }
+
+
+
 
    // deposit synths external
    // harvest rewards external

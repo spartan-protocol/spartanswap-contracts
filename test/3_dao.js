@@ -9,6 +9,7 @@ const help = require('./helper.js');
 var BASE = artifacts.require("./BaseMinted.sol");
 var BOND = artifacts.require("./Bond.sol");
 var DAO = artifacts.require("./Dao.sol");
+var RESERVE = artifacts.require("./Reserve.sol");
 var BONDVault = artifacts.require("./BondVault.sol");
 var ROUTER = artifacts.require("./Router.sol");
 var POOL = artifacts.require("./Pool.sol");
@@ -72,6 +73,7 @@ function constructor(accounts) {
         //SPARTANPROTOCOLv2
         base = await BASE.new() // deploy base
         wbnb = await WBNB.new() // deploy wBNB
+        SPReserve = await RESERVE.new(base.address) // deploy base
         Dao = await DAO.new(base.address)     // deploy daoV2
         router = await ROUTER.new(base.address, wbnb.address, Dao.address) //deploy router
         utils = await UTILS.new(base.address, router.address, Dao.address) // deploy utilsV2
@@ -82,15 +84,19 @@ function constructor(accounts) {
          //deploy new bond 
         daoVault = await DAOVAULT.new(base.address, Dao.address);
         await base.listAsset(bond.address, _.BN2Str(allocation* _.one),_.BN2Str(18*_.one) ) // list bond
-        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, utils.address);
+        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, utils.address, SPReserve.address);
         let migration = true;
         await base.changeDAO(Dao.address)
+
         await Dao._MSTATUS(migration);
+
+        await SPReserve.setIncentiveAddresses(router.address, utils.address,utils.address);
+        await SPReserve.start();
     
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
-        await base.transfer(router.address, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(SPReserve.address, _.getBN(_.BN2Str(100000 * _.one)))
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
@@ -481,11 +487,11 @@ async function harvest() {
     })
     it("It should harvest acc0", async () => {
         let balBefore = _.getBN(await base.balanceOf(acc0))
-       //console.log(_.BN2Str(balBefore)/_.one);
+       console.log(_.BN2Str(balBefore)/_.one);
         await sleep(6300)
         await Dao.harvest({from:acc0});
         let balAfter = _.getBN(await base.balanceOf(acc0))
-       // console.log(_.BN2Str(balAfter)/_.one);
+        console.log(_.BN2Str(balAfter)/_.one);
     })
     it("It should harvest acc1", async () => {
         let balBefore = _.getBN(await base.balanceOf(acc1))
