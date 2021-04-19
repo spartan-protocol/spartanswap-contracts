@@ -27,12 +27,7 @@ contract PoolFactory {
         require(msg.sender == DEPLOYER || msg.sender == _DAO().ROUTER() || msg.sender == _DAO().DAO());
         _;
     }
-    modifier onlyDEPLOYER() {
-        require(msg.sender == DEPLOYER );
-        _;
-    }
-
-    constructor (address _base, address _wbnb, address _newDAO) public payable {
+    constructor (address _base, address _wbnb, address _newDAO) public {
         BASE = _base;
         WBNB = _wbnb;
         NDAO = _newDAO;
@@ -48,11 +43,7 @@ contract PoolFactory {
           return iNDAO(NDAO).DAO();
         }
     }
-
-    function purgeDeployer() public onlyDAO {
-        DEPLOYER = address(0);
-    }
-    function createPool(address token) public onlyDAO payable returns(address pool){
+    function createPool(address token) external onlyDAO returns(address pool){
         require(getPool(token) == address(0));
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
@@ -64,7 +55,7 @@ contract PoolFactory {
         return pool;
     }
 
-    function migratePOOLData(address payable oldPoolFactory) public onlyDAO {
+    function migratePOOLData(address oldPoolFactory) external onlyDAO {
          uint256 tknCount = PoolFactory(oldPoolFactory).tokenCount();
          for(uint256 i = 0; i<tknCount; i++){
             address _token = PoolFactory(oldPoolFactory).getToken(i);
@@ -92,7 +83,7 @@ contract PoolFactory {
             }
         }
     }
-    function challengLowestCuratedPool(address token) public onlyDAO {
+    function challengLowestCuratedPool(address token) external onlyDAO {
          address _pool = getPool(token);
          require(isListedPool[_pool] == true);
          sortCuratedPoolsByDepth();
@@ -108,7 +99,7 @@ contract PoolFactory {
         }
     }
 
-    function addCuratedPool(address token) public onlyDAO {
+    function addCuratedPool(address token) external onlyDAO {
         require(token != BASE);
         address _pool = getPool(token);
         require(isListedPool[_pool] == true);
@@ -116,7 +107,7 @@ contract PoolFactory {
         curatedPools.push(_pool);
         emit AddCuratePool(_pool, isCuratedPool[_pool]);
     }
-    function removeCuratedPool(address token) public onlyDAO {
+    function removeCuratedPool(address token) external onlyDAO {
         require(token != BASE);
         address _pool = getPool(token);
         require(isCuratedPool[_pool] == true);
@@ -132,19 +123,11 @@ contract PoolFactory {
         isListedPool[pool] = true;
     }
 
-    function isPool(address pool) public view returns (bool){
+    function isPool(address pool) external view returns (bool){
         if(isListedPool[pool] == true){
             return true;
         }
         return  false;
-    }
-
-    function destroyMe() public onlyDEPLOYER {
-         selfdestruct(payable(msg.sender));
-    }
-
-     function destroyPool(address pool) public onlyDAO {
-         Pool(pool).destroyMe();  
     }
 
     //======================================HELPERS========================================//
@@ -157,22 +140,22 @@ contract PoolFactory {
         } 
         return pool;
     }
-    function poolCount() public view returns(uint256){
+    function poolCount() external view returns(uint256){
         return arrayPools.length;
     }
-    function tokenCount() public view returns(uint256){
+    function tokenCount() external view returns(uint256){
         return arrayTokens.length;
     }
-    function getToken(uint256 i) public view returns(address){
+    function getToken(uint256 i) external view returns(address){
         return arrayTokens[i];
     }
-    function getPoolArray(uint256 i) public view returns(address){
+    function getPoolArray(uint256 i) external view returns(address){
         return arrayPools[i];
     }
-    function getCuratedPool(uint256 i) public view returns(address){
+    function getCuratedPool(uint256 i) external view returns(address){
         return curatedPools[i];
     }
-    function getCuratedPoolsLength() public view returns(uint256){
+    function getCuratedPoolsLength() external view returns(uint256){
         return curatedPools.length;
     }
    

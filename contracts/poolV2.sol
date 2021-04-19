@@ -45,8 +45,8 @@ interface iSYNTHROUTER {
 interface iSYNTH {
     function LayerONE() external view returns(address);
     function mintSynth(address) external returns (uint);
-    function redeemSynth() external returns(uint);
-    function transferTo(address, uint256 ) external payable returns(bool);
+    function burnSynth() external returns(uint);
+    function transferTo(address, uint256 ) external returns(bool);
 }
 
 
@@ -244,7 +244,7 @@ contract Pool is iBEP20 {
         return (outputAmount, fee);
     }
 
-    function swapSynthOUT(address synthOut, address member) public onlyRouter returns(uint outputAmount, uint fee) {
+    function mintSynths(address synthOut, address member) public onlyRouter returns(uint outputAmount, uint fee) {
       uint256 _actualInputBase = _getAddedBaseAmount();
       uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); 
       _incrementPoolBalances(_actualInputBase, 0);
@@ -257,12 +257,12 @@ contract Pool is iBEP20 {
       return (outputAmount, fee);
     }
 
-    function swapSynthIN(address synthIN, address member) public onlyRouter returns(uint outputAmount, uint fee) {
+    function burnSynths(address synthIN, address member) public onlyRouter returns(uint outputAmount, uint fee) {
       uint _inputSynth = iBEP20(synthIN).balanceOf(address(this));
       uint _baseOutput = iUTILS(_DAO().UTILS()).calcSwapValueInBase(TOKEN, _inputSynth);//get swapValue from synths input
       fee = iUTILS(_DAO().UTILS()).calcSwapFee(_inputSynth, tokenAmount, baseAmount);
       iBEP20(synthIN).transfer(synthIN, _inputSynth);
-      iSYNTH(synthIN).redeemSynth(); //redeem Synth
+      iSYNTH(synthIN).burnSynth(); //redeem Synth
       _decrementPoolBalances(_baseOutput, 0);
       iBEP20(BASE).transfer(member, _baseOutput);
       _addPoolMetrics(fee);
@@ -311,9 +311,6 @@ contract Pool is iBEP20 {
         return (_y, _fee);
     }
 
-     function destroyMe() public onlyDAO {
-        selfdestruct(payable(msg.sender));
-    } 
     // Increment internal balances
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount += _baseAmount;

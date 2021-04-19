@@ -108,7 +108,7 @@ contract Synth is iBEP20 {
         emit Transfer(address(0), account, amount);
     }
     // Burn supply
-    function burn(uint256 amount) public virtual {
+    function burn(uint256 amount) external virtual {
         _burn(msg.sender, amount);
     }
     function burnFrom(address from, uint256 value) public virtual override {
@@ -122,13 +122,12 @@ contract Synth is iBEP20 {
         emit Transfer(account, address(0), amount);
     }
     // TransferTo function
-    function transferTo(address recipient, uint256 amount) public returns (bool) {
+    function transferTo(address recipient, uint256 amount) external returns (bool) {
                 _transfer(tx.origin, recipient, amount);
         return true;
     }
 
-     function mintSynth(address member) public returns (uint syntheticAmount){
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, '!POOL');
+     function mintSynth(address member) external onlyPool returns (uint syntheticAmount){
         uint lpUnits = _getAddedLPAmount(msg.sender);
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
         mapAddress_LPDebt[msg.sender] += tokenValue;
@@ -137,14 +136,15 @@ contract Synth is iBEP20 {
         return tokenValue;
     }
     
-    function redeemSynth() public returns (bool){
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, '!POOL');
-        uint _syntheticAmount = balanceOf(address(this));
-         uint _amountUnits = (_syntheticAmount*(mapAddress_LPBalance[msg.sender]))/(mapAddress_LPDebt[msg.sender]);// share = amount * part/total
+    function burnSynth() external returns (bool){
+         uint _syntheticAmount = balanceOf(address(this));
+         uint _amountUnits = (_syntheticAmount*mapAddress_LPBalance[msg.sender])/mapAddress_LPDebt[msg.sender];// share = amount * part/total
          mapAddress_LPBalance[msg.sender] -= _amountUnits;
          mapAddress_LPDebt[msg.sender] -= _syntheticAmount;
+         if(_amountUnits > 0){
          _burn(address(this), _syntheticAmount); 
          Pool(msg.sender).burn(_amountUnits);
+         }
         return true;
     }
 
@@ -166,13 +166,13 @@ contract Synth is iBEP20 {
         return _actual;
     }
 
-    function getmapAddress_LPBalance(address pool) public returns (uint){
+    function getmapAddress_LPBalance(address pool) external returns (uint){
         return mapAddress_LPBalance[pool];
     }
-    function getmapAddress_LPDebt(address pool) public returns (uint){
+    function getmapAddress_LPDebt(address pool) external returns (uint){
         return mapAddress_LPDebt[pool];
     }
-    function destroyMe() public onlyDAO {
+    function destroyMe() external onlyDAO {
         selfdestruct(payable(msg.sender));
     } 
 

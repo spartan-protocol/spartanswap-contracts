@@ -81,7 +81,7 @@ function _DAO() internal view returns(iDAO) {
         }
     }
 
-      function migrateMemberDetails(address member, address asset, address oldBond) public onlyDAO returns (bool){
+    function migrateMemberDetails(address member, address asset, address oldBond) public onlyDAO returns (bool){
         MemberDetails memory memberDetails = BondVault(oldBond).getMemberDetails(member, asset);
         mapAddress_listedAssets[asset].isMember[member] = memberDetails.isMember;
         mapAddress_listedAssets[asset].bondedLP[member] = memberDetails.bondedLP;

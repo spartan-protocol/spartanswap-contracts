@@ -161,7 +161,6 @@ contract Router {
         
         return (outputAmount, fee);
     }
-
     //==================================================================================//
     // Swapping Functions
     function buyTo(uint amount, address token, address member) public returns (uint outputAmount, uint fee) {
@@ -246,12 +245,8 @@ contract Router {
          require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOUT) == true, "!synth");
          address _synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
          address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthOUTLayer1);
-         if(tx.origin == member){
-         iBASE(BASE).transferTo(_poolOUT, inputAmount); //RPTAF
-         }else{
-          iBEP20(BASE).transferFrom(member, _poolOUT, inputAmount); 
-         }
-         (uint outputSynth, uint fee) = Pool(_poolOUT).swapSynthOUT(synthOUT, member); 
+         _transferINSafe(member, _poolOUT, BASE, inputAmount);
+         (uint outputSynth, uint fee) = Pool(_poolOUT).mintSynths(synthOUT, member); 
          getsDividend( _poolOUT,  _synthOUTLayer1,  fee);
          return outputSynth;
     }
@@ -262,16 +257,20 @@ contract Router {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
         address _synthINLayer1 = iSYNTH(synthIN).LayerONE();
         address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthINLayer1);
-        if(tx.origin == member){
-            iSYNTH(synthIN).transferTo(_poolIN, inputAmount); //RPTAF
-        }else{
-            iBEP20(synthIN).transferFrom(member, _poolIN, inputAmount); 
-        }
-        (uint outputBase, uint fee) = Pool(_poolIN).swapSynthIN(synthIN, member); 
+        _transferINSafe(member, _poolIN, synthIN, inputAmount);
+        (uint outputBase, uint fee) = Pool(_poolIN).burnSynths(synthIN, member); 
         getsDividend(_poolIN, _synthINLayer1, fee);
         return outputBase;
     }
     
+    function _transferINSafe(address _from, address _to, address _token, uint _amount) internal {
+        if(tx.origin == _from){
+            iSYNTH(_token).transferTo(_to, _amount); //RPTAF
+        }else{
+            iBEP20(_token).transferFrom(_from, _to, _amount); 
+        }
+    }
+
     //==================================================================================//
     //Token Dividends / Curated Pools
     function addDividend(address _token, uint256 _fees) internal {
@@ -323,6 +322,7 @@ contract Router {
         }
         
     }
+    
     //=================================onlyDAO=====================================//
     function changeArrayFeeSize(uint _size) public onlyDAO {
         arrayFeeSize = _size;
@@ -347,10 +347,10 @@ contract Router {
          selfdestruct(payable(msg.sender));
     }
     //==================================Helpers=================================//
-    function currentPoolRevenue(address pool) public returns(uint256) {
+    function currentPoolRevenue(address pool) external returns(uint256) {
       return mapAddress_30DayDividends[pool];
     }
-    function pastPoolRevenue(address pool) public returns(uint256) {
+    function pastPoolRevenue(address pool) external returns(uint256) {
       return mapAddress_Past30DayPoolDividends[pool];
     }
 
