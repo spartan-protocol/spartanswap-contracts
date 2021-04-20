@@ -23,25 +23,22 @@ interface iBASE {
     function secondsPerEra() external view returns (uint256);
 }
 interface iUTILS {
-    function calcSwapValueInBaseWithPool(address, uint) external view returns (uint );
-    function calcAsymmetricValueToken(address, uint) external pure returns (uint );
-    function calcAsymmetricValueBase(address, uint ) external view returns(uint );
-    function calcShare(uint ,uint , uint  ) external view returns (uint );
-    function calcSwapValueInBaseWithSYNTH(address , uint ) external view returns (uint );
-    function calcSpotValueInBase(address , uint ) external view returns (uint );
-    function allCuratedPools() external view returns (address [] memory);
-    function calcSwapValueInToken(address, uint) external view returns(uint);
-    function calcSwapValueInBase(address, uint) external view returns(uint);
-    function calcLiquidityUnitsAsym(uint , address ) external view returns (uint); 
+    function calcPart(uint,uint) external view returns (uint );
+    function calcShare(uint,uint, uint) external view returns (uint );
+    function calcSwapValueInBase(address, uint) external view returns(uint); 
+    function calcSpotValueInBase(address, uint) external view returns(uint);
+    function calcSwapValueInToken(address, uint) external view returns (uint value);
 }
 interface iSYNTH {
     function LayerONE() external view returns(address);
     function mintSynth(address, address) external returns (uint);
-    function redeemSynth(uint) external returns(uint);
     function transferTo(address, uint256 ) external payable returns(bool);
 }
-interface iROUTER {
-    function swapBaseToSynthFM(uint, address, address) external returns (uint );
+interface iPOOLFACTORY {
+    function getPool(address) external view returns(address payable);
+}
+interface iPOOL {
+    function mintSynths(address, address) external returns(uint, uint);
 }
 
 
@@ -102,7 +99,6 @@ contract SynthVault {
         depositForMember(token, msg.sender, amount);
     }
     
-
     function depositForMember(address token, address member, uint amount) public {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(token), "!synth");
          getFunds(token, amount);
@@ -111,7 +107,7 @@ contract SynthVault {
     function _deposit(address _token, address _member, uint _amount) internal {
         mapMemberToken_lastTime[_member][_token] = block.timestamp;
         mapMemberToken_deposit[_member][_token] += _amount; // Record balance for member
-        uint _weight = iUTILS(_DAO().UTILS()).calcSwapValueInBase(iSYNTH(_token).LayerONE(), _amount);
+        uint _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(_token).LayerONE(), _amount);
         mapToken_totalFunds[_token] += _amount;
         mapMember_weight[_member] += _weight;
         totalWeight += _weight;
@@ -126,10 +122,9 @@ contract SynthVault {
         mapMemberToken_lastTime[_member][token] = block.timestamp;
         mapMemberToken_reward[_member][token] += reward;
         totalRewards += reward;
-        uint _weight = iUTILS(_DAO().UTILS()).calcSwapValueInBase(iSYNTH(token).LayerONE(), reward);
-        iRESERVE(_DAO().RESERVE()).grantFunds(reward, address(this));
-        iBEP20(BASE).approve(address(_DAO().ROUTER()),reward);
-        iROUTER(_DAO().ROUTER()).swapBaseToSynthFM(reward,iSYNTH(token).LayerONE(), _member);
+        uint _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(token).LayerONE(), reward);
+        mapMember_weight[_member] += _weight;
+        totalWeight += _weight;
         emit MemberHarvests(token, _member, reward, _weight, totalWeight);
         return reward;
     }
@@ -148,10 +143,37 @@ contract SynthVault {
         return iUTILS(_DAO().UTILS()).calcShare(_weight, totalWeight, _daoReward);         // Get member's share of that
      }
 
+    //====================================== WITHDRAW ========================================//
+     // Members to withdraw
+    function withdraw(address token, uint basisPoints) external returns(uint redeemedAmount) {
+        address _member = msg.sender;
+        redeemedAmount = _processWithdraw(token, _member, basisPoints);                         // get amount to withdraw
+        require(iBEP20(token).transfer(_member, redeemedAmount));
+        return redeemedAmount;
+    }
+    function _processWithdraw(address _token, address _member, uint _basisPoints) internal returns(uint _amount) {
+        require((block.timestamp - mapMemberToken_lastTime[_member][_token]) >= minimumDepositTime, "DepositTime");    // stops attacks
+        uint _reward = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberToken_reward[_member][_token]); // share of reward
+        mapMemberToken_reward[_member][_token] -= _reward;
+        totalRewards -= _reward;
+        address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token);
+        iRESERVE(_DAO().RESERVE()).grantFunds(_reward, _poolOUT);
+        iPOOL(_poolOUT).mintSynths(iSYNTH(_token).LayerONE(), address(this));
+        uint _principle = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberToken_deposit[_member][_token]); // share of deposits
+        mapMemberToken_deposit[_member][_token] -= _principle;                                   
+        mapToken_totalFunds[_token] -= _principle;
+        uint _weight = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMember_weight[_member]);
+        mapMember_weight[_member] -= _weight; 
+        totalWeight -= _weight;                                                     // reduce for total
+        emit MemberWithdraws(_token, _member, _amount, _weight, totalWeight);
+        return (_principle + _reward);
+    }
+
+
     //============================== ASSETS ================================//
     function getFunds(address _token, uint _amount) internal {
         if(tx.origin==msg.sender){
-                require(iSYNTH(_token).transferTo(address(this), _amount));
+                require(iSYNTH(_token).transferTo(address(this), _amount)); 
         }else{
                 require(iBEP20(_token).transferFrom(msg.sender, address(this), _amount));
         }
