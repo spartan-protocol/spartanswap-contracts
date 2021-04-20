@@ -45,8 +45,8 @@ contract SpartanLend {
 
     event AddCollateral(uint inputToken, address indexed Debt, uint DebtIssued);
     event RemoveCollateral(uint inputToken, address indexed Debt, uint DebtReturned);
-    event InterestPaid(address indexed Collateral, uint Interest, address indexed DebtPool);
-    event Liquidated(address indexed assetC,address indexed assetD, uint liquidationAmount);
+    event InterestPaid(address indexed Collateral, address indexed DebtPool, uint Interest);
+    event Liquidated(address indexed Collateral,address indexed DebtPool, uint liquidationAmount);
 
 
     // Only DAO can execute
@@ -140,7 +140,7 @@ contract SpartanLend {
                  _interest = _payInterest(assetC, _percentAmount, debtAssets[i]);  
                  // console.log("interest--", interest); 
                   _checkPurge(assetC, _interest,debtAssets[i]);
-                 emit InterestPaid(assetC,_interest, debtAssets[i]);    
+                 emit InterestPaid(assetC, debtAssets[i],_interest);    
              }
            }  
          }                                                                                                      
@@ -186,7 +186,7 @@ contract SpartanLend {
     function _checkPurge(address _assetC, uint _interestBase, address _assetD) internal returns (bool){
         uint baseCollateral = getBaseValue(_assetC,_assetD);
         if(baseCollateral <= _interestBase){
-            _feeReward(baseCollateral*100/10000);
+            _feeReward(baseCollateral * 100 / 10000);
             _payInterest(_assetC,mapAddress_totalCollateral[_assetC][_assetD], _assetD);//100%
             mapAddress_totalDebt[_assetC][_assetD] = 0;
             mapAddress_totalCollateral[_assetC][_assetD] = 0;
@@ -205,7 +205,7 @@ contract SpartanLend {
     }
     function _handleTransferInCol( uint256 _amount, address _assetC) internal returns(uint256 _actual, uint _baseBorrow){
         if(_amount > 0) {
-                uint collateralAdjusted = _amount*6666/10000; //150% collateral Ratio
+                uint collateralAdjusted = _amount * 6666 / 10000; //150% collateral Ratio
                 uint startBal = iBEP20(_assetC).balanceOf(address(this));
             if(_assetC == BASE){
                 _baseBorrow = collateralAdjusted;
@@ -219,7 +219,7 @@ contract SpartanLend {
             }else{
                  return (0,0);
             }
-             _actual = iBEP20(_assetC).balanceOf(address(this))-startBal;
+             _actual = iBEP20(_assetC).balanceOf(address(this)) - startBal;
         }
         return (_actual, _baseBorrow);
     }

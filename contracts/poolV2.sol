@@ -73,7 +73,7 @@ contract Pool is iBEP20 {
     uint256 [] public revenueArray;
     event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
-    event Swapped(address indexed tokenFrom, address indexed tokenTo, uint inputAmount, uint outputAmount, uint fee, address indexed recipient);
+    event Swapped(address indexed tokenFrom, address indexed tokenTo,address indexed recipient, uint inputAmount, uint outputAmount, uint fee);
 
     function _DAO() internal view returns(iDAO) {
         bool status = iDAO(NDAO).MSTATUS();
@@ -239,7 +239,7 @@ contract Pool is iBEP20 {
             _amount = _getAddedBaseAmount();
             (outputAmount, fee) = _swapBaseToToken(_amount);
         }
-        emit Swapped(_fromToken, token, _amount, outputAmount, fee, member);
+        emit Swapped(_fromToken, token,member, _amount, outputAmount, fee);
         iBEP20(token).transfer(member, outputAmount);
         sync();
         return (outputAmount, fee);

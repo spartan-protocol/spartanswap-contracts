@@ -2,6 +2,7 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./iBEP20.sol";
+import "@nomiclabs/buidler/console.sol";
 interface iSYNTHFACTORY {
     function isSynth(address) external view returns(bool);
 }
@@ -51,7 +52,7 @@ contract SynthVault {
     uint public totalRewards;
     uint public erasToEarn;
     uint public blockDelay;
-    uint256 public synthClaim;
+    uint256 public vaultClaim;
 
     
  // Only DAO can execute
@@ -67,7 +68,7 @@ contract SynthVault {
         erasToEarn = 30;
         minimumDepositTime = 1;
         blockDelay = 0;
-        synthClaim = 1000;
+        vaultClaim = 1000;
     }
 
     function _DAO() internal view returns(iDAO) {
@@ -83,13 +84,13 @@ contract SynthVault {
     // Events
     event MemberDeposits(address indexed token, address indexed member, uint newDeposit, uint totalDeposit, uint weight, uint totalWeight);
     event MemberWithdraws(address indexed token, address indexed member, uint amount, uint weight, uint totalWeight);
-    event MemberHarvests(address indexed token, address indexed member, uint amount, uint weight, uint totalWeight);
+    event MemberHarvests(address indexed token, address indexed member, uint amount);
 
    function setParams(uint one, uint two, uint three, uint four) external onlyDAO {
         erasToEarn = one;
         minimumDepositTime = two;
         blockDelay = three;
-        synthClaim = four;
+        vaultClaim = four;
     }
 
    //======================================DEPOSITS========================================//
@@ -119,28 +120,30 @@ contract SynthVault {
     function harvest(address token) external returns(uint reward) {
         address _member = msg.sender;
         reward = calcCurrentReward(token, _member);
+        console.log(reward);
         mapMemberToken_lastTime[_member][token] = block.timestamp;
         mapMemberToken_reward[_member][token] += reward;
         totalRewards += reward;
-        uint _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(token).LayerONE(), reward);
-        mapMember_weight[_member] += _weight;
-        totalWeight += _weight;
-        emit MemberHarvests(token, _member, reward, _weight, totalWeight);
+        emit MemberHarvests(token, _member, reward);
         return reward;
     }
 
     function calcCurrentReward(address token, address member) public view returns(uint reward) {
         uint _secondsSinceClaim = block.timestamp - mapMemberToken_lastTime[member][token];        // Get time since last claim
-        uint _share = calcReward(member);                                              // Get share of rewards for member
-        reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra();   // Get owed amount, based on per-day rates
+        console.log("_secondsSinceClaim ", _secondsSinceClaim);
+        uint _share = calcReward(member);  
+        console.log("_share ",_share);  
+        console.log("_totalWeight ",totalWeight);  
+                                                        // Get share of rewards for member
+        reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra();  
         return reward;
     }
 
     function calcReward(address member) public view returns(uint) {
         uint _weight = mapMember_weight[member];
-        uint _reserve = reserveBASE() / erasToEarn;  
-        uint _daoReward = (_reserve * synthClaim) / 10000;                             // Deplete reserve over a number of eras
-        return iUTILS(_DAO().UTILS()).calcShare(_weight, totalWeight, _daoReward);         // Get member's share of that
+        uint _reserve = reserveBASE()/erasToEarn;  
+        uint _vaultReward = (_reserve * vaultClaim) / 10000;                   
+        return iUTILS(_DAO().UTILS()).calcShare(_weight, totalWeight, _vaultReward);         // Get member's share of that
      }
 
     //====================================== WITHDRAW ========================================//
@@ -181,7 +184,22 @@ contract SynthVault {
 
     //================================ HELPERS ===============================//
     function reserveBASE() public view returns(uint) {
-        return iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Balance - deposits - rewards
+        return iBEP20(BASE).balanceOf(_DAO().RESERVE()); 
+    }
+    function getTokenDeposits(address token) external view returns(uint) {
+        return mapToken_totalFunds[token];
+    }
+    function getMemberDeposit(address token, address member) external view returns(uint){
+        return mapMemberToken_deposit[member][token];
+    }
+    function getMemberReward(address token, address member) external view returns(uint){
+        return mapMemberToken_reward[member][token];
+    }
+    function getMemberWeight(address member) external view returns(uint){
+        return mapMember_weight[member];
+    }
+    function getMemberLastTime(address token, address member) external view returns(uint){
+        return mapMemberToken_lastTime[member][token];
     }
 
 
