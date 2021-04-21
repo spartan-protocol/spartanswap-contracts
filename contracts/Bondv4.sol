@@ -134,7 +134,7 @@ contract Bond is iBEP20 {
   
 
     //====================================ONLY DAO================================//
-    function listBondAsset(address asset) public onlyDAO returns (bool){
+    function listBondAsset(address asset) external onlyDAO returns (bool){
          if(!isListed[asset]){
             isListed[asset] = true;
             listedBondAssets.push(asset);
@@ -142,28 +142,28 @@ contract Bond is iBEP20 {
         emit ListedAsset(msg.sender, asset);
         return true;
     }
-    function delistBondAsset(address asset) public onlyDAO returns (bool){
+    function delistBondAsset(address asset) external onlyDAO returns (bool){
             isListed[asset] = false;
         emit DelistedAsset(msg.sender, asset);
         return true;
     }
-    function changeBondingPeriod(uint256 bondingSeconds) public onlyDAO returns (bool){
+    function changeBondingPeriod(uint256 bondingSeconds) external onlyDAO returns (bool){
         bondingPeriodSeconds = bondingSeconds;
         return true;
     }
-    function burnBalance() public onlyDAO returns (bool){
+    function burnBalance() external onlyDAO returns (bool){
         uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
         iBASE(BASE).burn(baseBal); 
         return true;
     }
-    function mintBond() public onlyDAO returns (bool) {
+    function mintBond() external onlyDAO returns (bool) {
         require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "!SPARTA");
         require(totalSupply <= 0, 'mintBONDerr');
         uint256 amount =1*10**18;
         _mint(address(this), amount);
        return true;
     }
-    function moveBondBASEBalance(address newBond) public onlyDAO returns(bool){
+    function moveBondBASEBalance(address newBond) external onlyDAO returns(bool){
          uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
          iBEP20(BASE).transfer(newBond, baseBal);
          return true;
@@ -183,7 +183,7 @@ contract Bond is iBEP20 {
         approveRouter();
         return true;
     }
-    function deposit(address asset, uint256 amount) public payable returns (bool success) {
+    function deposit(address asset, uint256 amount) external payable returns (bool success) {
         require(amount > 0, '!asset');
         require(isListed[asset], '!listed');
         uint256 liquidityUnits = handleTransferIn(asset, amount);
@@ -191,7 +191,7 @@ contract Bond is iBEP20 {
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
-    function depositInit(address lptoken, uint256 amount, address member) public onlyDAO returns (bool success) {
+    function depositInit(address lptoken, uint256 amount, address member) external onlyDAO returns (bool success) {
        iBEP20(lptoken).transferFrom(msg.sender, bondVault, amount);
        address asset = iPOOL(lptoken).TOKEN();
         if(asset == WBNB){
@@ -227,16 +227,15 @@ contract Bond is iBEP20 {
     }
     
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
-        require(isListed[asset], '!listed');
         uint claimAmount = BondVault(bondVault).cBLP(bondedMember, asset);
         return claimAmount;
     }
 
     //============================== HELPERS ================================//
-    function assetListedCount() public view returns (uint256 count){
+    function assetListedCount() external view returns (uint256 count){
         return listedBondAssets.length;
     }
-    function allListedAssets() public view returns (address[] memory _allListedAssets){
+    function allListedAssets() external view returns (address[] memory _allListedAssets){
         return listedBondAssets;
     }
       function destroyMe() public onlyDAO {

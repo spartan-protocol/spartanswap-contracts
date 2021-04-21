@@ -58,6 +58,10 @@ contract('Test Harvest Synths', function (accounts) {
      Withdraw(5000, acc1);
      swapLayer1ToSynth(acc1,_.BN2Str(500*_.one))
      depositSynth(acc1, _.BN2Str(0.3*_.one))
+     harvestSynth()
+     Withdraw(10000, acc1);
+     Withdraw(10000, acc0);
+     Withdraw(10000, acc2);
      Withdraw(10000, acc1);
    
 })
@@ -339,7 +343,8 @@ async function harvestSynth() {
         let memberRewardA = _.BN2Str(await synthV.getMemberReward(synth, acc))
         let totalRewardsA = _.getBN(await synthV.totalRewards())
         assert.exists(_.BN2Str(memberTimeA.minus(now)))
-        assert.exists(_.BN2Str(memberRewardA))
+        assert.exists(_.BN2Int(memberRewardA))
+
         assert.exists(_.BN2Str(totalRewardsA))
 
 
