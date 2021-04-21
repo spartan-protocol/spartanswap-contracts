@@ -30,7 +30,7 @@ var UPGR = artifacts.require("./SPARTANUPGRADE.sol");
 var base; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
 var poolWBNB; var poolTKN1; var synthTNK2; var synthBNB;
-var acc0; var acc1; var acc2; var acc3;
+var acc0; var acc1; var acc2; var acc3;var now;
 var allocation = 2500000;
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -53,6 +53,7 @@ contract('Test Harvest Synths', function (accounts) {
      swapLayer1ToSynth(acc1,_.BN2Str(500*_.one))
      depositSynth(acc1, _.BN2Str(0.3*_.one))
      harvestSynth()
+     Withdraw();
 
    
 })
@@ -85,14 +86,14 @@ function constructor(accounts) {
         await Dao.setGenesisAddresses(router.address, utils.address, lend.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address, SPReserve.address); 
         await base.changeDAO(Dao.address)  
 
-        await SPReserve.setIncentiveAddresses(router.address, lend.address,utils.address);
+        await SPReserve.setIncentiveAddresses(router.address, lend.address,synthV.address);
         await SPReserve.start();
 
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
        
-         await base.transfer(SPReserve.address, _.getBN(_.BN2Str(1000000 * _.one)))
+         await base.transfer(SPReserve.address, _.getBN(_.BN2Str(10000 * _.one)))
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
@@ -192,12 +193,13 @@ async function swapLayer1ToSynth(acc, x) {
 }
 async function depositSynth(acc, x) {
     it("Deposit Synth into Vault ", async () => {
+        
         let synth = synthBNB.address;
         let synthBal = _.getBN(await synthBNB.balanceOf(acc));
         let sVStart = _.getBN(await synthBNB.balanceOf(synthV.address));
         let tokenDeposits = _.getBN(await synthV.getTokenDeposits(synth))
         let memberDeposits = _.getBN(await synthV.getMemberDeposit(synth, acc))
-        let memberReward = _.BN2Str(await synthV.getMemberReward(synth, acc))
+        
         let memberWeight = _.getBN(await synthV.getMemberWeight(acc))
         let memberTime = _.BN2Str(await synthV.getMemberLastTime(synth, acc))
 
@@ -207,7 +209,7 @@ async function depositSynth(acc, x) {
         const Y = _.getBN(poolTO.tokenAmount)
 
         let weight = (_.getBN(x).times(X)).div(Y);
-       
+         
         await synthV.deposit(synth,x,{from:acc});
         
         let synthBalA = _.getBN(await synthBNB.balanceOf(acc))
@@ -235,63 +237,133 @@ async function harvestSynth() {
     it("Harvest rewards", async () => {
         let synth = synthBNB.address;
         let acc = acc0;
-        await sleep(10000);
+        await sleep(1000);
 
         let SPReserveBal = _.getBN(await base.balanceOf(SPReserve.address));
         
         let memberWeight = _.getBN(await synthV.getMemberWeight(acc))
-        let memberDeposits = _.getBN(await synthV.getMemberDeposit(synth, acc))
-        let memberTime = _.BN2Str(await synthV.getMemberLastTime(synth, acc))
-        let totalWeight = _.getBN(await synthV.totalWeight())
-        console.log("totalWeight ",_.BN2Str(totalWeight))   
-        console.log("memberWeight ",_.BN2Str(memberWeight))   
-
-        let secondsPast = 14;
-        let reserve = _.getBN(SPReserveBal).div(30);
-        console.log("reserve ",_.BN2Str(reserve))
-        let vaultClaim =  reserve.times(1000).div(10000)
-        console.log("vaultClaim ",_.BN2Str(vaultClaim))
-        let share = (memberWeight.times(vaultClaim)).div(totalWeight)
-        console.log("share ",_.BN2Str(share))
-        let reward = (share.times(secondsPast).div(1));
-        
-        console.log("reward ",_.BN2Str(reward)/_.one)
-    
+        let memberTime = _.getBN(await synthV.getMemberLastTime(synth, acc))
+        let totalWeight = _.BN2Str(await synthV.totalWeight())
+        let memberReward = _.getBN(await synthV.getMemberReward(synth, acc))
+        let totalRewards = _.getBN(await synthV.totalRewards())
+        // console.log("totalWeight ",_.BN2Str(totalWeight))   
+        // console.log("memberWeight ",_.BN2Str(memberWeight))   
+       
+        now = _.getBN((new Date())/1000).plus(62)
         await synthV.harvest(synth,{from:acc});
-        let memberReward = _.BN2Str(await synthV.getMemberReward(synth, acc))
-        console.log("memberReward ",_.BN2Str(memberReward)/_.one)
         
+        let secondsPast =(now.minus(memberTime));
+        let reserve = _.getBN(SPReserveBal).div(30);
+        //  console.log("reserve ",_.BN2Str(reserve))
+        let vaultClaim =  reserve.times(1000).div(10000)
+        //  console.log("vaultClaim ",_.BN2Str(vaultClaim))
+        let share = (memberWeight.times(vaultClaim)).div(totalWeight)
+        //  console.log("share ",_.BN2Str(share))
+        let reward = (share.times(secondsPast).div(1));
+        //  console.log("now ",_.BN2Str(now))   
+        //   console.log("secondsPast ",_.BN2Str(secondsPast))  
+        //   console.log("reward ",_.BN2Str(reward))    
+
+        let memberTimeA = _.getBN(await synthV.getMemberLastTime(synth, acc))
+        let memberRewardA = _.BN2Str(await synthV.getMemberReward(synth, acc))
+        let totalRewardsA = _.getBN(await synthV.totalRewards())
+        assert.exists(_.BN2Str(memberTimeA.minus(now)))
+        assert.exists(_.BN2Str(memberRewardA))
+        assert.exists(_.BN2Str(totalRewardsA))
+
 
     })
     it("Harvest rewards", async () => {
         let synth = synthBNB.address;
-        await sleep(10000);
+        await sleep(1000);
         let acc = acc1;
         let SPReserveBal = _.getBN(await base.balanceOf(SPReserve.address));
         
         let memberWeight = _.getBN(await synthV.getMemberWeight(acc))
-        let memberDeposits = _.getBN(await synthV.getMemberDeposit(synth, acc))
+        let memberReward = _.getBN(await synthV.getMemberReward(synth, acc))
         let memberTime = _.BN2Str(await synthV.getMemberLastTime(synth, acc))
         let totalWeight = _.getBN(await synthV.totalWeight())
-        console.log("totalWeight ",_.BN2Str(totalWeight))   
-        console.log("memberWeight ",_.BN2Str(memberWeight))   
+        let totalRewards = _.getBN(await synthV.totalRewards())
+        // console.log("totalWeight ",_.BN2Str(totalWeight))   
+        // console.log("memberWeight ",_.BN2Str(memberWeight))   
 
-        let secondsPast = 20;
-        let reserve = _.getBN(SPReserveBal).div(30);
-        console.log("reserve ",_.BN2Str(reserve))
-        let vaultClaim =  reserve.times(1000).div(10000)
-        console.log("vaultClaim ",_.BN2Str(vaultClaim))
-        let share = (memberWeight.times(vaultClaim)).div(totalWeight)
-        console.log("share ",_.BN2Str(share))
-        let reward = (share.times(secondsPast).div(1));
-        console.log("reward ",_.BN2Str(reward)/_.one)
-
+        now = _.getBN((new Date())/1000).plus(62)
         await synthV.harvest(synth,{from:acc});
-        let memberReward = _.BN2Str(await synthV.getMemberReward(synth, acc))
-        console.log("memberReward ",_.BN2Str(memberReward)/_.one)
+        
+        let secondsPast =(now.minus(memberTime));
+        let reserve = _.getBN(SPReserveBal).div(30);
+        // console.log("reserve ",_.BN2Str(reserve))
+        let vaultClaim =  reserve.times(1000).div(10000)
+        // console.log("vaultClaim ",_.BN2Str(vaultClaim))
+        let share = (memberWeight.times(vaultClaim)).div(totalWeight)
+        // console.log("share ",_.BN2Str(share))
+        let reward = (share.times(secondsPast).div(1));
+        let memberTimeA = _.getBN(await synthV.getMemberLastTime(synth, acc))
+        let memberRewardA = _.BN2Str(await synthV.getMemberReward(synth, acc))
+        let totalRewardsA = _.getBN(await synthV.totalRewards())
+        assert.exists(_.BN2Str(memberTimeA.minus(now)))
+        assert.exists(_.BN2Str(memberRewardA))
+        assert.exists(_.BN2Str(totalRewardsA))
+
+
         
 
     })
+}
+async function Withdraw() {
+    it("Withdraw synths + rewards", async () => {
+        let synth = synthBNB.address;
+        let acc = acc0;
+        await sleep(5000);
+
+        let synthBal = _.getBN(await synthBNB.balanceOf(acc));
+        let sVStart = _.getBN(await synthBNB.balanceOf(synthV.address));
+
+        let SPReserveBal = _.getBN(await base.balanceOf(SPReserve.address));
+        
+        let memberWeight = _.getBN(await synthV.getMemberWeight(acc))
+        let memberTime = _.getBN(await synthV.getMemberLastTime(synth, acc))
+        let totalWeight = _.BN2Str(await synthV.totalWeight())
+        let memberReward = _.getBN(await synthV.getMemberReward(synth, acc))
+        let totalRewards = _.getBN(await synthV.totalRewards())
+
+
+        await synthV.withdraw(synth, 10000,{from:acc});
+
+        let synthBalA = _.getBN(await synthBNB.balanceOf(acc));
+        let sVStartA = _.getBN(await synthBNB.balanceOf(synthV.address));
+        
+        let SPReserveBalA = _.getBN(await base.balanceOf(SPReserve.address));
+        
+        let memberWeightA = _.getBN(await synthV.getMemberWeight(acc))
+        let memberTimeA = _.getBN(await synthV.getMemberLastTime(synth, acc))
+        let totalWeightA = _.BN2Str(await synthV.totalWeight())
+        let memberRewardA = _.getBN(await synthV.getMemberReward(synth, acc))
+        let totalRewardsA = _.getBN(await synthV.totalRewards())
+
+        // assert.equal(_.BN2Str(synthBalA), _.BN2Str(synthBal.minus(x)));
+        // assert.equal(_.BN2Str(sVStartA), _.BN2Str(sVStart.plus(x)));
+        // assert.equal(_.BN2Str(tokenDepositsA), _.BN2Str(tokenDeposits.plus(x)));
+        // assert.equal(_.BN2Str(memberDepositsA), _.BN2Str(x));
+        // assert.equal(_.BN2Str(memberDepositsA), _.BN2Str(memberDeposits.plus(x)));
+        // assert.equal(_.BN2Str(memberWeightA), _.BN2Str(weight));
+        // assert.equal(_.BN2Str(memberWeightA), _.BN2Str(memberWeight.plus(weight)));
+        // assert.exists(_.BN2Str(memberTimeA));
+
+    })
+    // it("Withdraw synths + rewards", async () => {
+    //     let synth = synthBNB.address;
+    //     await sleep(5000);
+    //     let acc = acc1;
+    //     let SPReserveBal = _.getBN(await base.balanceOf(SPReserve.address));
+        
+    //     let memberWeight = _.getBN(await synthV.getMemberWeight(acc))
+    //     let memberReward = _.getBN(await synthV.getMemberReward(synth, acc))
+    //     let memberTime = _.BN2Str(await synthV.getMemberLastTime(synth, acc))
+    //     let totalWeight = _.getBN(await synthV.totalWeight())
+    //     let totalRewards = _.getBN(await synthV.totalRewards())
+    //     await synthV.withdraw(synth, 5000,{from:acc});
+    // })
 }
 
 

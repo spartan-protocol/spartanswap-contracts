@@ -120,7 +120,6 @@ contract SynthVault {
     function harvest(address token) external returns(uint reward) {
         address _member = msg.sender;
         reward = calcCurrentReward(token, _member);
-        console.log(reward);
         mapMemberToken_lastTime[_member][token] = block.timestamp;
         mapMemberToken_reward[_member][token] += reward;
         totalRewards += reward;
@@ -130,18 +129,14 @@ contract SynthVault {
 
     function calcCurrentReward(address token, address member) public view returns(uint reward) {
         uint _secondsSinceClaim = block.timestamp - mapMemberToken_lastTime[member][token];        // Get time since last claim
-        console.log("_secondsSinceClaim ", _secondsSinceClaim);
-        uint _share = calcReward(member);  
-        console.log("_share ",_share);  
-        console.log("_totalWeight ",totalWeight);  
-                                                        // Get share of rewards for member
+        uint _share = calcReward(member);                                        
         reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra();  
         return reward;
     }
 
     function calcReward(address member) public view returns(uint) {
         uint _weight = mapMember_weight[member];
-        uint _reserve = reserveBASE()/erasToEarn;  
+        uint _reserve = reserveBASE() / erasToEarn;  
         uint _vaultReward = (_reserve * vaultClaim) / 10000;                   
         return iUTILS(_DAO().UTILS()).calcShare(_weight, totalWeight, _vaultReward);         // Get member's share of that
      }
@@ -150,7 +145,7 @@ contract SynthVault {
      // Members to withdraw
     function withdraw(address token, uint basisPoints) external returns(uint redeemedAmount) {
         address _member = msg.sender;
-        redeemedAmount = _processWithdraw(token, _member, basisPoints);                         // get amount to withdraw
+        redeemedAmount = _processWithdraw(token, _member, basisPoints);
         require(iBEP20(token).transfer(_member, redeemedAmount));
         return redeemedAmount;
     }
@@ -159,9 +154,9 @@ contract SynthVault {
         uint _reward = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberToken_reward[_member][_token]); // share of reward
         mapMemberToken_reward[_member][_token] -= _reward;
         totalRewards -= _reward;
-        address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token);
+        address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(_token).LayerONE());
         iRESERVE(_DAO().RESERVE()).grantFunds(_reward, _poolOUT);
-        iPOOL(_poolOUT).mintSynths(iSYNTH(_token).LayerONE(), address(this));
+        (uint synthReward,) = iPOOL(_poolOUT).mintSynths(_token, address(this));
         uint _principle = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberToken_deposit[_member][_token]); // share of deposits
         mapMemberToken_deposit[_member][_token] -= _principle;                                   
         mapToken_totalFunds[_token] -= _principle;
@@ -169,7 +164,7 @@ contract SynthVault {
         mapMember_weight[_member] -= _weight; 
         totalWeight -= _weight;                                                     // reduce for total
         emit MemberWithdraws(_token, _member, _amount, _weight, totalWeight);
-        return (_principle + _reward);
+        return (_principle + synthReward);
     }
 
 

@@ -3,10 +3,7 @@ pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
 import "@nomiclabs/buidler/console.sol";
-interface iSYNTHFACTORY {
-    function isSynth(address) external view returns (bool);
 
-}
 interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
     function challengLowestCuratedPool(address) external  ;
@@ -247,7 +244,6 @@ contract Router {
         return swapBaseToSynthFM(inputAmount,  synthIN,  msg.sender);
     }
     function swapBaseToSynthFM(uint inputAmount, address synthOUT, address member) public returns (uint output){
-         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOUT) == true, "!synth");
          address _synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
          address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthOUTLayer1);
          _transferINSafe(member, _poolOUT, BASE, inputAmount);
@@ -259,7 +255,6 @@ contract Router {
         return swapSynthToBaseFM(inputAmount,  synthIN, msg.sender);
     }
     function swapSynthToBaseFM(uint inputAmount, address synthIN, address member) public returns (uint outPut){
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
         address _synthINLayer1 = iSYNTH(synthIN).LayerONE();
         address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthINLayer1);
         _transferINSafe(member, _poolIN, synthIN, inputAmount);

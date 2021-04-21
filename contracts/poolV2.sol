@@ -49,6 +49,10 @@ interface iSYNTH {
     function burnSynth() external returns(uint);
     function transferTo(address, uint256 ) external returns(bool);
 }
+interface iSYNTHFACTORY {
+    function isSynth(address) external view returns (bool);
+
+}
 
 
 contract Pool is iBEP20 {
@@ -245,7 +249,8 @@ contract Pool is iBEP20 {
         return (outputAmount, fee);
     }
 
-    function mintSynths(address synthOut, address member) public onlyRouter returns(uint outputAmount, uint fee) {
+    function mintSynths(address synthOut, address member) external returns(uint outputAmount, uint fee) {
+      require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut) == true, "!synth");
       uint256 _actualInputBase = _getAddedBaseAmount();
       uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); 
       _incrementPoolBalances(_actualInputBase, 0);
@@ -258,7 +263,8 @@ contract Pool is iBEP20 {
       return (outputAmount, fee);
     }
 
-    function burnSynths(address synthIN, address member) public onlyRouter returns(uint outputAmount, uint fee) {
+    function burnSynths(address synthIN, address member) external returns(uint outputAmount, uint fee) {
+    require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
       uint _inputSynth = iBEP20(synthIN).balanceOf(address(this));
       uint _baseOutput = iUTILS(_DAO().UTILS()).calcSwapValueInBase(TOKEN, _inputSynth);//get swapValue from synths input
       fee = iUTILS(_DAO().UTILS()).calcSwapFee(_inputSynth, tokenAmount, baseAmount);
