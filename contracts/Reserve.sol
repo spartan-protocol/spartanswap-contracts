@@ -40,16 +40,18 @@ contract Reserve {
     }
 
     function grantFunds(uint amount, address to) external onlyGrantor returns (bool){
-        require(amount > 0,'!zero');
         uint reserve = iBEP20(BASE).balanceOf(address(this));
-        if(emissions){
-            if(amount >= reserve){
+        if(amount > 0){
+           if(emissions){
+            if(amount > reserve){
                iBEP20(BASE).transfer(to, reserve);
             }else{
                 iBEP20(BASE).transfer(to, amount);
             }
             return true;
         }
+        }
+        
     }
 
     function start() external onlyGrantor {

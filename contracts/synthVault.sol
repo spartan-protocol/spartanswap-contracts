@@ -149,21 +149,23 @@ contract SynthVault {
         require(iBEP20(token).transfer(_member, redeemedAmount));
         return redeemedAmount;
     }
-    function _processWithdraw(address _token, address _member, uint _basisPoints) internal returns(uint _amount) {
+    function _processWithdraw(address _token, address _member, uint _basisPoints) internal returns(uint synthReward) {
         require((block.timestamp - mapMemberToken_lastTime[_member][_token]) >= minimumDepositTime, "DepositTime");    // stops attacks
         uint _reward = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberToken_reward[_member][_token]); // share of reward
+        if(_reward > 0){
         mapMemberToken_reward[_member][_token] -= _reward;
         totalRewards -= _reward;
         address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(_token).LayerONE());
         iRESERVE(_DAO().RESERVE()).grantFunds(_reward, _poolOUT);
-        (uint synthReward,) = iPOOL(_poolOUT).mintSynths(_token, address(this));
+        (synthReward,) = iPOOL(_poolOUT).mintSynths(_token, address(this));
+        }
         uint _principle = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberToken_deposit[_member][_token]); // share of deposits
         mapMemberToken_deposit[_member][_token] -= _principle;                                   
         mapToken_totalFunds[_token] -= _principle;
         uint _weight = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMember_weight[_member]);
         mapMember_weight[_member] -= _weight; 
         totalWeight -= _weight;                                                     // reduce for total
-        emit MemberWithdraws(_token, _member, _amount, _weight, totalWeight);
+        emit MemberWithdraws(_token, _member, synthReward, _weight, totalWeight);
         return (_principle + synthReward);
     }
 
