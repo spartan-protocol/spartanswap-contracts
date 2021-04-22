@@ -3,7 +3,7 @@ pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./iBEP20.sol";
 import "./BondVault.sol";
-
+import "@nomiclabs/buidler/console.sol";
 
     //======================================SPARTA=========================================//
 contract Bond is iBEP20 {
@@ -26,8 +26,7 @@ contract Bond is iBEP20 {
     address public DEPLOYER;
     uint public one = 10**18;
     address [] listedBondAssets;
-    uint256 public bondingPeriodSeconds = 31536000;
-    uint256 private basisPoints = 10000;
+    uint256 public bondingPeriodSeconds = 31104000;//update for mainnet
     uint256 public totalWeight;
 
     mapping(address => bool) public isListed;
@@ -49,7 +48,7 @@ contract Bond is iBEP20 {
         NDAO = _newDao;
         bondVault = _bondVault;
         name = "SpartanBondTokenV4";
-        symbol  = "SPT-BOND-V4";
+        symbol  = "SP-BOND-V4";
         decimals = 18;
         DEPLOYER = msg.sender;
         totalSupply = 1 * (10 ** 18);
@@ -205,17 +204,17 @@ contract Bond is iBEP20 {
         uint256 spartaAllocation = iUTILS(_DAO().UTILS()).calcSwapValueInBase(_token, _amount); 
         if(_token == address(0)){
                 require((_amount == msg.value), "InputErr");
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, msg.sender);
+                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, bondVault);
             } else {
                 iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
                 if(iBEP20(_token).allowance(address(this), iDAO(_DAO()).ROUTER()) < _amount){
                     uint256 approvalTNK = iBEP20(_token).totalSupply();  
                     iBEP20(_token).approve(_DAO().ROUTER(), approvalTNK);  
                 }
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember(spartaAllocation, _amount, _token, msg.sender);
+                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember(spartaAllocation, _amount, _token, bondVault);
             } 
     }
-    function claimAllForMember(address member) public returns (bool){
+    function claimAllForMember(address member) external returns (bool){
         address [] memory listedAssets = listedBondAssets;
         for(uint i =0; i<listedAssets.length; i++){
             uint claimA = calcClaimBondedLP(member,listedAssets[i]);
@@ -223,6 +222,13 @@ contract Bond is iBEP20 {
                BondVault(bondVault).cFMember(listedAssets[i],member);
             }
         }
+        return true;
+    }
+    function claimForMember(address asset) external returns (bool){
+        uint claimA = calcClaimBondedLP(msg.sender,asset);
+            if(claimA>0){
+               BondVault(bondVault).cFMember(asset,msg.sender);
+            }
         return true;
     }
     
