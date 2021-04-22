@@ -9,6 +9,7 @@ const help = require('./helper.js');
 var BASE = artifacts.require("./BaseMinted.sol");
 var DAO = artifacts.require("./Dao.sol");
 var ROUTER = artifacts.require("./Router.sol");
+var RESERVE = artifacts.require("./Reserve.sol");
 var POOL = artifacts.require("./Pool.sol");
 var UTILS = artifacts.require("./Utils.sol");
 var POOLFACTORY = artifacts.require("./poolFactory.sol");
@@ -64,7 +65,7 @@ contract('SWAP', function (accounts) {
      swapLayer1ToSynth(acc2, _.BN2Str(5*_.one))
      swapSynthToLayer1(acc1, _.BN2Str(1.1*_.one))
      swapSynthToLayer1(acc0, _.BN2Str(0.1*_.one))
-     swapSynthToLayer1(acc2, _.BN2Str(0.4*_.one))
+     swapSynthToLayer1(acc2, _.BN2Str(0.2*_.one))
     zapLiquidity(acc1,  _.BN2Str(_.one * 10))
     
 
@@ -79,18 +80,23 @@ function constructor(accounts) {
         //SPARTANPROTOCOLv2
         base = await BASE.new() // deploy base
         wbnb = await WBNB.new() // deploy wBNB
+        SPReserve = await RESERVE.new(base.address) // deploy base 
         Dao = await DAO.new(base.address)     // deploy daoV2
         router = await ROUTER.new(base.address, wbnb.address, Dao.address) //deploy router
         utils = await UTILS.new(base.address, router.address, Dao.address) // deploy utilsV2
         poolFactory = await POOLFACTORY.new(base.address,  wbnb.address, Dao.address) 
         synthFactory = await SYNTHFACTORY.new(base.address,  wbnb.address, Dao.address) 
-        token1 = await TOKEN.new()     
-        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, utils.address, utils.address,poolFactory.address, synthFactory.address);
-    
+        token1 = await TOKEN.new()   
+        await base.changeDAO(Dao.address)    
+        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, utils.address, utils.address,poolFactory.address, synthFactory.address, SPReserve.address);
+
+        await SPReserve.setIncentiveAddresses(router.address, utils.address,utils.address);
+        await SPReserve.start();
+
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
         await base.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
-        await base.transfer(router.address, _.getBN(_.BN2Str(100000 * _.one)))
+        await base.transfer(SPReserve.address, _.getBN(_.BN2Str(100000 * _.one)))
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await base.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
@@ -259,8 +265,9 @@ async function swapBASE(acc, x) {
     it(`Swap from BNB to BASE and pool gets Dividend`, async () => {
         let baseStart = _.getBN(await base.balanceOf(acc))
         let tokenStart = _.getBN(await wbnb.balanceOf(acc))
-        let reserve = _.getBN(await base.balanceOf(router.address));
+        let reserve = _.getBN(await base.balanceOf(SPReserve.address));
         let dailyAllocation = reserve.div(30).div(100);
+
         
         let fromToken = wbnb.address
         let toToken = base.address
@@ -275,10 +282,12 @@ async function swapBASE(acc, x) {
         
         let tx = await router.swap(x, fromToken, toToken)
         let normalFee = _.getBN(await router.normalAverageFee());
+        // console.log("normalFee",_.BN2Str(normalFee))
     
         let fee = math.calcSwapFee(x, X, Y)
         let numerator = fee.times(dailyAllocation);
         let feeDividend = _.floorBN(numerator.div(fee.plus(normalFee)));
+        // console.log("Fee",_.BN2Str(feeDividend))
 
         poolData = await utils.getPoolData(fromToken);
 
@@ -300,7 +309,7 @@ async function swapTOKEN(acc, x) {
     it(`Swap from BASE to BNB and pool gets Dividend`, async () => {
         let baseStart = _.getBN(await base.balanceOf(acc))
         let tokenStart = _.getBN(await wbnb.balanceOf(acc))
-        let reserve = _.getBN(await base.balanceOf(router.address));
+        let reserve = _.getBN(await base.balanceOf(SPReserve.address));
         let dailyAllocation = reserve.div(30).div(100);
         let fromToken = base.address
         let toToken = wbnb.address

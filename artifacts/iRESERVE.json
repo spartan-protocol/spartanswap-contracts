@@ -1,23 +1,28 @@
 {
-  "contractName": "iPOOLFACTORY",
+  "contractName": "iRESERVE",
   "abi": [
     {
       "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
         {
           "internalType": "address",
           "name": "",
           "type": "address"
         }
       ],
-      "name": "getPool",
+      "name": "grantFunds",
       "outputs": [
         {
-          "internalType": "address payable",
+          "internalType": "bool",
           "name": "",
-          "type": "address"
+          "type": "bool"
         }
       ],
-      "stateMutability": "view",
+      "stateMutability": "nonpayable",
       "type": "function"
     }
   ],

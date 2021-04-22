@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "@nomiclabs/buidler/console.sol";
+
 import "./iBEP20.sol";
 interface iBASE {
     function DAO() external view returns (iDAO);

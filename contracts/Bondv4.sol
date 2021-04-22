@@ -3,7 +3,7 @@ pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./iBEP20.sol";
 import "./BondVault.sol";
-
+import "@nomiclabs/buidler/console.sol";
 
     //======================================SPARTA=========================================//
 contract Bond is iBEP20 {
@@ -26,8 +26,7 @@ contract Bond is iBEP20 {
     address public DEPLOYER;
     uint public one = 10**18;
     address [] listedBondAssets;
-    uint256 public bondingPeriodSeconds = 31536000;
-    uint256 private basisPoints = 10000;
+    uint256 public bondingPeriodSeconds = 31104000;//update for mainnet
     uint256 public totalWeight;
 
     mapping(address => bool) public isListed;
@@ -49,7 +48,7 @@ contract Bond is iBEP20 {
         NDAO = _newDao;
         bondVault = _bondVault;
         name = "SpartanBondTokenV4";
-        symbol  = "SPT-BOND-V4";
+        symbol  = "SP-BOND-V4";
         decimals = 18;
         DEPLOYER = msg.sender;
         totalSupply = 1 * (10 ** 18);
@@ -134,7 +133,7 @@ contract Bond is iBEP20 {
   
 
     //====================================ONLY DAO================================//
-    function listBondAsset(address asset) public onlyDAO returns (bool){
+    function listBondAsset(address asset) external onlyDAO returns (bool){
          if(!isListed[asset]){
             isListed[asset] = true;
             listedBondAssets.push(asset);
@@ -142,28 +141,28 @@ contract Bond is iBEP20 {
         emit ListedAsset(msg.sender, asset);
         return true;
     }
-    function delistBondAsset(address asset) public onlyDAO returns (bool){
+    function delistBondAsset(address asset) external onlyDAO returns (bool){
             isListed[asset] = false;
         emit DelistedAsset(msg.sender, asset);
         return true;
     }
-    function changeBondingPeriod(uint256 bondingSeconds) public onlyDAO returns (bool){
+    function changeBondingPeriod(uint256 bondingSeconds) external onlyDAO returns (bool){
         bondingPeriodSeconds = bondingSeconds;
         return true;
     }
-    function burnBalance() public onlyDAO returns (bool){
+    function burnBalance() external onlyDAO returns (bool){
         uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
         iBASE(BASE).burn(baseBal); 
         return true;
     }
-    function mintBond() public onlyDAO returns (bool) {
+    function mintBond() external onlyDAO returns (bool) {
         require(iBEP20(BASE).balanceOf(address(this)) <= 10*one, "!SPARTA");
         require(totalSupply <= 0, 'mintBONDerr');
         uint256 amount =1*10**18;
         _mint(address(this), amount);
        return true;
     }
-    function moveBondBASEBalance(address newBond) public onlyDAO returns(bool){
+    function moveBondBASEBalance(address newBond) external onlyDAO returns(bool){
          uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
          iBEP20(BASE).transfer(newBond, baseBal);
          return true;
@@ -183,7 +182,7 @@ contract Bond is iBEP20 {
         approveRouter();
         return true;
     }
-    function deposit(address asset, uint256 amount) public payable returns (bool success) {
+    function deposit(address asset, uint256 amount) external payable returns (bool success) {
         require(amount > 0, '!asset');
         require(isListed[asset], '!listed');
         uint256 liquidityUnits = handleTransferIn(asset, amount);
@@ -191,7 +190,7 @@ contract Bond is iBEP20 {
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
-    function depositInit(address lptoken, uint256 amount, address member) public onlyDAO returns (bool success) {
+    function depositInit(address lptoken, uint256 amount, address member) external onlyDAO returns (bool success) {
        iBEP20(lptoken).transferFrom(msg.sender, bondVault, amount);
        address asset = iPOOL(lptoken).TOKEN();
         if(asset == WBNB){
@@ -205,17 +204,17 @@ contract Bond is iBEP20 {
         uint256 spartaAllocation = iUTILS(_DAO().UTILS()).calcSwapValueInBase(_token, _amount); 
         if(_token == address(0)){
                 require((_amount == msg.value), "InputErr");
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, msg.sender);
+                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, bondVault);
             } else {
                 iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
                 if(iBEP20(_token).allowance(address(this), iDAO(_DAO()).ROUTER()) < _amount){
                     uint256 approvalTNK = iBEP20(_token).totalSupply();  
                     iBEP20(_token).approve(_DAO().ROUTER(), approvalTNK);  
                 }
-                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember(spartaAllocation, _amount, _token, msg.sender);
+                LPunits = iROUTER(_DAO().ROUTER()).addLiquidityForMember(spartaAllocation, _amount, _token, bondVault);
             } 
     }
-    function claimAllForMember(address member) public returns (bool){
+    function claimAllForMember(address member) external returns (bool){
         address [] memory listedAssets = listedBondAssets;
         for(uint i =0; i<listedAssets.length; i++){
             uint claimA = calcClaimBondedLP(member,listedAssets[i]);
@@ -225,18 +224,24 @@ contract Bond is iBEP20 {
         }
         return true;
     }
+    function claimForMember(address asset) external returns (bool){
+        uint claimA = calcClaimBondedLP(msg.sender,asset);
+            if(claimA>0){
+               BondVault(bondVault).cFMember(asset,msg.sender);
+            }
+        return true;
+    }
     
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
-        require(isListed[asset], '!listed');
         uint claimAmount = BondVault(bondVault).cBLP(bondedMember, asset);
         return claimAmount;
     }
 
     //============================== HELPERS ================================//
-    function assetListedCount() public view returns (uint256 count){
+    function assetListedCount() external view returns (uint256 count){
         return listedBondAssets.length;
     }
-    function allListedAssets() public view returns (address[] memory _allListedAssets){
+    function allListedAssets() external view returns (address[] memory _allListedAssets){
         return listedBondAssets;
     }
       function destroyMe() public onlyDAO {

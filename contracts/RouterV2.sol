@@ -2,11 +2,8 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
+import "@nomiclabs/buidler/console.sol";
 
-interface iSYNTHFACTORY {
-    function isSynth(address) external view returns (bool);
-
-}
 interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
     function challengLowestCuratedPool(address) external  ;
@@ -18,6 +15,11 @@ interface iPOOLFACTORY {
 interface iLEND {
     function checkInterest(address) external ;
 }
+interface iRESERVE {
+    function grantFunds(uint, address) external returns(bool); 
+}
+
+
 
 contract Router {
 
@@ -146,7 +148,7 @@ contract Router {
         if(toBase){
              iBEP20(_token).transfer(_pool, outputToken);
              (uint _baseBought,uint _feey) = Pool(_pool).swap(BASE);
-            outputAmount = _baseBought+(outputBase);
+            outputAmount = _baseBought + outputBase;
             fee = _feey;
             if(member != address(this)){
                 _handleTransferOut(BASE, outputAmount, member);
@@ -154,7 +156,7 @@ contract Router {
         } else {
             iBEP20(BASE).transfer(_pool, outputBase);
             (uint _tokenBought,uint _feez) = Pool(_pool).swap(_token);
-            outputAmount = _tokenBought+(outputToken);
+            outputAmount = _tokenBought + outputToken;
             fee = _feez;
             _handleTransferOut(token, outputAmount, member);
         } 
@@ -242,7 +244,6 @@ contract Router {
         return swapBaseToSynthFM(inputAmount,  synthIN,  msg.sender);
     }
     function swapBaseToSynthFM(uint inputAmount, address synthOUT, address member) public returns (uint output){
-         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOUT) == true, "!synth");
          address _synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
          address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthOUTLayer1);
          _transferINSafe(member, _poolOUT, BASE, inputAmount);
@@ -254,7 +255,6 @@ contract Router {
         return swapSynthToBaseFM(inputAmount,  synthIN, msg.sender);
     }
     function swapSynthToBaseFM(uint inputAmount, address synthIN, address member) public returns (uint outPut){
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
         address _synthINLayer1 = iSYNTH(synthIN).LayerONE();
         address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthINLayer1);
         _transferINSafe(member, _poolIN, synthIN, inputAmount);
@@ -275,14 +275,14 @@ contract Router {
     //Token Dividends / Curated Pools
     function addDividend(address _token, uint256 _fees) internal {
         if(!(normalAverageFee == 0)){
-             uint reserve = iBEP20(BASE).balanceOf(address(this)); // get base balance
+             uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // get base balance
             if(!(reserve == 0)){
             address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token);
-            uint dailyAllocation = reserve/(eraLength)/(maxTrades); // get max dividend for reserve/30/100 
-            uint numerator = _fees*(dailyAllocation);
-            uint feeDividend = numerator/(_fees+(normalAverageFee));
+            uint dailyAllocation = (reserve / eraLength) / maxTrades; // get max dividend for reserve/30/100 
+            uint numerator = _fees * dailyAllocation;
+            uint feeDividend = numerator / (_fees + normalAverageFee);
             revenueDetails(feeDividend,_pool);
-            iBEP20(BASE).transfer(_pool,feeDividend);   
+            iRESERVE(_DAO().RESERVE()).grantFunds(feeDividend, _pool);   
             Pool(_pool).sync();
             }
         }
@@ -299,7 +299,7 @@ contract Router {
             totalTradeFees = totalTradeFees+(feeArray[i]);
         }
         }
-        normalAverageFee = totalTradeFees/(arrayFeeSize); 
+        normalAverageFee = totalTradeFees / arrayFeeSize; 
     }
     function addFee(uint _fee) internal {
         uint n = feeArray.length;//20
@@ -312,13 +312,13 @@ contract Router {
         if(lastMonth == 0){
             lastMonth = Pool(_pool).genesis();
         }
-        if(block.timestamp <= lastMonth+(2592000)){//30days
-            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool]+_fees;
+        if(block.timestamp <= lastMonth + 2592000){//30days
+            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool] + _fees;
         }else{
-            lastMonth = lastMonth+(2592000);
+            lastMonth = lastMonth + 2592000;
             mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
             mapAddress_30DayDividends[_pool] = 0;
-            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool]+_fees;
+            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool] + _fees;
         }
         
     }
@@ -336,12 +336,6 @@ contract Router {
     function forwardRouterFunds(address newRouterAddress ) public onlyDAO {
         uint balanceBase = iBEP20(BASE).balanceOf(address(this)); // get base balance
         iBEP20(BASE).transfer(newRouterAddress, balanceBase);
-    }
-    function grantFunds(uint amount, address grantee) public onlyDAO returns (bool){
-        require(amount < iBEP20(BASE).balanceOf(address(this)));
-        require(grantee != address(0));
-        iBEP20(BASE).transfer(grantee, amount);
-        return true;
     }
     function destroyRouter() public onlyDAO {
          selfdestruct(payable(msg.sender));

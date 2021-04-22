@@ -3,6 +3,9 @@ pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "@nomiclabs/buidler/console.sol";
 import "./lendRouter.sol";
+interface iRESERVE {
+    function grantFunds(uint, address) external returns(bool); 
+}
 
 contract SpartanLend {
 
@@ -14,6 +17,7 @@ contract SpartanLend {
     uint public OneDAY;
     uint public reserve;
     address [] debtAssets;
+    
 
     struct CollateralDetails {
         uint ID;
@@ -41,8 +45,8 @@ contract SpartanLend {
 
     event AddCollateral(uint inputToken, address indexed Debt, uint DebtIssued);
     event RemoveCollateral(uint inputToken, address indexed Debt, uint DebtReturned);
-    event InterestPaid(address indexed Collateral, uint Interest, address indexed DebtPool);
-    event Liquidated(address indexed assetC,address indexed assetD, uint liquidationAmount);
+    event InterestPaid(address indexed Collateral, address indexed DebtPool, uint Interest);
+    event Liquidated(address indexed Collateral,address indexed DebtPool, uint liquidationAmount);
 
 
     // Only DAO can execute
@@ -72,7 +76,6 @@ contract SpartanLend {
     // Add collateral for member
     function borrowForMember(uint amount, address assetC, address assetD, address member) public returns (uint256 assetDebtIssued) {
         (uint actualInputAssetC, uint baseBorrow) = _handleTransferInCol(amount,assetC);
-        require(baseBorrow <= reserve,'!Reserve');
         if(mapAddress_totalDebt[assetC][assetD] == 0){
             mapAddress_timeLoaned[assetC][assetD] = block.timestamp;
         }
@@ -83,8 +86,7 @@ contract SpartanLend {
         if(isCollateralAsset[assetC] == false){
             isCollateralAsset[assetC] = true;
         }
-        reserve -= baseBorrow;
-        iBEP20(BASE).transfer(LENDROUTER,baseBorrow);
+        iRESERVE(_DAO().RESERVE()).grantFunds(baseBorrow, LENDROUTER);    
         assetDebtIssued = LendRouter(LENDROUTER).depositForMember(assetD);
         _incrCDP(actualInputAssetC,assetC, assetDebtIssued, assetD);
         _incrMemberDetails(actualInputAssetC,assetC, member, assetDebtIssued, assetD); //update member details
@@ -104,8 +106,7 @@ contract SpartanLend {
          require(mapAddress_totalCollateral[assetC][assetD] > 0, 'PURGED');
          require(mapAddress_totalDebt[assetC][assetD] >= amount, 'INPUTERR');
          uint actualInputAssetD = _handleTransferInDebt(assetD, amount, member); 
-         uint baseReturned = LendRouter(LENDROUTER).removeForMember(assetD);
-         reserve += baseReturned;
+         LendRouter(LENDROUTER).removeForMember(assetD);
          _assetCollateralRemoved = iUTILS(_DAO().UTILS()).calcShare(mapAddress_totalCollateral[assetC][assetD], mapAddress_totalDebt[assetC][assetD], actualInputAssetD);
          _decrCDP(_assetCollateralRemoved,assetC, actualInputAssetD, assetD);
          _decrMemberDetails(_assetCollateralRemoved, assetC, member, actualInputAssetD, assetD);
@@ -122,25 +123,24 @@ contract SpartanLend {
         address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_assetD); 
         uint _poolDepth = iPOOL(_assetDPool).tokenAmount();
         uint _poolDebt = mapAddress_totalDebt[_assetC][_assetD];
-        return (_poolDebt*(10**18))/_poolDepth;
+        return (_poolDebt * (10**18)) / _poolDepth;
     }
 
      function checkInterest(address assetC) external {
          uint256 _interest = 0; 
         if(isCollateralAsset[assetC] == true){
          for(uint i = 0; i<debtAssets.length; i++){
-            if(block.timestamp >= mapAddress_timeLoaned[assetC][debtAssets[i]]+(OneDAY)){
+            if(block.timestamp >= mapAddress_timeLoaned[assetC][debtAssets[i]] + OneDAY){
                  uint256 _interestPayable = calcInterestAmount(assetC, debtAssets[i]); 
-                 uint256 _IR = (_interestPayable/365)*1;//per day
+                 uint256 _IR = (_interestPayable / 365) * 1;//per day
                 //   console.log("IR", _IR); 
-                 uint256 _percentAmount = mapAddress_totalCollateral[assetC][debtAssets[i]]*(_IR)/(10**18);     
+                 uint256 _percentAmount = mapAddress_totalCollateral[assetC][debtAssets[i]] * _IR / (10**18);     
                  // console.log("_percentAmount_", _percentAmount);   
                  mapAddress_timeLoaned[assetC][debtAssets[i]] = block.timestamp;                 
                  _interest = _payInterest(assetC, _percentAmount, debtAssets[i]);  
                  // console.log("interest--", interest); 
                   _checkPurge(assetC, _interest,debtAssets[i]);
-                 
-                 emit InterestPaid(assetC,_interest, debtAssets[i]);    
+                 emit InterestPaid(assetC, debtAssets[i],_interest);    
              }
            }  
          }                                                                                                      
@@ -155,9 +155,9 @@ contract SpartanLend {
             // console.log("baseDebt",baseDebt/10**18);
             // console.log("baseColl",baseCollateral/10**18);
             if(_baseCollateral <= _baseDebt){
-                uint _liquidation = mapAddress_totalCollateral[assetC][debtAssets[i]]*500/10000;//5%
+                uint _liquidation = mapAddress_totalCollateral[assetC][debtAssets[i]] * 500 / 10000;//5%
                 _payInterest(assetC,_liquidation, debtAssets[i]);
-               _feeReward(_baseCollateral*100/10000);//1%
+               _feeReward(_baseCollateral * 100 / 10000);//1%
                console.log("liquidated, ",_liquidation);
                emit Liquidated(assetC, debtAssets[i], _liquidation);
             }   
@@ -167,13 +167,7 @@ contract SpartanLend {
     }
 
     function _feeReward(uint _fee) internal returns (bool){
-        if(reserve <= _fee){
-                iBEP20(BASE).transfer(msg.sender, reserve);//send reserve to caller
-                reserve = 0;
-             }else{
-                iBEP20(BASE).transfer(msg.sender, _fee);//send fee to caller 
-                reserve -= _fee;
-         }
+        iRESERVE(_DAO().RESERVE()).grantFunds(_fee, msg.sender); 
          return true;
     }
     
@@ -186,13 +180,13 @@ contract SpartanLend {
              }else if(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_assetC) == true){
                _baseCollateral = iUTILS(_DAO().UTILS()).calcSwapValueInBaseWithSYNTH(_assetC, mapAddress_totalCollateral[_assetC][_assetD]); 
             }
-        return _baseCollateral;
+        return _baseCollateral; 
     }
 
     function _checkPurge(address _assetC, uint _interestBase, address _assetD) internal returns (bool){
         uint baseCollateral = getBaseValue(_assetC,_assetD);
         if(baseCollateral <= _interestBase){
-            _feeReward(baseCollateral*100/10000);
+            _feeReward(baseCollateral * 100 / 10000);
             _payInterest(_assetC,mapAddress_totalCollateral[_assetC][_assetD], _assetD);//100%
             mapAddress_totalDebt[_assetC][_assetD] = 0;
             mapAddress_totalCollateral[_assetC][_assetD] = 0;
@@ -211,7 +205,7 @@ contract SpartanLend {
     }
     function _handleTransferInCol( uint256 _amount, address _assetC) internal returns(uint256 _actual, uint _baseBorrow){
         if(_amount > 0) {
-                uint collateralAdjusted = _amount*6666/10000; //150% collateral Ratio
+                uint collateralAdjusted = _amount * 6666 / 10000; //150% collateral Ratio
                 uint startBal = iBEP20(_assetC).balanceOf(address(this));
             if(_assetC == BASE){
                 _baseBorrow = collateralAdjusted;
@@ -225,12 +219,11 @@ contract SpartanLend {
             }else{
                  return (0,0);
             }
-             _actual = iBEP20(_assetC).balanceOf(address(this))-startBal;
+             _actual = iBEP20(_assetC).balanceOf(address(this)) - startBal;
         }
         return (_actual, _baseBorrow);
     }
 
-    
     function _payInterest(address _assetC, uint256 _percentAmount, address _assetD) internal returns (uint _InterestAmount){
         address _assetDPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_assetD);   
             if(_assetC == BASE){
@@ -273,15 +266,7 @@ contract SpartanLend {
         mapAddress_totalDebt[_assetC][_assetD] -=_assetDebtInput;
         mapAddress_totalCollateral[_assetC][_assetD] -= _outputCollateral;
     }
-    function addToReserve(uint amount) external{
-        uint256 _actual;
-       if(amount > 0) {
-                uint startBal = iBEP20(BASE).balanceOf(address(this));
-                iBASE(BASE).transferTo(address(this), amount); 
-               _actual = iBEP20(BASE).balanceOf(address(this))-startBal;
-       }
-        reserve += _actual;
-    }
+
   //===================================HELPERS===============================================
     function getMemberDetails(address member, address assetC, address assetD) public view returns (MemberDetails memory memberDetails){
         memberDetails.assetCurrentCollateral = iUTILS(_DAO().UTILS()).calcShare(mapAddress_totalCollateral[assetC][assetD], mapAddress_totalDebt[assetC][assetD], mapMember_Details[member].mapMember_Debt[assetC].assetDebt[assetD]);

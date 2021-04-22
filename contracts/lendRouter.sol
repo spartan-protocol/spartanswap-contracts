@@ -8,6 +8,7 @@ interface iBASE {
     function transferTo(address, uint256 ) external payable returns(bool);
 }
 interface iROUTER {
+    function swapTo(uint, address, address, address) external returns(uint);
     function swap(uint, address, address) external returns(uint);
     function removeLiquidityExact(uint, address) external returns(uint, uint);
     function removeLiquidityAsym(uint, bool, address ) external returns(uint, uint);
@@ -27,6 +28,7 @@ interface iUTILS {
 }
 interface iDAO {
     function ROUTER() external view returns(address);
+    function RESERVE() external view returns(address);
     function UTILS() external view returns(address);
     function DAO() external view returns (address);
     function LEND() external view returns (address);
@@ -55,7 +57,7 @@ interface iPOOLFACTORY {
     function getPool(address) external view returns(address payable);
 }
 interface iSYNTHFACTORY {
-    function isSynth(address) external view returns(bool);
+     function isSynth(address) external view returns (bool);
 }
 
 contract LendRouter {
@@ -85,18 +87,16 @@ contract LendRouter {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_assetDPool) == true, "!Curated"); // only curated pools 
         uint _inputBASE = iBEP20(BASE).balanceOf(address(this));
         iBEP20(BASE).approve(address(_DAO().ROUTER()), _inputBASE);
-         _debtIssued = iROUTER(_DAO().ROUTER()).swap(_inputBASE, BASE, assetD);
-        iBEP20(assetD).transfer(msg.sender,_debtIssued);
+         _debtIssued = iROUTER(_DAO().ROUTER()).swapTo(_inputBASE, BASE, assetD,msg.sender);
         return _debtIssued;
     }
 
     // Remove Collateral for a member
     function removeForMember(address assetD) public onlyLEND returns (uint256 DebtReturned) {
-        uint inputDebt = iBEP20(assetD).balanceOf(address(this));
-        iBEP20(assetD).approve(address(_DAO().ROUTER()), inputDebt);
-        uint outputBase = iROUTER(_DAO().ROUTER()).swap(inputDebt, assetD, BASE);
-         iBEP20(BASE).transfer(msg.sender,outputBase);
-        return  outputBase;
+        DebtReturned = iBEP20(assetD).balanceOf(address(this));
+        iBEP20(assetD).approve(address(_DAO().ROUTER()), DebtReturned);
+        iROUTER(_DAO().ROUTER()).swapTo(DebtReturned, assetD, BASE, address(_DAO().RESERVE()));
+        return DebtReturned;
     }
 
     function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 actual){
