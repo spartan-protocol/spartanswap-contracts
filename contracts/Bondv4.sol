@@ -3,7 +3,7 @@ pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./iBEP20.sol";
 import "./BondVault.sol";
-import "@nomiclabs/buidler/console.sol";
+
 
     //======================================SPARTA=========================================//
 contract Bond is iBEP20 {
@@ -65,6 +65,9 @@ contract Bond is iBEP20 {
     }
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
+    }
+    function changeNDAO(address newDAO) public onlyDAO {
+        NDAO = newDAO;
     }
 
     //========================================iBEP20=========================================//

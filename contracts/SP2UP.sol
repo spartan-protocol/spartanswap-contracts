@@ -69,6 +69,9 @@ contract SPARTANUPGRADE {
           return iNDAO(NDAO).DAO();
         }
     }
+    function changeNDAO(address newDAO) public onlyDEPLOYER {
+        NDAO = newDAO;
+    }
       modifier onlyDEPLOYER() {
         require(msg.sender == DEPLOYER );
         _;

@@ -21,6 +21,12 @@ contract SynthFactory {
         DEPLOYER = msg.sender; 
     }
 
+    modifier onlyDeployer() {
+        require(msg.sender == DEPLOYER, "DeployerErr");
+        _;
+    }
+
+
     function _DAO() internal view returns(iDAO) {
         bool status = iDAO(NDAO).MSTATUS();
         if(status == true){
@@ -28,6 +34,9 @@ contract SynthFactory {
         }else{
           return iNDAO(NDAO).DAO();
         }
+    }
+    function changeNDAO(address newDAO) public onlyDeployer {
+        NDAO = newDAO;
     }
 
     //Create a synth asset - only from curated pools

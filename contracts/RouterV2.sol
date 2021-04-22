@@ -2,7 +2,7 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./poolV2.sol";
-import "@nomiclabs/buidler/console.sol";
+
 
 interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
@@ -63,6 +63,9 @@ contract Router {
         }else{
           return iNDAO(NDAO).DAO();
         }
+    }
+    function changeNDAO(address newDAO) public onlyDAO {
+        NDAO = newDAO;
     }
 
     receive() external payable {}

@@ -115,7 +115,7 @@ contract BaseMinted is iBEP20 {
         emissionCurve = 2048;
         emitting = false;
         currentEra = 1;
-        secondsPerEra = 1; //86400;
+        secondsPerEra = 86400; //86400;
         nextEraTime = block.timestamp + secondsPerEra;
          DEPLOYER = msg.sender;
         burnAddress = 0x0000000000000000000000000000000000000001;

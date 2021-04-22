@@ -120,7 +120,6 @@ function constructor(accounts) {
   
 
         //SPARTANPROTOCOLv2
-        
         Dao = await DAO.new(base.address)     // deploy daoV2
         utils = await UTILS.new(base.address, routerv1.address, Dao.address) // deploy utilsV2
         router = await ROUTER.new(base.address, wbnb.address, Dao.address) //deploy router

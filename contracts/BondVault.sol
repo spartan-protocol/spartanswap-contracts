@@ -1,6 +1,6 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "@nomiclabs/buidler/console.sol";
+
 import "./iBEP20.sol"; 
 interface iBASE {
     function DAO() external view returns (iDAO);
@@ -79,6 +79,9 @@ contract BondVault {
         }else{
           return iNDAO(NDAO).DAO();
         }
+    }
+    function changeNDAO(address newDAO) public onlyDAO {
+        NDAO = newDAO;
     }
 
     function migrateMemberDetails(address member, address asset, address oldBond) external onlyDAO returns (bool){

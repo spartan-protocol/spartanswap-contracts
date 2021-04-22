@@ -109,6 +109,9 @@ contract Pool is iBEP20 {
         DEPLOYER = msg.sender;
         lastMonth = 0;
     }
+    function changeNDAO(address newDAO) public onlyDAO {
+        NDAO = newDAO;
+    }
 
     //========================================iBEP20=========================================//
     function name() public view override returns (string memory) {

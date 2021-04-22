@@ -34,6 +34,9 @@ contract Synth is iBEP20 {
           return iNDAO(NDAO).DAO();
         }
     }
+    function changeNDAO(address newDAO) public onlyDAO {
+        NDAO = newDAO;
+    }
      modifier onlyDAO() {
         require(msg.sender == DEPLOYER, "!DAO");
         _;

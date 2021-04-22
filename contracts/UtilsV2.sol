@@ -134,6 +134,9 @@ contract Utils {
           return iNDAO(NDAO).DAO();
         }
     }
+    function changeNDAO(address newDAO) public onlyDeployer {
+        NDAO = newDAO;
+    }
 
     //====================================DATA-HELPERS====================================//
 

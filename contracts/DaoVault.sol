@@ -69,7 +69,9 @@ function _DAO() internal view returns(iDAO) {
           return iNDAO(NDAO).DAO();
         }
     }
-
+function changeNDAO(address newDAO) public onlyDAO {
+        NDAO = newDAO;
+    }
 function depositLP(address pool, uint amount, address member) public onlyDAO returns (bool){
        require(iPOOL(pool).transferTo(address(this), amount), 'sendlps');//RPTAF
         mapMemberPool_balance[member][pool] += amount; // Record total pool balance for member

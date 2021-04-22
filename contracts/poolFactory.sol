@@ -34,6 +34,9 @@ contract PoolFactory {
         curatedPoolSize = 10;
         DEPLOYER = msg.sender;
     }
+    function changeNDAO(address newDAO) public onlyDAO {
+        NDAO = newDAO;
+    }
 
     function _DAO() internal view returns(iDAO) {
         bool status = iDAO(NDAO).MSTATUS();
