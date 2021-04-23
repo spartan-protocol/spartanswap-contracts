@@ -6,32 +6,26 @@ import "./iBEP20.sol";
 interface iSYNTHFACTORY {
     function isSynth(address) external view returns (bool);
 }
-
 interface iDAO {
     function ROUTER() external view returns (address);
-
     function RESERVE() external view returns (address);
-
     function UTILS() external view returns (address);
-
     function DAO() external view returns (address);
-
+    function MSTATUS() external view returns(bool);
     function LEND() external view returns (address);
-
     function POOLFACTORY() external view returns (address);
-
     function SYNTHFACTORY() external view returns (address);
 }
-
+interface iNDAO {
+    function DAO() external view returns (iDAO);
+}
 interface iRESERVE {
     function grantFunds(uint256, address) external returns (bool);
+    function emissions() external returns(bool); 
 }
-
 interface iBASE {
     function DAO() external view returns (iDAO);
-
     function transferTo(address, uint256) external payable returns (bool);
-
     function secondsPerEra() external view returns (uint256);
 }
 
@@ -85,18 +79,16 @@ contract SynthVault {
     uint256 public erasToEarn;
     uint256 public blockDelay;
     uint256 public vaultClaim;
+    address public NDAO;
 
     // Only DAO can execute
-    modifier onlyDAO() {
-        require(
-            msg.sender == _DAO().DAO() || msg.sender == DEPLOYER,
-            "Must be DAO"
-        );
+     modifier onlyDAO() {
+        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER );
         _;
     }
-
-    constructor(address _base) public {
+    constructor(address _base, address _newDao) public {
         BASE = _base;
+        NDAO = _newDao;
         DEPLOYER = msg.sender;
         erasToEarn = 30;
         minimumDepositTime = 1;
@@ -104,10 +96,17 @@ contract SynthVault {
         vaultClaim = 1000;
     }
 
-    function _DAO() internal view returns (iDAO) {
-        return iBASE(BASE).DAO();
+    function _DAO() internal view returns(iDAO) {
+        bool _status = iDAO(NDAO).MSTATUS();
+        if(_status == true){
+         return iBASE(BASE).DAO();
+        }else{
+          return iNDAO(NDAO).DAO();
+        }
     }
-
+    function changeNDAO(address _newDAO) external onlyDAO {
+        NDAO = _newDAO;
+    }
     mapping(address => uint256) private mapMember_weight;
     mapping(address => mapping(address => uint256))
         private mapMemberSynth_deposit;
@@ -188,6 +187,7 @@ contract SynthVault {
     //====================================== HARVEST ========================================//
 
     function harvest(address synth) external returns (uint256 synthReward) {
+        require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
         address _member = msg.sender;
         uint256 _weight;
         uint256 reward = calcCurrentReward(synth, _member);

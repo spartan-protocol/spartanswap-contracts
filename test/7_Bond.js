@@ -97,7 +97,8 @@ function constructor(accounts) {
         await Dao.setGenesisAddresses(router.address, utils.address, lend.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address, SPReserve.address); 
         await base.changeDAO(Dao.address)  
 
-        await SPReserve.setIncentiveAddresses(router.address, lend.address,synthV.address);
+
+        await SPReserve.setIncentiveAddresses(router.address, lend.address,synthV.address,Dao.address );
         await SPReserve.start();
 
       

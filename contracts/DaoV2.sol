@@ -33,7 +33,8 @@ interface iLEND {
     
 }
 interface iRESERVE {
-    function grantFunds(uint, address) external returns(bool); 
+    function grantFunds(uint, address) external returns(uint); 
+    function emissions() external returns(bool); 
 }
 
 
@@ -201,9 +202,10 @@ contract Dao {
     // Rewards
 
     function harvest() public {
+        require(_RESERVE.emissions(), "!EMISSIONS");
         uint reward = calcCurrentReward(msg.sender);
         mapMember_lastTime[msg.sender] = block.timestamp;
-        _RESERVE.grantFunds(reward, msg.sender);
+        _RESERVE.grantFunds(reward, msg.sender); 
     }
 
     function calcCurrentReward(address member) public returns(uint){

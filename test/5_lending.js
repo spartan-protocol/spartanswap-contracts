@@ -110,7 +110,7 @@ function constructor(accounts) {
         SPReserve = await RESERVE.new(base.address) // deploy base 
         await Dao.setGenesisAddresses(router.address, utils.address, lend.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address, SPReserve.address); 
         await base.changeDAO(Dao.address)  
-        await SPReserve.setIncentiveAddresses(router.address, lend.address,utils.address);
+        await SPReserve.setIncentiveAddresses(router.address, lend.address,utils.address,Dao.address );
         await SPReserve.start();
 
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))

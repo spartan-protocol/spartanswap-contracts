@@ -134,7 +134,7 @@ function constructor(accounts) {
         await Dao.setGenesisAddresses(router.address, utils.address, utils.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address, SPReserve.address);
         // Dao2 = await DAO.new(base.address)     // deploy daoV3
 
-        await SPReserve.setIncentiveAddresses(router.address, utils.address,utils.address);
+        await SPReserve.setIncentiveAddresses(router.address, utils.address,utils.address,Dao.address );
         await SPReserve.start();
     
        

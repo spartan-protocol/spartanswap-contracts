@@ -90,7 +90,7 @@ function constructor(accounts) {
 
         await Dao._MSTATUS(migration);
 
-        await SPReserve.setIncentiveAddresses(router.address, utils.address,utils.address);
+        await SPReserve.setIncentiveAddresses(router.address, utils.address,utils.address,Dao.address );
         await SPReserve.start();
     
         await base.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))

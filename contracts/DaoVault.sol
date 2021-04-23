@@ -44,12 +44,14 @@ interface iPOOL {
 
 contract DaoVault {
     address public BASE;
+    address public DEPLOYER;
     address public NDAO;
     uint256 public totalWeight;
 
 constructor (address _base, address _newDAO) public payable {
         BASE = _base;
          NDAO = _newDAO;
+         DEPLOYER = msg.sender;
     }
     mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's balance in pool
     mapping(address => uint256) public mapMember_weight; // Value of weight
@@ -57,9 +59,13 @@ constructor (address _base, address _newDAO) public payable {
     mapping(address => address[]) public mapMember_poolArray;
 
 modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO());
+        require(
+            msg.sender == _DAO().DAO() || msg.sender == DEPLOYER,
+            "Must be DAO"
+        );
         _;
     }
+
 
 function _DAO() internal view returns(iDAO) {
         bool status = iDAO(NDAO).MSTATUS();

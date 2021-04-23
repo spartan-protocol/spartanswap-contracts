@@ -2,6 +2,19 @@
   "contractName": "iRESERVE",
   "abi": [
     {
+      "inputs": [],
+      "name": "emissions",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "uint256",
