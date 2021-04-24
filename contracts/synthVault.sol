@@ -2,7 +2,7 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./iBEP20.sol";
- import "@nomiclabs/buidler/console.sol";
+//  import "@nomiclabs/buidler/console.sol";
 interface iSYNTHFACTORY {
     function isSynth(address) external view returns (bool);
 }
@@ -195,7 +195,7 @@ contract SynthVault {
 
     //====================================== HARVEST ========================================//
 
-    function harvest() external returns (uint256 synthReward) {
+    function harvest() external returns (bool) {
         require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
         address _member = msg.sender;
         uint256 _weight;
@@ -206,7 +206,7 @@ contract SynthVault {
                  mapMemberSynth_lastTime[_member][stakedSynthAssets[i]] = block.timestamp;
                  address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool( iSYNTH(stakedSynthAssets[i]).LayerONE() );
                  iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
-                 (synthReward, ) = iPOOL(_poolOUT).mintSynths(stakedSynthAssets[i], address(this));
+                 (uint synthReward, ) = iPOOL(_poolOUT).mintSynths(stakedSynthAssets[i], address(this));
                  _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(stakedSynthAssets[i]).LayerONE(), synthReward);
                  mapMemberSynth_deposit[_member][stakedSynthAssets[i]] += synthReward;
                  mapMemberTotal_weight[_member] += _weight;
@@ -215,7 +215,7 @@ contract SynthVault {
             }
           }
          
-        return synthReward;
+        return true;
     }
 
     function calcCurrentReward(address synth, address member)
@@ -315,10 +315,12 @@ contract SynthVault {
     {
         return mapMember_depositTime[member];
     }
+    function getMemberLastSynthTime(address synth, address member)
+        external
+        view
+        returns (uint256)
+    {
+        return mapMemberSynth_lastTime[member][synth];
+    }
 
-    // deposit synths external
-    // harvest rewards external
-    // calc rewards internal
-    // Buy synths internal
-    // helpers for memberRewards
 }
