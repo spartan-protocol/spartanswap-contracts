@@ -80,6 +80,7 @@ contract SynthVault {
     uint256 public blockDelay;
     uint256 public vaultClaim;
     address public NDAO;
+    address [] public stakedSynthAssets;
 
     // Only DAO can execute
      modifier onlyDAO() {
@@ -107,13 +108,14 @@ contract SynthVault {
     function changeNDAO(address _newDAO) external onlyDAO {
         NDAO = _newDAO;
     }
-    mapping(address => uint256) private mapMember_weight;
-    mapping(address => mapping(address => uint256))
-        private mapMemberSynth_deposit;
+    mapping(address => mapping(address => uint256)) private mapMemberSynth_weight;
+    mapping(address => uint256) private mapMemberTotal_weight;
+    mapping(address => mapping(address => uint256)) private mapMemberSynth_deposit;
 
-    mapping(address => mapping(address => uint256))
-        private mapMemberSynth_lastTime;
+    mapping(address => mapping(address => uint256)) private mapMemberSynth_lastTime;
+    mapping(address => uint256) private mapMember_depositTime;
     mapping(address => uint256) public lastBlock;
+    mapping(address => bool) public isStakedSynth;
 
     // Events
     event MemberDeposits(
@@ -172,42 +174,47 @@ contract SynthVault {
         address _member,
         uint256 _amount
     ) internal {
+        if(!isStakedSynth[_synth]){
+            isStakedSynth[_synth] = true;
+            stakedSynthAssets.push(_synth);
+        }
+        //force harvest
         mapMemberSynth_lastTime[_member][_synth] = block.timestamp;
+        mapMember_depositTime[_member] = block.timestamp;
         mapMemberSynth_deposit[_member][_synth] += _amount; // Record balance for member
         uint256 _weight =
             iUTILS(_DAO().UTILS()).calcSpotValueInBase(
                 iSYNTH(_synth).LayerONE(),
                 _amount
             );
-        mapMember_weight[_member] += _weight;
+        mapMemberSynth_weight[_member][_synth] += _weight;
+        mapMemberTotal_weight[_member] += _weight;
         totalWeight += _weight;
         emit MemberDeposits(_synth, _member, _amount, _weight, totalWeight);
     }
 
     //====================================== HARVEST ========================================//
 
-    function harvest(address synth) external returns (uint256 synthReward) {
+    function harvest() external returns (uint256 synthReward) {
         require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
         address _member = msg.sender;
         uint256 _weight;
-        uint256 reward = calcCurrentReward(synth, _member);
-        mapMemberSynth_lastTime[_member][synth] = block.timestamp;
-        if (reward > 0) {
-            address _poolOUT =
-                iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(
-                    iSYNTH(synth).LayerONE()
-                );
-            iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
-            (synthReward, ) = iPOOL(_poolOUT).mintSynths(synth, address(this));
-            _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(
-                iSYNTH(synth).LayerONE(),
-                synthReward
-            );
-        }
-        mapMemberSynth_deposit[_member][synth] += synthReward;
-        mapMember_weight[_member] += _weight;
-        totalWeight += _weight;
-        emit MemberHarvests(synth, _member, reward, _weight, totalWeight);
+        uint i;
+          for(i = 0; i<stakedSynthAssets.length; i++){
+            if(mapMemberSynth_weight[_member][stakedSynthAssets[i]] > 0){
+                 uint256 reward = calcCurrentReward(stakedSynthAssets[i],_member);
+                 mapMemberSynth_lastTime[_member][stakedSynthAssets[i]] = block.timestamp;
+                 address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool( iSYNTH(stakedSynthAssets[i]).LayerONE() );
+                 iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
+                 (synthReward, ) = iPOOL(_poolOUT).mintSynths(stakedSynthAssets[i], address(this));
+                 _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(stakedSynthAssets[i]).LayerONE(), synthReward);
+                 mapMemberSynth_deposit[_member][stakedSynthAssets[i]] += synthReward;
+                 mapMemberTotal_weight[_member] += _weight;
+                 totalWeight += _weight;
+                emit MemberHarvests(stakedSynthAssets[i], _member, reward, _weight, totalWeight);
+            }
+          }
+         
         return synthReward;
     }
 
@@ -216,15 +223,14 @@ contract SynthVault {
         view
         returns (uint256 reward)
     {
-        uint256 _secondsSinceClaim =
-            block.timestamp - mapMemberSynth_lastTime[member][synth]; // Get time since last claim
-        uint256 _share = calcReward(member);
+        uint256 _secondsSinceClaim = block.timestamp - mapMemberSynth_lastTime[member][synth]; // Get time since last claim
+        uint256 _share = calcReward(synth, member);
         reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra();
         return reward;
     }
 
-    function calcReward(address member) public view returns (uint256) {
-        uint256 _weight = mapMember_weight[member];
+    function calcReward(address synth, address member) public view returns (uint256) {
+        uint256 _weight = mapMemberSynth_weight[member][synth];
         uint256 _reserve = reserveBASE() / erasToEarn;
         uint256 _vaultReward = (_reserve * vaultClaim) / 10000;
         return
@@ -253,22 +259,14 @@ contract SynthVault {
         uint256 _basisPoints
     ) internal returns (uint256 synthReward) {
         require(
-            (block.timestamp - mapMemberSynth_lastTime[_member][_synth]) >=
+            (block.timestamp - mapMember_depositTime[_member]) >=
                 minimumDepositTime,
             "DepositTime"
         ); // stops attacks
-        uint256 _principle =
-            iUTILS(_DAO().UTILS()).calcPart(
-                _basisPoints,
-                mapMemberSynth_deposit[_member][_synth]
-            ); // share of deposits
+        uint256 _principle = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberSynth_deposit[_member][_synth]); // share of deposits
         mapMemberSynth_deposit[_member][_synth] -= _principle;
-        uint256 _weight =
-            iUTILS(_DAO().UTILS()).calcPart(
-                _basisPoints,
-                mapMember_weight[_member]
-            );
-        mapMember_weight[_member] -= _weight;
+        uint256 _weight = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberTotal_weight[_member]);
+        mapMemberTotal_weight[_member] -= _weight;
         totalWeight -= _weight; // reduce for total
         emit MemberWithdraws(
             _synth,
@@ -305,15 +303,17 @@ contract SynthVault {
     }
 
     function getMemberWeight(address member) external view returns (uint256) {
-        return mapMember_weight[member];
+        return mapMemberTotal_weight[member];
     }
-
-    function getMemberLastTime(address synth, address member)
+    function getStakeSynthLength() external view returns (uint256) {
+        return stakedSynthAssets.length;
+    }
+    function getMemberLastTime(address member)
         external
         view
         returns (uint256)
     {
-        return mapMemberSynth_lastTime[member][synth];
+        return mapMember_depositTime[member];
     }
 
     // deposit synths external
