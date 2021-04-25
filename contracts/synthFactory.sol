@@ -46,10 +46,10 @@ contract SynthFactory {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "Must be Curated");
         Synth newSynth; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
-        newSynth = new Synth(BASE,token, NDAO);  
+        newSynth = new Synth(BASE,_token, NDAO);  
         synth = address(newSynth);
         addSynth(_token, synth);
-        emit CreateSynth(_token, synth);
+        emit CreateSynth(token, synth);
         return synth;
     }
 
