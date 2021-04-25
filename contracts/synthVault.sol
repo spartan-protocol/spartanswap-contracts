@@ -169,7 +169,6 @@ contract SynthVault {
         getFunds(synth, amount);
         _deposit(synth, member, amount);
     }
-
     function _deposit(
         address _synth,
         address _member,
