@@ -34,9 +34,7 @@ contract Synth is iBEP20 {
           return iNDAO(NDAO).DAO();
         }
     }
-    function changeNDAO(address newDAO) public onlyDAO {
-        NDAO = newDAO;
-    }
+    
      modifier onlyDAO() {
         require(msg.sender == DEPLOYER, "!DAO");
         _;
@@ -45,6 +43,7 @@ contract Synth is iBEP20 {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, "!POOL");
         _;
     }
+    
 
     constructor (address _base,address _token, address _newDAO) public payable {
          BASE = _base;
@@ -57,6 +56,10 @@ contract Synth is iBEP20 {
         decimals = 18;
         DEPLOYER = msg.sender;
         genesis = block.timestamp ;
+    }
+
+    function changeNDAO(address newDAO) public onlyDAO {
+        NDAO = newDAO;
     }
 
     //========================================iBEP20=========================================//

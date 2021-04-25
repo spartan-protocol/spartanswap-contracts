@@ -309,10 +309,10 @@ async function curatePools() {
 }
 async function createSyntheticBNB() {
     it("It should Create Synthetic BNB ", async () => {
-        var _synth =  await synthFactory.createSynth.call(wbnb.address);
-        await synthFactory.createSynth(wbnb.address);
+        var _synth =  await synthFactory.createSynth.call(_.BNB);
+        await synthFactory.createSynth(_.BNB);
         synthBNB = await SYNTH.at(_synth)
-        let synth = await synthFactory.getSynth(wbnb.address);
+        let synth = await synthFactory.getSynth(_.BNB);
         let result = await synthFactory.isSynth(synth);
         assert.equal(result, true);
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })

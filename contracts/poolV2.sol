@@ -96,7 +96,7 @@ contract Pool is iBEP20 {
         _;
     }
 
-    constructor (address _base, address _token, address _newDAO) public payable {
+    constructor (address _base, address _token, address _newDAO) public {
         BASE = _base;
          NDAO = _newDAO;
         TOKEN = _token;

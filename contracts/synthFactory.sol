@@ -21,11 +21,10 @@ contract SynthFactory {
         DEPLOYER = msg.sender; 
     }
 
-    modifier onlyDeployer() {
+    modifier onlyDAO() {
         require(msg.sender == DEPLOYER, "DeployerErr");
         _;
     }
-
 
     function _DAO() internal view returns(iDAO) {
         bool status = iDAO(NDAO).MSTATUS();
@@ -35,8 +34,15 @@ contract SynthFactory {
           return iNDAO(NDAO).DAO();
         }
     }
-    function changeNDAO(address newDAO) public onlyDeployer {
+    function changeNDAO(address newDAO) public onlyDAO {
         NDAO = newDAO;
+        uint i;
+        for(i =0; i<arraySynths.length; i++){
+            Synth(arraySynths[i]).changeNDAO(newDAO);
+        }
+    }
+    function purgeDeployer() public onlyDAO {
+        DEPLOYER = address(0);
     }
 
     //Create a synth asset - only from curated pools

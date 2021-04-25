@@ -24,7 +24,7 @@ contract PoolFactory {
 
     // Only DAO can execute
     modifier onlyDAO() {
-        require(msg.sender == DEPLOYER || msg.sender == _DAO().ROUTER() || msg.sender == _DAO().DAO());
+        require(msg.sender == DEPLOYER || msg.sender == _DAO().DAO());
         _;
     }
     constructor (address _base, address _wbnb, address _newDAO) public {
@@ -36,6 +36,10 @@ contract PoolFactory {
     }
     function changeNDAO(address newDAO) public onlyDAO {
         NDAO = newDAO;
+         uint i;
+        for(i =0; i<arrayPools.length; i++){
+            Pool(arrayPools[i]).changeNDAO(newDAO);
+        }
     }
 
     function _DAO() internal view returns(iDAO) {
@@ -45,6 +49,9 @@ contract PoolFactory {
         }else{
           return iNDAO(NDAO).DAO();
         }
+    }
+    function purgeDeployer() public onlyDAO {
+        DEPLOYER = address(0);
     }
     function createPool(address token) external onlyDAO returns(address pool){
         require(getPool(token) == address(0));
