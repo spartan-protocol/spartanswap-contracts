@@ -115,7 +115,8 @@ contract SynthVault {
     mapping(address => mapping(address => uint256)) private mapMemberSynth_lastTime;
     mapping(address => uint256) private mapMember_depositTime;
     mapping(address => uint256) public lastBlock;
-    mapping(address => bool) public isStakedSynth;
+    mapping(address => bool) private isStakedSynth;
+    mapping(address => mapping(address => bool)) private isSynthMember;
 
     // Events
     event MemberDeposits(
@@ -178,18 +179,14 @@ contract SynthVault {
             isStakedSynth[_synth] = true;
             stakedSynthAssets.push(_synth);
         }
-        //force harvest
         mapMemberSynth_lastTime[_member][_synth] = block.timestamp;
         mapMember_depositTime[_member] = block.timestamp;
         mapMemberSynth_deposit[_member][_synth] += _amount; // Record balance for member
-        uint256 _weight =
-            iUTILS(_DAO().UTILS()).calcSpotValueInBase(
-                iSYNTH(_synth).LayerONE(),
-                _amount
-            );
+        uint256 _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(_synth).LayerONE(), _amount);
         mapMemberSynth_weight[_member][_synth] += _weight;
         mapMemberTotal_weight[_member] += _weight;
         totalWeight += _weight;
+        isSynthMember[_member][_synth] = true;
         emit MemberDeposits(_synth, _member, _amount, _weight, totalWeight);
     }
 
@@ -200,11 +197,12 @@ contract SynthVault {
         address _member = msg.sender;
         uint256 _weight;
         uint i;
-          for(i = 0; i<stakedSynthAssets.length; i++){
-            if(mapMemberSynth_weight[_member][stakedSynthAssets[i]] > 0){
+        for(i = 0; i<stakedSynthAssets.length; i++){
+            if(isSynthMember[_member][stakedSynthAssets[i]] == true){
                  uint256 reward = calcCurrentReward(stakedSynthAssets[i],_member);
+                 if(reward > 0 ){
                  mapMemberSynth_lastTime[_member][stakedSynthAssets[i]] = block.timestamp;
-                 address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool( iSYNTH(stakedSynthAssets[i]).LayerONE() );
+                 address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(stakedSynthAssets[i]).LayerONE() );
                  iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
                  (uint synthReward, ) = iPOOL(_poolOUT).mintSynths(stakedSynthAssets[i], address(this));
                  _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(stakedSynthAssets[i]).LayerONE(), synthReward);
@@ -212,9 +210,30 @@ contract SynthVault {
                  mapMemberTotal_weight[_member] += _weight;
                  totalWeight += _weight;
                 emit MemberHarvests(stakedSynthAssets[i], _member, reward, _weight, totalWeight);
+                 }
+                 
             }
-          }
+        }
          
+        return true;
+    }
+
+
+
+     function harvest(address synth) external returns (bool) {
+        require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
+        address _member = msg.sender;
+        uint256 _weight;
+        uint256 reward = calcCurrentReward(synth,_member);
+        mapMemberSynth_lastTime[_member][synth] = block.timestamp;
+        address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(synth).LayerONE() );
+        iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
+        (uint synthReward, ) = iPOOL(_poolOUT).mintSynths(synth, address(this));
+        _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(synth).LayerONE(), synthReward);
+         mapMemberSynth_deposit[_member][synth] += synthReward;
+        mapMemberTotal_weight[_member] += _weight;
+        totalWeight += _weight;
+        emit MemberHarvests(synth, _member, reward, _weight, totalWeight);
         return true;
     }
 
@@ -322,5 +341,13 @@ contract SynthVault {
     {
         return mapMemberSynth_lastTime[member][synth];
     }
+    function getMemberSynthWeight(address synth, address member)
+        external
+        view
+        returns (uint256)
+    {
+        return mapMemberSynth_weight[member][synth];
+    }
+
 
 }

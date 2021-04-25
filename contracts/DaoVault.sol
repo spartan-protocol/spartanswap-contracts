@@ -1,6 +1,5 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-
 import "./iBEP20.sol"; 
 interface iDAO {
      function DAO() external view returns (address);
@@ -53,10 +52,9 @@ constructor (address _base, address _newDAO) public payable {
          NDAO = _newDAO;
          DEPLOYER = msg.sender;
     }
-    mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's balance in pool
-    mapping(address => uint256) public mapMember_weight; // Value of weight
-    mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of weight for pool
-    mapping(address => address[]) public mapMember_poolArray;
+    mapping(address => mapping(address => uint256)) private mapMemberPool_balance; // Member's balance in pool
+    mapping(address => uint256) private mapMember_weight; // Value of weight
+    mapping(address => mapping(address => uint256)) private mapMemberPool_weight; // Value of weight for pool
 
 modifier onlyDAO() {
         require(
@@ -64,8 +62,7 @@ modifier onlyDAO() {
             "Must be DAO"
         );
         _;
-    }
-
+}
 
 function _DAO() internal view returns(iDAO) {
         bool status = iDAO(NDAO).MSTATUS();
@@ -91,8 +88,6 @@ function depositLP(address pool, uint amount, address member) public onlyDAO ret
             totalWeight -= mapMemberPool_weight[member][pool];
             mapMember_weight[member] -= mapMemberPool_weight[member][pool];
             mapMemberPool_weight[member][pool] = 0;
-        }else {
-            mapMember_poolArray[member].push(pool);
         }
         uint weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[member][pool]); // Get claim on BASE in pool
         mapMemberPool_weight[member][pool] = weight;
@@ -120,6 +115,13 @@ function withdraw(address pool, address member) public onlyDAO returns (bool ){
 
 function getMemberWeight(address member) public view returns (uint){
         return mapMember_weight[member];
+    }
+
+function getMemberPoolBalance(address pool, address member) public view returns (uint){
+        return mapMemberPool_balance[member][pool];
+    }
+function getMemberPoolWeight(address pool, address member) public view returns (uint){
+        return mapMemberPool_weight[member][pool];
     }
 
 }

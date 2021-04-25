@@ -7,7 +7,7 @@ interface iDAOVAULT {
     function withdraw(address,address) external  returns (bool);
     function depositLP(address, uint, address) external  returns (bool);
     function updateWeight(address) external ;
-    function mapMember_weight(address) external returns(uint); 
+    function getMemberWeight(address) external returns(uint); 
     function mapMemberPool_balance(address, address) external returns (uint);
     function totalWeight() external view returns(uint);
 }
@@ -28,7 +28,6 @@ interface iBOND {
     function changeBondingPeriod(uint) external returns (bool);
     function depositInit(address, uint, address) external;
 }
-
 interface iLEND {
     
 }
@@ -172,7 +171,7 @@ contract Dao {
         if (!isMember[member]) {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
-        }else if(_DAOVAULT.mapMember_weight(member) > 0) {
+        }else if(_DAOVAULT.getMemberWeight(member) > 0) {
                 harvest();
         }
         _DAOVAULT.depositLP(pool, amount, member);
@@ -217,7 +216,7 @@ contract Dao {
     }
 
     function calcReward(address member) public returns(uint){
-        uint weight = _DAOVAULT.mapMember_weight(member);
+        uint weight = _DAOVAULT.getMemberWeight(member);
         uint _totalWeight = _DAOVAULT.totalWeight();
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)) / erasToEarn; // Aim to deplete reserve over a number of days
         uint daoReward = (reserve * daoClaim) / 10000;
@@ -493,7 +492,7 @@ contract Dao {
     function countVotes(uint _proposalID) internal returns (uint voteWeight){
         mapPID_votes[_proposalID] -= mapPIDMember_votes[_proposalID][msg.sender];
          _DAOVAULT.updateWeight(msg.sender);
-        voteWeight = _DAOVAULT.mapMember_weight(msg.sender);
+        voteWeight = _DAOVAULT.getMemberWeight(msg.sender);
         mapPID_votes[_proposalID] += voteWeight;
         mapPIDMember_votes[_proposalID][msg.sender] = voteWeight;
         return voteWeight;

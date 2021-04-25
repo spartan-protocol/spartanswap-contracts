@@ -36,14 +36,9 @@
           "internalType": "address",
           "name": "",
           "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
         }
       ],
-      "name": "mapMemberPool_balance",
+      "name": "getMemberWeight",
       "outputs": [
         {
           "internalType": "uint256",
@@ -60,9 +55,14 @@
           "internalType": "address",
           "name": "",
           "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
         }
       ],
-      "name": "mapMember_weight",
+      "name": "mapMemberPool_balance",
       "outputs": [
         {
           "internalType": "uint256",

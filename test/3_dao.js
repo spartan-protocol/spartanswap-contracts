@@ -201,8 +201,8 @@ async function lockTKN(acc, amount) {
         // console.log(`isMember: ${await Dao.isMember(acc)}`)
         // console.log(`mapMemberPool_balance: ${await daoVault.mapMemberPool_balance(acc, poolTKN1.address)}`)
         // console.log(`totalWeight: ${await daoVault.totalWeight()}`)
-        // console.log(`mapMember_weight: ${await daoVault.mapMember_weight(acc)}`)
-        // console.log(`rate: ${_.getBN(await daoVault.mapMember_weight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
+        // console.log(`getMemberWeight: ${await daoVault.getMemberWeight(acc)}`)
+        // console.log(`rate: ${_.getBN(await daoVault.getMemberWeight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
     })
 }
 async function lockWBNB(acc, amount) {
@@ -214,8 +214,8 @@ async function lockWBNB(acc, amount) {
         // console.log(`isMember: ${await Dao.isMember(acc)}`)
         // console.log(`mapMemberPool_balance: ${await daoVault.mapMemberPool_balance(acc, poolWBNB.address)}`)
         // console.log(`totalWeight: ${await daoVault.totalWeight()}`)
-        // console.log(`mapMember_weight: ${await daoVault.mapMember_weight(acc)}`)
-        // console.log(`rate: ${_.getBN(await daoVault.mapMember_weight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
+        // console.log(`getMemberWeight: ${await daoVault.getMemberWeight(acc)}`)
+        // console.log(`rate: ${_.getBN(await daoVault.getMemberWeight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
        
     })
 }
@@ -245,10 +245,10 @@ async function withdrawTKN1(acc) {
 
 async function rate() {
     it("It should check rates", async () => {
-        console.log(`acc0 rate: ${await daoVault.mapMember_weight(acc0)} ${_.getBN(await daoVault.mapMember_weight(acc0)).div(_.getBN(await daoVault.totalWeight()))}`)
-        console.log(`acc1 rate: ${await daoVault.mapMember_weight(acc1)} ${_.getBN(await daoVault.mapMember_weight(acc1)).div(_.getBN(await daoVault.totalWeight()))}`)
-        console.log(`acc2 rate: ${await daoVault.mapMember_weight(acc2)} ${_.getBN(await daoVault.mapMember_weight(acc2)).div(_.getBN(await daoVault.totalWeight()))}`)
-        //console.log(`acc3 rate: ${await Dao.mapMember_weight(acc3)} ${_.getBN(await Dao.mapMember_weight(acc3)).div(_.getBN(await Dao.totalWeight()))}`)
+        console.log(`acc0 rate: ${await daoVault.getMemberWeight(acc0)} ${_.getBN(await daoVault.getMemberWeight(acc0)).div(_.getBN(await daoVault.totalWeight()))}`)
+        console.log(`acc1 rate: ${await daoVault.getMemberWeight(acc1)} ${_.getBN(await daoVault.getMemberWeight(acc1)).div(_.getBN(await daoVault.totalWeight()))}`)
+        console.log(`acc2 rate: ${await daoVault.getMemberWeight(acc2)} ${_.getBN(await daoVault.getMemberWeight(acc2)).div(_.getBN(await daoVault.totalWeight()))}`)
+        //console.log(`acc3 rate: ${await Dao.getMemberWeight(acc3)} ${_.getBN(await Dao.getMemberWeight(acc3)).div(_.getBN(await Dao.totalWeight()))}`)
 
     })
 }
@@ -461,7 +461,7 @@ async function harvest() {
         // await base.transfer(router.address, "10000000000000000000")
         let now = _.getBN((new Date())/1000)
         let lastTime = _.getBN(await Dao.mapMember_lastTime(acc1))
-       // console.log(`acc1 rate: ${await daoVault.mapMember_weight(acc1)} ${_.getBN(await daoVault.mapMember_weight(acc1)).div(_.getBN(await daoVault.totalWeight()))}`)
+       // console.log(`acc1 rate: ${await daoVault.getMemberWeight(acc1)} ${_.getBN(await daoVault.getMemberWeight(acc1)).div(_.getBN(await daoVault.totalWeight()))}`)
         let calcCurrentReward = _.getBN(await Dao.calcCurrentReward(acc1))
         let calcReward = _.getBN(await Dao.calcReward(acc1))
      
