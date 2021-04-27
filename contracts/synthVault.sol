@@ -191,7 +191,7 @@ contract SynthVault {
 
     //====================================== HARVEST ========================================//
 
-    function harvest() external returns (bool) {
+    function harvestAll() external returns (bool) {
         require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
         address _member = msg.sender;
         uint256 _weight;
@@ -219,7 +219,7 @@ contract SynthVault {
 
 
 
-     function harvest(address synth) external returns (bool) {
+     function harvestSingle(address synth) external returns (bool) {
         require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
         address _member = msg.sender;
         uint256 _weight;
