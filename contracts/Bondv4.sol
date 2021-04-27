@@ -7,8 +7,6 @@ import "./BondVault.sol";
 
     //======================================SPARTA=========================================//
 contract Bond is iBEP20 {
-
-
     // ERC-20 Parameters
     string public override name; string public override symbol;
     uint256 public override decimals; uint256 public override totalSupply;  
@@ -27,7 +25,6 @@ contract Bond is iBEP20 {
     uint public one = 10**18;
     address [] listedBondAssets;
     uint256 public bondingPeriodSeconds = 31104000;//update for mainnet
-    uint256 public totalWeight;
 
     mapping(address => bool) public isListed;
 
@@ -68,6 +65,9 @@ contract Bond is iBEP20 {
     }
     function changeNDAO(address newDAO) public onlyDAO {
         NDAO = newDAO;
+    }
+     function setAddress(address _bondVault) public onlyDAO {
+        bondVault = _bondVault;
     }
 
     //========================================iBEP20=========================================//

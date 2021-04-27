@@ -6,7 +6,6 @@ import "./DaoVault.sol";
 interface iDAOVAULT {
     function withdraw(address,address) external  returns (bool);
     function depositLP(address, uint, address) external  returns (bool);
-    function updateWeight(address) external ;
     function getMemberWeight(address) external returns(uint); 
     function mapMemberPool_balance(address, address) external returns (uint);
     function totalWeight() external view returns(uint);
@@ -165,13 +164,14 @@ contract Dao {
     }
 
     // Contract deposits some LP tokens for member
-    function depositLPForMember(address pool, uint256 amount, address member) public payable{
+    function depositLPForMember(address pool, uint256 amount, address member) public {
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!Curated");
         require(amount > 0, "!Amount");
-        if (!isMember[member]) {
+        if (isMember[member] != true) {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
-        }else if(_DAOVAULT.getMemberWeight(member) > 0) {
+        }
+        if(_DAOVAULT.getMemberWeight(member) > 0) {
                 harvest();
         }
         _DAOVAULT.depositLP(pool, amount, member);
@@ -179,7 +179,7 @@ contract Dao {
         emit MemberDeposits(member, pool, amount);
     }
     
-    function depositForMember(address pool, uint256 amount, address member) public payable{
+    function depositForMember(address pool, uint256 amount, address member) public {
         address token = iPOOL(pool).TOKEN();//old pool
         iPOOL(pool).transferTo(pool, amount);//send lps to pool
         (uint outputBase, uint outputToken) = iPOOL(pool).removeLiquidity(); 
@@ -491,7 +491,6 @@ contract Dao {
 
     function countVotes(uint _proposalID) internal returns (uint voteWeight){
         mapPID_votes[_proposalID] -= mapPIDMember_votes[_proposalID][msg.sender];
-         _DAOVAULT.updateWeight(msg.sender);
         voteWeight = _DAOVAULT.getMemberWeight(msg.sender);
         mapPID_votes[_proposalID] += voteWeight;
         mapPIDMember_votes[_proposalID][msg.sender] = voteWeight;

@@ -92,19 +92,6 @@
           "internalType": "address",
           "name": "",
           "type": "address"
-        }
-      ],
-      "name": "updateWeight",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
         },
         {
           "internalType": "address",

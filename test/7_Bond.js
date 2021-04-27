@@ -53,18 +53,20 @@ contract('LOCK', function (accounts) {
      deployerChangeSecondsPerYear(100)
      depositBNB(acc2, _.BN2Str(_.one))
      claimLPAndLock(acc2, 2000) 
-     deployerChangeSecondsPerYear(1)
+    //  deployerChangeSecondsPerYear(1)
      //claimLPAndLock(acc2, 2000) 
      deployerChangeSecondsPerYear(100)
      depositNONEListedAsset()
      deployerListTKN()
      depositTKN(acc2, _.BN2Str(_.one))
-     claimLPAndLockTNK(acc2, 1000) // claim after 1 second
-      deployerChangeSecondsPerYear(1)
-    //  claimLPAndLock(acc2, 2000) 
-     deployerUnListBNB()
+     migrateMemberDetails(acc2)
+     moveBondVault()
+    //  claimLPAndLockTNK(acc2, 1000) // claim after 1 second
+    //   deployerChangeSecondsPerYear(1)
       claimLPAndLock(acc2, 2000) 
-    //   depositBNB(acc2, _.BN2Str(_.one))
+      depositBNBAfter(acc2, _.BN2Str(_.one))
+    //  deployerUnListBNB()
+    //   claimLPAndLock(acc2, 2000) 
 
   
 })
@@ -84,6 +86,7 @@ function constructor(accounts) {
         router = await ROUTER.new(base.address, wbnb.address, Dao.address) //deploy router
         daoVault = await DAOVAULT.new(base.address, Dao.address);
         bondVault = await BONDVault.new(base.address, Dao.address)  //deploy new bond
+        bondVault2 = await BONDVault.new(base.address, Dao.address)  //deploy new bond
         bond = await BOND.new(base.address, wbnb.address, Dao.address, bondVault.address);
         poolFactory = await POOLFACTORY.new(base.address,  wbnb.address, Dao.address) 
         synthFactory = await SYNTHFACTORY.new(base.address,  wbnb.address, Dao.address) 
@@ -431,17 +434,44 @@ async function mintBond() {
         assert.equal(await bond.totalSupply(), '1000000000000000000')
     })
 }
-async function burnLock2(){
-    it("Burn Bond for Allocation", async () => {
-        let lockBalBefore = await bond.totalSupply()
-        let spartaBalBefore = _.getBN(await base.balanceOf(bond.address))
-        await bond.approve(base.address, lockBalBefore, {from:acc0})
-        expect(_.BN2Str(await bond.allowance(acc0, base.address))).to.equal(_.BN2Str(lockBalBefore));
-        let tx = await bond.burnBond()
-        let lockBalAfter = _.BN2Str(await bond.balanceOf(bond.address))
-        assert.equal(lockBalAfter,'0',  'bond was burnt')
-        let spartaBalAfter = _.getBN(await base.balanceOf(bond.address))
-        assert.equal(_.BN2Str(spartaBalAfter.minus(spartaBalBefore)/_.one),allocation, 'did it get sparta')
-        
+
+async function moveBondVault(){
+    it("It should move BondVault", async () => {
+        let token = poolWBNB.address;
+       await bondVault.migrateBondedAssets(token, bondVault2.address, {from:acc0})
+       await bond.setAddress(bondVault2.address, {from:acc0})
+    })
+}
+async function migrateMemberDetails(acc){
+    it("It should migrate member details", async () => {
+        let token = _.BNB;
+        let asset = _.BNB
+        let memberDetails = await bondVault.getMemberDetails(acc, asset);
+       await bondVault2.migrateMemberDetails(acc, token, bondVault.address, {from:acc0})
+       let memberDetailsA = await bondVault2.getMemberDetails(acc, asset);
+       console.log("bondedLPBefore ",_.BN2Str(memberDetails.bondedLP)); 
+       console.log("bondedLPBeforeA ",_.BN2Str(memberDetailsA.bondedLP)); 
+    })
+}
+async function depositBNBAfter(acc, amount){
+    it(`It should deposit and bond into dao `, async () => {
+        let asset = _.BNB
+        let poolData = await utils.getPoolData(asset);
+        let spartaAllocation = await utils.calcSwapValueInBase(asset,amount)
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+        poolUnits = _.getBN((await poolWBNB.totalSupply()))
+        let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
+        DEPOTime = _.getBN((new Date())/1000)
+        let memberDetails = await bondVault2.getMemberDetails(acc, asset);
+
+        console.log("bondedLPBefore ",_.BN2Str(memberDetails.bondedLP)); 
+       await bond.deposit(asset, amount,{from:acc, value:amount})
+       let memberDetailsA = await bondVault2.getMemberDetails(acc, asset);
+
+        // console.log("bondedLPBefore ",_.BN2Str(memberDetailsA.bondedLP)); 
+
+    //    assert.equal(_.BN2Str(memberDetailsA.bondedLP), _.BN2Str(units.plus(_.BN2Str(memberDetails.bondedLP))), 'bonded LP')
+        // assert.equal(_.BN2Str((await poolWBNB.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
     })
 }
