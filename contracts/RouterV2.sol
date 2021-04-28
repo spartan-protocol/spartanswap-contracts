@@ -243,27 +243,38 @@ contract Router {
 
     //=================================================================================//
     //Swap Synths
-    function swapBaseToSynth(uint inputAmount, address synthIN) public returns (uint outPut){
-        return swapBaseToSynthFM(inputAmount,  synthIN,  msg.sender);
+    function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) public returns (uint outputSynth, uint fee){
+        return swapAssetToSynthFM(inputAmount, fromToken, toSynth,  msg.sender);
     }
-    function swapBaseToSynthFM(uint inputAmount, address synthOUT, address member) public returns (uint output){
-         address _synthOUTLayer1 = iSYNTH(synthOUT).LayerONE();
+    function swapAssetToSynthFM(uint inputAmount, address fromToken, address toSynth, address member) public returns (uint outputSynth, uint fee){
+         address _synthOUTLayer1 = iSYNTH(toSynth).LayerONE();
          address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthOUTLayer1);
-         _transferINSafe(member, _poolOUT, BASE, inputAmount);
-         (uint outputSynth, uint fee) = Pool(_poolOUT).mintSynths(synthOUT, member); 
-         getsDividend( _poolOUT,  _synthOUTLayer1,  fee);
-         return outputSynth;
+          if(fromToken != BASE){
+            sellTo(inputAmount, fromToken, _poolOUT);
+          }else {
+            _transferINSafe(member, _poolOUT, BASE, inputAmount); 
+          }
+          (outputSynth, fee) = Pool(_poolOUT).mintSynths(toSynth, member); 
+          getsDividend( _poolOUT,  _synthOUTLayer1,  fee);
+         return (outputSynth,fee);
     }
-    function swapSynthToBase(uint inputAmount, address synthIN) public returns (uint outPut){
-        return swapSynthToBaseFM(inputAmount,  synthIN, msg.sender);
+   
+    function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) public returns (uint output, uint fee){
+        return swapSynthToAssetFM(inputAmount, fromSynth,toToken, msg.sender);
     }
-    function swapSynthToBaseFM(uint inputAmount, address synthIN, address member) public returns (uint outPut){
-        address _synthINLayer1 = iSYNTH(synthIN).LayerONE();
+    function swapSynthToAssetFM(uint inputAmount, address fromSynth, address toToken, address member) public returns (uint outputAmount, uint fee){
+        address _synthINLayer1 = iSYNTH(fromSynth).LayerONE();
         address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthINLayer1);
-        _transferINSafe(member, _poolIN, synthIN, inputAmount);
-        (uint outputBase, uint fee) = Pool(_poolIN).burnSynths(synthIN, member); 
-        getsDividend(_poolIN, _synthINLayer1, fee);
-        return outputBase;
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
+        _transferINSafe(member, _poolIN, fromSynth, inputAmount);
+        if(toToken != BASE){
+            Pool(_poolIN).burnSynths(fromSynth, _pool); 
+          (outputAmount, fee) = Pool(_poolIN).swap(toToken);
+        }else{
+          (outputAmount, fee) = Pool(_poolIN).burnSynths(fromSynth, member); 
+        }
+        getsDividend(_poolIN, toToken, fee);
+        return (outputAmount, fee);
     }
     
     function _transferINSafe(address _from, address _to, address _token, uint _amount) internal {

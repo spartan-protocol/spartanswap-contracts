@@ -12,7 +12,7 @@ interface iROUTER {
     function swap(uint, address, address) external returns(uint);
     function removeLiquidityExact(uint, address) external returns(uint, uint);
     function removeLiquidityAsym(uint, bool, address ) external returns(uint, uint);
-    function swapSynthToBase(uint, address) external returns (uint );
+    function swapSynthToAsset(uint, address, address) external returns (uint,uint);
 }
 interface iUTILS {
    function calcSwapValueInBaseWithPool(address, uint) external view returns (uint );
