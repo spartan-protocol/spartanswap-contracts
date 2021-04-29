@@ -283,8 +283,9 @@ contract SynthVault {
         ); // stops attacks
         uint256 _principle = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberSynth_deposit[_member][_synth]); // share of deposits
         mapMemberSynth_deposit[_member][_synth] -= _principle;
-        uint256 _weight = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberTotal_weight[_member]);
+        uint256 _weight = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberSynth_weight[_member][_synth]);
         mapMemberTotal_weight[_member] -= _weight;
+        mapMemberSynth_weight[_member][_synth] -= _weight;
         totalWeight -= _weight; // reduce for total
         emit MemberWithdraws(
             _synth,
