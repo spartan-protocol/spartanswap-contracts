@@ -548,7 +548,7 @@ async function swapLayer1ToSynth(acc, x) {
         let poolSynBal = _.getBN(await poolWBNB.balanceOf(synthBNB.address));
         let totalSynth = _.getBN(await synthBNB.totalSupply());
 
-        await router.swapBaseToSynth(x,synthOUT,{from:acc});
+        await router.swapAssetToSynth(x,base.address,synthOUT,{from:acc});
         let synthMint = _.getBN(await utils.calcAsymmetricValueToken(poolWBNB.address,asymAdd));
 
         poolData = await utils.getPoolData(token);
@@ -568,7 +568,6 @@ async function swapLayer1ToSynth(acc, x) {
         
     })
 }
-
 async function swapSynthToLayer1(acc, x) {
     it("Swap Synthetic BNB To BASE", async () => {
         let input = _.BN2Str(await synthBNB.balanceOf(acc));
@@ -596,7 +595,7 @@ async function swapSynthToLayer1(acc, x) {
 
         let amountSynths = _.BN2Str((_.getBN(x).times(lpBalance)).div(lpDebt));
 
-        await router.swapSynthToBase(x,synthIN,{from:acc});
+        await router.swapSynthToAsset(x,synthIN,base.address,{from:acc});
         
        
         poolData = await utils.getPoolData(token);

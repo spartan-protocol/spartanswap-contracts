@@ -87,7 +87,7 @@ contract Router {
     function addLiquidityAsym(uint inputToken, bool fromBase, address token) public payable returns (uint units) {
        return addLiquidityAsymForMember(inputToken,fromBase, token, msg.sender);
     }
-    function zapLiquidity(uint unitsLP, address fromToken, address toToken) public payable returns (uint units){
+    function zapLiquidity(uint unitsLP, address fromToken, address toToken) public returns (uint units){
         address _poolTo = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_poolTo) == true);
         address _poolFrom = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(fromToken);
@@ -175,16 +175,15 @@ contract Router {
         _handleTransferIn(BASE, amount, _pool);
         (outputAmount, fee) = Pool(_pool).swap(_token);
         _handleTransferOut(token, outputAmount, member);
-        getsDividend(_pool,token, fee);
+        getsDividend(_pool, fee);
         return (outputAmount, fee);
     }
     function sellTo(uint amount, address token, address member) public payable returns (uint outputAmount, uint fee) {
             address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
              _handleTransferIn(token, amount, _pool);
             (outputAmount, fee) = Pool(_pool).swapTo(BASE, member);
-            getsDividend(_pool,token, fee);
+            getsDividend(_pool,fee);
             return (outputAmount, fee);
-            //iLEND(_DAO().LEND()).checkInterest(BASE);
     }
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable returns (uint256 outputAmount, uint256 fee) {
         return swapTo(inputAmount, fromToken, toToken, msg.sender);
@@ -202,16 +201,16 @@ contract Router {
             if(toToken == address(0)){_toToken = WBNB;} 
              (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
             fee = feey+(_feez);
-            getsDividend(_poolTo,toToken, fee);
+            getsDividend(_poolTo,fee);
             outputAmount = _zz; 
             _handleTransferOut(toToken, outputAmount, member);
         }
         return (outputAmount, fee);
     }
-    function getsDividend(address _pool, address _token, uint fee) internal {
+    function getsDividend(address _pool, uint fee) internal {
         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
             addTradeFee(fee);
-            addDividend(_token, fee); 
+            addDividend(_pool, fee); 
            }
     }
     //==================================================================================//
@@ -243,10 +242,11 @@ contract Router {
 
     //=================================================================================//
     //Swap Synths
-    function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) public returns (uint outputSynth, uint fee){
+    function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) public payable returns (uint outputSynth, uint fee){
         return swapAssetToSynthFM(inputAmount, fromToken, toSynth,  msg.sender);
     }
-    function swapAssetToSynthFM(uint inputAmount, address fromToken, address toSynth, address member) public returns (uint outputSynth, uint fee){
+    function swapAssetToSynthFM(uint inputAmount, address fromToken, address toSynth, address member) public payable returns (uint outputSynth, uint fee){
+         require(fromToken != toSynth);
          address _synthOUTLayer1 = iSYNTH(toSynth).LayerONE();
          address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthOUTLayer1);
           if(fromToken != BASE){
@@ -255,7 +255,7 @@ contract Router {
             _transferINSafe(member, _poolOUT, BASE, inputAmount); 
           }
           (outputSynth, fee) = Pool(_poolOUT).mintSynths(toSynth, member); 
-          getsDividend( _poolOUT,  _synthOUTLayer1,  fee);
+          getsDividend(_poolOUT, fee);
          return (outputSynth,fee);
     }
    
@@ -263,17 +263,20 @@ contract Router {
         return swapSynthToAssetFM(inputAmount, fromSynth,toToken, msg.sender);
     }
     function swapSynthToAssetFM(uint inputAmount, address fromSynth, address toToken, address member) public returns (uint outputAmount, uint fee){
+        require(fromSynth != toToken);
         address _synthINLayer1 = iSYNTH(fromSynth).LayerONE();
         address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthINLayer1);
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken);
+        address _toToken = toToken;
+        if(toToken == address(0)){_toToken = WBNB;} // Handle BNB
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_toToken);
         _transferINSafe(member, _poolIN, fromSynth, inputAmount);
-        if(toToken != BASE){
+        if(_toToken != BASE){
             Pool(_poolIN).burnSynths(fromSynth, _pool); 
-          (outputAmount, fee) = Pool(_poolIN).swap(toToken);
+           (outputAmount, fee) = Pool(_pool).swap(_toToken);
         }else{
           (outputAmount, fee) = Pool(_poolIN).burnSynths(fromSynth, member); 
         }
-        getsDividend(_poolIN, toToken, fee);
+        getsDividend(_pool, fee);
         return (outputAmount, fee);
     }
     
@@ -287,11 +290,10 @@ contract Router {
 
     //==================================================================================//
     //Token Dividends / Curated Pools
-    function addDividend(address _token, uint256 _fees) internal {
+    function addDividend(address _pool, uint256 _fees) internal {
         if(!(normalAverageFee == 0)){
              uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // get base balance
             if(!(reserve == 0)){
-            address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token);
             uint dailyAllocation = (reserve / eraLength) / maxTrades; // get max dividend for reserve/30/100 
             uint numerator = _fees * dailyAllocation;
             uint feeDividend = numerator / (_fees + normalAverageFee);
