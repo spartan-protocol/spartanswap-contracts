@@ -50,39 +50,39 @@ contract('Test Lending', function (accounts) {
      addLiquidityTKN1(acc0,_.BN2Str(1500*_.one),  _.BN2Str(60*_.one)); //SPV2
      addLiquidityTKN1(acc1,_.BN2Str(1500*_.one),  _.BN2Str(60*_.one)); //SPV2
      curatePools()
-     createSyntheticBNB()
-     swapLayer1ToSynth(acc0,_.BN2Str(500*_.one))
-    //  swapSynthToLayer1(acc1)
-     BorrowTKNwithBASE(acc0,_.BN2Str(100*_.one))
-      BorrowTKNwithSPT2BNB(acc0,_.BN2Str(100*_.one))
-       BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(10*_.one))
+    //  createSyntheticBNB()
+    //  swapLayer1ToSynth(acc0,_.BN2Str(500*_.one))
+    // //  swapSynthToLayer1(acc1)
+    //  BorrowTKNwithBASE(acc0,_.BN2Str(100*_.one))
+    //   BorrowTKNwithSPT2BNB(acc0,_.BN2Str(100*_.one))
+    //    BorrowTKNwithASYNTHBNB(acc0,_.BN2Str(10*_.one))
 
-      swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
-    // swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
-     addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
-      _checkliquidate(acc0);
-      zapLiquidity(acc1)
-       swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
-      addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
-     _checkliquidate(acc0);
-     //swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
-    // //  ShowTKNPool()
-       payInterestForTKNBASE(acc0)
-      // _checkliquidate(acc0);
-       payInterestForTKNSPT(acc0)
-       swapBASEtoTKN(acc1, _.BN2Str(10*_.one))// wbnb swaps
-    //    _checkliquidate(acc0);
-       payInterestForTKNSYNTH(acc0)
-        addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
-      _checkliquidate(acc0);
-       swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
-    //    _checkliquidate(acc0);
+    //   swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    // // swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    //  addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
+    //   _checkliquidate(acc0);
+    //   zapLiquidity(acc1)
+    //    swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    //   addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
+    //  _checkliquidate(acc0);
+    //  //swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    // // //  ShowTKNPool()
+    //    payInterestForTKNBASE(acc0)
+    //   // _checkliquidate(acc0);
+    //    payInterestForTKNSPT(acc0)
+    //    swapBASEtoTKN(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    // //    _checkliquidate(acc0);
+    //    payInterestForTKNSYNTH(acc0)
+    //     addLiquidityTKN1(acc0,_.BN2Str(1100*_.one),  _.BN2Str(0*_.one)); //SPV2
+    //   _checkliquidate(acc0);
+    //    swapTKNtoBASE(acc1, _.BN2Str(10*_.one))// wbnb swaps
+    // //    _checkliquidate(acc0);
    
-    //    _checkliquidate(acc0);
+    // //    _checkliquidate(acc0);
 
-      RepayTKNgetBase(acc0, "25517773151982793")
-      RepayTKNgetSPT2BNB(acc0, "796480116002472")
-      RepayTKNgetSynthBNB(acc0, "3730536262086436")
+    //   RepayTKNgetBase(acc0, "25517773151982793")
+    //   RepayTKNgetSPT2BNB(acc0, "796480116002472")
+    //   RepayTKNgetSynthBNB(acc0, "3730536262086436")
 
      
     //  ShowTKNPool()

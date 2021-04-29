@@ -114,7 +114,11 @@ function withdraw(address pool, address member) public onlyDAO returns (bool ){
 }
 
 function getMemberWeight(address member) public view returns (uint){
+    if(mapMember_weight[member] > 0){
         return mapMember_weight[member];
+    }else{
+        return 0;
+    }
     }
 
 function getMemberPoolBalance(address pool, address member) public view returns (uint){

@@ -49,6 +49,9 @@ contract('Test Harvest Synths', function (accounts) {
      swapLayer1ToSynth(acc0,_.BN2Str(5000*_.one))
      swapLayer1ToSynth(acc2,_.BN2Str(1000*_.one))
      swapLayer1ToSynth(acc1,_.BN2Str(5000*_.one))
+     swapSynthToLayer1(acc0,_.BN2Str(0.1*_.one) )
+     swapSynthToLayer1(acc2,_.BN2Str(0.2*_.one) )
+     swapSynthToLayer1(acc1,_.BN2Str(0.3*_.one) )
     //    harvestSynth()
      depositSynthBNB(acc1, _.BN2Str(0.3*_.one))
      depositSynthTKN2(acc1, _.BN2Str(0.3*_.one))
@@ -367,27 +370,47 @@ async function createSyntheticBNB() {
 async function swapLayer1ToSynth(acc, x) {
     it("Swap SPARTA to BNB-SPS ", async () => {
         let synthOUT = synthBNB.address;
-        await router.swapBaseToSynth(x,synthOUT,{from:acc});
+        let tokenIN = base.address
+        await router.swapAssetToSynth(x,tokenIN,synthOUT,{from:acc});
     })
-    it("Swap SPARTA to TKN2-SPS ", async () => {
+    it("Swap BNB to TKN2-SPS ", async () => {
         let synthOUT = synthTKN2.address;
-        await router.swapBaseToSynth(x,synthOUT,{from:acc});
+        let tokenIN = _.BNB
+        await router.swapAssetToSynth(x,tokenIN,synthOUT,{from:acc,value:x});
     })
-    it("Swap SPARTA to TKN3-SPS ", async () => {
+    it("Swap TKN1 to TKN3-SPS ", async () => {
+        let tokenIN = token1.address
         let synthOUT = synthTKN3.address;
-        await router.swapBaseToSynth(x,synthOUT,{from:acc});
+        await router.swapAssetToSynth(x,tokenIN,synthOUT,{from:acc});
     })
     it("Swap SPARTA to TKN4-SPS ", async () => {
         let synthOUT = synthTKN4.address;
-        await router.swapBaseToSynth(x,synthOUT,{from:acc});
+        await router.swapAssetToSynth(x,base.address,synthOUT,{from:acc});
     })
     it("Swap SPARTA to TKN5-SPS ", async () => {
         let synthOUT = synthTKN5.address;
-        await router.swapBaseToSynth(x,synthOUT,{from:acc});
+        await router.swapAssetToSynth(x,base.address,synthOUT,{from:acc});
     })
     it("Swap SPARTA to TKN6-SPS ", async () => {
         let synthOUT = token1.address;
-        await truffleAssert.reverts(router.swapBaseToSynth(x,synthOUT,{from:acc})), "!synth";
+        await truffleAssert.reverts(router.swapAssetToSynth(x,base.address,synthOUT,{from:acc})), "!synth";
+    })
+}
+async function swapSynthToLayer1(acc, x) {
+    it("Swap BNB-SPS to SPARTA   ", async () => {
+        let synthIN = synthBNB.address;
+        let tokenOut = base.address
+        await router.swapSynthToAsset(x,synthIN,tokenOut,{from:acc});
+    })
+    it("Swap TKN2-SPS to BNB", async () => {
+        let synthIN = synthBNB.address;
+        let tokenOut = _.BNB
+        await router.swapSynthToAsset(x,synthIN,tokenOut,{from:acc});
+    })
+    it("Swap TKN3-SPS to TKN ", async () => {
+        let synthIN = synthBNB.address;
+        let tokenOut = token1.address
+        await router.swapSynthToAsset(x,synthIN,tokenOut,{from:acc});
     })
 }
 async function depositSynthBNB(acc, x) {
@@ -608,7 +631,7 @@ async function harvestSynth() {
         let asymAdd = _.getBN(await utils.calcLiquidityUnitsAsym(reward, poolWBNB.address))
        
 
-        await synthV.harvest({from:acc});
+        await synthV.harvestAll({from:acc});
         let token = await synthBNB.LayerONE();
         let poolTO = await utils.getPoolData(token);
         const X = _.getBN(poolTO.baseAmount)
@@ -659,7 +682,7 @@ async function harvestSynth() {
         // let asymAdd = _.getBN(await utils.calcLiquidityUnitsAsym(reward, poolWBNB.address))
        
 
-        await synthV.harvest({from:acc});
+        await synthV.harvestAll({from:acc});
         // let token = await synthBNB.LayerONE();
         // let poolTO = await utils.getPoolData(token);
         // const X = _.getBN(poolTO.baseAmount)
@@ -707,7 +730,7 @@ async function harvestSynth() {
         // let asymAdd = _.getBN(await utils.calcLiquidityUnitsAsym(reward, poolWBNB.address))
        
 
-        await synthV.harvest({from:acc});
+        await synthV.harvestAll({from:acc});
         // let token = await synthBNB.LayerONE();
         // let poolTO = await utils.getPoolData(token);
         // const X = _.getBN(poolTO.baseAmount)
