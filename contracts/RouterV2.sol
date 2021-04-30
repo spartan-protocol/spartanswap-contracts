@@ -250,7 +250,8 @@ contract Router {
          address _synthOUTLayer1 = iSYNTH(toSynth).LayerONE();
          address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthOUTLayer1);
           if(fromToken != BASE){
-            sellTo(inputAmount, fromToken, _poolOUT);
+            (uint output,) = sellTo(inputAmount, fromToken, address(this));
+            iBEP20(BASE).transfer(_poolOUT, output);
           }else {
             _transferINSafe(member, _poolOUT, BASE, inputAmount); 
           }
@@ -271,8 +272,10 @@ contract Router {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_toToken);
         _transferINSafe(member, _poolIN, fromSynth, inputAmount);
         if(_toToken != BASE){
-            Pool(_poolIN).burnSynths(fromSynth, _pool); 
+            (uint output,) = Pool(_poolIN).burnSynths(fromSynth, address(this)); 
+            iBEP20(BASE).transfer(_pool, output);
            (outputAmount, fee) = Pool(_pool).swap(_toToken);
+            _handleTransferOut(toToken, outputAmount, member);
         }else{
           (outputAmount, fee) = Pool(_poolIN).burnSynths(fromSynth, member); 
         }

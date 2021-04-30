@@ -206,6 +206,7 @@ contract SynthVault {
                  (uint synthReward, ) = iPOOL(_poolOUT).mintSynths(stakedSynthAssets[i], address(this));
                  _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(stakedSynthAssets[i]).LayerONE(), synthReward);
                  mapMemberSynth_deposit[_member][stakedSynthAssets[i]] += synthReward;
+                 mapMemberSynth_weight[_member][stakedSynthAssets[i]] += _weight;
                  mapMemberTotal_weight[_member] += _weight;
                  totalWeight += _weight;
                 emit MemberHarvests(stakedSynthAssets[i], _member, reward, _weight, totalWeight);
@@ -230,6 +231,7 @@ contract SynthVault {
         (uint synthReward, ) = iPOOL(_poolOUT).mintSynths(synth, address(this));
         _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(synth).LayerONE(), synthReward);
          mapMemberSynth_deposit[_member][synth] += synthReward;
+         mapMemberSynth_weight[_member][synth] += _weight;
         mapMemberTotal_weight[_member] += _weight;
         totalWeight += _weight;
         emit MemberHarvests(synth, _member, reward, _weight, totalWeight);
