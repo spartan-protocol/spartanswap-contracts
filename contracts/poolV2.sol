@@ -205,7 +205,6 @@ contract Pool is iBEP20 {
         liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply);
         _incrementPoolBalances(_actualInputBase, _actualInputToken);
         _mint(member, liquidityUnits); 
-        sync();
         emit AddLiquidity(member, _actualInputBase, _actualInputToken, liquidityUnits);
         return liquidityUnits;
     }
@@ -261,7 +260,6 @@ contract Pool is iBEP20 {
       _mint(synthOut, _liquidityUnits); 
       outputAmount = iSYNTH(synthOut).mintSynth(member); //mintSynth to Router
       _addPoolMetrics(fee);
-      sync();
       return (outputAmount, fee);
     }
 
@@ -275,7 +273,6 @@ contract Pool is iBEP20 {
       _decrementPoolBalances(_baseOutput, 0);
       iBEP20(BASE).transfer(member, _baseOutput);
       _addPoolMetrics(fee);
-      sync();
       return (_baseOutput, fee);
     }
 

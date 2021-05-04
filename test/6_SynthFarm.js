@@ -49,9 +49,9 @@ contract('Test Harvest Synths', function (accounts) {
      swapLayer1ToSynth(acc0,_.BN2Str(5000*_.one))
      swapLayer1ToSynth(acc2,_.BN2Str(1000*_.one))
      swapLayer1ToSynth(acc1,_.BN2Str(5000*_.one))
-     swapSynthToLayer1(acc0,_.BN2Str(0.1*_.one) )
-     swapSynthToLayer1(acc2,_.BN2Str(0.2*_.one) )
-     swapSynthToLayer1(acc1,_.BN2Str(0.3*_.one) )
+    //  swapSynthToLayer1(acc0,_.BN2Str(0.1*_.one) )
+    //  swapSynthToLayer1(acc2,_.BN2Str(0.2*_.one) )
+    //  swapSynthToLayer1(acc1,_.BN2Str(0.3*_.one) )
     //    harvestSynth()
      depositSynthBNB(acc1, _.BN2Str(0.3*_.one))
      depositSynthTKN2(acc1, _.BN2Str(0.3*_.one))
@@ -761,12 +761,13 @@ async function Withdraw(bp, acc) {
         let synthBal = _.getBN(await synthBNB.balanceOf(acc));
         let sVStart = _.getBN(await synthBNB.balanceOf(synthV.address));
         let memberDeposit = _.getBN(await synthV.getMemberDeposit(synth, acc))
+        let memberTotalWeight = _.getBN(await synthV.getMemberWeight(acc))
         let SPReserveBal = _.getBN(await base.balanceOf(SPReserve.address));
 
-        let memberWeight = _.getBN(await synthV.getMemberWeight(acc))
+        let memberSynthWeight = _.getBN(await synthV.getMemberSynthWeight(synth,acc))
         let totalWeight = _.getBN(await synthV.totalWeight())
     
-        let memberWeightRem = _.BN2Str(memberWeight.times(bp).div(10000));
+        let memberWeightRem = _.BN2Str(memberSynthWeight.times(bp).div(10000));
         let memberDeposits = _.BN2Str(memberDeposit.times(bp).div(10000));
 
 
@@ -777,7 +778,8 @@ async function Withdraw(bp, acc) {
         
         let SPReserveBalA = _.getBN(await base.balanceOf(SPReserve.address));
         
-        let memberWeightA = _.getBN(await synthV.getMemberWeight(acc))
+        let memberSynthWeightA = _.getBN(await synthV.getMemberSynthWeight(synth,acc))
+        let memberTotalWeightA = _.getBN(await synthV.getMemberWeight(acc))
         let memberTimeA = _.getBN(await synthV.getMemberLastTime(acc))
         let totalWeightA = _.getBN(await synthV.totalWeight())
         let memberDepositsA = _.getBN(await synthV.getMemberDeposit(synth, acc))
@@ -785,7 +787,8 @@ async function Withdraw(bp, acc) {
          assert.equal(_.BN2Str(synthBalA), _.BN2Str(synthBal.plus(memberDeposits)));
          assert.equal(_.BN2Str(sVStartA), _.BN2Str(sVStart.minus(memberDeposits)));
     
-         assert.equal(_.BN2Str(memberWeightA), _.BN2Str(memberWeight.minus(memberWeightRem)));
+         assert.equal(_.BN2Str(memberSynthWeightA), _.BN2Str(memberSynthWeight.minus(memberWeightRem)));
+         assert.equal(_.BN2Str(memberTotalWeightA), _.BN2Str(memberTotalWeight.minus(memberWeightRem)));
          assert.exists(_.BN2Str(memberTimeA));
          assert.equal(_.BN2Str(totalWeightA), _.BN2Str(totalWeight.minus(memberWeightRem)));
          assert.equal(_.BN2Str(memberDepositsA), _.BN2Str(memberDeposit.minus(memberDeposits)));
@@ -810,13 +813,14 @@ async function WithdrawTKN2(bp, acc) {
 
         let synthBal = _.getBN(await synthTKN2.balanceOf(acc));
         let sVStart = _.getBN(await synthTKN2.balanceOf(synthV.address));
-        let memberDeposit = _.getBN(await synthV.getMemberDeposit(synth, acc))
+        let memberTotalWeight = _.getBN(await synthV.getMemberWeight(acc))
         let SPReserveBal = _.getBN(await base.balanceOf(SPReserve.address));
+        let memberDeposit = _.getBN(await synthV.getMemberDeposit(synth, acc))
 
-        let memberWeight = _.getBN(await synthV.getMemberWeight(acc))
+        let memberSynthWeight = _.getBN(await synthV.getMemberSynthWeight(synth,acc))
         let totalWeight = _.getBN(await synthV.totalWeight())
     
-        let memberWeightRem = _.BN2Str(memberWeight.times(bp).div(10000));
+        let memberWeightRem = _.BN2Str(memberSynthWeight.times(bp).div(10000));
         let memberDeposits = _.BN2Str(memberDeposit.times(bp).div(10000));
 
 
@@ -827,7 +831,8 @@ async function WithdrawTKN2(bp, acc) {
         
         let SPReserveBalA = _.getBN(await base.balanceOf(SPReserve.address));
         
-        let memberWeightA = _.getBN(await synthV.getMemberWeight(acc))
+        let memberSynthWeightA = _.getBN(await synthV.getMemberSynthWeight(synth,acc))
+        let memberTotalWeightA = _.getBN(await synthV.getMemberWeight(acc))
         let memberTimeA = _.getBN(await synthV.getMemberLastTime(acc))
         let totalWeightA = _.getBN(await synthV.totalWeight())
         let memberDepositsA = _.getBN(await synthV.getMemberDeposit(synth, acc))
@@ -835,7 +840,9 @@ async function WithdrawTKN2(bp, acc) {
          assert.equal(_.BN2Str(synthBalA), _.BN2Str(synthBal.plus(memberDeposits)));
          assert.equal(_.BN2Str(sVStartA), _.BN2Str(sVStart.minus(memberDeposits)));
     
-         assert.equal(_.BN2Str(memberWeightA), _.BN2Str(memberWeight.minus(memberWeightRem)));
+        
+         assert.equal(_.BN2Str(memberSynthWeightA), _.BN2Str(memberSynthWeight.minus(memberWeightRem)));
+         assert.equal(_.BN2Str(memberTotalWeightA), _.BN2Str(memberTotalWeight.minus(memberWeightRem)));
          assert.exists(_.BN2Str(memberTimeA));
          assert.equal(_.BN2Str(totalWeightA), _.BN2Str(totalWeight.minus(memberWeightRem)));
          assert.equal(_.BN2Str(memberDepositsA), _.BN2Str(memberDeposit.minus(memberDeposits)));
@@ -860,13 +867,14 @@ async function WithdrawTKN3(bp, acc) {
 
         let synthBal = _.getBN(await synthTKN3.balanceOf(acc));
         let sVStart = _.getBN(await synthTKN3.balanceOf(synthV.address));
-        let memberDeposit = _.getBN(await synthV.getMemberDeposit(synth, acc))
+        let memberTotalWeight = _.getBN(await synthV.getMemberWeight(acc))
         let SPReserveBal = _.getBN(await base.balanceOf(SPReserve.address));
+        let memberDeposit = _.getBN(await synthV.getMemberDeposit(synth, acc))
 
-        let memberWeight = _.getBN(await synthV.getMemberWeight(acc))
+        let memberSynthWeight = _.getBN(await synthV.getMemberSynthWeight(synth,acc))
         let totalWeight = _.getBN(await synthV.totalWeight())
     
-        let memberWeightRem = _.BN2Str(memberWeight.times(bp).div(10000));
+        let memberWeightRem = _.BN2Str(memberSynthWeight.times(bp).div(10000));
         let memberDeposits = _.BN2Str(memberDeposit.times(bp).div(10000));
 
 
@@ -877,7 +885,9 @@ async function WithdrawTKN3(bp, acc) {
         
         let SPReserveBalA = _.getBN(await base.balanceOf(SPReserve.address));
         
-        let memberWeightA = _.getBN(await synthV.getMemberWeight(acc))
+         
+        let memberSynthWeightA = _.getBN(await synthV.getMemberSynthWeight(synth,acc))
+        let memberTotalWeightA = _.getBN(await synthV.getMemberWeight(acc))
         let memberTimeA = _.getBN(await synthV.getMemberLastTime(acc))
         let totalWeightA = _.getBN(await synthV.totalWeight())
         let memberDepositsA = _.getBN(await synthV.getMemberDeposit(synth, acc))
@@ -885,7 +895,8 @@ async function WithdrawTKN3(bp, acc) {
          assert.equal(_.BN2Str(synthBalA), _.BN2Str(synthBal.plus(memberDeposits)));
          assert.equal(_.BN2Str(sVStartA), _.BN2Str(sVStart.minus(memberDeposits)));
     
-         assert.equal(_.BN2Str(memberWeightA), _.BN2Str(memberWeight.minus(memberWeightRem)));
+         assert.equal(_.BN2Str(memberSynthWeightA), _.BN2Str(memberSynthWeight.minus(memberWeightRem)));
+         assert.equal(_.BN2Str(memberTotalWeightA), _.BN2Str(memberTotalWeight.minus(memberWeightRem)));
          assert.exists(_.BN2Str(memberTimeA));
          assert.equal(_.BN2Str(totalWeightA), _.BN2Str(totalWeight.minus(memberWeightRem)));
          assert.equal(_.BN2Str(memberDepositsA), _.BN2Str(memberDeposit.minus(memberDeposits)));
@@ -910,10 +921,10 @@ async function WithdrawTKN4(bp, acc) {
 
         let synthBal = _.getBN(await synthTKN4.balanceOf(acc));
         let sVStart = _.getBN(await synthTKN4.balanceOf(synthV.address));
-        let memberDeposit = _.getBN(await synthV.getMemberDeposit(synth, acc))
+        let memberTotalWeight = _.getBN(await synthV.getMemberWeight(acc))
         let SPReserveBal = _.getBN(await base.balanceOf(SPReserve.address));
 
-        let memberWeight = _.getBN(await synthV.getMemberWeight(acc))
+        let memberSynthWeight = _.getBN(await synthV.getMemberSynthWeight(synth,acc))
         let totalWeight = _.getBN(await synthV.totalWeight())
     
         let memberWeightRem = _.BN2Str(memberWeight.times(bp).div(10000));
@@ -927,7 +938,8 @@ async function WithdrawTKN4(bp, acc) {
         
         let SPReserveBalA = _.getBN(await base.balanceOf(SPReserve.address));
         
-        let memberWeightA = _.getBN(await synthV.getMemberWeight(acc))
+        let memberSynthWeightA = _.getBN(await synthV.getMemberSynthWeight(synth,acc))
+        let memberTotalWeightA = _.getBN(await synthV.getMemberWeight(acc))
         let memberTimeA = _.getBN(await synthV.getMemberLastTime(acc))
         let totalWeightA = _.getBN(await synthV.totalWeight())
         let memberDepositsA = _.getBN(await synthV.getMemberDeposit(synth, acc))
@@ -935,7 +947,8 @@ async function WithdrawTKN4(bp, acc) {
          assert.equal(_.BN2Str(synthBalA), _.BN2Str(synthBal.plus(memberDeposits)));
          assert.equal(_.BN2Str(sVStartA), _.BN2Str(sVStart.minus(memberDeposits)));
     
-         assert.equal(_.BN2Str(memberWeightA), _.BN2Str(memberWeight.minus(memberWeightRem)));
+         assert.equal(_.BN2Str(memberSynthWeightA), _.BN2Str(memberSynthWeight.minus(memberWeightRem)));
+         assert.equal(_.BN2Str(memberTotalWeightA), _.BN2Str(memberTotalWeight.minus(memberWeightRem)));
          assert.exists(_.BN2Str(memberTimeA));
          assert.equal(_.BN2Str(totalWeightA), _.BN2Str(totalWeight.minus(memberWeightRem)));
          assert.equal(_.BN2Str(memberDepositsA), _.BN2Str(memberDeposit.minus(memberDeposits)));

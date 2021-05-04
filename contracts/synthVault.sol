@@ -217,9 +217,6 @@ contract SynthVault {
          
         return true;
     }
-
-
-
      function harvestSingle(address synth) external returns (bool) {
         require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
         address _member = msg.sender;
@@ -237,7 +234,6 @@ contract SynthVault {
         emit MemberHarvests(synth, _member, reward, _weight, totalWeight);
         return true;
     }
-
     function calcCurrentReward(address synth, address member)
         public
         view
@@ -283,7 +279,7 @@ contract SynthVault {
                 minimumDepositTime,
             "DepositTime"
         ); // stops attacks
-        uint256 _principle = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberSynth_deposit[_member][_synth]); // share of deposits
+        uint256 _principle = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberSynth_deposit[_member][_synth]); // share of deposits
         mapMemberSynth_deposit[_member][_synth] -= _principle;
         uint256 _weight = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberSynth_weight[_member][_synth]);
         mapMemberTotal_weight[_member] -= _weight;

@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 import "./iBEP20.sol";
 import "./BondVault.sol";
 
-
     //======================================SPARTA=========================================//
 contract Bond is iBEP20 {
     // ERC-20 Parameters
