@@ -16,14 +16,14 @@ The following contracts manage the protocol:
 3) `UTILS` Contract (Stateless contract that manages core math and helper functions)
 4) `ROUTER` Contract (Manages how liquidity is moved around the system)
 5) `POOL` Contract (Holds funds and state for each pool)
-6) `synth` Contract (Holds Lps and state for each synthetic)
-7) `synthFactory` Contract (Creates a synthetic token from curated Pools)
-8) `poolFactory` Contract (Creates a pool)
-9) `synthVault` Contract (Holds funds and state for members)
-10) `daoVault` Contract (Holds funds and state for members)
-11) `reserve` Contract (Holds emissions from base, grants funds to grantors)
-12) `Bond` Contract (Holds base funds)
-12) `BondVault` Contract (Holds LP funds and state for bond members)
+6) `SYNTH` Contract (Holds Lps and state for each synthetic)
+7) `SYNTHFACTORY` Contract (Creates a synthetic token from curated Pools)
+8) `POOLFACTORY` Contract (Creates a pool)
+9) `SYNTHVAULT` Contract (Holds funds and state for members)
+10) `DAOVAULT` Contract (Holds funds and state for members)
+11) `RESERVE` Contract (Holds emissions from base, grants funds to grantors)
+12) `BOND` Contract (Holds base funds)
+12) `BONDVAULT` Contract (Holds LP funds and state for bond members)
 
 `BASE` is the source-of-truth for the location of the `DAO`, as well as minting and distributing incentives. 
 
@@ -36,13 +36,6 @@ DAO is the source-of-truth for the location of the `ROUTER`, `UTILS`,`BOND`,`DAO
 `POOL` holds the funds for each pool, as well as state. It asks the `DAO` for the location of `UTILS` which has core math relating to how swaps and liquidity is provisioned, such as calculating fees.  
 
 ## Addresses
-
-BASE - 0xE4Ae305ebE1AbE663f261Bc00534067C80ad677C
-UTILS - 0xCaF0366aF95E8A03E269E52DdB3DbB8a00295F91
-DAO - 0x04e283c9350Bab8A1243ccfc1dd9BF1Ab72dF4f0
-ROUTER - 0xAfCe5dA566377D293a8e681cf2824f7Dc0C733C6
-ROUTER2 - 0x4e9B356Aa3dD57061a73777fdcAc65CD160aEd62
-
 WBNB - 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
 
 ## Deploy Process
@@ -50,11 +43,20 @@ WBNB - 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
 The contracts are to be deployed and then connected together. The DEPLOYER (EOA) has initial `DAO` privileges in order to manage the process. DEPLOYER should be purged when the system is stable. 
 
 1) Deploy `SPARTA`
-2) Deploy `UTILS(sparta.address)`
-3) Deploy `DAO(sparta.address)`
-4) Deploy `ROUTER(sparta.address, wbnb.address)`
-5) Set `dao.address` in SPARTA
-6) Set `router.address, utils.address` in `DAO`
+2) Deploy `SYNTHVAULT(SPARTA.address, Dao.address)`
+3) Deploy `UTILS(SPARTA.address, Dao.address)`
+4) Deploy `ROUTER(SPARTA.address, wbnb.address, Dao.address)`
+5) Deploy `DAOVAULT(SPARTA.address, Dao.address)`
+6) Deploy `BONDVAULT(SPARTA.address, Dao.address)`
+7) Deploy `BOND(SPARTA.address, wbnb.address, Dao.address, bondVault.address)`
+8) Deploy `POOLFACTORY(SPARTA.address,  wbnb.address, Dao.address)`
+9) Deploy `SYNTHFACTORY(SPARTA.address,  wbnb.address, Dao.address)`
+10) Deploy `DAOVAULT(SPARTA.address, Dao.address)`
+11) Deploy `RESERVE(SPARTA.address)`
+12) Set `(router.address, utils.address, bond.address, daoVault.address,poolFactory.address, synthFactory.address, SPReserve.address)` in `DAO`
+13) Set `dao.address` in `SPARTA`
+14) Set  `(router.address, utils.address,synthV.address,Dao.address)` in `RESERVE`
+15 Call `start()` in `RESERVE`
 
 
 * SPARTA is the `BASE` currency.
