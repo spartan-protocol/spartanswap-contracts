@@ -142,7 +142,7 @@ contract Synth is iBEP20 {
         return tokenValue;
     }
     
-    function burnSynth() external returns (bool){
+    function burnSynth() external onlyPool returns (bool){
          uint _syntheticAmount = balanceOf(address(this));
          uint _amountUnits = (_syntheticAmount*mapAddress_LPBalance[msg.sender])/mapAddress_LPDebt[msg.sender];// share = amount * part/total
          mapAddress_LPBalance[msg.sender] -= _amountUnits;

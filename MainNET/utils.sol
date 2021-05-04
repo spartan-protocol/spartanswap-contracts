@@ -31,6 +31,7 @@ interface iROUTER {
 
 interface iPOOL {
     function genesis() external view returns(uint);
+    function sync() external; 
     function baseAmount() external view returns(uint);
     function tokenAmount() external view returns(uint);
     function baseAmountPoolMed() external view returns(uint);
@@ -376,9 +377,10 @@ contract UtilsM {
         return calcShare(bp, 10000, total);
     }
 
-    function calcLiquidityShare(uint units, address token, address pool, address member) public view returns (uint share){
+    function calcLiquidityShare(uint units, address token, address pool, address member) public returns (uint share){
         // share = amount * part/total
         // address pool = getPool(token);
+        iPOOL(pool).sync();  
         uint amount = iBEP20(token).balanceOf(pool);
         uint totalSupply = iBEP20(pool).totalSupply();
         return(amount.mul(units)).div(totalSupply);

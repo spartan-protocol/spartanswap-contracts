@@ -408,7 +408,12 @@ contract Utils {
     function calcLiquidityHoldings(uint units, address token, address pool) public view returns (uint share){
         // share = amount * part/total
         // address pool = getPool(token);
-        uint amount = iBEP20(token).balanceOf(pool);
+        uint amount;
+        if(token == BASE){
+            amount = iPOOL(pool).baseAmount();
+        }else{
+            amount = iPOOL(pool).tokenAmount();
+        }
         uint totalSupply = iBEP20(pool).totalSupply();
         return(amount*(units))/(totalSupply);
     }

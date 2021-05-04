@@ -179,19 +179,6 @@ contract Dao {
         emit MemberDeposits(member, pool, amount);
     }
     
-    function depositForMember(address pool, uint256 amount, address member) public {
-        address token = iPOOL(pool).TOKEN();//old pool
-        iPOOL(pool).transferTo(pool, amount);//send lps to pool
-        (uint outputBase, uint outputToken) = iPOOL(pool).removeLiquidity(); 
-        iBEP20(BASE).approve(address(_ROUTER), outputBase);
-        iBEP20(token).approve(address(_ROUTER), outputToken);
-        address newPool = _POOLFACTORY.getPool(token); 
-        require(_POOLFACTORY.isPool(newPool) == true, "!POOL");
-        uint lpUNits = iROUTER(_ROUTER).addLiquidity(outputBase, outputToken, token); 
-        iBEP20(newPool).approve(address(_BOND), lpUNits);
-        _BOND.depositInit(newPool, lpUNits, member);
-    }
-
     // Member withdraws all from a pool
     function withdraw(address pool) public {
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Then transfer

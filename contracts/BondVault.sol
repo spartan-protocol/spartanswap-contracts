@@ -113,17 +113,6 @@ contract BondVault {
         mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[member] / iBOND(_DAO().BOND()).bondingPeriodSeconds();
         return true;
     }
-    function depINIT(address asset, address member, uint LPS) external onlyDAO returns (bool){
-         if(!mapAddress_listedAssets[asset].isMember[member]){
-          mapAddress_listedAssets[asset].isMember[member] = true;
-          arrayMembers.push(member);
-          mapAddress_listedAssets[asset].members.push(member);
-        }
-        mapAddress_listedAssets[asset].bondedLP[member] += LPS;
-        mapAddress_listedAssets[asset].lastBlockTime[member] = block.timestamp;
-        mapAddress_listedAssets[asset].claimRate[member] = mapAddress_listedAssets[asset].bondedLP[member] / 20736000;//must be changed for mainet
-        return true;
-    }
 
      function cBLP(address member, address asset) public onlyDAO returns (uint claimAmount){
         if(mapAddress_listedAssets[asset].isMember[member]){

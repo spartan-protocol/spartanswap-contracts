@@ -24,7 +24,7 @@ contract Bond is iBEP20 {
     address public DEPLOYER;
     uint public one = 10**18;
     address [] listedBondAssets;
-    uint256 public bondingPeriodSeconds = 31104000;//update for mainnet
+    uint256 public bondingPeriodSeconds = 15552000;//6 months
 
     mapping(address => bool) public isListed;
 
@@ -193,16 +193,6 @@ contract Bond is iBEP20 {
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
-    function depositInit(address lptoken, uint256 amount, address member) external onlyDAO returns (bool success) {
-       iBEP20(lptoken).transferFrom(msg.sender, bondVault, amount);
-       address asset = iPOOL(lptoken).TOKEN();
-        if(asset == WBNB){
-           asset = address(0);
-        }
-        BondVault(bondVault).depINIT(asset, member, amount);
-       return true;
-    }
-
     function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
         uint256 spartaAllocation = iUTILS(_DAO().UTILS()).calcSwapValueInBase(_token, _amount); 
         if(_token == address(0)){

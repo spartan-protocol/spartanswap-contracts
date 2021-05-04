@@ -224,7 +224,6 @@ contract Pool is iBEP20 {
         _burn(address(this), _actualInputUnits);
         iBEP20(BASE).transfer(member, outputBase); 
         iBEP20(TOKEN).transfer(member, outputToken);
-        sync();
         emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
