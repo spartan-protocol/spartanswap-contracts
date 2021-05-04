@@ -16,10 +16,18 @@ The following contracts manage the protocol:
 3) `UTILS` Contract (Stateless contract that manages core math and helper functions)
 4) `ROUTER` Contract (Manages how liquidity is moved around the system)
 5) `POOL` Contract (Holds funds and state for each pool)
+6) `synth` Contract (Holds Lps and state for each synthetic)
+7) `synthFactory` Contract (Creates a synthetic token from curated Pools)
+8) `poolFactory` Contract (Creates a pool)
+9) `synthVault` Contract (Holds funds and state for members)
+10) `daoVault` Contract (Holds funds and state for members)
+11) `reserve` Contract (Holds emissions from base, grants funds to grantors)
+12) `Bond` Contract (Holds base funds)
+12) `BondVault` Contract (Holds LP funds and state for bond members)
 
 `BASE` is the source-of-truth for the location of the `DAO`, as well as minting and distributing incentives. 
 
-DAO is the source-of-truth for the location of the `ROUTER` and `UTILS`, as well as distributing rewards and managing how the system upgrades itself. It has goverance features that use a member's claim on `BASE` in each pool to attribute voting weight. The `DAO` can upgrade itself, as well as amending some features in the `BASE` contract.
+DAO is the source-of-truth for the location of the `ROUTER`, `UTILS`,`BOND`,`DAOVAULT`,`POOLFACTORY`,`SYNTHFACTORY`, `RESERVE` as well as distributing rewards and managing how the system upgrades itself. It has goverance features that use a member's claim on `BASE` in each pool to attribute voting weight. The `DAO` can upgrade itself, as well as amending some features in the `BASE` contract.
 
 `UTILS` contains utility and math functions, and can be upgraded by the `DAO`. 
 
@@ -47,6 +55,7 @@ The contracts are to be deployed and then connected together. The DEPLOYER (EOA)
 4) Deploy `ROUTER(sparta.address, wbnb.address)`
 5) Set `dao.address` in SPARTA
 6) Set `router.address, utils.address` in `DAO`
+
 
 * SPARTA is the `BASE` currency.
 * `UTILS` needs to know SPARTA (to ask for `DAO`)

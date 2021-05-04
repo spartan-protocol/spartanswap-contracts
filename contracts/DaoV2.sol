@@ -27,9 +27,6 @@ interface iBOND {
     function changeBondingPeriod(uint) external returns (bool);
     function depositInit(address, uint, address) external;
 }
-interface iLEND {
-    
-}
 interface iRESERVE {
     function grantFunds(uint, address) external returns(uint); 
     function emissions() external returns(bool); 
@@ -78,7 +75,6 @@ contract Dao {
 
     iROUTER public _ROUTER;
     iUTILS public _UTILS;
-    iLEND public _LEND;
     iBOND public _BOND;
     iDAOVAULT public _DAOVAULT;
     iPOOLFACTORY public _POOLFACTORY;
@@ -129,10 +125,9 @@ contract Dao {
         mStatus =false;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
-    function setGenesisAddresses(address _router, address _utils, address _lend, address _bond, address _daoVault, address _poolFactory,address _synthFactory, address _reserve ) public onlyDAO {
+    function setGenesisAddresses(address _router, address _utils, address _bond, address _daoVault, address _poolFactory,address _synthFactory, address _reserve ) public onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
-        _LEND = iLEND(_lend);
         _BOND = iBOND(_bond);
         _DAOVAULT = iDAOVAULT(_daoVault);
         _POOLFACTORY = iPOOLFACTORY(_poolFactory);
@@ -528,13 +523,6 @@ contract Dao {
             return Dao(DAO).UTILS();
         } else {
             return _UTILS;
-        }
-    }
-    function LEND() public view returns(iLEND){
-        if(daoHasMoved){
-            return Dao(DAO).LEND();
-        } else {
-            return _LEND;
         }
     }
     function BOND() public view returns(iBOND){
