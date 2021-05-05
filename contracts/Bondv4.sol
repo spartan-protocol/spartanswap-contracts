@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "./interfaces/iBEP20.sol";
 import "./BondVault.sol";
 
     //======================================SPARTA=========================================//
@@ -24,7 +23,7 @@ contract Bond {
     event DepositAsset(address indexed owner, uint256 depositAmount, uint256 bondedLP);
     
     modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "Must be DAO");
+        require(msg.sender == _DAO().BOND() || msg.sender == DEPLOYER, "Must be DAO");
         _;
     }
     //=====================================CREATION=========================================//
@@ -78,7 +77,7 @@ contract Bond {
         require(amount > 0, '!asset');
         require(isListed[asset], '!listed');
         uint256 liquidityUnits = handleTransferIn(asset, amount);
-        BondVault(bondVault).depForMember(asset, msg.sender, liquidityUnits);
+        BondVault(bondVault).depositForMember(asset, msg.sender, liquidityUnits);
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
@@ -101,7 +100,7 @@ contract Bond {
         for(uint i =0; i<listedAssets.length; i++){
             uint claimA = calcClaimBondedLP(member,listedAssets[i]);
             if(claimA>0){
-               BondVault(bondVault).cFMember(listedAssets[i],member);
+               BondVault(bondVault).claimForMember(listedAssets[i],member);
             }
         }
         return true;
@@ -109,13 +108,13 @@ contract Bond {
     function claimForMember(address asset) external returns (bool){
         uint claimA = calcClaimBondedLP(msg.sender,asset);
             if(claimA>0){
-               BondVault(bondVault).cFMember(asset,msg.sender);
+               BondVault(bondVault).claimForMember(asset,msg.sender);
             }
         return true;
     }
     
     function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
-        uint claimAmount = BondVault(bondVault).cBLP(bondedMember, asset);
+        uint claimAmount = BondVault(bondVault).calcBondedLP(bondedMember, asset);
         return claimAmount;
     }
 

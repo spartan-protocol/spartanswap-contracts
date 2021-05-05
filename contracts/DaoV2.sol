@@ -2,36 +2,16 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./DaoVault.sol";
-
-interface iDAOVAULT {
-    function withdraw(address,address) external  returns (bool);
-    function depositLP(address, uint, address) external  returns (bool);
-    function getMemberWeight(address) external returns(uint); 
-    function mapMemberPool_balance(address, address) external returns (uint);
-    function totalWeight() external view returns(uint);
-}
-interface iROUTER {
-    function grantFunds(uint, address) external payable returns (bool);
-    function changeArrayFeeSize(uint) external returns(bool);
-    function changeMaxTrades(uint) external returns(bool);
-    function addLiquidity(uint, uint, address) external payable returns (uint);
-}
-interface iSYNTHFACTORY {
-    function isSynth(address) external returns (bool);
-}
-interface iBOND {
-    function mintBond() external payable returns (bool);
-    function burnBond() external payable returns (bool);
-    function listBondAsset(address) external returns (bool);
-    function delistBondAsset(address) external returns (bool);
-    function changeBondingPeriod(uint) external returns (bool);
-    function depositInit(address, uint, address) external;
-}
-interface iRESERVE {
-    function grantFunds(uint, address) external returns(uint); 
-    function emissions() external returns(bool); 
-}
-
+import "./interfaces/iBEP20.sol";
+import "./interfaces/iDAO.sol";
+import "./interfaces/iDAOVAULT.sol";
+import "./interfaces/iBASE.sol";
+import "./interfaces/iUTILS.sol";
+import "./interfaces/iROUTER.sol";
+import "./interfaces/iBOND.sol";
+import "./interfaces/iRESERVE.sol";
+import "./interfaces/iSYNTHFACTORY.sol"; 
+import "./interfaces/iPOOLFACTORY.sol";
 
 
 contract Dao {
@@ -76,7 +56,7 @@ contract Dao {
     iROUTER public _ROUTER;
     iUTILS public _UTILS;
     iBOND public _BOND;
-    iDAOVAULT public _DAOVAULT;
+    iDAOVAULT public _DAOVAULT;  
     iPOOLFACTORY public _POOLFACTORY;
     iSYNTHFACTORY public _SYNTHFACTORY;
     iRESERVE public _RESERVE;
@@ -166,7 +146,7 @@ contract Dao {
             arrayMembers.push(msg.sender);
             isMember[member] = true;
         }
-        if(_DAOVAULT.getMemberWeight(member) > 0) {
+        if(_DAOVAULT.getMemberWeight(member) > 0) {  
                 harvest();
         }
         _DAOVAULT.depositLP(pool, amount, member);
