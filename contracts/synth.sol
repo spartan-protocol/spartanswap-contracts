@@ -17,7 +17,7 @@ contract Synth is iBEP20 {
 
     // ERC-20 Parameters
     string _name; string _symbol;
-    uint256 public override decimals; uint256 public override totalSupply;
+    uint8 public override decimals; uint256 public override totalSupply;
 
     // ERC-20 Mappings
     mapping(address => uint) private _balances;

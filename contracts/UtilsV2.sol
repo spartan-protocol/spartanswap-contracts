@@ -113,29 +113,11 @@ contract Utils {
         uint totalDebt;
     }
 
-    // Only Deployer can execute
-    modifier onlyDeployer() {
-        require(msg.sender == DEPLOYER, "DeployerErr");
-        _;
-    }
-
     constructor (address _base, address _oldRouter, address _newDAO) public payable {
         BASE = _base;
         NDAO = _newDAO;
         oldRouter = _oldRouter;
         DEPLOYER = msg.sender;
-    }
-
-    function _DAO() internal view returns(iDAO) {
-        bool status = iDAO(NDAO).MSTATUS();
-        if(status == true){
-         return iBASE(BASE).DAO();
-        }else{
-          return iNDAO(NDAO).DAO();
-        }
-    }
-    function changeNDAO(address newDAO) public onlyDeployer {
-        NDAO = newDAO;
     }
 
     //====================================DATA-HELPERS====================================//
@@ -319,8 +301,6 @@ contract Utils {
     }
 
 
-
-
     function curatedPoolCount() public view returns(uint count){
         return iPOOLFACTORY(_DAO().POOLFACTORY()).getCuratedPoolsLength();
     }
@@ -393,15 +373,30 @@ contract Utils {
 
     //====================================CORE-MATH====================================//
 
-    function calcPart(uint bp, uint total) public pure returns (uint part){
+     function getFeeOnTransfer(uint256 totalSupply, uint256 maxSupply) external pure returns (uint256) {
+        return calcShare(totalSupply, maxSupply, 100); // 0->100BP
+    }
+
+    function calcPart(uint256 bp, uint256 total) public pure returns (uint256) {
         // 10,000 basis points = 100.00%
-        require((bp <= 10000) && (bp > 0), "Must be correct BP");
+        require(bp <= 10000, "Must be correct BP");
         return calcShare(bp, 10000, total);
     }
+
+    function calcShare(uint256 part, uint256 total, uint256 amount) public pure returns (uint256 share) {
+        // share = amount * part/total
+        if (part > total) {
+            part = total;
+        }
+        if (total > 0) {
+            share = (amount * part) / total;
+        }
+    }
+
     function calcBasisPoints(uint input, address token, address member) public view returns (uint part){
         // 10,000 basis points = 100.00%
          uint amount = iBEP20(token).balanceOf(member);
-        return(input/(amount))*(10000);
+        return(input / amount)*(10000);
     }
 
 
@@ -416,11 +411,6 @@ contract Utils {
         }
         uint totalSupply = iBEP20(pool).totalSupply();
         return(amount*(units))/(totalSupply);
-    }
-
-    function calcShare(uint part, uint total, uint amount) public pure returns (uint share){
-        // share = amount * part/total
-        return(amount*(part))/(total);
     }
 
     function  calcSwapOutput(uint x, uint X, uint Y) public pure returns (uint output){
