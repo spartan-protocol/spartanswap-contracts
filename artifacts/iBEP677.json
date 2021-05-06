@@ -1,23 +1,27 @@
 {
-  "contractName": "iDAOVAULT",
+  "contractName": "iBEP677",
   "abi": [
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "",
+          "name": "from",
           "type": "address"
-        }
-      ],
-      "name": "getMemberWeight",
-      "outputs": [
+        },
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "amount",
           "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
         }
       ],
-      "stateMutability": "view",
+      "name": "onTokenTransfer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     }
   ],

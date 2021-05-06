@@ -5,12 +5,12 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "bp",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "total",
           "type": "uint256"
         }
       ],
@@ -18,28 +18,28 @@
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "part",
           "type": "uint256"
         }
       ],
-      "stateMutability": "view",
+      "stateMutability": "pure",
       "type": "function"
     },
     {
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "part",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "total",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "amount",
           "type": "uint256"
         }
       ],
@@ -47,47 +47,23 @@
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "share",
           "type": "uint256"
         }
       ],
-      "stateMutability": "view",
+      "stateMutability": "pure",
       "type": "function"
     },
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "",
+          "name": "pool",
           "type": "address"
         },
         {
           "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "calcSpotValueInBase",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
+          "name": "amount",
           "type": "uint256"
         }
       ],
@@ -95,6 +71,30 @@
       "outputs": [
         {
           "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "totalSupply",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxSupply",
+          "type": "uint256"
+        }
+      ],
+      "name": "getFeeOnTransfer",
+      "outputs": [
+        {
+          "internalType": "uint256",
           "name": "",
           "type": "uint256"
         }
@@ -106,20 +106,20 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "",
+          "name": "token",
           "type": "address"
         },
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "units",
           "type": "uint256"
         }
       ],
-      "name": "calcSwapValueInToken",
+      "name": "getPoolShareWeight",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "value",
+          "name": "weight",
           "type": "uint256"
         }
       ],

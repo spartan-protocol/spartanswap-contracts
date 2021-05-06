@@ -1,68 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-
-import "./iBEP20.sol";
-interface iBASE {
-    function DAO() external view returns (iDAO);
-}
-interface iROUTER {
-    function totalPooled() external view returns (uint);
-    function totalVolume() external view returns (uint);
-    function totalFees() external view returns (uint);
-    function removeLiquidityTx() external view returns (uint);
-    function addLiquidityTx() external view returns (uint);
-    function swapTx() external view returns (uint);
-    function getPool(address) external view returns(address payable);
-    
-}
-interface iPOOLFACTORY {
-    function getCuratedPool(uint) external view returns(address);
-    function getPool(address) external view returns(address payable);
-    function getPoolArray(uint) external view returns(address payable);
-    function poolCount() external view returns(uint);
-    function getToken(uint) external view returns(address);
-    function tokenCount() external view returns(uint);
-    function getCuratedPoolsLength() external view returns (uint);
-
-}
-interface iSYNTHFACTORY {
-    function getSynth(address) external view returns(address payable);
-    
-}
-interface iDAO {
-    function ROUTER() external view returns(address);
-    function SYNTHFACTORY() external view returns(address);
-    function POOLFACTORY() external view returns(address);
-    function SYNTHROUTER() external view returns(address);
-    function MSTATUS() external view returns(bool);
-}
-interface iNDAO {
-    function DAO() external view returns (iDAO);
- 
-}
-interface iPOOL {
-    function genesis() external view returns(uint);
-    function TOKEN() external view returns (address);
-    function baseAmount() external view returns(uint);
-    function tokenAmount() external view returns(uint);
-    function fees() external view returns(uint);
-    function volume() external view returns(uint);
-    function txCount() external view returns(uint);
-}
-interface iSYNTH {
-    function genesis() external view returns(uint);
-    function totalMinted() external view returns(uint);
-    function LayerONE()external view returns(address);
-}
+import "./interfaces/iBASE.sol";
+import "./interfaces/iBEP20.sol";
+import "./interfaces/iDAO.sol";
+import "./interfaces/iPOOL.sol";
+import "./interfaces/iSYNTH.sol";
+import "./interfaces/iROUTER.sol";
+import "./interfaces/iPOOLFACTORY.sol";
+import "./interfaces/iSYNTHFACTORY.sol";
 
 
 contract Utils {
 
     address public BASE;
-    address public oldRouter;
-    address public DEPLOYER;
-    address public NDAO;
 
     uint public one = 10**18;
 
@@ -113,11 +64,11 @@ contract Utils {
         uint totalDebt;
     }
 
-    constructor (address _base, address _oldRouter, address _newDAO) public payable {
+    constructor (address _base) public payable {
         BASE = _base;
-        NDAO = _newDAO;
-        oldRouter = _oldRouter;
-        DEPLOYER = msg.sender;
+    }
+     function _DAO() internal view returns (iDAO) {
+        return iBASE(BASE).DAO();
     }
 
     //====================================DATA-HELPERS====================================//
@@ -144,20 +95,6 @@ contract Utils {
         return tokenDetails;
     }
 
-    function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
-        iDAO dao = _DAO();
-        globalDetails.totalPooled = iROUTER(dao.ROUTER()).totalPooled(); 
-        globalDetails.totalVolume = iROUTER(dao.ROUTER()).totalVolume();
-        globalDetails.totalFees = iROUTER(dao.ROUTER()).totalFees();
-        globalDetails.removeLiquidityTx = iROUTER(dao.ROUTER()).removeLiquidityTx();
-        globalDetails.addLiquidityTx = iROUTER(dao.ROUTER()).addLiquidityTx();
-        globalDetails.swapTx = iROUTER(dao.ROUTER()).swapTx();
-        return globalDetails;
-    }
-
-    function getPool(address token) public view returns(address pool){
-        return iROUTER(oldRouter).getPool(token);
-    }
     function tokenCount() public view returns (uint256 count){
         return iPOOLFACTORY(_DAO().POOLFACTORY()).tokenCount();
     }
@@ -282,7 +219,7 @@ contract Utils {
     //=================================== SYNTH DATA =================================//
 
      function getSynth(address token) public view returns(address synth){
-        return iSYNTHFACTORY(_DAO().SYNTHFACTORY()).getSynth(token);
+        return iSYNTHFACTORY(_DAO().SYNTHFACTORY()).getSynth(token);   
     }
     
     function getSynthData(address token) public view returns(SynthDataStruct memory synthData){

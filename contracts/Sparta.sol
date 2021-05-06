@@ -23,6 +23,7 @@ contract Sparta is iBEP20 {
     // Parameters
     bool public emitting;
     bool public minting;
+    bool public sFS;
     uint256 public feeOnTransfer;
     
     uint256 public emissionCurve;
@@ -47,7 +48,7 @@ contract Sparta is iBEP20 {
 
     //=====================================CREATION=========================================//
     // Constructor
-    constructor(address _fallenSpartans, address _baseV1) public {
+    constructor(address _baseV1) {
         _100m = 100 * 10**6 * 10**decimals; // 100m
         maxSupply = 300 * 10**6 * 10**decimals; // 300m
         emissionCurve = 2048;
@@ -58,7 +59,6 @@ contract Sparta is iBEP20 {
         secondsPerEra = 86400;
         nextEraTime = block.timestamp + secondsPerEra;
         DEPLOYER = msg.sender;
-        _mint(_fallenSpartans, 10 * 10**5 * 10*decimals);
     }
 
     //========================================iBEP20=========================================//
@@ -141,7 +141,7 @@ contract Sparta is iBEP20 {
     }
     function burnFrom(address account, uint256 amount) public virtual {  
         uint256 decreasedAllowance = allowance(account, msg.sender) - (amount);
-        _approve(account, msg.sender, decreasedAllowance);
+        _approve(account, msg.sender, decreasedAllowance); 
         _burn(account, amount);
     }
     function _burn(address account, uint256 amount) internal virtual {
@@ -162,10 +162,14 @@ contract Sparta is iBEP20 {
         minting = !minting;
     }
     // Can set params
-    function setParams(uint256 newEra, uint256 newCurve, uint256 _feeBP) external onlyDAO {
+    function setParams(uint256 newEra, uint256 newCurve) external onlyDAO {
         secondsPerEra = newEra;
         emissionCurve = newCurve;
-        feeBP = _feeBP;
+    }
+    function sfS(address _sFS) external onlyDAO{
+        require(!sFS); // only one time
+        _mint(_sFS, 10 * 10**5 * 10*decimals);// need to be exact 
+        sFS = true;
     }
     // Can change DAO
     function changeDAO(address newDAO) external onlyDAO {
@@ -209,9 +213,10 @@ contract Sparta is iBEP20 {
     }
 
     //==========================================Minting============================================//
-    function upgrade(uint256 amount) external {
-        require(iBASE(BASEv1).transferTo(address(this), amount)); 
-        require(iBASE(BASEv1).burn(amount));
+    function upgrade() external {
+        uint amount = iBEP20(BASEv1).balanceOf(msg.sender);
+        require(iBEP20(BASEv1).transferFrom(msg.sender, address(this), amount));   
+        iBASE(BASEv1).burn(amount);
         _mint(msg.sender, amount); // 1:1
     }
 

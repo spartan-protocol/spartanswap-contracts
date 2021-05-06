@@ -25,7 +25,7 @@ contract FallenSpartans {
         totalToClaim = 20 * 10**6 *10**18;//20 million
     }
 
-    function _DAO() internal view returns(address) {
+    function _DAO() internal view returns(iDAO) {
          return iBASE(SPARTA).DAO(); 
     }
     function setParams(uint _totalSparta) external onlyDAO {
@@ -45,7 +45,7 @@ contract FallenSpartans {
 
     function expire() external onlyDAO {
         require(block.timestamp >= genesis + 15552000);
-        iBEP20(SPARTA).transfer(_DAO(),iBEP20(SPARTA).balanceOf(address(this)));
+        iBEP20(SPARTA).transfer(_DAO().DAO(),iBEP20(SPARTA).balanceOf(address(this)));
     }
 
 

@@ -7,4 +7,8 @@ interface iROUTER {
     function changeArrayFeeSize(uint) external returns(bool);
     function changeMaxTrades(uint) external returns(bool);
     function addLiquidity(uint, uint, address) external payable returns (uint);
+    function totalPooled() external view returns (uint);
+    function totalVolume() external view returns (uint);
+    function totalFees() external view returns (uint);
+    function getPool(address) external view returns(address payable);
 }

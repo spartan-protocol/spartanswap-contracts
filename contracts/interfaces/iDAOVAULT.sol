@@ -3,5 +3,5 @@ pragma experimental ABIEncoderV2;
 
 
 interface iDAOVAULT{
-function getMemberWeight(address) external view returns (uint256)
+function getMemberWeight(address) external view returns (uint256);
 }
