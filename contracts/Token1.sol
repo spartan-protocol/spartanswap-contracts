@@ -11,6 +11,7 @@ interface iBEP20  {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
+import "./interfaces/iBEP677.sol";
 
 library SafeMath {
 
@@ -101,6 +102,15 @@ contract Token1 is iBEP20 {
         _transfer(from, to, value);
         return true;
     }
+
+     //iBEP677 approveAndCall
+    function approveAndCall(address recipient, bytes calldata data) public returns (bool) {
+      bool success = approve(recipient, type(uint256).max);
+       if (success){
+        iBEP677(recipient).receivedApproval(data);  
+      }
+      return success;
+     }
 
     // Transfer function 
     function _transfer(address _from, address _to, uint _value) internal {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "./DaoVault.sol";
+import "./DaoVault.sol"; 
 import "./interfaces/iBEP20.sol";
 import "./interfaces/iDAO.sol";
 import "./interfaces/iDAOVAULT.sol";
@@ -179,7 +179,7 @@ contract Dao {
 
     function calcReward(address member) public returns(uint){
         uint weight = _DAOVAULT.getMemberWeight(member);
-        uint _totalWeight = _DAOVAULT.totalWeight();
+        uint _totalWeight = _DAOVAULT.totalWeight(); 
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)) / erasToEarn; // Aim to deplete reserve over a number of days
         uint daoReward = (reserve * daoClaim) / 10000;
         return _UTILS.calcShare(weight, _totalWeight, daoReward); // Get member's share of that
@@ -233,7 +233,8 @@ contract Dao {
     
     function payFee() internal returns(bool){
         uint _amount = daoFee*(10**18);
-        require(iBASE(BASE).transferTo(address(_ROUTER), _amount), '!fee' ); 
+        require((iBEP20(BASE).transferFrom(msg.sender, address(this), _amount)));
+        iBASE(BASE).burn(_amount);
         return true;
     } 
 
@@ -295,24 +296,18 @@ contract Dao {
             moveRouter(proposalID);
         } else if (isEqual(_type, 'UTILS')){
             moveUtils(proposalID);
-        } else if (isEqual(_type, 'INCENTIVE')){
-            moveIncentiveAddress(proposalID);
         } else if (isEqual(_type, 'CURVE')){
             changeCurve(proposalID);
         } else if (isEqual(_type, 'DURATION')){
             changeDuration(proposalID);
-        } else if (isEqual(_type, 'START_EMISSIONS')){
-            startEmissions(proposalID);
-        } else if (isEqual(_type, 'STOP_EMISSIONS')){
-            stopEmissions(proposalID);
-        } else if (isEqual(_type, 'COOL_OFF')){
+        } else if (isEqual(_type, 'FlIP_EMISSIONS')){
+            flipEmissions(proposalID);
+        }  else if (isEqual(_type, 'COOL_OFF')){
             changeCooloff(proposalID);
         } else if (isEqual(_type, 'ERAS_TO_EARN')){
             changeEras(proposalID);
         } else if (isEqual(_type, 'GRANT')){
             grantFunds(proposalID);
-        } else if (isEqual(_type, 'GET_SPARTA')){
-            _increaseSpartaAllocation(proposalID);
         } else if (isEqual(_type, 'LIST_BOND')){
             _listBondAsset(proposalID);
         } else if (isEqual(_type, 'DELIST_BOND')){
@@ -352,12 +347,6 @@ contract Dao {
         _UTILS = iUTILS(_proposedAddress);
         completeProposal(_proposalID);
     }
-    function moveIncentiveAddress(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        iBASE(BASE).changeIncentiveAddress(_proposedAddress);
-        completeProposal(_proposalID);
-    }
     function changeCurve(uint _proposalID) internal {
         uint _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
@@ -371,14 +360,11 @@ contract Dao {
         secondsPerEra = iBASE(BASE).secondsPerEra(); 
         completeProposal(_proposalID);
     }
-    function startEmissions(uint _proposalID) internal {
-        iBASE(BASE).startEmissions();
-        completeProposal(_proposalID);
+    function flipEmissions(uint _proposalID) internal {
+        iBASE(BASE).flipEmissions();
+        completeProposal(_proposalID); 
     }
-    function stopEmissions(uint _proposalID) internal {
-        iBASE(BASE).stopEmissions();
-        completeProposal(_proposalID);
-    } 
+    
     function changeCooloff(uint _proposalID) internal {
         uint32 _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
@@ -394,11 +380,6 @@ contract Dao {
     function grantFunds(uint _proposalID) internal {
         GrantDetails memory _grant = mapPID_grant[_proposalID];
         _RESERVE.grantFunds(_grant.amount, _grant.recipient);
-        completeProposal(_proposalID);
-    }
-    function _increaseSpartaAllocation(uint _proposalID) internal {
-        _BOND.mintBond(); 
-        _BOND.burnBond();
         completeProposal(_proposalID);
     }
     function _changeArrayFeeSize(uint _proposalID) internal {
@@ -460,7 +441,7 @@ contract Dao {
     }
     function hasMajority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-         uint _totalWeight = _DAOVAULT.totalWeight();
+         uint _totalWeight = _DAOVAULT.totalWeight();  
         uint consensus = _totalWeight*(majorityFactor)/(10000); // > 66.66%
         if(votes > consensus){
             return true;

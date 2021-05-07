@@ -35,6 +35,7 @@ contract FallenSpartans {
     function allocate(address _fallenSpartan, uint256 _claim) external onlyDAO {
         uint claimAmount = (_claim * totalToClaim) / totalSparta;
         mapFallenSpartan_toClaim[_fallenSpartan] = claimAmount;
+        //need to numbers to get this part
     }
 
     function claim() external {

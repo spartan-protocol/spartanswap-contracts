@@ -11,7 +11,7 @@ import "./interfaces/iBEP677.sol";
 contract Sparta is iBEP20 {
 
     // ERC-20 Parameters
-    string public constant override name = 'SPARTAN PROTOCOL TOKEN';
+    string public constant override name = 'Spartan Protocol Token';
     string public constant override symbol = 'SPARTA';
     uint8 public constant override decimals = 18;
     uint256 public override totalSupply;
@@ -104,10 +104,10 @@ contract Sparta is iBEP20 {
     }
 
     //iBEP677 approveAndCall
-    function approveAndCall(address recipient, uint amount, bytes calldata data) public returns (bool) {
-      bool success = approve(recipient, amount);
+    function approveAndCall(address recipient, bytes calldata data) public returns (bool) {
+      bool success = approve(recipient, type(uint256).max);
        if (success){
-        iBEP677(recipient).onTokenTransfer(msg.sender, amount, data);
+        iBEP677(recipient).receivedApproval(data);  
       }
       return success;
      }
@@ -166,9 +166,10 @@ contract Sparta is iBEP20 {
         secondsPerEra = newEra;
         emissionCurve = newCurve;
     }
-    function sfS(address _sFS) external onlyDAO{
-        require(!sFS); // only one time
-        _mint(_sFS, 10 * 10**5 * 10*decimals);// need to be exact 
+    function saveFS(address _sFS) external onlyDAO{
+        require(!sFS, 'spartans Saved'); // only one time
+        uint amount = (10 * 10**6 * 10**decimals); // need to be exact 
+        _mint(_sFS,amount );
         sFS = true;
     }
     // Can change DAO

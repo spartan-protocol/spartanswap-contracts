@@ -234,7 +234,7 @@ contract Utils {
      function calcDebtShare(uint units, uint totalSupply, address lpToken, address synth) public view returns (uint share){
         // share = amount * part/total
         uint amount = iBEP20(lpToken).balanceOf(synth);
-        return(amount*(units))/(totalSupply);
+        return(amount * units) / (totalSupply);
     }
 
 

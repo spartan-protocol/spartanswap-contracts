@@ -8,6 +8,5 @@ interface iBASE {
     function changeDAO(address) external returns(bool);
     function changeEmissionCurve(uint256) external returns(bool);
     function changeEraDuration(uint256) external returns(bool);
-    function startEmissions() external returns(bool);
-    function stopEmissions() external returns(bool);
+    function flipEmissions() external returns(bool);
 }

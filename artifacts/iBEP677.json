@@ -4,22 +4,12 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        },
-        {
           "internalType": "bytes",
           "name": "data",
           "type": "bytes"
         }
       ],
-      "name": "onTokenTransfer",
+      "name": "receivedApproval",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
