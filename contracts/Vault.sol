@@ -22,7 +22,6 @@ constructor(address _base) {
         if (sig == bytes4(keccak256("deposit(address,uint256,address)"))) {
             (address token,,) = abi.decode(_data[4:], (address, uint256, address));
             require(token != address(0), "Address of owner cannot be zero.");
-            console.log("deposit");
         }
         (bool status,) = address(this).delegatecall(_data);
         
@@ -31,44 +30,10 @@ constructor(address _base) {
     }
 
      function deposit(address token, uint256 amount, address member) public returns (bool) {
-
        iBEP20(token).transferFrom(member, address(this), amount); 
-
         return true;
     }
-    
-
-    function addFM(uint inputBase, uint inputToken, address token, address member) public returns (bool) {
-         
-       iBEP20(token).transferFrom(member, address(this), inputToken); 
-       iBEP20(BASE).transferFrom(member, address(this), inputBase); 
-
-        return true;
-    }
-
-    function bytesToString(bytes memory hw) public pure returns(string memory){
-        string memory converted = string(hw);
-        return converted;
-    }
-    function stringToBytes(string memory s) public pure returns (bytes memory){
-        bytes memory b3 = bytes(s);
-        return b3;
-    }
-
-    function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
-        if(sha256(part1) == sha256(part2)){
-            return true;
-        } else {
-            return false;
-        }
-    }
-    function toUint256(bytes memory _bytes)  internal pure returns (uint256 value) {
-    assembly {
-      value := mload(add(_bytes, 0x20))
-    }
-
-
-
+   
 }
 
 }
