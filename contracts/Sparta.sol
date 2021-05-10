@@ -2,16 +2,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "./interfaces/iBEP20.sol";
-import "./interfaces/iDAO.sol";
-import "./interfaces/iBASE.sol";
-import "./interfaces/iUTILS.sol";
-import "./interfaces/iBEP677.sol"; 
+import "./iBEP20.sol";
+import "./iDAO.sol";
+import "./iBASE.sol";
+import "./iBASEv1.sol"; 
+import "./iUTILS.sol";
+import "./iBEP677.sol"; 
+
+
     //======================================SPARTA=========================================//
 contract Sparta is iBEP20 {
 
     // ERC-20 Parameters
-    string public constant override name = 'Spartan Protocol Token';
+    string public constant override name = 'Spartan Protocol Token V2';
     string public constant override symbol = 'SPARTA';
     uint8 public constant override decimals = 18;
     uint256 public override totalSupply;
@@ -23,7 +26,7 @@ contract Sparta is iBEP20 {
     // Parameters
     bool public emitting;
     bool public minting;
-    bool public sFS;
+    bool public savedSpartans;
     uint256 public feeOnTransfer;
     
     uint256 public emissionCurve;
@@ -42,7 +45,7 @@ contract Sparta is iBEP20 {
 
     // Only DAO can execute
     modifier onlyDAO() {
-        require(msg.sender == DAO || msg.sender == DEPLOYER, "Must be DAO");
+        require(msg.sender == DAO || msg.sender == DEPLOYER, "!DAO");
         _;
     }
 
@@ -52,11 +55,9 @@ contract Sparta is iBEP20 {
         _100m = 100 * 10**6 * 10**decimals; // 100m
         maxSupply = 300 * 10**6 * 10**decimals; // 300m
         emissionCurve = 2048;
-        emitting = false;
-        minting = false;
         currentEra = 1;
         BASEv1 = _baseV1;
-        secondsPerEra = 86400;
+        secondsPerEra =  1;// 86400;
         nextEraTime = block.timestamp + secondsPerEra;
         DEPLOYER = msg.sender;
     }
@@ -83,45 +84,60 @@ contract Sparta is iBEP20 {
         return true;
     }
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender]-(subtractedValue));
+        uint256 currentAllowance = _allowances[msg.sender][spender];
+        require(currentAllowance >= subtractedValue, "allowance err");
+        _approve(msg.sender, spender, currentAllowance - subtractedValue);
         return true;
     }
+
      function _approve( address owner, address spender, uint256 amount) internal virtual {
         require(owner != address(0), "sender");
         require(spender != address(0), "spender");
-        _allowances[owner][spender] = amount;
-        emit Approval(owner, spender, amount);
+        if (_allowances[owner][spender] < type(uint256).max) { // No need to re-approve if already max
+            _allowances[owner][spender] = amount;
+            emit Approval(owner, spender, amount);
+        }
     }
     
     // iBEP20 TransferFrom function
-     function transferFrom( address sender, address recipient, uint256 amount) external virtual override returns (bool) {
+     function transferFrom(address sender, address recipient, uint256 amount) external virtual override returns (bool) {
         _transfer(sender, recipient, amount);
         // Unlimited approval (saves an SSTORE)
         if (_allowances[sender][msg.sender] < type(uint256).max) {
-            _approve(sender, msg.sender, _allowances[sender][msg.sender] - amount);
+            uint256 currentAllowance = _allowances[sender][msg.sender];
+            require(currentAllowance >= amount, "allowance err");
+            _approve(sender, msg.sender, currentAllowance - amount);
         }
         return true;
     }
 
     //iBEP677 approveAndCall
-    function approveAndCall(address recipient, bytes calldata data) public returns (bool) {
-      bool success = approve(recipient, type(uint256).max);
-       if (success){
-        iBEP677(recipient).receivedApproval(data);  
-      }
-      return success;
+    function approveAndCall(address recipient, uint amount, bytes calldata data) public returns (bool) {
+      _approve(msg.sender, recipient, type(uint256).max); // Give recipient max approval
+      iBEP677(recipient).onTokenApproval(address(this), amount, msg.sender, data); // Amount is passed thru to recipient
+      return true;
      }
+
+      //iBEP677 transferAndCall
+    function transferAndCall(address recipient, uint amount, bytes calldata data) public returns (bool) {
+      _transfer(msg.sender, recipient, amount);
+      iBEP677(recipient).onTokenTransfer(address(this), amount, msg.sender, data); // Amount is passed thru to recipient 
+      return true;
+     }
+
 
     // Internal transfer function
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
-        require(sender != address(0), "iBEP20: transfer from the zero address");
-        require(recipient != address(this), "recipient");
-        _balances[sender] -= amount;
+        require(sender != address(0), "transfer err");
+        require(recipient != address(this), "recipient"); // Don't allow transfers here
+        uint256 senderBalance = _balances[sender];
+        require(senderBalance >= amount, "balance err");
         uint _fee = iUTILS(UTILS()).calcPart(feeOnTransfer, amount);   // Critical functionality                                                      
         if(_fee <= amount){                // Stops reverts if UTILS corrupted           
             amount -= _fee;
-            _burn(msg.sender, _fee);
+            _burn(sender, _fee);
         }
+        _balances[sender] -= amount;
         _balances[recipient] += amount;
         emit Transfer(sender, recipient, amount);
         _checkEmission();
@@ -129,14 +145,14 @@ contract Sparta is iBEP20 {
 
     // Internal mint (upgrading and daily emissions)
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "iBEP20: mint to the zero address");
+        require(account != address(0), "address err");
         totalSupply += amount;
-        require(totalSupply <= maxSupply, "Must not mint more than the cap");
+        require(totalSupply <= maxSupply, "Maxxed");
         _balances[account] += amount;
         emit Transfer(address(0), account, amount);
     }
     // Burn supply
-    function burn(uint256 amount) public virtual {
+    function burn(uint256 amount) public virtual override {
         _burn(msg.sender, amount);
     }
     function burnFrom(address account, uint256 amount) public virtual {  
@@ -145,7 +161,8 @@ contract Sparta is iBEP20 {
         _burn(account, amount);
     }
     function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "iBEP20: burn from the zero address");
+        require(account != address(0), "address err");
+        require(_balances[account] >= amount, "balance err");
         _balances[account] -= amount;
         totalSupply -= amount;
         emit Transfer(account, address(0), amount);
@@ -166,11 +183,10 @@ contract Sparta is iBEP20 {
         secondsPerEra = newEra;
         emissionCurve = newCurve;
     }
-    function saveFS(address _sFS) external onlyDAO{
-        require(!sFS, 'spartans Saved'); // only one time
-        uint amount = (10 * 10**6 * 10**decimals); // need to be exact 
-        _mint(_sFS,amount );
-        sFS = true;
+    function saveFallenSpartans(address _savedSpartans, uint256 _saveAmount) external onlyDAO{
+        require(!savedSpartans, 'spartans saved'); // only one time
+        savedSpartans = true;
+        _mint(_savedSpartans, _saveAmount);
     }
     // Can change DAO
     function changeDAO(address newDAO) external onlyDAO {
@@ -215,15 +231,15 @@ contract Sparta is iBEP20 {
 
     //==========================================Minting============================================//
     function upgrade() external {
-        uint amount = iBEP20(BASEv1).balanceOf(msg.sender);
-        require(iBEP20(BASEv1).transferFrom(msg.sender, address(this), amount));   
-        iBASE(BASEv1).burn(amount);
+        uint amount = iBEP20(BASEv1).balanceOf(msg.sender); //Get balance of sender
+        require(iBASEv1(BASEv1).transferTo(address(this), amount)); //Transfer balance from sender
+        iBEP20(BASEv1).burn(amount); //burn balance 
         _mint(msg.sender, amount); // 1:1
     }
 
     function daoMint(uint256 amount, address recipient) external onlyDAO {
         require(amount <= 5 * 10**6 * 10**decimals, '!5m'); //5m at a time
-        if(minting && (totalSupply <= _100m)){
+        if(minting && (totalSupply <=  150 * 10**6 * 10**decimals)){ // Only can mint up to 150m
              _mint(recipient, amount); 
         }
     }

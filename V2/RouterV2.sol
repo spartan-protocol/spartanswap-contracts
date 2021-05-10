@@ -128,8 +128,7 @@ contract Router {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true);
         require(units <= iBEP20(_pool).totalSupply());
-        address _member = msg.sender;
-        Pool(_pool).transferTo(_pool, units);//RPTAF
+        iBEP20(_pool).transferFrom(msg.sender, _pool, units);
         (outputBase, outputToken) = Pool(_pool).removeLiquidity();
         _handleTransferOut(token, outputToken, _member);
         _handleTransferOut(BASE, outputBase, _member);

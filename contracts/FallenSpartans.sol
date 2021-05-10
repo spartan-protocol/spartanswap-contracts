@@ -1,9 +1,9 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces/iBEP20.sol"; 
-import "./interfaces/iDAO.sol";
-import "./interfaces/iBASE.sol";
+import "./iBEP20.sol"; 
+import "./iDAO.sol";
+import "./iBASE.sol";
 
 contract FallenSpartans {
 

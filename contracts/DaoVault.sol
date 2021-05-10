@@ -1,13 +1,13 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "./interfaces/iBEP20.sol";
-import "./interfaces/iDAO.sol";
-import "./interfaces/iBASE.sol";
-import "./interfaces/iPOOL.sol";
-import "./interfaces/iUTILS.sol";
-import "./interfaces/iROUTER.sol";
-import "./interfaces/iBOND.sol";
-import "./interfaces/iRESERVE.sol";
+import "./iBEP20.sol";
+import "./iDAO.sol";
+import "./iBASE.sol";
+import "./iPOOL.sol";
+import "./iUTILS.sol";
+import "./iROUTER.sol";
+import "./iBOND.sol";
+import "./iRESERVE.sol";
 
 contract DaoVault {
     address public BASE;
@@ -38,25 +38,15 @@ contract DaoVault {
         return iBASE(BASE).DAO();
     }
 
-    function depositLP(
-        address pool,
-        uint256 amount,
-        address member
-    ) public onlyDAO returns (bool) {
-        require(
-            iBEP20(pool).transferFrom(member, address(this), amount),
-            "sendlps"
-        );
+    function depositLP( address pool, uint256 amount, address member ) public onlyDAO returns (bool) {
+        require( iBEP20(pool).transferFrom(member, address(this), amount), "sendlps" );
         mapMemberPool_balance[member][pool] += amount; // Record total pool balance for member
         increaseWeight(pool, member);
         return true;
     }
 
     // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
-    function increaseWeight(address pool, address member)
-        internal
-        returns (uint256)
-    {
+    function increaseWeight(address pool, address member) internal returns (uint256){
         if (mapMemberPool_weight[member][pool] > 0) {
             // Remove previous weights
             totalWeight -= mapMemberPool_weight[member][pool];

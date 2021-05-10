@@ -2,16 +2,16 @@
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
 import "./DaoVault.sol"; 
-import "./interfaces/iBEP20.sol";
-import "./interfaces/iDAO.sol";
-import "./interfaces/iDAOVAULT.sol";
-import "./interfaces/iBASE.sol";
-import "./interfaces/iUTILS.sol";
-import "./interfaces/iROUTER.sol";
-import "./interfaces/iBOND.sol";
-import "./interfaces/iRESERVE.sol";
-import "./interfaces/iSYNTHFACTORY.sol"; 
-import "./interfaces/iPOOLFACTORY.sol";
+import "./iBEP20.sol";
+import "./iDAO.sol";
+import "./iDAOVAULT.sol";
+import "./iBASE.sol";
+import "./iUTILS.sol";
+import "./iROUTER.sol";
+import "./iBOND.sol";
+import "./iRESERVE.sol";
+import "./iSYNTHFACTORY.sol"; 
+import "./iPOOLFACTORY.sol";
 
 
 contract Dao {
@@ -191,294 +191,294 @@ contract Dao {
     // IDs are finalised
     // IDs are executed, but type specifies unique logic
 
-    // Simple Action Call
-    function newActionProposal(string memory typeStr) public returns(uint) {
-        payFee();
-        proposalCount += 1;
-        mapPID_type[proposalCount] = typeStr;
-        emit NewProposal(msg.sender, proposalCount, typeStr);
-        return proposalCount;
-    }
-    // Action with uint parameter
-    function newParamProposal(uint32 param, string memory typeStr) public returns(uint) {
-        payFee();
-        proposalCount += 1;
-        mapPID_param[proposalCount] = param;
-        mapPID_type[proposalCount] = typeStr;
-        emit NewProposal(msg.sender, proposalCount, typeStr);
-        return proposalCount;
-    }
-    // Action with address parameter
-    function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
-        payFee();
-        proposalCount += 1;
-        mapPID_address[proposalCount] = proposedAddress;
-        mapPID_type[proposalCount] = typeStr;
-        emit NewProposal(msg.sender, proposalCount, typeStr);
-        return proposalCount;
-    }
-    // Action with funding
-    function newGrantProposal(address recipient, uint amount) public returns(uint) {
-        payFee();
-        string memory typeStr = "GRANT";
-        proposalCount += 1;
-        mapPID_type[proposalCount] = typeStr;
-        GrantDetails memory grant;
-        grant.recipient = recipient;
-        grant.amount = amount;
-        mapPID_grant[proposalCount] = grant;
-        emit NewProposal(msg.sender, proposalCount, typeStr);
-        return proposalCount;
-    }
+//     // Simple Action Call
+//     function newActionProposal(string memory typeStr) public returns(uint) {
+//         payFee();
+//         proposalCount += 1;
+//         mapPID_type[proposalCount] = typeStr;
+//         emit NewProposal(msg.sender, proposalCount, typeStr);
+//         return proposalCount;
+//     }
+//     // Action with uint parameter
+//     function newParamProposal(uint32 param, string memory typeStr) public returns(uint) {
+//         payFee();
+//         proposalCount += 1;
+//         mapPID_param[proposalCount] = param;
+//         mapPID_type[proposalCount] = typeStr;
+//         emit NewProposal(msg.sender, proposalCount, typeStr);
+//         return proposalCount;
+//     }
+//     // Action with address parameter
+//     function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
+//         payFee();
+//         proposalCount += 1;
+//         mapPID_address[proposalCount] = proposedAddress;
+//         mapPID_type[proposalCount] = typeStr;
+//         emit NewProposal(msg.sender, proposalCount, typeStr);
+//         return proposalCount;
+//     }
+//     // Action with funding
+//     function newGrantProposal(address recipient, uint amount) public returns(uint) {
+//         payFee();
+//         string memory typeStr = "GRANT";
+//         proposalCount += 1;
+//         mapPID_type[proposalCount] = typeStr;
+//         GrantDetails memory grant;
+//         grant.recipient = recipient;
+//         grant.amount = amount;
+//         mapPID_grant[proposalCount] = grant;
+//         emit NewProposal(msg.sender, proposalCount, typeStr);
+//         return proposalCount;
+//     }
     
-    function payFee() internal returns(bool){
-        uint _amount = daoFee*(10**18);
-        require((iBEP20(BASE).transferFrom(msg.sender, address(this), _amount)));
-        iBASE(BASE).burn(_amount);
-        return true;
-    } 
+//     function payFee() internal returns(bool){
+//         uint _amount = daoFee*(10**18);
+//         require((iBEP20(BASE).transferFrom(msg.sender, address(this), _amount)));
+//         iBEP20(BASE).burn(_amount);
+//         return true;
+//     } 
 
-//============================== VOTE && FINALISE ================================//
+// //============================== VOTE && FINALISE ================================//
 
-    // Vote for a proposal
-    function voteProposal(uint proposalID) public returns (uint voteWeight) {
-        bytes memory _type = bytes(mapPID_type[proposalID]);
-        voteWeight = countVotes(proposalID);
-        if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
-            if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'INCENTIVE') || isEqual(_type, 'LIST_BOND')|| isEqual(_type, 'GRANT')|| isEqual(_type, 'GET_SPARTA')|| isEqual(_type, 'ADD_CURATED_POOL')){
-                if(hasMajority(proposalID)){
-                    _finalise(proposalID);
-                }
-            } else {
-                _finalise(proposalID);
-            }
-        }
-        emit NewVote(msg.sender, proposalID, voteWeight, mapPID_votes[proposalID], string(_type));
-    }
+//     // Vote for a proposal
+//     function voteProposal(uint proposalID) public returns (uint voteWeight) {
+//         bytes memory _type = bytes(mapPID_type[proposalID]);
+//         voteWeight = countVotes(proposalID);
+//         if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
+//             if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'INCENTIVE') || isEqual(_type, 'LIST_BOND')|| isEqual(_type, 'GRANT')|| isEqual(_type, 'GET_SPARTA')|| isEqual(_type, 'ADD_CURATED_POOL')){
+//                 if(hasMajority(proposalID)){
+//                     _finalise(proposalID);
+//                 }
+//             } else {
+//                 _finalise(proposalID);
+//             }
+//         }
+//         emit NewVote(msg.sender, proposalID, voteWeight, mapPID_votes[proposalID], string(_type));
+//     }
 
-    //Remove vote from a proposal
-    function removeVote(uint proposalID) public returns (uint voteWeightRemoved){
-        bytes memory _type = bytes(mapPID_type[proposalID]);
-        voteWeightRemoved = mapPIDMember_votes[proposalID][msg.sender]; // get voted weight
-        mapPID_votes[proposalID] -= voteWeightRemoved; //remove voteweight from totalVotingweight
-        mapPIDMember_votes[proposalID][msg.sender] = 0; //zero out voting weight for member
-        emit RemovedVote(msg.sender, proposalID, voteWeightRemoved, mapPID_votes[proposalID], string(_type));
-        return voteWeightRemoved;
-    }
+//     //Remove vote from a proposal
+//     function removeVote(uint proposalID) public returns (uint voteWeightRemoved){
+//         bytes memory _type = bytes(mapPID_type[proposalID]);
+//         voteWeightRemoved = mapPIDMember_votes[proposalID][msg.sender]; // get voted weight
+//         mapPID_votes[proposalID] -= voteWeightRemoved; //remove voteweight from totalVotingweight
+//         mapPIDMember_votes[proposalID][msg.sender] = 0; //zero out voting weight for member
+//         emit RemovedVote(msg.sender, proposalID, voteWeightRemoved, mapPID_votes[proposalID], string(_type));
+//         return voteWeightRemoved;
+//     }
 
-    function _finalise(uint _proposalID) internal {
-        bytes memory _type = bytes(mapPID_type[_proposalID]);
-        mapPID_finalising[_proposalID] = true;
-        mapPID_timeStart[_proposalID] = block.timestamp;
-        emit ProposalFinalising(msg.sender, _proposalID, block.timestamp+coolOffPeriod, string(_type));
-    }
-    // If an existing proposal, allow a minority to cancel
-    function cancelProposal(uint oldProposalID, uint newProposalID) public {
-        require(mapPID_finalising[oldProposalID], "!finalising");
-        require(hasMinority(newProposalID), "!minority");
-        require(isEqual(bytes(mapPID_type[oldProposalID]), bytes(mapPID_type[newProposalID])), "!same");
-        mapPID_votes[oldProposalID] = 0;
-        emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], _DAOVAULT.totalWeight());
-    }
+//     function _finalise(uint _proposalID) internal {
+//         bytes memory _type = bytes(mapPID_type[_proposalID]);
+//         mapPID_finalising[_proposalID] = true;
+//         mapPID_timeStart[_proposalID] = block.timestamp;
+//         emit ProposalFinalising(msg.sender, _proposalID, block.timestamp+coolOffPeriod, string(_type));
+//     }
+//     // If an existing proposal, allow a minority to cancel
+//     function cancelProposal(uint oldProposalID, uint newProposalID) public {
+//         require(mapPID_finalising[oldProposalID], "!finalising");
+//         require(hasMinority(newProposalID), "!minority");
+//         require(isEqual(bytes(mapPID_type[oldProposalID]), bytes(mapPID_type[newProposalID])), "!same");
+//         mapPID_votes[oldProposalID] = 0;
+//         emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], _DAOVAULT.totalWeight());
+//     }
 
-    // Proposal with quorum can finalise after cool off period
-    function finaliseProposal(uint proposalID) public  {
-        require((block.timestamp - mapPID_timeStart[proposalID]) > coolOffPeriod, "!cool off");
-        require(mapPID_finalising[proposalID] == true, "!finalising");
-        if(!hasQuorum(proposalID)){
-            mapPID_finalising[proposalID] = false;
-        }
-        else {
-        bytes memory _type = bytes(mapPID_type[proposalID]);
-        if(isEqual(_type, 'DAO')){
-            moveDao(proposalID);
-        } else if (isEqual(_type, 'ROUTER')) {
-            moveRouter(proposalID);
-        } else if (isEqual(_type, 'UTILS')){
-            moveUtils(proposalID);
-        } else if (isEqual(_type, 'CURVE')){
-            changeCurve(proposalID);
-        } else if (isEqual(_type, 'DURATION')){
-            changeDuration(proposalID);
-        } else if (isEqual(_type, 'FlIP_EMISSIONS')){
-            flipEmissions(proposalID);
-        }  else if (isEqual(_type, 'COOL_OFF')){
-            changeCooloff(proposalID);
-        } else if (isEqual(_type, 'ERAS_TO_EARN')){
-            changeEras(proposalID);
-        } else if (isEqual(_type, 'GRANT')){
-            grantFunds(proposalID);
-        } else if (isEqual(_type, 'LIST_BOND')){
-            _listBondAsset(proposalID);
-        } else if (isEqual(_type, 'DELIST_BOND')){
-            _delistBondAsset(proposalID);
-        } else if (isEqual(_type, 'ADD_CURATED_POOL')){
-            _addCuratedPool(proposalID);
-        } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
-            _removeCuratedPool(proposalID);
-        } else if (isEqual(_type, 'CHALLENGE_CURATED_POOL')){
-            _challengLowestCuratedPool(proposalID);
-        } else if (isEqual(_type, 'FEE_ARRAY_SIZE')){
-            _changeArrayFeeSize(proposalID);
-        } else if (isEqual(_type, 'MAX_TRADES')){
-            _changeMaxTrades(proposalID);
-        }
+//     // Proposal with quorum can finalise after cool off period
+//     function finaliseProposal(uint proposalID) public  {
+//         require((block.timestamp - mapPID_timeStart[proposalID]) > coolOffPeriod, "!cool off");
+//         require(mapPID_finalising[proposalID] == true, "!finalising");
+//         if(!hasQuorum(proposalID)){
+//             mapPID_finalising[proposalID] = false;
+//         }
+//         else {
+//         bytes memory _type = bytes(mapPID_type[proposalID]);
+//         if(isEqual(_type, 'DAO')){
+//             moveDao(proposalID);
+//         } else if (isEqual(_type, 'ROUTER')) {
+//             moveRouter(proposalID);
+//         } else if (isEqual(_type, 'UTILS')){
+//             moveUtils(proposalID);
+//         } else if (isEqual(_type, 'CURVE')){
+//             changeCurve(proposalID);
+//         } else if (isEqual(_type, 'DURATION')){
+//             changeDuration(proposalID);
+//         } else if (isEqual(_type, 'FlIP_EMISSIONS')){
+//             flipEmissions(proposalID);
+//         }  else if (isEqual(_type, 'COOL_OFF')){
+//             changeCooloff(proposalID);
+//         } else if (isEqual(_type, 'ERAS_TO_EARN')){
+//             changeEras(proposalID);
+//         } else if (isEqual(_type, 'GRANT')){
+//             grantFunds(proposalID);
+//         } else if (isEqual(_type, 'LIST_BOND')){
+//             _listBondAsset(proposalID);
+//         } else if (isEqual(_type, 'DELIST_BOND')){
+//             _delistBondAsset(proposalID);
+//         } else if (isEqual(_type, 'ADD_CURATED_POOL')){
+//             _addCuratedPool(proposalID);
+//         } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
+//             _removeCuratedPool(proposalID);
+//         } else if (isEqual(_type, 'CHALLENGE_CURATED_POOL')){
+//             _challengLowestCuratedPool(proposalID);
+//         } else if (isEqual(_type, 'FEE_ARRAY_SIZE')){
+//             _changeArrayFeeSize(proposalID);
+//         } else if (isEqual(_type, 'MAX_TRADES')){
+//             _changeMaxTrades(proposalID);
+//         }
         
-        }
+//         }
         
-    }
-    function moveDao(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        DAO = mapPID_address[_proposalID];
-        iBASE(BASE).changeDAO(_proposedAddress);
-        daoHasMoved = true; 
-        completeProposal(_proposalID);
-    }
-    function moveRouter(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _ROUTER = iROUTER(_proposedAddress);
-        completeProposal(_proposalID);
-    }
-    function moveUtils(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _UTILS = iUTILS(_proposedAddress);
-        completeProposal(_proposalID);
-    }
-    function changeCurve(uint _proposalID) internal {
-        uint _proposedParam = mapPID_param[_proposalID];
-        require(_proposedParam != 0, "No param proposed");
-        iBASE(BASE).changeEmissionCurve(_proposedParam);
-        completeProposal(_proposalID);
-    }
-    function changeDuration(uint _proposalID) internal {
-        uint _proposedParam = mapPID_param[_proposalID];
-        require(_proposedParam != 0, "No param proposed");
-        iBASE(BASE).changeEraDuration(_proposedParam);
-        secondsPerEra = iBASE(BASE).secondsPerEra(); 
-        completeProposal(_proposalID);
-    }
-    function flipEmissions(uint _proposalID) internal {
-        iBASE(BASE).flipEmissions();
-        completeProposal(_proposalID); 
-    }
+//     }
+//     function moveDao(uint _proposalID) internal {
+//         address _proposedAddress = mapPID_address[_proposalID];
+//         require(_proposedAddress != address(0), "No address proposed");
+//         DAO = mapPID_address[_proposalID];
+//         iBASE(BASE).changeDAO(_proposedAddress);
+//         daoHasMoved = true; 
+//         completeProposal(_proposalID);
+//     }
+//     function moveRouter(uint _proposalID) internal {
+//         address _proposedAddress = mapPID_address[_proposalID];
+//         require(_proposedAddress != address(0), "No address proposed");
+//         _ROUTER = iROUTER(_proposedAddress);
+//         completeProposal(_proposalID);
+//     }
+//     function moveUtils(uint _proposalID) internal {
+//         address _proposedAddress = mapPID_address[_proposalID];
+//         require(_proposedAddress != address(0), "No address proposed");
+//         _UTILS = iUTILS(_proposedAddress);
+//         completeProposal(_proposalID);
+//     }
+//     function changeCurve(uint _proposalID) internal {
+//         uint _proposedParam = mapPID_param[_proposalID];
+//         require(_proposedParam != 0, "No param proposed");
+//         iBASE(BASE).changeEmissionCurve(_proposedParam);
+//         completeProposal(_proposalID);
+//     }
+//     function changeDuration(uint _proposalID) internal {
+//         uint _proposedParam = mapPID_param[_proposalID];
+//         require(_proposedParam != 0, "No param proposed");
+//         iBASE(BASE).changeEraDuration(_proposedParam);
+//         secondsPerEra = iBASE(BASE).secondsPerEra(); 
+//         completeProposal(_proposalID);
+//     }
+//     function flipEmissions(uint _proposalID) internal {
+//         iBASE(BASE).flipEmissions();
+//         completeProposal(_proposalID); 
+//     }
     
-    function changeCooloff(uint _proposalID) internal {
-        uint32 _proposedParam = mapPID_param[_proposalID];
-        require(_proposedParam != 0, "No param proposed");
-        coolOffPeriod = _proposedParam;
-        completeProposal(_proposalID);
-    }
-    function changeEras(uint _proposalID) internal {
-        uint32 _proposedParam = mapPID_param[_proposalID];
-        require(_proposedParam != 0, "No param proposed");
-        erasToEarn = _proposedParam;
-        completeProposal(_proposalID);
-    }
-    function grantFunds(uint _proposalID) internal {
-        GrantDetails memory _grant = mapPID_grant[_proposalID];
-        _RESERVE.grantFunds(_grant.amount, _grant.recipient);
-        completeProposal(_proposalID);
-    }
-    function _changeArrayFeeSize(uint _proposalID) internal {
-        uint _proposedParam = mapPID_param[_proposalID];
-        _ROUTER.changeArrayFeeSize(_proposedParam); 
-        completeProposal(_proposalID);
-    }
-    function _changeMaxTrades(uint _proposalID) internal {
-        uint _proposedParam = mapPID_param[_proposalID];
-        _ROUTER.changeMaxTrades(_proposedParam); 
-        completeProposal(_proposalID); 
-    }
-    function _listBondAsset(uint _proposalID) internal {
-         address _proposedAddress = mapPID_address[_proposalID];
-        _BOND.listBondAsset(_proposedAddress);
-        completeProposal(_proposalID);
-    }
-    function _delistBondAsset(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _BOND.delistBondAsset(_proposedAddress); 
-        completeProposal(_proposalID);
-    }
-    function _addCuratedPool(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _POOLFACTORY.addCuratedPool(_proposedAddress); 
-        completeProposal(_proposalID);
-    }
-    function _removeCuratedPool(uint _proposalID) internal {
-        address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _POOLFACTORY.removeCuratedPool(_proposedAddress); 
-        completeProposal(_proposalID);
-    }
-    function _challengLowestCuratedPool(uint _proposalID) internal {
-         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
-        _POOLFACTORY.challengLowestCuratedPool(_proposedAddress); 
-        completeProposal(_proposalID); 
-    }
+//     function changeCooloff(uint _proposalID) internal {
+//         uint32 _proposedParam = mapPID_param[_proposalID];
+//         require(_proposedParam != 0, "No param proposed");
+//         coolOffPeriod = _proposedParam;
+//         completeProposal(_proposalID);
+//     }
+//     function changeEras(uint _proposalID) internal {
+//         uint32 _proposedParam = mapPID_param[_proposalID];
+//         require(_proposedParam != 0, "No param proposed");
+//         erasToEarn = _proposedParam;
+//         completeProposal(_proposalID);
+//     }
+//     function grantFunds(uint _proposalID) internal {
+//         GrantDetails memory _grant = mapPID_grant[_proposalID];
+//         _RESERVE.grantFunds(_grant.amount, _grant.recipient);
+//         completeProposal(_proposalID);
+//     }
+//     function _changeArrayFeeSize(uint _proposalID) internal {
+//         uint _proposedParam = mapPID_param[_proposalID];
+//         _ROUTER.changeArrayFeeSize(_proposedParam); 
+//         completeProposal(_proposalID);
+//     }
+//     function _changeMaxTrades(uint _proposalID) internal {
+//         uint _proposedParam = mapPID_param[_proposalID];
+//         _ROUTER.changeMaxTrades(_proposedParam); 
+//         completeProposal(_proposalID); 
+//     }
+//     function _listBondAsset(uint _proposalID) internal {
+//          address _proposedAddress = mapPID_address[_proposalID];
+//         _BOND.listBondAsset(_proposedAddress);
+//         completeProposal(_proposalID);
+//     }
+//     function _delistBondAsset(uint _proposalID) internal {
+//         address _proposedAddress = mapPID_address[_proposalID];
+//         require(_proposedAddress != address(0), "No address proposed");
+//         _BOND.delistBondAsset(_proposedAddress); 
+//         completeProposal(_proposalID);
+//     }
+//     function _addCuratedPool(uint _proposalID) internal {
+//         address _proposedAddress = mapPID_address[_proposalID];
+//         require(_proposedAddress != address(0), "No address proposed");
+//         _POOLFACTORY.addCuratedPool(_proposedAddress); 
+//         completeProposal(_proposalID);
+//     }
+//     function _removeCuratedPool(uint _proposalID) internal {
+//         address _proposedAddress = mapPID_address[_proposalID];
+//         require(_proposedAddress != address(0), "No address proposed");
+//         _POOLFACTORY.removeCuratedPool(_proposedAddress); 
+//         completeProposal(_proposalID);
+//     }
+//     function _challengLowestCuratedPool(uint _proposalID) internal {
+//          address _proposedAddress = mapPID_address[_proposalID];
+//         require(_proposedAddress != address(0), "No address proposed");
+//         _POOLFACTORY.challengLowestCuratedPool(_proposedAddress); 
+//         completeProposal(_proposalID); 
+//     }
     
-    function completeProposal(uint _proposalID) internal {
-        string memory _typeStr = mapPID_type[_proposalID];
-        emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID],_DAOVAULT.totalWeight(), _typeStr);
-        mapPID_votes[_proposalID] = 0;
-        mapPID_finalised[_proposalID] = true;
-        mapPID_finalising[_proposalID] = false;
-    }
+//     function completeProposal(uint _proposalID) internal {
+//         string memory _typeStr = mapPID_type[_proposalID];
+//         emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID],_DAOVAULT.totalWeight(), _typeStr);
+//         mapPID_votes[_proposalID] = 0;
+//         mapPID_finalised[_proposalID] = true;
+//         mapPID_finalising[_proposalID] = false;
+//     }
 
-    //============================== CONSENSUS ================================//
+//     //============================== CONSENSUS ================================//
 
-    function countVotes(uint _proposalID) internal returns (uint voteWeight){
-        mapPID_votes[_proposalID] -= mapPIDMember_votes[_proposalID][msg.sender];
-        voteWeight = _DAOVAULT.getMemberWeight(msg.sender);
-        mapPID_votes[_proposalID] += voteWeight;
-        mapPIDMember_votes[_proposalID][msg.sender] = voteWeight;
-        return voteWeight;
-    }
-    function hasMajority(uint _proposalID) public view returns(bool){
-        uint votes = mapPID_votes[_proposalID];
-         uint _totalWeight = _DAOVAULT.totalWeight();  
-        uint consensus = _totalWeight*(majorityFactor)/(10000); // > 66.66%
-        if(votes > consensus){
-            return true;
-        } else {
-            return false;
-        }
-    }
-    function hasQuorum(uint _proposalID) public view returns(bool){
-        uint votes = mapPID_votes[_proposalID];
-        uint _totalWeight = _DAOVAULT.totalWeight();
-        uint consensus = _totalWeight/(3); // >33%
-        if(votes > consensus){
-            return true;
-        } else {
-            return false;
-        }
-    }
-    function hasMinority(uint _proposalID) public view returns(bool){
-        uint votes = mapPID_votes[_proposalID];
-         uint _totalWeight = _DAOVAULT.totalWeight();
-        uint consensus = _totalWeight/(6); // >16%
-        if(votes > consensus){
-            return true;
-        } else {
-            return false;
-        }
-    }
+//     function countVotes(uint _proposalID) internal returns (uint voteWeight){
+//         mapPID_votes[_proposalID] -= mapPIDMember_votes[_proposalID][msg.sender];
+//         voteWeight = _DAOVAULT.getMemberWeight(msg.sender);
+//         mapPID_votes[_proposalID] += voteWeight;
+//         mapPIDMember_votes[_proposalID][msg.sender] = voteWeight;
+//         return voteWeight;
+//     }
+//     function hasMajority(uint _proposalID) public view returns(bool){
+//         uint votes = mapPID_votes[_proposalID];
+//          uint _totalWeight = _DAOVAULT.totalWeight();  
+//         uint consensus = _totalWeight*(majorityFactor)/(10000); // > 66.66%
+//         if(votes > consensus){
+//             return true;
+//         } else {
+//             return false;
+//         }
+//     }
+//     function hasQuorum(uint _proposalID) public view returns(bool){
+//         uint votes = mapPID_votes[_proposalID];
+//         uint _totalWeight = _DAOVAULT.totalWeight();
+//         uint consensus = _totalWeight/(3); // >33%
+//         if(votes > consensus){
+//             return true;
+//         } else {
+//             return false;
+//         }
+//     }
+//     function hasMinority(uint _proposalID) public view returns(bool){
+//         uint votes = mapPID_votes[_proposalID];
+//          uint _totalWeight = _DAOVAULT.totalWeight();
+//         uint consensus = _totalWeight/(6); // >16%
+//         if(votes > consensus){
+//             return true;
+//         } else {
+//             return false;
+//         }
+//     }
 
-    //============================== ROUTER && UTILS ================================//
+//     //============================== ROUTER && UTILS ================================//
 
-    function ROUTER() public view returns(iROUTER){
-        if(daoHasMoved){
-            return Dao(DAO).ROUTER();
-        } else {
-            return _ROUTER;
-        }
-    }
+//     function ROUTER() public view returns(iROUTER){
+//         if(daoHasMoved){
+//             return Dao(DAO).ROUTER();
+//         } else {
+//             return _ROUTER;
+//         }
+//     }
     function UTILS() public view returns(iUTILS){
         if(daoHasMoved){
             return Dao(DAO).UTILS();
@@ -486,34 +486,34 @@ contract Dao {
             return _UTILS;
         }
     }
-    function BOND() public view returns(iBOND){
-        if(daoHasMoved){
-            return Dao(DAO).BOND();
-        } else {
-            return _BOND;
-        }
-    }
-    function DAOVAULT() public view returns(iDAOVAULT){
-        if(daoHasMoved){
-            return Dao(DAO).DAOVAULT();
-        } else {
-            return _DAOVAULT;
-        }
-    }
-    function POOLFACTORY() public view returns(iPOOLFACTORY){
-        if(daoHasMoved){
-            return Dao(DAO).POOLFACTORY();
-        } else {
-            return _POOLFACTORY;
-        }
-    }
-     function SYNTHFACTORY() public view returns(iSYNTHFACTORY){
-        if(daoHasMoved){
-            return Dao(DAO).SYNTHFACTORY();
-        } else {
-            return _SYNTHFACTORY;
-        }
-    }
+//     function BOND() public view returns(iBOND){
+//         if(daoHasMoved){
+//             return Dao(DAO).BOND();
+//         } else {
+//             return _BOND;
+//         }
+//     }
+//     function DAOVAULT() public view returns(iDAOVAULT){
+//         if(daoHasMoved){
+//             return Dao(DAO).DAOVAULT();
+//         } else {
+//             return _DAOVAULT;
+//         }
+//     }
+//     function POOLFACTORY() public view returns(iPOOLFACTORY){
+//         if(daoHasMoved){
+//             return Dao(DAO).POOLFACTORY();
+//         } else {
+//             return _POOLFACTORY;
+//         }
+//     }
+//      function SYNTHFACTORY() public view returns(iSYNTHFACTORY){
+//         if(daoHasMoved){
+//             return Dao(DAO).SYNTHFACTORY();
+//         } else {
+//             return _SYNTHFACTORY;
+//         }
+//     }
     function RESERVE() public view returns(iRESERVE){
         if(daoHasMoved){
             return Dao(DAO).RESERVE();
@@ -523,39 +523,39 @@ contract Dao {
     }
     
 
-    //============================== HELPERS ================================//
+//     //============================== HELPERS ================================//
 
-    function memberCount() public view returns(uint){
-        return arrayMembers.length;
-    }
+//     function memberCount() public view returns(uint){
+//         return arrayMembers.length;
+//     }
     
-    function getProposalDetails(uint proposalID) public view returns (ProposalDetails memory proposalDetails){
-        proposalDetails.id = proposalID;
-        proposalDetails.proposalType = mapPID_type[proposalID];
-        proposalDetails.votes = mapPID_votes[proposalID];
-        proposalDetails.timeStart = mapPID_timeStart[proposalID];
-        proposalDetails.finalising = mapPID_finalising[proposalID];
-        proposalDetails.finalised = mapPID_finalised[proposalID];
-        proposalDetails.param = mapPID_param[proposalID];
-        proposalDetails.proposedAddress = mapPID_address[proposalID];
-        return proposalDetails;
-    }
-    function getGrantDetails(uint proposalID) public view returns (GrantDetails memory grantDetails){
-        grantDetails.recipient = mapPID_grant[proposalID].recipient;
-        grantDetails.amount = mapPID_grant[proposalID].amount;
-        return grantDetails;
-    }
-    function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
-        if(sha256(part1) == sha256(part2)){
-            return true;
-        } else {
-            return false;
-        }
-    }
+//     function getProposalDetails(uint proposalID) public view returns (ProposalDetails memory proposalDetails){
+//         proposalDetails.id = proposalID;
+//         proposalDetails.proposalType = mapPID_type[proposalID];
+//         proposalDetails.votes = mapPID_votes[proposalID];
+//         proposalDetails.timeStart = mapPID_timeStart[proposalID];
+//         proposalDetails.finalising = mapPID_finalising[proposalID];
+//         proposalDetails.finalised = mapPID_finalised[proposalID];
+//         proposalDetails.param = mapPID_param[proposalID];
+//         proposalDetails.proposedAddress = mapPID_address[proposalID];
+//         return proposalDetails;
+//     }
+//     function getGrantDetails(uint proposalID) public view returns (GrantDetails memory grantDetails){
+//         grantDetails.recipient = mapPID_grant[proposalID].recipient;
+//         grantDetails.amount = mapPID_grant[proposalID].amount;
+//         return grantDetails;
+//     }
+//     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
+//         if(sha256(part1) == sha256(part2)){
+//             return true;
+//         } else {
+//             return false;
+//         }
+//     }
 
-    function destroyMe() public onlyDAO {
-         selfdestruct(payable(msg.sender));
-    }
+//     function destroyMe() public onlyDAO {
+//          selfdestruct(payable(msg.sender));
+//     }
 
 }
 
