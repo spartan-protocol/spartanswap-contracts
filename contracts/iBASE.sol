@@ -5,7 +5,6 @@ interface iBASE {
     function DAO() external view returns (iDAO);
     function secondsPerEra() external view returns (uint256);
     function changeDAO(address) external returns(bool);
-    function changeEmissionCurve(uint256) external returns(bool);
-    function changeEraDuration(uint256) external returns(bool);
+    function setParams(uint256, uint256) external;
     function flipEmissions() external returns(bool);
 }

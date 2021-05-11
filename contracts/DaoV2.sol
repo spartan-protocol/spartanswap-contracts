@@ -50,7 +50,6 @@ contract Dao {
     }
 
     bool public daoHasMoved;
-    bool public mStatus;
     address public DAO;
 
     iROUTER public _ROUTER;
@@ -102,7 +101,6 @@ contract Dao {
         majorityFactor = 6666;
         daoClaim = 2000;
         daoFee = 100;
-        mStatus =false;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
     function setGenesisAddresses(address _router, address _utils, address _bond, address _daoVault, address _poolFactory,address _synthFactory, address _reserve ) public onlyDAO {
@@ -125,13 +123,7 @@ contract Dao {
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
-    function MSTATUS() public view returns (bool) {
-        return mStatus;
-    }
-    function _MSTATUS(bool status) public onlyDAO {
-        mStatus = status;
-    }
-    //============================== USER - DEPOSIT/WITHDRAW ================================//
+   //============================= USER - DEPOSIT/WITHDRAW ================================//
 
     // Member deposits some LP tokens
     function deposit(address pool, uint256 amount) public {

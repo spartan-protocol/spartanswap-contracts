@@ -158,18 +158,23 @@ async function Emissions(){
 async function feeONTransfer(amount) {
     it("It should subtract fee on transfer", async () => {
         let totalSupply = _.getBN(await sparta.totalSupply())
-        let maxSupply = _.BN2Str(await sparta.totalSupply())
-        let _feeOnTransfer = _.getBN(await sparta.feeOnTransfer())
-        let dailyEmission = await sparta.getDailyEmission()
-        
-        let _fee = _.BN2Str(_.getBN(amount).times(_feeOnTransfer).div(10000)); 
+        let maxSupply = _.BN2Str(await sparta.maxSupply())
+        let _feeOnTransfer = _.getBN((_.getBN(100).times(totalSupply)).div(maxSupply)); 
+        let _feeOnTransferR = _.getBN(await sparta.feeOnTransfer())
+        //  console.log("_feeOnTransferR",_.BN2Str(_feeOnTransferR))
+        //  console.log("_feeOnTransfer",_.BN2Str(_feeOnTransfer))
+         
+        let _fee = _.BN2Str(_.getBN(amount).times(_.BN2Str(_feeOnTransfer)).div(10000)); 
         // let _fee2 = _.BN2Str(_.getBN(dailyEmission).times(_feeOnTransfer).div(10000))
         // console.log("fee",_.BN2Str(_fee))
         let finalAmount = _.BN2Str(_.getBN(amount).minus(_fee))
-        // console.log("amoun",_.BN2Str(finalAmount))
+       
         let balance2 = _.getBN(await sparta.balanceOf(acc2))
         let balance1 = _.getBN(await sparta.balanceOf(acc1))
-
+        
+        await sleep(5000)
+        // let dailyEmission = await sparta.getDailyEmission()
+        
         let tex = await sparta.transfer(acc2, amount, {from:acc1});  
         // console.log(tex.logs)
         // console.log("value-0-burn",_.BN2Str(tex.logs[0].args.value))
@@ -177,21 +182,23 @@ async function feeONTransfer(amount) {
         // console.log("value-2-mint",_.BN2Str(tex.logs[2].args.value))
         // console.log("emission-3",_.BN2Str(tex.logs[3].args.emission))
 
-        // assert.equal(_.BN2Str(tex.logs[3].args.emission), _.BN2Str(dailyEmission))
+        //  assert.equal(_.BN2Str(tex.logs[3].args.emission), _.BN2Str(dailyEmission))
 
         let totalSupplyA = _.BN2Str(await sparta.totalSupply())   
         let balance2A = _.BN2Str(await sparta.balanceOf(acc2))
         // console.log(_.BN2Str(balance2))
         let balance1A = _.BN2Str(await sparta.balanceOf(acc1))
+        let _feeOnTransferA = _.getBN(await sparta.feeOnTransfer())
 
         assert.equal(balance1A, _.BN2Str(balance1.minus(amount)) )  
         assert.equal(balance2A, _.BN2Str(balance2.plus((_.getBN(amount)).minus(_fee))))
+        assert.equal(_.BN2Str(_feeOnTransferR), _.BN2Str(_feeOnTransfer))
 
         // console.log("totalSupplyA",_.BN2Str(totalSupplyA))
         // console.log("dailyEmission",_.BN2Str(dailyEmission))
         // console.log("_fee",_.BN2Str(_fee))
 
-        assert.equal(totalSupplyA, _.BN2Str(totalSupply.minus(_fee)))
+        assert.equal(totalSupplyA, _.BN2Str(totalSupply.plus(_.BN2Str(tex.logs[3].args.emission)).minus(_fee)))
 
   
        
@@ -262,7 +269,7 @@ async function upgradeSparta(acc) {
 async function daoMINT(acc) {
     it("It should mint some sparta", async () => {
         // await base.approve(sparta.address, _.BN2Str(20000000*_.one), {from:acc})
-        await sparta.daoMint(_.BN2Str(5 *10**6*_.one), acc,{from :acc0});
+        await sparta.mintFromDAO(_.BN2Str(5 *10**6*_.one), acc,{from :acc0});
         let sbalanceA = _.BN2Str(await sparta.balanceOf(acc));
         assert.equal(_.BN2Str(sbalanceA), _.BN2Str(5 *10**6*_.one))
     })
@@ -343,10 +350,6 @@ async function approveAndTransfer(acc) {
        await sparta.approveAndCall(vault.address, _.BN2Str(1*_.one), '0x000000000000000000000000a513E6E4b8f2a923D98304ec87F64353C4D5C8530000000000000000000000000000000000000000000000000de0b6b3a7640000', {from:acc})
 
            let basApprovalA = _.BN2Str(await sparta.allowance(acc,vault.address,  {from:acc}))
-         console.log(basApprovalA/_.one);
-        
-        // console.log(_.BN2Str(1*_.one));
-
 
           assert.equal(_.BN2Str(await sparta.balanceOf(vault.address)), _.BN2Str(amount.plus(1*_.one)))
        

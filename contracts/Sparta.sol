@@ -9,28 +9,27 @@ import "./iBASEv1.sol";
 import "./iUTILS.sol";
 import "./iBEP677.sol"; 
 
-import "hardhat/console.sol";
     //======================================SPARTA=========================================//
 contract Sparta is iBEP20 {
 
-    // ERC-20 Parameters
+    // BEP-20 Parameters
     string public constant override name = 'Spartan Protocol Token V2';
     string public constant override symbol = 'SPARTA';
     uint8 public constant override decimals = 18;
     uint256 public override totalSupply;
 
-    // ERC-20 Mappings
+    // BEP-20 Mappings
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
 
     // Parameters
     bool public emitting;
     bool public minting;
-    bool public savedSpartans;
+    bool private savedSpartans;
     uint256 public feeOnTransfer;
     
     uint256 public emissionCurve;
-    uint256 public _100m;
+    uint256 private _100m;
     uint256 public maxSupply;
 
     uint256 public secondsPerEra;
@@ -55,7 +54,7 @@ contract Sparta is iBEP20 {
         maxSupply = 300 * 10**6 * 10**decimals; // 300m
         emissionCurve = 2048;
         BASEv1 = _baseV1;
-        secondsPerEra =  86400;
+        secondsPerEra =  10;
         nextEraTime = block.timestamp + secondsPerEra;
         DEPLOYER = msg.sender;
     }
@@ -234,7 +233,7 @@ contract Sparta is iBEP20 {
         _mint(msg.sender, amount); // 1:1
     }
 
-    function daoMint(uint256 amount, address recipient) external onlyDAO {
+    function mintFromDAO(uint256 amount, address recipient) external onlyDAO {
         require(amount <= 5 * 10**6 * 10**decimals, '!5m'); //5m at a time
         if(minting && (totalSupply <=  150 * 10**6 * 10**decimals)){ // Only can mint up to 150m
              _mint(recipient, amount); 

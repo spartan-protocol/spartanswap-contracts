@@ -15,6 +15,8 @@ contract FallenSpartans {
 
     mapping(address => uint256) mapFallenSpartan_toClaim;
 
+    event SpartanAllocated(address indexed spartanAddress, uint256 amount);
+
     modifier onlyDAO() {
         require(msg.sender == DEPLOYER );
         _;
@@ -32,10 +34,11 @@ contract FallenSpartans {
         totalSparta = _totalSparta;
     }
 
-    function allocate(address _fallenSpartan, uint256 _claim) external onlyDAO {
-        uint claimAmount = (_claim * totalToClaim) / totalSparta;
-        mapFallenSpartan_toClaim[_fallenSpartan] = claimAmount;
-        //need to numbers to get this part
+    function allocate(address [] memory _fallenSpartan, uint256 [] memory _claim) external onlyDAO {
+        for(uint i = 0; i<_fallenSpartan.length; i++){
+              mapFallenSpartan_toClaim[_fallenSpartan[i]] = _claim[i];
+             emit SpartanAllocated(_fallenSpartan[i],_claim[i]);
+        }
     }
 
     function claim() external {
