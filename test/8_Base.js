@@ -10,7 +10,6 @@ const help = require('./helper.js');
 var BASE = artifacts.require("./Base.sol");
 var VAULT = artifacts.require("./TestVault.sol")
 var DAO = artifacts.require("./Dao.sol");
-var DAOVAULT = artifacts.require("./DaoVault.sol");
 var SPARTA = artifacts.require("./Sparta.sol");
 var FSPARTANS = artifacts.require("./FallenSpartans.sol");
 var UTILS = artifacts.require("./Utils.sol");
@@ -52,13 +51,12 @@ function constructor(accounts) {
         base = await BASE.new() // deploy sparta v1
         sparta = await SPARTA.new(base.address) // deploy sparta v2
         Dao = await DAO.new(base.address)     // deploy daoV2
-        daoVault = await DAOVAULT.new(base.address);
         fSpartans = await FSPARTANS.new(sparta.address) // deploy fallen spartans
         utils = await UTILS.new(base.address) // deploy utilsV2
         vault = await VAULT.new(base.address) // deploy utilsV2
         token1 = await TOKEN.new()    
 
-        await Dao.setGenesisAddresses(utils.address, utils.address, utils.address, daoVault.address,utils.address, utils.address, acc3);
+        await Dao.setGenesisAddresses( utils.address,acc3);
         await sparta.changeDAO(Dao.address)
 
         await base.transfer(acc1, _.getBN(_.BN2Str(10000 * _.one)))
@@ -309,45 +307,16 @@ async function approveAndTransfer(acc) {
     it("It should approveAndTransfer", async () => {
         let basApproval = _.BN2Str(await sparta.allowance(acc,vault.address,  {from:acc}))
 
-    // console.log(token1.address);
+  console.log(token1.address);
 
         let amount = _.getBN(await sparta.balanceOf(vault.address))
          await token1.approve(vault.address,_.BN2Str(10 * 10**6 * 10**18), {from:acc} )
-     
-    //    let deposit = web3Abi.encodeFunctionCall(
-    //     {
-    //         "constant": false,
-    //         "inputs": [
-    //             {
-    //                "name": "token",
-    //                "type": "address"
-    //             },
-    //             {
-    //               "name": "amount",
-    //               "type": "uint256"
-    //             },
-    //             {
-    //                "name": "member",
-    //                "type": "address"
-    //             }
-    //             ,
-    //             {
-    //                "name": "token2",
-    //                "type": "address"
-    //             }
-    //         ],
-    //         "name": "add",
-    //         "outputs": [],
-    //         "payable": false,
-    //         "stateMutability": "nonpayable",
-    //         "type": "function"
-    //     }, [sparta.address, _.BN2Str(2**75), acc, token1.address]
-    // );
+    
 
         //    await sparta.approveAndCall(vault.address, _.BN2Str(1*_.one), deposit, {from:acc})
 
 
-       await sparta.approveAndCall(vault.address, _.BN2Str(1*_.one), '0x000000000000000000000000a513E6E4b8f2a923D98304ec87F64353C4D5C8530000000000000000000000000000000000000000000000000de0b6b3a7640000', {from:acc})
+       await sparta.approveAndCall(vault.address, _.BN2Str(1*_.one), '0x0000000000000000000000000165878A594ca255338adfa4d48449f69242Eb8F0000000000000000000000000000000000000000000000000de0b6b3a7640000', {from:acc})
 
            let basApprovalA = _.BN2Str(await sparta.allowance(acc,vault.address,  {from:acc}))
 
