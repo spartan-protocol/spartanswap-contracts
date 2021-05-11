@@ -39,7 +39,8 @@ contract('ADD LIQUIDITY', function (accounts) {
     daoMINT(acc3)
     flipEmission() 
     sFS()
-    Emissions()
+     Emissions()
+    feeONTransfer(_.BN2Str(20*_.one))
   //  approveAndTransfer(acc1)
     
 
@@ -61,6 +62,7 @@ function constructor(accounts) {
         await sparta.changeDAO(Dao.address)
 
         await base.transfer(acc1, _.getBN(_.BN2Str(10000 * _.one)))
+        await base.transfer(acc0, _.getBN(_.BN2Str(10000 * _.one)))
         await base.transfer(acc2, _.getBN(_.BN2Str(10000 * _.one)))
         await token1.transfer(acc0, _.getBN(_.BN2Str(100000 * _.one)))
         await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -86,8 +88,7 @@ async function baseParams(){
         expect(_.BN2Str(await sparta.maxSupply())).to.equal(_.BN2Str(300000000 * _.one));
         expect(_.BN2Str(await sparta.emissionCurve())).to.equal('2048');
         expect(await sparta.emitting()).to.equal(false);
-        expect(_.BN2Str(await sparta.currentEra())).to.equal('1');
-        expect(_.BN2Str(await sparta.secondsPerEra())).to.equal('1');
+        // expect(_.BN2Str(await sparta.secondsPerEra())).to.equal('1');
         // console.log(BN2Str(await sparta.nextEraTime()));
          expect(await sparta.DAO()).to.equal(Dao.address);
 
@@ -130,25 +131,23 @@ async function Approve(acc, amount) {
 
 async function Emissions(){
     it("Should emit properly", async function() {
-        console.log("Total Supply ",_.BN2Str(await sparta.totalSupply()))
-        console.log("maxSupply ", _.BN2Str(await sparta.maxSupply()))
+        // console.log("Total Supply ",_.BN2Str(await sparta.totalSupply()))
+        // console.log("maxSupply ", _.BN2Str(await sparta.maxSupply()))
   
 
-        console.log("Daily Emissions ",_.BN2Str(await sparta.getDailyEmission()))
-        console.log("Total Supply ",_.BN2Str(await sparta.totalSupply()))
+        // console.log("Daily Emissions ",_.BN2Str(await sparta.getDailyEmission()))
+        // console.log("Total Supply ",_.BN2Str(await sparta.totalSupply()))
         expect(_.BN2Str(await sparta.getDailyEmission())).to.equal(_.BN2Str('14667968749999999999999'));
-        // await sleep(2000)
+         await sleep(10000)
         await sparta.transfer(acc0, _.BN2Str(100 * _.one), {from:acc1})
         await sparta.transfer(acc1, _.BN2Str(100 * _.one), {from:acc0})
-        expect(_.BN2Str(await sparta.currentEra())).to.equal('3');
-        expect(_.BN2Str(await sparta.balanceOf(acc3))).to.equal(_.BN2Str('5029350261639404296874998'));
-        expect(_.BN2Str(await sparta.getDailyEmission())).to.equal(_.BN2Str('14696631066054105758666'));
+        expect(_.BN2Str(await sparta.balanceOf(acc3))).to.equal(_.BN2Str('5014667968749999999999999'));
+        expect(_.BN2Str(await sparta.getDailyEmission())).to.equal(_.BN2Str('14682292889404296874999'));
         
-        await sleep(2000)
+        await sleep(5000)
         await sparta.transfer(acc0, _.BN2Str(100 * _.one), {from:acc1})
-        expect(_.BN2Str(await sparta.currentEra())).to.equal('4');
-        expect(_.BN2Str(await sparta.balanceOf(acc3))).to.equal(_.BN2Str('5044046892656630277633664'));
-        expect(_.BN2Str(await sparta.getDailyEmission())).to.equal(_.BN2Str('14710983195953740505500'));
+        expect(_.BN2Str(await sparta.balanceOf(acc3))).to.equal(_.BN2Str('5014667968749999999999999'));
+        expect(_.BN2Str(await sparta.getDailyEmission())).to.equal(_.BN2Str('14682292840576171874999'));
       });
     
       it("DAO changeEraDuration", async function() {
@@ -156,6 +155,50 @@ async function Emissions(){
         expect(_.BN2Str(await sparta.secondsPerEra())).to.equal('200');
       });
 }
+async function feeONTransfer(amount) {
+    it("It should subtract fee on transfer", async () => {
+        let totalSupply = _.getBN(await sparta.totalSupply())
+        let maxSupply = _.BN2Str(await sparta.totalSupply())
+        let _feeOnTransfer = _.getBN(await sparta.feeOnTransfer())
+        let dailyEmission = await sparta.getDailyEmission()
+        
+        let _fee = _.BN2Str(_.getBN(amount).times(_feeOnTransfer).div(10000)); 
+        // let _fee2 = _.BN2Str(_.getBN(dailyEmission).times(_feeOnTransfer).div(10000))
+        // console.log("fee",_.BN2Str(_fee))
+        let finalAmount = _.BN2Str(_.getBN(amount).minus(_fee))
+        // console.log("amoun",_.BN2Str(finalAmount))
+        let balance2 = _.getBN(await sparta.balanceOf(acc2))
+        let balance1 = _.getBN(await sparta.balanceOf(acc1))
+
+        let tex = await sparta.transfer(acc2, amount, {from:acc1});  
+        // console.log(tex.logs)
+        // console.log("value-0-burn",_.BN2Str(tex.logs[0].args.value))
+        // console.log("value-1-transfer",_.BN2Str(tex.logs[1].args.value))
+        // console.log("value-2-mint",_.BN2Str(tex.logs[2].args.value))
+        // console.log("emission-3",_.BN2Str(tex.logs[3].args.emission))
+
+        // assert.equal(_.BN2Str(tex.logs[3].args.emission), _.BN2Str(dailyEmission))
+
+        let totalSupplyA = _.BN2Str(await sparta.totalSupply())   
+        let balance2A = _.BN2Str(await sparta.balanceOf(acc2))
+        // console.log(_.BN2Str(balance2))
+        let balance1A = _.BN2Str(await sparta.balanceOf(acc1))
+
+        assert.equal(balance1A, _.BN2Str(balance1.minus(amount)) )  
+        assert.equal(balance2A, _.BN2Str(balance2.plus((_.getBN(amount)).minus(_fee))))
+
+        // console.log("totalSupplyA",_.BN2Str(totalSupplyA))
+        // console.log("dailyEmission",_.BN2Str(dailyEmission))
+        // console.log("_fee",_.BN2Str(_fee))
+
+        assert.equal(totalSupplyA, _.BN2Str(totalSupply.minus(_fee)))
+
+  
+       
+    })
+}
+
+
 async function increaseAllowance(acc, amount) {
     it("It should increase approval", async () => {
         let allowance = _.getBN(await sparta.allowance(acc, vault.address , {from:acc}))
@@ -259,7 +302,7 @@ async function approveAndTransfer(acc) {
     it("It should approveAndTransfer", async () => {
         let basApproval = _.BN2Str(await sparta.allowance(acc,vault.address,  {from:acc}))
 
-    console.log(token1.address);
+    // console.log(token1.address);
 
         let amount = _.getBN(await sparta.balanceOf(vault.address))
          await token1.approve(vault.address,_.BN2Str(10 * 10**6 * 10**18), {from:acc} )

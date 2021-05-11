@@ -9,7 +9,7 @@ import "./iBASEv1.sol";
 import "./iUTILS.sol";
 import "./iBEP677.sol"; 
 
-
+import "hardhat/console.sol";
     //======================================SPARTA=========================================//
 contract Sparta is iBEP20 {
 
@@ -34,14 +34,13 @@ contract Sparta is iBEP20 {
     uint256 public maxSupply;
 
     uint256 public secondsPerEra;
-    uint256 public currentEra;
     uint256 public nextEraTime;
 
     address public DAO;
     address public DEPLOYER;
     address public BASEv1;
 
-    event NewEra(uint256 currentEra, uint256 nextEraTime, uint256 emission);
+    event NewEra(uint256 nextEraTime, uint256 emission);
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -55,9 +54,8 @@ contract Sparta is iBEP20 {
         _100m = 100 * 10**6 * 10**decimals; // 100m
         maxSupply = 300 * 10**6 * 10**decimals; // 300m
         emissionCurve = 2048;
-        currentEra = 1;
         BASEv1 = _baseV1;
-        secondsPerEra =  1;// 86400;
+        secondsPerEra =  86400;
         nextEraTime = block.timestamp + secondsPerEra;
         DEPLOYER = msg.sender;
     }
@@ -179,8 +177,8 @@ contract Sparta is iBEP20 {
         minting = !minting;
     }
     // Can set params
-    function setParams(uint256 newEra, uint256 newCurve) external onlyDAO {
-        secondsPerEra = newEra;
+    function setParams(uint256 newTime, uint256 newCurve) external onlyDAO {
+        secondsPerEra = newTime;
         emissionCurve = newCurve;
     }
     function saveFallenSpartans(address _savedSpartans, uint256 _saveAmount) external onlyDAO{
@@ -207,7 +205,6 @@ contract Sparta is iBEP20 {
     // Internal - Update emission function
     function _checkEmission() private {
         if ((block.timestamp >= nextEraTime) && emitting) {    // If new Era and allowed to emit                      
-            currentEra += 1; // Increment Era
             nextEraTime = block.timestamp + secondsPerEra; // Set next Era time
             uint256 _emission = getDailyEmission(); // Get Daily Dmission
             _mint(RESERVE(), _emission); // Mint to the RESERVE Address
@@ -215,7 +212,7 @@ contract Sparta is iBEP20 {
             if (feeOnTransfer > 1000) {
                 feeOnTransfer = 1000;
             } 
-            emit NewEra(currentEra, nextEraTime, _emission); // Emit Event
+            emit NewEra(nextEraTime, _emission); // Emit Event
         }
     }
     // Calculate Daily Emission
