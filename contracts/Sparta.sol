@@ -54,7 +54,7 @@ contract Sparta is iBEP20 {
         maxSupply = 300 * 10**6 * 10**decimals; // 300m
         emissionCurve = 2048;
         BASEv1 = _baseV1;
-        secondsPerEra =  10;
+        secondsPerEra =  60;
         nextEraTime = block.timestamp + secondsPerEra;
         DEPLOYER = msg.sender;
     }

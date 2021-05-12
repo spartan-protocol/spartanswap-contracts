@@ -1,17 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
-pragma experimental ABIEncoderV2;
-import "./DaoVault.sol"; 
-import "./iBEP20.sol";
-import "./iDAO.sol";
-import "./iDAOVAULT.sol";
-import "./iBASE.sol";
 import "./iUTILS.sol";
-import "./iROUTER.sol";
-import "./iBOND.sol";
+
 import "./iRESERVE.sol";
-import "./iSYNTHFACTORY.sol"; 
-import "./iPOOLFACTORY.sol";
+
 
 
 contract Dao {
@@ -32,7 +24,7 @@ contract Dao {
         require(msg.sender == DEPLOYER);
         _;
     }
-    constructor (address _base) public {
+    constructor (address _base){
         BASE = _base;
         DEPLOYER = msg.sender;
         DAO = address(this);
