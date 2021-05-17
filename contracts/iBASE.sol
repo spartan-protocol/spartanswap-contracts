@@ -7,4 +7,5 @@ interface iBASE {
     function changeDAO(address) external returns(bool);
     function setParams(uint256, uint256) external;
     function flipEmissions() external returns(bool);
+    function mintFromDAO(uint256, address) external; 
 }

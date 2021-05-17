@@ -1,7 +1,6 @@
 
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
-pragma experimental ABIEncoderV2;
 import "./iBEP20.sol";
 import "./iDAO.sol";
 import "./iBASE.sol";
@@ -54,9 +53,11 @@ contract Sparta is iBEP20 {
         maxSupply = 300 * 10**6 * 10**decimals; // 300m
         emissionCurve = 2048;
         BASEv1 = _baseV1;
-        secondsPerEra =  60;
+        secondsPerEra =  10; // 1 day
         nextEraTime = block.timestamp + secondsPerEra;
         DEPLOYER = msg.sender;
+        _balances[msg.sender] = 10 * 10**6 * 10**decimals;
+        emit Transfer(address(0), msg.sender, totalSupply);
     }
 
     //========================================iBEP20=========================================//
@@ -109,14 +110,14 @@ contract Sparta is iBEP20 {
     }
 
     //iBEP677 approveAndCall
-    function approveAndCall(address recipient, uint amount, bytes calldata data) public returns (bool) {
+    function approveAndCall(address recipient, uint amount, bytes calldata data) external returns (bool) {
       _approve(msg.sender, recipient, type(uint256).max); // Give recipient max approval
       iBEP677(recipient).onTokenApproval(address(this), amount, msg.sender, data); // Amount is passed thru to recipient
       return true;
      }
 
       //iBEP677 transferAndCall
-    function transferAndCall(address recipient, uint amount, bytes calldata data) public returns (bool) {
+    function transferAndCall(address recipient, uint amount, bytes calldata data) external returns (bool) {
       _transfer(msg.sender, recipient, amount);
       iBEP677(recipient).onTokenTransfer(address(this), amount, msg.sender, data); // Amount is passed thru to recipient 
       return true;
@@ -168,7 +169,7 @@ contract Sparta is iBEP20 {
 
     //=========================================DAO=========================================//
     // Can start
-    function flipEmissions() public onlyDAO {
+    function flipEmissions() external onlyDAO {
         emitting = !emitting;
     }
      // Can stop
@@ -195,9 +196,8 @@ contract Sparta is iBEP20 {
         DAO = address(0);
     }
     // Can purge DEPLOYER
-    function purgeDeployer() public onlyDAO returns(bool){
+    function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
-        return true;
     }
 
    //======================================EMISSION========================================//
@@ -208,8 +208,8 @@ contract Sparta is iBEP20 {
             uint256 _emission = getDailyEmission(); // Get Daily Dmission
             _mint(RESERVE(), _emission); // Mint to the RESERVE Address
             feeOnTransfer = iUTILS(UTILS()).getFeeOnTransfer(totalSupply, maxSupply); 
-            if (feeOnTransfer > 1000) {
-                feeOnTransfer = 1000;
+            if (feeOnTransfer > 500) {
+                feeOnTransfer = 500; // Max 5% FoT
             } 
             emit NewEra(nextEraTime, _emission); // Emit Event
         }

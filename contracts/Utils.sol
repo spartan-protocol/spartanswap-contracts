@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.3;
+import "./iBASE.sol";
+import "./iPOOLFACTORY.sol";
+import "./iPOOL.sol";
+import "./iBEP20.sol";
+
+
+
+contract Utils {
+
+    address public BASE;
+    uint public one = 10**18;
+    constructor (address _base) {
+        BASE = _base;
+    }
+    struct PoolDataStruct {
+        address tokenAddress;
+        address poolAddress;
+        uint genesis;
+        uint baseAmount;
+        uint tokenAmount;
+        uint fees;
+        uint volume;
+        uint txCount;
+        uint poolUnits;
+    }
+     function _DAO() internal view returns(iDAO) {
+         return iBASE(BASE).DAO();
+    }
+
+
+    //==================================HELPERS================================//
+     function getPoolData(address token) public view returns(PoolDataStruct memory poolData){
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        poolData.poolAddress = pool;
+        poolData.tokenAddress = token;
+        poolData.genesis = iPOOL(pool).genesis();
+        poolData.baseAmount = iPOOL(pool).baseAmount();
+        poolData.tokenAmount = iPOOL(pool).tokenAmount();
+        poolData.poolUnits = iBEP20(pool).totalSupply();
+        return poolData;
+    }
+
+    //====================================CORE-MATH====================================//
+
+     function getFeeOnTransfer(uint256 totalSupply, uint256 maxSupply) external pure returns (uint256) {
+        return calcShare(totalSupply, maxSupply, 100); // 0->100BP
+    }
+
+    function calcPart(uint256 bp, uint256 total) public pure returns (uint256) {
+        // 10,000 basis points = 100.00%
+        require(bp <= 10000, "Must be correct BP");
+        return calcShare(bp, 10000, total);
+    }
+
+    function calcShare(uint256 part, uint256 total, uint256 amount) public pure returns (uint256 share) {
+        // share = amount * part/total
+        if (part > total) {
+            part = total;
+        }
+        if (total > 0) {
+            share = (amount * part) / total;
+        }
+    }
+    function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) public view returns (uint units){
+        if(P == 0){
+            return b;
+        } else {
+            // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
+            // P * (part1 + part2) / (part3) * slipAdjustment
+            uint slipAdjustment = getSlipAdustment(b, B, t, T);
+            uint part1 = t*(B);
+            uint part2 = T*(b);
+            uint part3 = T*(B)*(2);
+              uint _units = (P * (part1 + (part2))) / (part3);
+            return _units * slipAdjustment / one;  // Divide by 10**18
+        }
+    }
+    function getSlipAdustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
+        // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
+        // 1 - ABS(part1 - part2)/(part3 * part4))
+        uint part1 = B*(t);
+        uint part2 = b*(T);
+        uint part3 = b*(2)+(B);
+        uint part4 = t+(T);
+        uint numerator;
+        if(part1 > part2){
+            numerator = part1-(part2);
+        } else {
+            numerator = part2-(part1);
+        }
+        uint denominator = part3 * (part4);
+        return one - ((numerator * (one)) / (denominator)); // Multiply by 10**18
+    }
+
+     function calcLiquidityHoldings(uint units, address token, address pool) public view returns (uint share){
+        // share = amount * part/total
+        // address pool = getPool(token);
+        uint amount;
+        if(token == BASE){
+            amount = iPOOL(pool).baseAmount();
+        }else{
+            amount = iPOOL(pool).tokenAmount();
+        }
+        uint totalSupply = iBEP20(pool).totalSupply();
+        return(amount*(units))/(totalSupply);
+    }
+
+    
+ 
+
+}

@@ -14,11 +14,13 @@ task("accounts", "Prints the list of accounts", async () => {
 });
 
 module.exports = {
-  // networks:{
-  //   mainnet: { ... }
-  // },
-  BscScan:{
-    apiKey: "BAX9E1UW6KPU2EA7GQW2ZNZ78GA7IJ72D1"  
+  networks:{
+    hardhat: {
+      gas: 12000000,
+      blockGasLimit: 0x1fffffffffffff,
+      allowUnlimitedContractSize: true,
+      timeout: 1800000
+    }
   },
   solidity: {
     compilers: [

@@ -1,10 +1,20 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 interface iUTILS {
-    function calcPart(uint bp, uint total) external pure returns (uint part);
-    function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
-    function calcSpotValueInBase(address, uint) external pure returns (uint);
-    function getFeeOnTransfer(uint256 totalSupply, uint256 maxSupply) external view returns(uint);
-    function calcSwapValueInBase(address pool, uint256 amount) external view returns (uint256 value);
-    function getPoolShareWeight(address token, uint units)external view returns(uint weight);
+    function calcShare(uint, uint, uint) external pure returns (uint);
+    function getFeeOnTransfer(uint256, uint256) external view returns(uint);
+    function getPoolShareWeight(address, uint)external view returns(uint);
+    function calcAsymmetricValueBase(address, uint) external pure returns (uint);
+    function calcAsymmetricValue(address, uint) external pure returns (uint);
+    function calcLiquidityUnits(uint, uint, uint, uint, uint) external pure returns (uint);
+    function calcLiquidityHoldings(uint, address, address) external pure returns (uint);
+    function calcSwapOutput(uint, uint, uint) external pure returns (uint);
+    function calcSwapFee(uint, uint, uint) external pure returns (uint);
+    function calcSwapValueInBase(address, uint) external view returns (uint);
+    function calcSpotValueInBaseWithPool(address, uint) external view returns (uint);
+    function calcSpotValueInBase(address, uint) external view returns (uint);
+    function calcSpotValueIn(address, uint) external view returns (uint);
+    function getDepth(address) external view returns (uint);
+    function calcPart(uint, uint) external pure returns (uint);
+    function calcLiquidityUnitsAsym(uint, address)external pure returns (uint);
 }

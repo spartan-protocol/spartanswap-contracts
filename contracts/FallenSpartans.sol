@@ -14,7 +14,7 @@ contract FallenSpartans {
     mapping(address => uint256) mapFallenSpartan_toClaim;
 
     event SpartanAllocated(address indexed spartanAddress, uint256 amount);
-     event SpartanClaimed(address indexed spartanAddress, uint256 amount);
+    event SpartanClaimed(address indexed spartanAddress, uint256 amount);
 
     modifier onlyDAO() {
         require(msg.sender == DEPLOYER );
@@ -23,16 +23,17 @@ contract FallenSpartans {
     constructor(address _sparta) {
         SPARTA = _sparta;
         DEPLOYER = msg.sender;
+        genesis = block.timestamp;
     }
 
     function _DAO() internal view returns(iDAO) {
          return iBASE(SPARTA).DAO(); 
     }
 
-    function allocate(address [] memory _fallenSpartan, uint256 [] memory _claim) external onlyDAO {
-        for(uint i = 0; i<_fallenSpartan.length; i++){
-              mapFallenSpartan_toClaim[_fallenSpartan[i]] = _claim[i];
-             emit SpartanAllocated(_fallenSpartan[i],_claim[i]);
+    function allocate(address [] memory _fallenSpartans, uint256 [] memory _claims) external onlyDAO {
+        for(uint i = 0; i<_fallenSpartans.length; i++){
+            mapFallenSpartan_toClaim[_fallenSpartans[i]] = _claims[i];
+            emit SpartanAllocated(_fallenSpartans[i],_claims[i]);
         }
     }
 
@@ -44,7 +45,7 @@ contract FallenSpartans {
     }
 
     function expire() external onlyDAO {
-        require(block.timestamp >= genesis + 15);//6months 15552000
+        require(block.timestamp >= genesis + 15552000);//6months 15552000
         iBEP20(SPARTA).transfer(_DAO().RESERVE(),iBEP20(SPARTA).balanceOf(address(this)));
     }
 

@@ -4,5 +4,6 @@ interface iSYNTH {
     function genesis() external view returns(uint);
     function totalMinted() external view returns(uint);
     function LayerONE()external view returns(address);
-    function mintSynth(address, address) external returns (uint256);
+    function mintSynth(address) external returns (uint256);
+    function burnSynth() external returns(uint);
 }

@@ -1,22 +1,27 @@
 const assert = require("chai").assert;
 const truffleAssert = require('truffle-assertions');
 var BigNumber = require('bignumber.js');
+const web3Abi = require('web3-eth-abi');
 
 const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
 
-var BASE = artifacts.require("./BaseMinted.sol");
 var DAO = artifacts.require("./Dao.sol");
-var ROUTER = artifacts.require("./Router.sol");
-var RESERVE = artifacts.require("./Reserve.sol");
-var POOL = artifacts.require("./Pool.sol");
+var SPARTA = artifacts.require("./Sparta.sol");
 var UTILS = artifacts.require("./Utils.sol");
-var POOLFACTORY = artifacts.require("./poolFactory.sol");
-var WBNB = artifacts.require("./WBNB");
 var TOKEN = artifacts.require("./Token1.sol");
+var RESERVE = artifacts.require("./Reserve.sol");
+var DAOVAULT = artifacts.require("./DaoVault.sol");
+var POOL = artifacts.require("./Pool.sol");
+var POOLFACTORY = artifacts.require("./PoolFactory.sol");
+var ROUTER = artifacts.require("./Router.sol");
+var WBNB = artifacts.require("./WBNB");
+
 var SYNTH = artifacts.require("./synth.sol");
 var SYNTHFACTORY = artifacts.require("./synthFactory.sol");
+
+
 var base; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
 var poolWBNB; var poolTKN1; var synthTNK2; var synthBNB;

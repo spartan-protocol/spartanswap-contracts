@@ -5,10 +5,10 @@ interface iPOOLFACTORY {
     function challengLowestCuratedPool(address) external view returns (bool);
     function addCuratedPool(address) external returns (bool);
     function removeCuratedPool(address) external returns (bool);
+    function getCuratedPool(uint) external view returns(address);
     function isPool(address) external returns (bool);
-     function getCuratedPool(uint) external view returns(address);
-    function getPool(address) external view returns(address payable);
-    function getPoolArray(uint) external view returns(address payable);
+    function getPool(address) external view returns(address);
+    function getPoolArray(uint) external view returns(address);
     function poolCount() external view returns(uint);
     function getToken(uint) external view returns(address);
     function tokenCount() external view returns(uint);
