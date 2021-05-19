@@ -5,7 +5,7 @@ interface iUTILS {
     function getFeeOnTransfer(uint256, uint256) external view returns(uint);
     function getPoolShareWeight(address, uint)external view returns(uint);
     function calcAsymmetricValueBase(address, uint) external pure returns (uint);
-    function calcAsymmetricValue(address, uint) external pure returns (uint);
+    function calcAsymmetricValueToken(address, uint) external pure returns (uint);
     function calcLiquidityUnits(uint, uint, uint, uint, uint) external pure returns (uint);
     function calcLiquidityHoldings(uint, address, address) external pure returns (uint);
     function calcSwapOutput(uint, uint, uint) external pure returns (uint);

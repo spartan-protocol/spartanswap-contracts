@@ -16,7 +16,7 @@
           "type": "uint256"
         }
       ],
-      "name": "calcAsymmetricValue",
+      "name": "calcAsymmetricValueBase",
       "outputs": [
         {
           "internalType": "uint256",
@@ -40,7 +40,7 @@
           "type": "uint256"
         }
       ],
-      "name": "calcAsymmetricValueBase",
+      "name": "calcAsymmetricValueToken",
       "outputs": [
         {
           "internalType": "uint256",

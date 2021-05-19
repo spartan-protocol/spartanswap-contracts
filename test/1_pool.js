@@ -38,7 +38,7 @@ contract('ADD LIQUIDITY', function (accounts) {
       removeLiquidityBNB(1000, acc1)
      addLiquidity(acc0, _.BN2Str(_.one * 50), _.BN2Str(_.one * 5))
      addLiquidityAsym(acc1,_.BN2Str(_.one * 1) )
-    //   removeLiquidityBNBASYM(0, acc0)
+       removeLiquidityBNBASYM(0, acc0)
 
 })
 

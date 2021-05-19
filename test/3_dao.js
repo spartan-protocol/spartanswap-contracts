@@ -1,26 +1,30 @@
 const assert = require("chai").assert;
 const truffleAssert = require('truffle-assertions');
 var BigNumber = require('bignumber.js');
+const web3Abi = require('web3-eth-abi');
 
 const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
 
-var BASE = artifacts.require("./BaseMinted.sol");
-var BOND = artifacts.require("./Bond.sol");
 var DAO = artifacts.require("./Dao.sol");
-var RESERVE = artifacts.require("./Reserve.sol");
-var BONDVault = artifacts.require("./BondVault.sol");
-var ROUTER = artifacts.require("./Router.sol");
-var POOL = artifacts.require("./Pool.sol");
+var SPARTA = artifacts.require("./Sparta.sol");
 var UTILS = artifacts.require("./Utils.sol");
-var POOLFACTORY = artifacts.require("./poolFactory.sol");
-var WBNB = artifacts.require("./WBNB");
 var TOKEN = artifacts.require("./Token1.sol");
+var RESERVE = artifacts.require("./Reserve.sol");
 var DAOVAULT = artifacts.require("./DaoVault.sol");
-var base; var token1;  var token2; var wbnb;
+var POOL = artifacts.require("./Pool.sol");
+var POOLFACTORY = artifacts.require("./PoolFactory.sol");
+var ROUTER = artifacts.require("./Router.sol");
+var WBNB = artifacts.require("./WBNB");
+
+var SYNTH = artifacts.require("./Synth.sol");
+var SYNTHFACTORY = artifacts.require("./SynthFactory.sol");
+
+
+var sparta; var token1;  var token2; var wbnb;
 var utils; var utils2; var router; var router2; var Dao; var Dao2;
-var poolWBNB; var poolTKN1; var synthTNK2; var synthBNB;
+var poolWBNB; var poolTKN1; var synthTNK2; var synthBNB;var reserve;
 var acc0; var acc1; var acc2; var acc3;
 var allocation = 2500000;
 function sleep(ms) {
@@ -32,19 +36,19 @@ contract('DAO', function (accounts) {
     wrapBNB()
     createPoolWBNB()
     createPoolTKN1()
-    addLiquidityTKN1(acc1,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityTKN1(acc0,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityBNB(acc1,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityBNB(acc0,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityBNB(acc2,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityTKN1(acc2,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
-    curatePools()
-    burnBOND()
-    lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
-    lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
-    lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
-    lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-    rate()
+    // addLiquidityTKN1(acc1,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
+    // addLiquidityTKN1(acc0,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
+    // addLiquidityBNB(acc1,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
+    // addLiquidityBNB(acc0,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
+    // addLiquidityBNB(acc2,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
+    // addLiquidityTKN1(acc2,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+    // curatePools()
+    // burnBOND()
+    // lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
+    // lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
+    // lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
+    // lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
+    // rate()
     // voteParam()
     // voteIncentive()
     // voteAction()
@@ -52,17 +56,17 @@ contract('DAO', function (accounts) {
     // voteUtils()
     // voteRouter()
     //voteDao()
-    RemCuratePools()
-     withdrawBNB(acc0)
-     withdrawTKN1(acc0)
-     withdrawTKN1(acc1)
-     withdrawTKN1(acc2)
-     curatePools()
-     lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
-     lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
-     lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
-     lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-   harvest()
+//     RemCuratePools()
+//      withdrawBNB(acc0)
+//      withdrawTKN1(acc0)
+//      withdrawTKN1(acc1)
+//      withdrawTKN1(acc2)
+//      curatePools()
+//      lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
+//      lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
+//      lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
+//      lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
+//    harvest()
 
 })
 

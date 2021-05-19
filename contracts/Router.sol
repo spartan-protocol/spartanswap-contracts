@@ -63,14 +63,14 @@ contract Router {
     function zapLiquidity(uint unitsInput, address fromPool, address toPool) external returns (uint unitsOutput){
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(fromPool) == true);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(toPool) == true);
-        address _toToken = Pool(toPool).TOKEN();
+        address _fromToken = Pool(fromPool).TOKEN();
         address _member = msg.sender; 
         require(unitsInput <= iBEP20(fromPool).totalSupply());
-        iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput);
-        (, uint outputToken) = Pool(fromPool).remove();
-        iBEP20(_toToken).transfer(fromPool, outputToken);
-        Pool(fromPool).swapTo(BASE,toPool);
-        unitsOutput = Pool(toPool).addForMember(_member);
+        iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput); // get lps
+        (, uint outputToken) = Pool(fromPool).remove(); // remove 
+        iBEP20(_fromToken).transfer(fromPool, outputToken); // transfer fromToken for swap
+        Pool(fromPool).swapTo(BASE,toPool); // swap to BASE > transfer to toPOOL
+        unitsOutput = Pool(toPool).addForMember(_member); //capture lps
         return (unitsOutput);
     }
 

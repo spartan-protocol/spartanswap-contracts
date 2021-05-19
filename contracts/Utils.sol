@@ -3,6 +3,7 @@ pragma solidity 0.8.3;
 import "./iBASE.sol";
 import "./iPOOLFACTORY.sol";
 import "./iPOOL.sol";
+import "./iSYNTH.sol";
 import "./iBEP20.sol";
 
 
@@ -80,15 +81,15 @@ contract Utils {
     function getSlipAdustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
         // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
         // 1 - ABS(part1 - part2)/(part3 * part4))
-        uint part1 = B*(t);
-        uint part2 = b*(T);
-        uint part3 = b*(2)+(B);
-        uint part4 = t+(T);
+        uint part1 = B * (t);
+        uint part2 = b * (T);
+        uint part3 = b * (2) + (B);
+        uint part4 = t + (T);
         uint numerator;
         if(part1 > part2){
-            numerator = part1-(part2);
+            numerator = part1 - (part2);
         } else {
-            numerator = part2-(part1);
+            numerator = part2 - (part1);
         }
         uint denominator = part3 * (part4);
         return one - ((numerator * (one)) / (denominator)); // Multiply by 10**18
@@ -106,6 +107,88 @@ contract Utils {
         uint totalSupply = iBEP20(pool).totalSupply();
         return(amount*(units))/(totalSupply);
     }
+
+    function  calcSwapOutput(uint x, uint X, uint Y) public pure returns (uint output){
+        // y = (x * X * Y )/(x + X)^2
+        uint numerator = x * (X * (Y));
+        uint denominator = (x + (X)) * (x + (X));
+        return numerator / (denominator);
+    }
+
+    function  calcSwapFee(uint x, uint X, uint Y) public pure returns (uint output){
+        // y = (x * x * Y) / (x + X)^2
+        uint numerator = x * (x * (Y));
+        uint denominator = (x + (X)) * (x + (X));
+        return numerator / (denominator);
+    }
+
+    function calcAsymmetricValueToken(address pool, uint amount) public view returns (uint tokenValue){
+        uint baseAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
+        uint tokenAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
+        uint baseSwapped = calcSwapValueInTokenWithPool(pool, baseAmount);
+        tokenValue = tokenAmount+(baseSwapped);
+        return tokenValue;
+    }
+
+    //synthUnits += (P b)/(2 (b + B))
+     function calcLiquidityUnitsAsym(uint Amount, address pool) public view returns (uint units){
+        uint baseAmount = iPOOL(pool).baseAmount();
+        uint totalSupply = iBEP20(pool).totalSupply();
+        uint two = 2;
+         return (totalSupply * Amount) / ((two * (Amount + (baseAmount))));
+     }
+
+    //====================================PRICING====================================//
+
+    function calcSpotValueInBase(address token, uint amount) public view returns (uint value){
+      address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+       return calcSpotValueInBaseWithPool(pool, amount);
+    }
+
+    function calcSpotValueInToken(address token, uint amount) public view returns (uint value){
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        return calcSpotValueInTokenWithPool(pool, amount);
+    }
+
+    function calcSwapValueInBase(address token, uint amount) public view returns (uint _output){
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        return  calcSwapValueInBaseWithPool(pool, amount);
+   }
+   function calcSwapValueInBaseWithSYNTH(address synth, uint amount) public view returns (uint _output){
+       address token = iSYNTH(synth).LayerONE();
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        return  calcSwapValueInBaseWithPool(pool, amount);
+   }
+
+    function calcSwapValueInToken(address token, uint amount) public view returns (uint _output){
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        return  calcSwapValueInTokenWithPool(pool, amount);
+    }
+
+    function calcSpotValueInBaseWithPool(address pool, uint amount) public view returns (uint value){
+       uint _baseAmount = iPOOL(pool).baseAmount();
+       uint _tokenAmount = iPOOL(pool).tokenAmount();
+       return (amount*(_baseAmount))/(_tokenAmount);
+    }
+
+    function calcSpotValueInTokenWithPool(address pool, uint amount) public view returns (uint value){
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        return (amount*(_tokenAmount))/(_baseAmount);
+    }
+
+    function calcSwapValueInBaseWithPool(address pool, uint amount) public view returns (uint _output){
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        return  calcSwapOutput(amount, _tokenAmount, _baseAmount);
+   }
+
+    function calcSwapValueInTokenWithPool(address pool, uint amount) public view returns (uint _output){
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        return  calcSwapOutput(amount, _baseAmount, _tokenAmount);
+    }
+
 
     
  

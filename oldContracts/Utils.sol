@@ -376,8 +376,6 @@ contract Utils {
     }
 
     function calcLiquidityShare(uint units, address token, address pool, address member) public view returns (uint share){
-        // share = amount * part/total
-        // address pool = getPool(token);
         uint amount = iBEP20(token).balanceOf(pool);
         uint totalSupply = iBEP20(pool).totalSupply();
         return(amount.mul(units)).div(totalSupply);
