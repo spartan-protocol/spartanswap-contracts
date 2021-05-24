@@ -43,6 +43,15 @@ contract Utils {
         return poolData;
     }
 
+    function getPoolShareWeight(address token, uint units) public view returns(uint weight){
+        address pool = getPool(token);
+        weight = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
+        return (weight);
+    }
+    function getPool(address token) public view returns(address pool){
+        return iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+    }
+
     //====================================CORE-MATH====================================//
 
      function getFeeOnTransfer(uint256 totalSupply, uint256 maxSupply) external pure returns (uint256) {
@@ -64,6 +73,7 @@ contract Utils {
             share = (amount * part) / total;
         }
     }
+
     function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) public view returns (uint units){
         if(P == 0){
             return b;
@@ -187,6 +197,10 @@ contract Utils {
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
         return  calcSwapOutput(amount, _baseAmount, _tokenAmount);
+    }
+
+    function calcActualSynthUnits(uint unitsLP, address pool, uint unitsSynths, address synth) public view returns (uint _output ) {
+
     }
 
 

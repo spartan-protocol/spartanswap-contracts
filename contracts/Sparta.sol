@@ -53,7 +53,7 @@ contract Sparta is iBEP20 {
         maxSupply = 300 * 10**6 * 10**decimals; // 300m
         emissionCurve = 2048;
         BASEv1 = _baseV1;
-        secondsPerEra =  30; // 1 day
+        secondsPerEra =  800; // 1 day
         nextEraTime = block.timestamp + secondsPerEra;
         DEPLOYER = msg.sender;
         _balances[msg.sender] = 1 * 10**6 * 10**decimals;
@@ -209,7 +209,7 @@ contract Sparta is iBEP20 {
             uint256 _emission = getDailyEmission(); // Get Daily Dmission
             _mint(RESERVE(), _emission); // Mint to the RESERVE Address
             feeOnTransfer = iUTILS(UTILS()).getFeeOnTransfer(totalSupply, maxSupply); 
-            if (feeOnTransfer > 500) {
+            if (feeOnTransfer > 500) { // Ensure utils isn't ever rogue
                 feeOnTransfer = 500; // Max 5% FoT
             } 
             emit NewEra(nextEraTime, _emission); // Emit Event

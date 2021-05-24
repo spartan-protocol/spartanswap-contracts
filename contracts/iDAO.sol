@@ -10,4 +10,5 @@ interface iDAO {
     function SYNTHFACTORY() external view returns(address);
     function POOLFACTORY() external view returns(address);
     function depositForMember(address pool, uint256 amount, address member) external;
+    function bondingPeriodSeconds() external returns (uint256);
 }

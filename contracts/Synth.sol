@@ -16,8 +16,8 @@ contract Synth is iBEP20 {
     // ERC-20 Mappings
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
-    mapping(address => uint) public mapAddress_LPBalance;
-    mapping(address => uint) public mapAddress_LPDebt;
+    mapping(address => uint) public mapSynth_LPBalance;
+    mapping(address => uint) public mapSynth_LPDept;
    
 
     function _DAO() internal view returns(iDAO) {
@@ -153,22 +153,34 @@ contract Synth is iBEP20 {
     function mintSynth(address member) external onlyPool returns (uint syntheticAmount){
         uint lpUnits = _getAddedLPAmount(msg.sender);
         uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
-        mapAddress_LPDebt[msg.sender] += tokenValue;  
-        mapAddress_LPBalance[msg.sender] += lpUnits;
+        mapSynth_LPDept[msg.sender] += tokenValue;  
+        mapSynth_LPBalance[msg.sender] += lpUnits;
         _mint(member, tokenValue); 
         return tokenValue;
     }
     
-    function burnSynth() external onlyPool returns (bool){
+    function burnSynth() external returns (bool){
          uint _syntheticAmount = balanceOf(address(this));
-         uint _amountUnits = (_syntheticAmount*mapAddress_LPBalance[msg.sender])/mapAddress_LPDebt[msg.sender];// share = amount * part/total
-         mapAddress_LPBalance[msg.sender] -= _amountUnits;
-         mapAddress_LPDebt[msg.sender] -= _syntheticAmount;
+         uint _amountUnits = (_syntheticAmount * mapSynth_LPBalance[msg.sender]) / mapSynth_LPDept[msg.sender];// share = amount * part/total
+         mapSynth_LPBalance[msg.sender] -= _amountUnits;
+         mapSynth_LPDept[msg.sender] -= _syntheticAmount;
          if(_amountUnits > 0){
          _burn(address(this), _syntheticAmount); 
          Pool(msg.sender).burn(_amountUnits);
          }
         return true;
+    }
+
+    function realise(address pool) external {
+        uint baseValueLP = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(mapSynth_LPBalance[pool], BASE, pool);
+        uint baseValueSynth = iUTILS(_DAO().UTILS()).calcSwapValueInBase(LayerONE, (mapSynth_LPDept[pool] / 2));
+        if(baseValueLP < baseValueSynth){
+            uint premium = baseValueSynth - baseValueLP;
+            uint premiumLP = iUTILS(_DAO().UTILS()).calcLiquidityUnits(premium, Pool(pool).baseAmount(), 0, Pool(pool).tokenAmount(), Pool(pool).totalSupply());
+            mapSynth_LPBalance[pool] -= premiumLP;
+            Pool(pool).burn(premiumLP);
+        }
+
     }
 
     function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 _actual){
@@ -181,8 +193,8 @@ contract Synth is iBEP20 {
     }
     function _getAddedLPAmount(address _pool) internal view returns(uint256 _actual){
         uint _lpCollateralBalance = iBEP20(_pool).balanceOf(address(this)); 
-        if(_lpCollateralBalance > mapAddress_LPBalance[_pool]){
-            _actual = _lpCollateralBalance-(mapAddress_LPBalance[_pool]);
+        if(_lpCollateralBalance > mapSynth_LPBalance[_pool]){
+            _actual = _lpCollateralBalance-(mapSynth_LPBalance[_pool]);
         } else {
             _actual = 0;
         }
@@ -190,10 +202,10 @@ contract Synth is iBEP20 {
     }
 
     function getmapAddress_LPBalance(address pool) external returns (uint){
-        return mapAddress_LPBalance[pool];
+        return mapSynth_LPBalance[pool];
     }
     function getmapAddress_LPDebt(address pool) external returns (uint){
-        return mapAddress_LPDebt[pool];
+        return mapSynth_LPDept[pool];
     }
     function destroyMe() external onlyDAO {
         selfdestruct(payable(msg.sender));

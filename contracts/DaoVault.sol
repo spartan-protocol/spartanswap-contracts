@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 
 import "./iBEP20.sol";
@@ -6,7 +7,6 @@ import "./iBASE.sol";
 import "./iPOOL.sol";
 import "./iUTILS.sol";
 import "./iROUTER.sol";
-import "./iBOND.sol";
 import "./iRESERVE.sol";
 
 contract DaoVault {
@@ -29,7 +29,7 @@ contract DaoVault {
     modifier onlyDAO() {
         require(
             msg.sender == _DAO().DAO() || msg.sender == DEPLOYER,
-            "Must be DAO"
+            "!DAO"
         );
         _;
     }
@@ -38,8 +38,7 @@ contract DaoVault {
         return iBASE(BASE).DAO();
     }
 
-    function depositLP( address pool, uint256 amount, address member ) public onlyDAO returns (bool) {
-        require( iBEP20(pool).transferFrom(member, address(this), amount), "sendlps" );
+    function depositLP( address pool, uint256 amount, address member ) external onlyDAO returns (bool) {
         mapMemberPool_balance[member][pool] += amount; // Record total pool balance for member
         increaseWeight(pool, member);
         return true;
@@ -48,17 +47,11 @@ contract DaoVault {
     // Anyone can update a member's weight, which is their claim on the BASE in the associated pool
     function increaseWeight(address pool, address member) internal returns (uint256){
         if (mapMemberPool_weight[member][pool] > 0) {
-            // Remove previous weights
             totalWeight -= mapMemberPool_weight[member][pool];
             mapMember_weight[member] -= mapMemberPool_weight[member][pool];
             mapMemberPool_weight[member][pool] = 0;
         }
-        uint256 weight =
-            iUTILS(_DAO().UTILS()).getPoolShareWeight(
-                iPOOL(pool).TOKEN(),
-                mapMemberPool_balance[member][pool]
-            ); // Get claim on BASE in pool
-
+        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(pool).TOKEN(),mapMemberPool_balance[member][pool]); 
         mapMemberPool_weight[member][pool] = weight;
         mapMember_weight[member] += weight;
         totalWeight += weight;
@@ -73,19 +66,15 @@ contract DaoVault {
         mapMember_weight[member] -= weight; // Reduce weight
     }
 
-    function withdraw(address pool, address member)
-        public
-        onlyDAO
-        returns (bool)
-    {
+    function withdraw(address pool, address member) external onlyDAO returns (bool){
         uint256 _balance = mapMemberPool_balance[member][pool];
         require(_balance > 0, "!balance");
         decreaseWeight(pool, member);
-        require(iBEP20(pool).transfer(member, _balance), "Must transfer"); // Then transfer
+        require(iBEP20(pool).transfer(member, _balance), "!transfer"); // Then transfer
         return true;
     }
 
-    function getMemberWeight(address member) public view returns (uint256) {
+    function getMemberWeight(address member) external view returns (uint256) {
         if (mapMember_weight[member] > 0) {
             return mapMember_weight[member];
         } else {
@@ -93,19 +82,11 @@ contract DaoVault {
         }
     }
 
-    function getMemberPoolBalance(address pool, address member)
-        public
-        view
-        returns (uint256)
-    {
+    function getMemberPoolBalance(address pool, address member)  external view returns (uint256){
         return mapMemberPool_balance[member][pool];
     }
 
-    function getMemberPoolWeight(address pool, address member)
-        public
-        view
-        returns (uint256)
-    {
+    function getMemberPoolWeight(address pool, address member) external view returns (uint256){
         return mapMemberPool_weight[member][pool];
     }
 }
