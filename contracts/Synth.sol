@@ -174,7 +174,7 @@ contract Synth is iBEP20 {
     function realise(address pool) external {
         uint baseValueLP = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(mapSynth_LPBalance[pool], BASE, pool);
         uint baseValueSynth = iUTILS(_DAO().UTILS()).calcSwapValueInBase(LayerONE, (mapSynth_LPDept[pool] / 2));
-        if(baseValueLP < baseValueSynth){
+        if(baseValueLP > baseValueSynth){
             uint premium = baseValueSynth - baseValueLP;
             uint premiumLP = iUTILS(_DAO().UTILS()).calcLiquidityUnits(premium, Pool(pool).baseAmount(), 0, Pool(pool).tokenAmount(), Pool(pool).totalSupply());
             mapSynth_LPBalance[pool] -= premiumLP;
@@ -201,14 +201,11 @@ contract Synth is iBEP20 {
         return _actual;
     }
 
-    function getmapAddress_LPBalance(address pool) external returns (uint){
+    function getmapAddress_LPBalance(address pool) external view returns (uint){
         return mapSynth_LPBalance[pool];
     }
-    function getmapAddress_LPDebt(address pool) external returns (uint){
+    function getmapAddress_LPDebt(address pool) external view returns (uint){
         return mapSynth_LPDept[pool];
     }
-    function destroyMe() external onlyDAO {
-        selfdestruct(payable(msg.sender));
-    } 
 
 }

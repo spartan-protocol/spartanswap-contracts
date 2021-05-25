@@ -9,7 +9,7 @@ import "./iBASE.sol";
 import "./iBEP20.sol";
 import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
-import "./iBONDVAULT.sol";
+import "./iSYNTHVAULT.sol"; 
 
 contract Dao {
     address public DEPLOYER;
@@ -48,13 +48,14 @@ contract Dao {
     bool public daoHasMoved;
     address public DAO;
 
-    iROUTER public _ROUTER;
-    iUTILS public _UTILS;
-    iBONDVAULT public _BONDVAULT;
-    iDAOVAULT public _DAOVAULT;
-    iPOOLFACTORY public _POOLFACTORY;
-    iSYNTHFACTORY public _SYNTHFACTORY;
-    iRESERVE public _RESERVE;
+    iROUTER private _ROUTER;
+    iUTILS private _UTILS;
+    iBONDVAULT private _BONDVAULT;
+    iDAOVAULT private _DAOVAULT;
+    iPOOLFACTORY private _POOLFACTORY;
+    iSYNTHFACTORY private _SYNTHFACTORY;
+    iRESERVE private _RESERVE;
+    iSYNTHVAULT private _SYNTHVAULT;
 
     address[] public arrayMembers;
     address [] listedBondAssets;
@@ -111,9 +112,10 @@ contract Dao {
         _RESERVE = iRESERVE(_reserve);
     }
 
-    function setVaultAddresses(address _daovault,address _bondvault) external onlyDAO {
+    function setVaultAddresses(address _daovault,address _bondvault, address _synthVault) external onlyDAO {
         _DAOVAULT = iDAOVAULT(_daovault);
         _BONDVAULT = iBONDVAULT(_bondvault);
+        _SYNTHVAULT = iSYNTHVAULT(_synthVault); 
     }
     
     function setFactoryAddresses(address _poolFactory, address _synthFactory) external onlyDAO {
@@ -572,6 +574,13 @@ contract Dao {
             return Dao(DAO).RESERVE();
         } else {
             return _RESERVE;
+        }
+    }
+    function SYNTHVAULT() public view returns(iSYNTHVAULT){
+        if(daoHasMoved){
+            return Dao(DAO).SYNTHVAULT();
+        } else {
+            return _SYNTHVAULT;
         }
     }
 

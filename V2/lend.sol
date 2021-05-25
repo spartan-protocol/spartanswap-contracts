@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
-import "@nomiclabs/buidler/console.sol";
+import "hardhat/console.sol";
 import "./lendRouter.sol";
 interface iRESERVE {
     function grantFunds(uint, address) external returns(bool); 

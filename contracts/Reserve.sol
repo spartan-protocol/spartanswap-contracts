@@ -24,11 +24,11 @@ contract Reserve {
         DEPLOYER = msg.sender;
     }
 
-     function setIncentiveAddresses(address _router,address _lend,address _synthVault, address _newDao) external onlyGrantor {
+     function setIncentiveAddresses(address _router,address _lend,address _synthVault, address _Dao) external onlyGrantor {
         ROUTER = _router;
         LEND = _lend;
         SYNTHVAULT = _synthVault;
-        DAO = _newDao;
+        DAO = _Dao;
     }
 
     function grantFunds(uint amount, address to) external onlyGrantor {

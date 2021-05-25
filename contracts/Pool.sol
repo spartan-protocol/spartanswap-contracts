@@ -262,7 +262,7 @@ contract Pool is iBEP20 {
         _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
         uint fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
         _fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, fee);
-        _setPoolAmounts(_X+(_x), _Y-(_y));
+        _setPoolAmounts(_X + _x, _Y - _y);
         _addPoolMetrics(_fee);
         return (_y, _fee);
     }
@@ -272,7 +272,7 @@ contract Pool is iBEP20 {
         uint256 _Y = baseAmount;
         _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
         _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
-        _setPoolAmounts(_Y-(_y), _X+(_x));
+        _setPoolAmounts(_Y - _y, _X + _x);
         _addPoolMetrics(_fee);
         return (_y, _fee);
     }

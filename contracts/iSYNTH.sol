@@ -6,4 +6,5 @@ interface iSYNTH {
     function LayerONE()external view returns(address);
     function mintSynth(address) external returns (uint256);
     function burnSynth() external returns(uint);
+    function realise(address pool) external;
 }
