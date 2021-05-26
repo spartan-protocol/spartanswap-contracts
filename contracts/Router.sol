@@ -39,6 +39,8 @@ contract Router {
         DEPLOYER = msg.sender;
     }
 
+    receive() external payable {}
+
     function _DAO() internal view returns(iDAO) {
          return iBASE(BASE).DAO();
     }
@@ -101,14 +103,15 @@ contract Router {
     // Remove an exact qty of units
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
-        iBEP20(_pool).transferFrom(msg.sender, _pool, units);
+        address _member = msg.sender;
+        iBEP20(_pool).transferFrom(_member, _pool, units);
          if(token != address(0)){
-             Pool(_pool).removeForMember(msg.sender);
+             Pool(_pool).removeForMember(_member);
          }else{
              (, outputToken) = Pool(_pool).remove();
              outputBase = iBEP20(BASE).balanceOf(address(this));
-             _handleTransferOut(token, outputToken, msg.sender);
-             _handleTransferOut(BASE, outputBase, msg.sender);
+             _handleTransferOut(token, outputToken,_member);
+             _handleTransferOut(BASE, outputBase, _member);
          }
         return (outputBase, outputToken);
     }
@@ -186,14 +189,14 @@ contract Router {
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
         if(_amount > 0) {
             if(_token == address(0)){
-                require((_amount == msg.value), "InputErr");
+                require((_amount == msg.value));
                 payable(WBNB).call{value:_amount}(""); 
                 iBEP20(WBNB).transfer(_pool, _amount); 
                 actual = _amount;
             } else {
                 uint startBal = iBEP20(_token).balanceOf(_pool);
                 iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
-                actual = iBEP20(_token).balanceOf(_pool) - (startBal);
+                actual = iBEP20(_token).balanceOf(_pool)-(startBal);
             }
         }
     }
@@ -207,7 +210,6 @@ contract Router {
             }
         }
     }
-
     //=================================================================================//
     //Swap Synths
 

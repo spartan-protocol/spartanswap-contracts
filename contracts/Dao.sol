@@ -150,7 +150,7 @@ contract Dao {
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!Curated");
         require(amount > 0, "!Amount");
         if (isMember[member] != true) {
-            arrayMembers.push(msg.sender);
+            arrayMembers.push(member);
             isMember[member] = true;
         }
         if(_DAOVAULT.getMemberWeight(member) > 0) {
