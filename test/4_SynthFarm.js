@@ -41,31 +41,36 @@ contract('Test Harvest Synths', function (accounts) {
      addLiquidityTKN1(acc1,_.BN2Str(1500*_.one),  _.BN2Str(60*_.one)); //SPV2
       curatePools()
       createSyntheticBNB()
-      swapLayer1ToSynth(acc0,_.BN2Str(5000*_.one))
-      swapLayer1ToSynth(acc2,_.BN2Str(1000*_.one))
-      swapLayer1ToSynth(acc1,_.BN2Str(5000*_.one))
+      swapLayer1ToSynth(acc0,_.BN2Str(50*_.one))
+      swapLayer1ToSynth(acc2,_.BN2Str(10*_.one))
+      swapLayer1ToSynth(acc1,_.BN2Str(50*_.one))
     //    swapSynthToLayer1(acc0,_.BN2Str(0.1*_.one) )
     //    swapSynthToLayer1(acc2,_.BN2Str(0.2*_.one) )
     //    swapSynthToLayer1(acc1,_.BN2Str(0.3*_.one) )
      //    harvestSynth()
-      depositSynthBNB(acc1, _.BN2Str(0.3*_.one))
-      depositSynthTKN2(acc1, _.BN2Str(0.3*_.one))
-      depositSynthTKN3(acc1, _.BN2Str(0.3*_.one))
-     depositSynthTKN4(acc1, _.BN2Str(0.3*_.one))
-     depositSynthTKN5(acc1, _.BN2Str(0.3*_.one))
+      depositSynthBNB(acc1)
+       depositSynthTKN2(acc1)
+    //   depositSynthTKN3(acc1, _.BN2Str(0.3*_.one))
+    //  depositSynthTKN4(acc1, _.BN2Str(0.3*_.one))
+    //  depositSynthTKN5(acc1, _.BN2Str(0.3*_.one))
 
-     depositSynthTKN3(acc2, _.BN2Str(0.3*_.one))
-     depositSynthTKN4(acc2, _.BN2Str(0.3*_.one))
+    //  depositSynthTKN3(acc2, _.BN2Str(0.3*_.one))
+    //  depositSynthTKN4(acc2, _.BN2Str(0.3*_.one))
 
-     depositSynthTKN5(acc1, _.BN2Str(0.3*_.one))
+    //  depositSynthTKN5(acc1, _.BN2Str(0.3*_.one))
 
-     depositSynthTKN4(acc1, _.BN2Str(0.3*_.one))
+    //  depositSynthTKN4(acc1, _.BN2Str(0.3*_.one))
+      realise()
+  
+    //    harvestSynth()
+       realise()
+       realise()
 
   
-       harvestSynth()
-       Withdraw(1000, acc1);
-       WithdrawTKN2(5000, acc1);
-       WithdrawTKN3(1000, acc1);
+
+    //    Withdraw(1000, acc1);
+    //    WithdrawTKN2(5000, acc1);
+    //    WithdrawTKN3(1000, acc1);
   
    
 })
@@ -182,6 +187,7 @@ async function createPoolWBNB(SPT, token) {
 
     })
 }
+
 async function createPoolTKN1(SPT, token) {
     it("It should deploy TKN1 Pool", async () => {
         var _pool = await poolFactory.createPool.call(token1.address)
@@ -393,13 +399,14 @@ async function swapSynthToLayer1(acc, x) {
         await router.swapSynthToAsset(x,synthIN,tokenOut,{from:acc});
     })
 }
-async function depositSynthBNB(acc, x) {
+async function depositSynthBNB(acc) {
     it("Deposit Synth into Vault ", async () => {
         
         let synth = synthBNB.address;
+       
         let synthBal = _.getBN(await synthBNB.balanceOf(acc));
         let sVStart = _.getBN(await synthBNB.balanceOf(synthVault.address));
-
+        let x = synthBal;
         let memberDeposits = _.getBN(await synthVault.getMemberDeposit(synth, acc))
         
         let memberWeight = _.getBN(await synthVault.getMemberWeight(acc))
@@ -431,13 +438,13 @@ async function depositSynthBNB(acc, x) {
         assert.exists(_.BN2Str(memberTimeA));
     })
 }
-async function depositSynthTKN2(acc, x) {
+async function depositSynthTKN2(acc) {
     it("Deposit Synth into Vault ", async () => {
         
         let synth = synthTKN2.address;
         let synthBal = _.getBN(await synthTKN2.balanceOf(acc));
         let sVStart = _.getBN(await synthTKN2.balanceOf(synthVault.address));
-
+        let x = synthBal;
         let memberDeposits = _.getBN(await synthVault.getMemberDeposit(synth, acc))
         
         let memberWeight = _.getBN(await synthVault.getMemberWeight(acc))
@@ -956,6 +963,16 @@ function ShowTKNPool() {
     console.log(`TKN - ${tknA/_.one}`);
     console.log(`lps - ${lptoken/_.one}`);
 })
+}
+
+async function realise() {
+    it("It should realise", async () => {
+
+        let synth = synthBNB.address;
+
+        let pool = poolWBNB.address;
+        await synthBNB.realise(pool)
+    })
 }
 
 

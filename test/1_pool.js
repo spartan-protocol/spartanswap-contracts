@@ -59,9 +59,14 @@ function constructor(accounts) {
         router = await ROUTER.new(sparta.address, wbnb.address,); // deploy router
         poolFactory = await POOLFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
 
-        await Dao.setGenesisAddresses(router.address,utils.address,utils.address,reserve.address, daoVault.address);
-        await Dao.setFactoryAddresses(poolFactory.address,utils.address);
+        await Dao.setGenesisAddresses(router.address,utils.address,reserve.address);
+        await Dao.setVaultAddresses(daoVault.address,daoVault.address, daoVault.address);
+        await Dao.setFactoryAddresses(poolFactory.address,poolFactory.address);
         await sparta.changeDAO(Dao.address)
+        await reserve.setIncentiveAddresses(router.address,utils.address,utils.address,Dao.address );
+        // await reserve.flipEmissions();    
+        // await sparta.flipEmissions();  
+        // await sparta.flipMinting();
 
         await sparta.transfer(acc1, _.getBN(_.BN2Str(10000 * _.one)))
         await sparta.transfer(acc2, _.getBN(_.BN2Str(10000 * _.one)))

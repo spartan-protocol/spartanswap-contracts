@@ -136,16 +136,15 @@ contract Utils {
         uint baseAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
         uint tokenAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
         uint baseSwapped = calcSwapValueInTokenWithPool(pool, baseAmount);
-        tokenValue = tokenAmount+(baseSwapped);
+        tokenValue = tokenAmount + baseSwapped;
         return tokenValue;
     }
 
     //synthUnits += (P b)/(2 (b + B))
-     function calcLiquidityUnitsAsym(uint Amount, address pool) public view returns (uint units){
+     function calcLiquidityUnitsAsym(uint amount, address pool) public view returns (uint units){
         uint baseAmount = iPOOL(pool).baseAmount();
         uint totalSupply = iBEP20(pool).totalSupply();
-        uint two = 2;
-         return (totalSupply * Amount) / ((two * (Amount + (baseAmount))));
+         return (totalSupply * amount) / (2 * (amount + baseAmount));
      }
 
     //====================================PRICING====================================//
@@ -199,8 +198,12 @@ contract Utils {
         return  calcSwapOutput(amount, _baseAmount, _tokenAmount);
     }
 
-    function calcActualSynthUnits(uint unitsLP, address pool, uint unitsSynths, address synth) public view returns (uint _output ) {
-
+    function calcActualSynthUnits(uint amount, address synth) public view returns (uint _output) {
+        address token = iSYNTH(synth).LayerONE();
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        return ((amount * _baseAmount) / (2 * _tokenAmount));
     }
 
 

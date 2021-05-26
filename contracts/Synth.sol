@@ -2,7 +2,7 @@
 pragma solidity 0.8.3;
 import "./Pool.sol";  
 import "./iPOOLFACTORY.sol";
-
+import "hardhat/console.sol";
 contract Synth is iBEP20 {
     address public BASE;
     address public LayerONE;
@@ -150,13 +150,12 @@ contract Synth is iBEP20 {
         emit Transfer(account, address(0), amount);
     }
 
-    function mintSynth(address member) external onlyPool returns (uint syntheticAmount){
+    function mintSynth(address member, uint amount) external onlyPool returns (uint syntheticAmount){
         uint lpUnits = _getAddedLPAmount(msg.sender);
-        uint tokenValue = iUTILS(_DAO().UTILS()).calcAsymmetricValueToken(msg.sender, lpUnits);
-        mapSynth_LPDept[msg.sender] += tokenValue;  
+        mapSynth_LPDept[msg.sender] += amount;  
         mapSynth_LPBalance[msg.sender] += lpUnits;
-        _mint(member, tokenValue); 
-        return tokenValue;
+        _mint(member, amount); 
+        return amount;
     }
     
     function burnSynth() external returns (bool){
@@ -173,12 +172,19 @@ contract Synth is iBEP20 {
 
     function realise(address pool) external {
         uint baseValueLP = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(mapSynth_LPBalance[pool], BASE, pool);
-        uint baseValueSynth = iUTILS(_DAO().UTILS()).calcSwapValueInBase(LayerONE, (mapSynth_LPDept[pool] / 2));
+        uint baseValueSynth = iUTILS(_DAO().UTILS()).calcActualSynthUnits(mapSynth_LPDept[pool], address(this)); 
         if(baseValueLP > baseValueSynth){
-            uint premium = baseValueSynth - baseValueLP;
-            uint premiumLP = iUTILS(_DAO().UTILS()).calcLiquidityUnits(premium, Pool(pool).baseAmount(), 0, Pool(pool).tokenAmount(), Pool(pool).totalSupply());
+            uint premium = baseValueLP - baseValueSynth;
+            uint premiumLP = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(premium, pool);
             mapSynth_LPBalance[pool] -= premiumLP;
+            console.log("LPBal Base amount ",baseValueLP/10**18);
+            console.log("synthUnits Base value ",baseValueSynth/10**18);
+            console.log("BASE difference ",premium/10**18);
+            console.log("LP units to burn ",premiumLP/10**18);
+            console.log("mapSynth_LPBalance", mapSynth_LPBalance[pool]/10**18);
+
             Pool(pool).burn(premiumLP);
+
         }
 
     }

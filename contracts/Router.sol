@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
-pragma experimental ABIEncoderV2;
 import "./Pool.sol";
 import "./iRESERVE.sol"; 
-import "./iPOOLFACTORY.sol"; 
-import "./iWBNB.sol";  
-
+import "./iPOOLFACTORY.sol";  
+import "./iWBNB.sol";
 
 contract Router {
 
@@ -95,21 +93,23 @@ contract Router {
         return units;
     }
     // Remove % for self
-    function removeLiquidity(uint basisPoints, address token) external returns (uint outputBase, uint outputToken) {
+    function removeLiquidity(uint basisPoints, address token) external returns (uint outputBase, uint outputToken)  {
         require((basisPoints > 0 && basisPoints <= 10000));
         uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token)).balanceOf(msg.sender));
-        return removeLiquidityExact(_units, token);
+       return removeLiquidityExact(_units, token);
     }
     // Remove an exact qty of units
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true);
-        require(units <= iBEP20(_pool).totalSupply());
-        address _member = msg.sender;
-        iBEP20(_pool).transferFrom(_member, _pool, units);
-        (outputBase, outputToken) = Pool(_pool).remove();
-        _handleTransferOut(token, outputToken, _member);
-        _handleTransferOut(BASE, outputBase, _member);
+        iBEP20(_pool).transferFrom(msg.sender, _pool, units);
+         if(token != address(0)){
+             Pool(_pool).removeForMember(msg.sender);
+         }else{
+             (, outputToken) = Pool(_pool).remove();
+             outputBase = iBEP20(BASE).balanceOf(address(this));
+             _handleTransferOut(token, outputToken, msg.sender);
+             _handleTransferOut(BASE, outputBase, msg.sender);
+         }
         return (outputBase, outputToken);
     }
 
@@ -133,7 +133,6 @@ contract Router {
              fee = _feez;
              _handleTransferOut(token, (_tokenBought + outputToken), _member);
         } 
-        
         return fee;
     }
 
@@ -188,13 +187,14 @@ contract Router {
         if(_amount > 0) {
             if(_token == address(0)){
                 require((_amount == msg.value));
-                payable(WBNB).call{value:_amount}(""); 
+                (bool success,) = payable(WBNB).call{value: _amount}("");
+                require(success);
                 iBEP20(WBNB).transfer(_pool, _amount); 
                 actual = _amount;
             } else {
                 uint startBal = iBEP20(_token).balanceOf(_pool);
                 iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
-                actual = iBEP20(_token).balanceOf(_pool)-(startBal);
+                actual = iBEP20(_token).balanceOf(_pool) - (startBal);
             }
         }
     }
@@ -202,7 +202,8 @@ contract Router {
         if(_amount > 0) {
             if (_token == address(0)) {
                 iWBNB(WBNB).withdraw(_amount);
-                payable(_recipient).call{value:_amount}(""); 
+                (bool success,) = payable(_recipient).call{value: _amount}("");
+                require(success);
             } else {
                 iBEP20(_token).transfer(_recipient, _amount);
             }
