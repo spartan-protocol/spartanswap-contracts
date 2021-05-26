@@ -84,12 +84,10 @@ contract Router {
          address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         if(fromBase){
-             _handleTransferIn(BASE, inputToken, address(this));
-             iBEP20(BASE).transfer(_pool,inputToken);
+             _handleTransferIn(BASE, inputToken, _pool);
              units = Pool(_pool).addForMember(member);
         } else {
-            _handleTransferIn(token, inputToken, address(this));
-             iBEP20(_token).transfer(_pool,inputToken);
+            _handleTransferIn(token, inputToken, _pool);
             units = Pool(_pool).addForMember(member);
         }
         return units;
@@ -238,8 +236,8 @@ contract Router {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_toToken);
         iBEP20(fromSynth).transferFrom(msg.sender, _poolIN, inputAmount); 
         if(_toToken != BASE){
-            (uint output,) = Pool(_poolIN).burnSynth(fromSynth, address(this)); 
-            iBEP20(BASE).transfer(_pool, output);
+            Pool(_poolIN).burnSynth(fromSynth, address(this)); 
+            iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this)));
             (outputAmount, fee) = Pool(_pool).swap(_toToken);
             _handleTransferOut(toToken, outputAmount, msg.sender);
         }else{

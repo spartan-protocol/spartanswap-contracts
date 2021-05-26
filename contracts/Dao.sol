@@ -153,7 +153,7 @@ contract Dao {
             arrayMembers.push(member);
             isMember[member] = true;
         }
-        if(_DAOVAULT.getMemberWeight(member) > 0) {
+        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0) {
                 harvest();
         }
         require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!FUNDS" );
@@ -220,8 +220,16 @@ contract Dao {
     function bond(address asset, uint256 amount) external payable returns (bool success) {
         require(amount > 0, '!asset');
         require(isListed[asset], '!listed');
+        if (isMember[msg.sender] != true) {
+            arrayMembers.push(msg.sender);
+            isMember[msg.sender] = true;
+        }
+        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0) {
+                harvest();
+        }
         uint256 liquidityUnits = handleTransferIn(asset, amount);
         _BONDVAULT.depositForMember(asset, msg.sender, liquidityUnits);
+         mapMember_lastTime[msg.sender] = block.timestamp;
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
