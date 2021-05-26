@@ -186,9 +186,8 @@ contract Router {
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
         if(_amount > 0) {
             if(_token == address(0)){
-                require((_amount == msg.value));
-                (bool success,) = payable(WBNB).call{value: _amount}("");
-                require(success);
+                require((_amount == msg.value), "InputErr");
+                payable(WBNB).call{value:_amount}(""); 
                 iBEP20(WBNB).transfer(_pool, _amount); 
                 actual = _amount;
             } else {
@@ -202,8 +201,7 @@ contract Router {
         if(_amount > 0) {
             if (_token == address(0)) {
                 iWBNB(WBNB).withdraw(_amount);
-                (bool success,) = payable(_recipient).call{value: _amount}("");
-                require(success);
+                payable(_recipient).call{value:_amount}(""); 
             } else {
                 iBEP20(_token).transfer(_recipient, _amount);
             }

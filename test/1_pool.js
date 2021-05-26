@@ -84,7 +84,6 @@ function constructor(accounts) {
 async function wrapBNB() {
     it("It should wrap", async () => {
         await web3.eth.sendTransaction({to: wbnb.address, value:_.BN2Str(_.one*100), from:acc0});
-        await wbnb.transfer(acc0, _.getBN(_.BN2Int(_.one * 30)))
         await wbnb.transfer(acc1, _.getBN(_.BN2Int(_.one * 30)))
         await wbnb.transfer(acc2, _.getBN(_.BN2Int(_.one * 30)))
         await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
