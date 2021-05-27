@@ -173,18 +173,11 @@ contract Synth is iBEP20 {
     function realise(address pool) external {
         uint baseValueLP = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(mapSynth_LPBalance[pool], BASE, pool);
         uint baseValueSynth = iUTILS(_DAO().UTILS()).calcActualSynthUnits(mapSynth_LPDept[pool], address(this)); 
-        if(baseValueLP > baseValueSynth){
+        if((baseValueLP - baseValueSynth) > 10**18){
             uint premium = baseValueLP - baseValueSynth;
             uint premiumLP = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(premium, pool);
             mapSynth_LPBalance[pool] -= premiumLP;
-            console.log("LPBal Base amount ",baseValueLP/10**18);
-            console.log("synthUnits Base value ",baseValueSynth/10**18);
-            console.log("BASE difference ",premium/10**18);
-            console.log("LP units to burn ",premiumLP/10**18);
-            console.log("mapSynth_LPBalance", mapSynth_LPBalance[pool]/10**18);
-
             Pool(pool).burn(premiumLP);
-
         }
 
     }

@@ -404,7 +404,6 @@ contract Dao {
         } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
             _removeCuratedPool(proposalID);
         }
-        
         }
         
     }

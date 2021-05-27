@@ -65,6 +65,22 @@ contract('Test Harvest Synths', function (accounts) {
     //    harvestSynth()
        realise()
        realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
+       realise()
 
   
 
