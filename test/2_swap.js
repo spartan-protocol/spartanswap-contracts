@@ -94,13 +94,13 @@ function constructor(accounts) {
             poolFactory = await POOLFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
             synthFactory = await SYNTHFACTORY.new(sparta.address,  wbnb.address) // deploy synthFactory
 
-            await Dao.setGenesisAddresses(router.address,utils.address,utils.address,reserve.address, daoVault.address);
+            await Dao.setGenesisAddresses(router.address,utils.address,reserve.address);
+            await Dao.setVaultAddresses(daoVault.address,daoVault.address, daoVault.address);
             await Dao.setFactoryAddresses(poolFactory.address,synthFactory.address);
             await sparta.changeDAO(Dao.address)
-
-            await reserve.setIncentiveAddresses(router.address, utils.address,utils.address,Dao.address );
-            await reserve.flipEmissions();    
-            await sparta.flipEmissions();  
+            await reserve.setIncentiveAddresses(router.address,utils.address,utils.address,Dao.address );
+            // await reserve.flipEmissions();    
+            // await sparta.flipEmissions();  
     
             await sparta.transfer(acc1, _.getBN(_.BN2Str(10000 * _.one)))
             await sparta.transfer(acc2, _.getBN(_.BN2Str(10000 * _.one)))
@@ -561,11 +561,13 @@ async function swapLayer1ToSynth(acc, x) {
         // console.log("synBal",_.BN2Str(synBal));
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
-        let lpBalance = _.getBN(await synthBNB.mapAddress_LPBalance(poolWBNB.address));
-        let lpDebt =_.getBN( await synthBNB.mapAddress_LPDebt(poolWBNB.address));
+        let lpBalance = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
+        let lpDebt =_.getBN( await synthBNB.mapSynth_LPDept(poolWBNB.address));
         const X = _.getBN(poolData.baseAmount)
         const Y = _.getBN(poolData.tokenAmount)
         let asymAdd = _.getBN(await utils.calcLiquidityUnitsAsym(x, poolWBNB.address))
+        // let y = math.calcSwapOutput(x, X, token)
+      
       
         let poolSynBal = _.getBN(await poolWBNB.balanceOf(synthBNB.address));
         let totalSynth = _.getBN(await synthBNB.totalSupply());
@@ -573,14 +575,14 @@ async function swapLayer1ToSynth(acc, x) {
         
 
         await router.swapAssetToSynth(x,sparta.address,synthOUT,{from:acc});
-        let synthMint = _.getBN(await utils.calcAsymmetricValueToken(poolWBNB.address,asymAdd));
+        let synthMint = math.calcSwapOutput(x, X, Y)
 
         poolData = await utils.getPoolData(token);
-        let lpBalanceA = _.getBN(await synthBNB.mapAddress_LPBalance(poolWBNB.address));
-        let lpDebtA =_.getBN( await synthBNB.mapAddress_LPDebt(poolWBNB.address));
+        let lpBalanceA = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
+        let lpDebtA =_.getBN( await synthBNB.mapSynth_LPDept(poolWBNB.address));
 
         let feeOnTransfer = _.getBN(await sparta.feeOnTransfer())
-        // console.log("Fee BP",_.BN2Str(feeOnTransfer));
+       //  console.log("Fee BP",_.BN2Str(feeOnTransfer));
 
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(X.plus(x)))
         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(Y))
@@ -607,8 +609,8 @@ async function swapSynthToLayer1(acc, x) {
         let synBal = _.getBN(await synthBNB.balanceOf(acc));
         let basBal = _.getBN(await sparta.balanceOf(acc));
 
-        let lpBalance = _.getBN(await synthBNB.mapAddress_LPBalance(poolWBNB.address));
-        let lpDebt =_.getBN( await synthBNB.mapAddress_LPDebt(poolWBNB.address));
+        let lpBalance = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
+        let lpDebt =_.getBN( await synthBNB.mapSynth_LPDept(poolWBNB.address));
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
         const X = _.getBN(poolData.tokenAmount)
@@ -629,8 +631,8 @@ async function swapSynthToLayer1(acc, x) {
        
         poolData = await utils.getPoolData(token);
 
-        let lpBalanceA = _.getBN(await synthBNB.mapAddress_LPBalance(poolWBNB.address));
-        let lpDebtA =_.getBN( await synthBNB.mapAddress_LPDebt(poolWBNB.address));
+        let lpBalanceA = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
+        let lpDebtA =_.getBN( await synthBNB.mapSynth_LPDept(poolWBNB.address));
 
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y.minus(baseSwapped)))
         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X))

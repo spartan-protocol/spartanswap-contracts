@@ -70,6 +70,7 @@ contract Router {
         (, uint outputToken) = Pool(fromPool).remove(); // remove 
         iBEP20(_fromToken).transfer(fromPool, outputToken); // transfer fromToken for swap
         Pool(fromPool).swapTo(BASE,toPool); // swap to BASE > transfer to toPOOL
+        iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // transfer fromToken for swap
         unitsOutput = Pool(toPool).addForMember(_member); //capture lps
         return (unitsOutput);
     }
@@ -108,7 +109,7 @@ contract Router {
          }else{
              (, outputToken) = Pool(_pool).remove();
              outputBase = iBEP20(BASE).balanceOf(address(this));
-             _handleTransferOut(token, outputToken,_member);
+             _handleTransferOut(WBNB, outputToken,_member);
              _handleTransferOut(BASE, outputBase, _member);
          }
         return (outputBase, outputToken);

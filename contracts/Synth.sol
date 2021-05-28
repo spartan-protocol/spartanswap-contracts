@@ -2,7 +2,7 @@
 pragma solidity 0.8.3;
 import "./Pool.sol";  
 import "./iPOOLFACTORY.sol";
-import "hardhat/console.sol";
+
 contract Synth is iBEP20 {
     address public BASE;
     address public LayerONE;
@@ -43,7 +43,7 @@ contract Synth is iBEP20 {
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), synthSymbol));
         decimals = 18;
         DEPLOYER = msg.sender;
-        genesis = block.timestamp ;
+        genesis = block.timestamp;
     }
    //========================================iBEP20=========================================//
 
@@ -179,7 +179,6 @@ contract Synth is iBEP20 {
             mapSynth_LPBalance[pool] -= premiumLP;
             Pool(pool).burn(premiumLP);
         }
-
     }
 
     function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 _actual){

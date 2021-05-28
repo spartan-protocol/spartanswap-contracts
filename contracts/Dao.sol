@@ -153,7 +153,7 @@ contract Dao {
             arrayMembers.push(member);
             isMember[member] = true;
         }
-        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0) {
+        if((_DAOVAULT.getMemberWeight(member) + _BONDVAULT.getMemberWeight(member)) > 0) {
                 harvest();
         }
         require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!FUNDS" );
@@ -235,10 +235,10 @@ contract Dao {
     }
     function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
         uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); 
-        if(_token == address(0)){
-            if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < spartaAllocation){
+        if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < spartaAllocation){
                     iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply());  
                 }
+        if(_token == address(0)){
                 require((_amount == msg.value), "InputErr");
                 LPunits = _ROUTER.addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, address(_BONDVAULT));
             } else {

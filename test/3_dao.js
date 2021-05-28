@@ -106,7 +106,7 @@ function constructor(accounts) {
        synthFactory = await SYNTHFACTORY.new(sparta.address,  wbnb.address) // deploy synthFactory
 
        await Dao.setGenesisAddresses(router.address,utils.address,reserve.address);
-       await Dao.setVaultAddresses(daoVault.address,bondVault.address);
+       await Dao.setVaultAddresses(daoVault.address,bondVault.address, utils.address);
        await Dao.setFactoryAddresses(poolFactory.address,synthFactory.address);
        await sparta.changeDAO(Dao.address)
 

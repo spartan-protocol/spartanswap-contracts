@@ -35,7 +35,7 @@ contract SynthFactory {
     function createSynth(address token) external returns(address synth){
         require(getSynth(token) == address(0), "CreateErr");
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "Must be Curated");
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "!Curated");
         Synth newSynth; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         newSynth = new Synth(BASE,_token);  

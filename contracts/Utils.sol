@@ -144,7 +144,8 @@ contract Utils {
      function calcLiquidityUnitsAsym(uint amount, address pool) public view returns (uint units){
         uint baseAmount = iPOOL(pool).baseAmount();
         uint totalSupply = iBEP20(pool).totalSupply();
-         return (totalSupply * amount) / (2 * (amount + baseAmount));
+        uint two = 2;
+         return (totalSupply * amount) / (two * (amount + baseAmount));
      }
 
     //====================================PRICING====================================//

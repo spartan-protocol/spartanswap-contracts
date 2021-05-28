@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
-
 import "./iBEP20.sol";
 import "./iUTILS.sol";
 import "./iDAO.sol";
@@ -214,10 +213,10 @@ contract Pool is iBEP20 {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut) == true, "!synth");
         uint256 _actualInputBase = _getAddedBaseAmount();
         uint output = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); 
+        uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this));
         _incrementPoolBalances(_actualInputBase, 0);
         uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount);
         fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN,_fee );
-        uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this));
         _mint(synthOut, _liquidityUnits); 
         iSYNTH(synthOut).mintSynth(member, output); //mintSynth to member  
         _addPoolMetrics(fee);
