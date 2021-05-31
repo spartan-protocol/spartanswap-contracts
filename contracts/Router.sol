@@ -109,7 +109,7 @@ contract Router {
          }else{
              (, outputToken) = Pool(_pool).remove();
              outputBase = iBEP20(BASE).balanceOf(address(this));
-             _handleTransferOut(WBNB, outputToken,_member);
+             _handleTransferOut(token, outputToken,_member);
              _handleTransferOut(BASE, outputBase, _member);
          }
         return (outputBase, outputToken);

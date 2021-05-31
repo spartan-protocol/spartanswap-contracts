@@ -164,6 +164,9 @@ contract Dao {
     
     // Member withdraws all from a pool
     function withdraw(address pool) public {
+        for(uint i = 0; i <= proposalCount; i++){
+            removeVote(i);
+        }
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Then transfer
     }
 
@@ -328,7 +331,7 @@ contract Dao {
     //============================== VOTE && FINALISE ================================//
 
     // Vote for a proposal
-    function voteProposal(uint proposalID) public returns (uint voteWeight) {
+    function voteProposal(uint proposalID) external returns (uint voteWeight) {
         bytes memory _type = bytes(mapPID_type[proposalID]);
         voteWeight = countVotes(proposalID);
         if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
@@ -347,7 +350,9 @@ contract Dao {
     function removeVote(uint proposalID) public returns (uint voteWeightRemoved){
         bytes memory _type = bytes(mapPID_type[proposalID]);
         voteWeightRemoved = mapPIDMember_votes[proposalID][msg.sender]; // get voted weight
-        mapPID_votes[proposalID] -= voteWeightRemoved; //remove voteweight from totalVotingweight
+        if(mapPID_votes[proposalID] > 0){
+            mapPID_votes[proposalID] -= voteWeightRemoved; //remove voteweight from totalVotingweight
+        }
         mapPIDMember_votes[proposalID][msg.sender] = 0; //zero out voting weight for member
         emit RemovedVote(msg.sender, proposalID, voteWeightRemoved, mapPID_votes[proposalID], string(_type));
         return voteWeightRemoved;
