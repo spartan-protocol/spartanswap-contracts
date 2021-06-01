@@ -36,9 +36,9 @@ contract PoolFactory {
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
-    function createPool(uint256 inputBase, uint256 inputToken, address token) external returns(address pool){
+    function createPoolADD(uint256 inputBase, uint256 inputToken, address token) external returns(address pool){
         require(getPool(token) == address(0));
-        require((inputToken > 0 && inputBase > 10000 * 10**18), "!Minimum");
+        require((inputToken > 0 && inputBase >= (10000*10**18)), "!Minimum");
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         require(_token != BASE && iBEP20(_token).decimals() == 18);
@@ -50,7 +50,20 @@ contract PoolFactory {
         arrayPools.push(pool);
         arrayTokens.push(_token);
         isListedPool[pool] = true;
-        Pool(pool).addLiquidityForMember(msg.sender);
+        Pool(pool).addForMember(msg.sender);
+        emit CreatePool(token,pool);
+        return pool;
+    }
+    function createPool(address token) external onlyDAO returns(address pool){
+        require(getPool(token) == address(0));
+        Pool newPool; address _token = token;
+        if(token == address(0)){_token = WBNB;} // Handle BNB
+        newPool = new Pool(BASE, _token); 
+        pool = address(newPool);
+        mapToken_Pool[_token] = pool;
+        arrayPools.push(pool);
+        arrayTokens.push(_token);
+        isListedPool[pool] = true;
         emit CreatePool(token,pool);
         return pool;
     }
@@ -83,7 +96,7 @@ contract PoolFactory {
         if(_amount > 0) {
                 uint startBal = iBEP20(_token).balanceOf(_pool); 
                 iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
-                actual = iBEP20(_token).balanceOf(_pool).sub(startBal);
+                actual = iBEP20(_token).balanceOf(_pool) - (startBal);
         }
     }
 

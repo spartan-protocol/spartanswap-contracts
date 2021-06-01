@@ -153,7 +153,7 @@ contract SynthVault {
         return true;
     }
     function calcCurrentReward(address synth, address member) public view returns (uint256 reward){
-        require((block.timestamp > mapMemberSynth_lastTime[_member][synth]), "DepositTime"); // stops attacks
+        require((block.timestamp > mapMemberSynth_lastTime[member][synth]), "DepositTime"); // stops attacks
         uint256 _secondsSinceClaim = block.timestamp - mapMemberSynth_lastTime[member][synth]; // Get time since last claim
         uint256 _share = calcReward(synth, member);
         reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra();
