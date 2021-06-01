@@ -91,13 +91,13 @@ contract SynthVault {
         require(iBEP20(synth).transferFrom(msg.sender, address(this), amount));
         _deposit(synth, member, amount);
     }
-    function _deposit(address _synth,address _member,uint256 _amount) internal {
+    function _deposit(address _synth, address _member,uint256 _amount) internal {
         if(!isStakedSynth[_synth]){
             isStakedSynth[_synth] = true;
             stakedSynthAssets.push(_synth);
         }
-        mapMemberSynth_lastTime[_member][_synth] = block.timestamp;
-        mapMember_depositTime[_member] = block.timestamp;
+        mapMemberSynth_lastTime[_member][_synth] = block.timestamp + minimumDepositTime;
+        mapMember_depositTime[_member] = block.timestamp + minimumDepositTime;
         mapMemberSynth_deposit[_member][_synth] += _amount; // Record balance for member
         uint256 _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(_synth).LayerONE(), _amount); 
         mapMemberSynth_weight[_member][_synth] += _weight;
@@ -153,6 +153,7 @@ contract SynthVault {
         return true;
     }
     function calcCurrentReward(address synth, address member) public view returns (uint256 reward){
+        require((block.timestamp > mapMemberSynth_lastTime[_member][synth]), "DepositTime"); // stops attacks
         uint256 _secondsSinceClaim = block.timestamp - mapMemberSynth_lastTime[member][synth]; // Get time since last claim
         uint256 _share = calcReward(synth, member);
         reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra();
@@ -175,7 +176,7 @@ contract SynthVault {
     }
 
     function _processWithdraw( address _synth,address _member,uint256 _basisPoints) internal returns (uint256 synthReward) {
-        require((block.timestamp - mapMember_depositTime[_member]) >= minimumDepositTime, "DepositTime"); // stops attacks
+        require((block.timestamp > mapMember_depositTime[_member]), "DepositTime"); // stops attacks
         uint256 _principle = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberSynth_deposit[_member][_synth]); // share of deposits
         mapMemberSynth_deposit[_member][_synth] -= _principle;
         uint256 _weight = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberSynth_weight[_member][_synth]);

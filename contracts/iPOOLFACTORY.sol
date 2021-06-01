@@ -8,6 +8,7 @@ interface iPOOLFACTORY {
     function getCuratedPool(uint) external view returns(address);
     function isPool(address) external returns (bool);
     function getPool(address) external view returns(address);
+    function createPool(address) external view returns(address);
     function getPoolArray(uint) external view returns(address);
     function poolCount() external view returns(uint);
     function getToken(uint) external view returns(address);

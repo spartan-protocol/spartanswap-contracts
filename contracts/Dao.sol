@@ -408,7 +408,7 @@ contract Dao {
             _addCuratedPool(proposalID);
         } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
             _removeCuratedPool(proposalID);
-        }
+        } 
         }
         
     }
@@ -518,7 +518,7 @@ contract Dao {
     function hasQuorum(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
         uint _totalWeight = _DAOVAULT.totalWeight()  + _BONDVAULT.totalWeight(); // add BondVault totalWeight
-        uint consensus = _totalWeight / 3; // >33%
+        uint consensus = _totalWeight / 2; // >50%
         if(votes > consensus){
             return true;
         } else {

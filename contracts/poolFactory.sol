@@ -36,17 +36,21 @@ contract PoolFactory {
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
-    function createPool(address token) external onlyDAO returns(address pool){
+    function createPool(uint256 inputBase, uint256 inputToken, address token) external returns(address pool){
         require(getPool(token) == address(0));
+        require((inputToken > 0 && inputBase > 10000 * 10**18), "!Minimum");
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         require(_token != BASE && iBEP20(_token).decimals() == 18);
         newPool = new Pool(BASE, _token); 
         pool = address(newPool);
         mapToken_Pool[_token] = pool;
+        _handleTransferIn(BASE, inputBase, pool);
+        _handleTransferIn(token, inputToken, pool);
         arrayPools.push(pool);
         arrayTokens.push(_token);
         isListedPool[pool] = true;
+        Pool(pool).addLiquidityForMember(msg.sender);
         emit CreatePool(token,pool);
         return pool;
     }
@@ -54,6 +58,7 @@ contract PoolFactory {
         require(token != BASE);
         address _pool = getPool(token);
         require(isListedPool[_pool] == true);
+        require(curatedPoolCount() < curatedPoolSize, "!Available"); 
         isCuratedPool[_pool] = true;
         emit AddCuratePool(_pool, isCuratedPool[_pool]);
     }
@@ -63,6 +68,23 @@ contract PoolFactory {
         require(isCuratedPool[_pool] == true);
         isCuratedPool[_pool] = false;
         emit RemoveCuratePool(_pool, isCuratedPool[_pool]);
+    }
+
+    function curatedPoolCount() internal returns (uint){
+        uint curatedPoolCount;
+        for(uint i = 0; i< arrayPools.length; i++){
+            if(isCuratedPool[arrayPools[i]] == true){
+              curatedPoolCount += 1;
+            }
+        }
+        return curatedPoolCount;
+    }
+    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
+        if(_amount > 0) {
+                uint startBal = iBEP20(_token).balanceOf(_pool); 
+                iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
+                actual = iBEP20(_token).balanceOf(_pool).sub(startBal);
+        }
     }
 
     //======================================HELPERS========================================//
