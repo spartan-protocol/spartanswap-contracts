@@ -438,7 +438,7 @@ async function voteGrant() {
         let proposalCount = _.BN2Str(await Dao.proposalCount())
         await Dao.voteProposal(proposalCount, { from: acc1 })
         await Dao.voteProposal(proposalCount, { from: acc2 })
-        await Dao.getGrantDetails(proposalCount)
+        // await Dao.getProposalDetails(proposalCount)
         await sleep(3100)
         let balanceBefore = _.getBN(await sparta.balanceOf(acc0))
         await Dao.finaliseProposal(proposalCount)

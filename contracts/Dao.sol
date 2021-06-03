@@ -5,11 +5,11 @@ import "./iRESERVE.sol";
 import "./iDAOVAULT.sol";
 import "./iROUTER.sol";
 import "./iBONDVAULT.sol";
-import "./iBASE.sol";
+import "./iBASE.sol"; 
 import "./iBEP20.sol";
 import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
-import "./iSYNTHVAULT.sol"; 
+import "./iSYNTHVAULT.sol";
 
 contract Dao {
     address public DEPLOYER;
@@ -23,11 +23,6 @@ contract Dao {
     uint256 public daoClaim;
     uint256 public daoFee;
     
-
-    struct GrantDetails{
-        address recipient;
-        uint amount;
-    }
     struct MemberDetails {
         bool isMember;
         uint weight;
@@ -65,9 +60,8 @@ contract Dao {
     mapping(address => bool) public isListed;
     mapping(address => uint256) public mapMember_lastTime;
 
-    mapping(uint256 => uint32) public mapPID_param;
+    mapping(uint256 => uint256) public mapPID_param;
     mapping(uint256 => address) public mapPID_address;
-    mapping(uint256 => GrantDetails) public mapPID_grant;
     mapping(uint256 => string) public mapPID_type;
     mapping(uint256 => uint256) public mapPID_votes;
     mapping(uint256 => uint256) public mapPID_timeStart;
@@ -315,10 +309,8 @@ contract Dao {
         string memory typeStr = "GRANT";
         proposalCount += 1;
         mapPID_type[proposalCount] = typeStr;
-        GrantDetails memory grant;
-        grant.recipient = recipient;
-        grant.amount = amount;
-        mapPID_grant[proposalCount] = grant;
+        mapPID_address[proposalCount] = recipient;
+        mapPID_param[proposalCount] = amount;
         emit NewProposal(msg.sender, proposalCount, typeStr);
         return proposalCount;
     }
@@ -444,20 +436,21 @@ contract Dao {
     }
 
     function changeCooloff(uint _proposalID) internal {
-        uint32 _proposedParam = mapPID_param[_proposalID];
+        uint256 _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
         coolOffPeriod = _proposedParam;
         completeProposal(_proposalID);
     }
     function changeEras(uint _proposalID) internal {
-        uint32 _proposedParam = mapPID_param[_proposalID];
+        uint256 _proposedParam = mapPID_param[_proposalID];
         require(_proposedParam != 0, "No param proposed");
         erasToEarn = _proposedParam;
         completeProposal(_proposalID);
     }
     function grantFunds(uint _proposalID) internal {
-        GrantDetails memory _grant = mapPID_grant[_proposalID];
-        _RESERVE.grantFunds(_grant.amount, _grant.recipient);
+        uint256 _proposedAmount = mapPID_param[_proposalID];
+        address _proposedAddress = mapPID_address[_proposalID];
+        _RESERVE.grantFunds(_proposedAmount, _proposedAddress);
         completeProposal(_proposalID);
     }
     function _increaseSpartaAllocation(uint _proposalID) internal {
@@ -613,11 +606,6 @@ contract Dao {
         proposalDetails.param = mapPID_param[proposalID];
         proposalDetails.proposedAddress = mapPID_address[proposalID];
         return proposalDetails;
-    }
-    function getGrantDetails(uint proposalID) public view returns (GrantDetails memory grantDetails){
-        grantDetails.recipient = mapPID_grant[proposalID].recipient;
-        grantDetails.amount = mapPID_grant[proposalID].amount;
-        return grantDetails;
     }
     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
         if(sha256(part1) == sha256(part2)){
