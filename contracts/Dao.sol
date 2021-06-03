@@ -38,6 +38,7 @@ contract Dao {
         bool finalised;
         uint param;
         address proposedAddress;
+        bool open;
     }
 
     bool public daoHasMoved;
@@ -67,6 +68,7 @@ contract Dao {
     mapping(uint256 => uint256) public mapPID_timeStart;
     mapping(uint256 => bool) public mapPID_finalising;
     mapping(uint256 => bool) public mapPID_finalised;
+    mapping(uint256 => bool) public mapPID_open;
     mapping(uint256 => mapping(address => uint256)) public mapPIDMember_votes;
 
     event MemberDeposits(address indexed member,address indexed pool,uint256 amount);
@@ -282,6 +284,7 @@ contract Dao {
         payFee();
         proposalCount += 1;
         mapPID_type[proposalCount] = typeStr;
+        mapPID_open[proposalID] = true;
         emit NewProposal(msg.sender, proposalCount, typeStr);
         return proposalCount;
     }
@@ -291,6 +294,7 @@ contract Dao {
         proposalCount += 1;
         mapPID_param[proposalCount] = param;
         mapPID_type[proposalCount] = typeStr;
+        mapPID_open[proposalCount] = true;
         emit NewProposal(msg.sender, proposalCount, typeStr);
         return proposalCount;
     }
@@ -300,6 +304,7 @@ contract Dao {
         proposalCount += 1;
         mapPID_address[proposalCount] = proposedAddress;
         mapPID_type[proposalCount] = typeStr;
+        mapPID_open[proposalCount] = true;
         emit NewProposal(msg.sender, proposalCount, typeStr);
         return proposalCount;
     }
@@ -311,6 +316,7 @@ contract Dao {
         mapPID_type[proposalCount] = typeStr;
         mapPID_address[proposalCount] = recipient;
         mapPID_param[proposalCount] = amount;
+        mapPID_open[proposalCount] = true;
         emit NewProposal(msg.sender, proposalCount, typeStr);
         return proposalCount;
     }
@@ -324,6 +330,7 @@ contract Dao {
 
     // Vote for a proposal
     function voteProposal(uint proposalID) external returns (uint voteWeight) {
+        require(mapPID_open[proposalID] == true, "!open");
         bytes memory _type = bytes(mapPID_type[proposalID]);
         voteWeight = countVotes(proposalID);
         if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
@@ -340,6 +347,7 @@ contract Dao {
 
     //Remove vote from a proposal
     function removeVote(uint proposalID) public returns (uint voteWeightRemoved){
+        require(mapPID_open[proposalID] == true, "!open");
         bytes memory _type = bytes(mapPID_type[proposalID]);
         voteWeightRemoved = mapPIDMember_votes[proposalID][msg.sender]; // get voted weight
         if(mapPID_votes[proposalID] > 0){
@@ -362,6 +370,7 @@ contract Dao {
         require(hasMinority(newProposalID), "!minority");
         require(isEqual(bytes(mapPID_type[oldProposalID]), bytes(mapPID_type[newProposalID])), "!same");
         mapPID_votes[oldProposalID] = 0;
+        mapPID_open[proposalID] = false;
         emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], _DAOVAULT.totalWeight());
     }
 
@@ -488,6 +497,7 @@ contract Dao {
         mapPID_votes[_proposalID] = 0;
         mapPID_finalised[_proposalID] = true;
         mapPID_finalising[_proposalID] = false;
+        mapPID_open[proposalID] = false;
     }
     //============================== CONSENSUS ================================//
 
@@ -605,6 +615,7 @@ contract Dao {
         proposalDetails.finalised = mapPID_finalised[proposalID];
         proposalDetails.param = mapPID_param[proposalID];
         proposalDetails.proposedAddress = mapPID_address[proposalID];
+        proposalDetails.open = mapPID_open[proposalID];
         return proposalDetails;
     }
     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
