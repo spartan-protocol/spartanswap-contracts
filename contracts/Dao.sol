@@ -459,6 +459,8 @@ contract Dao {
     function grantFunds(uint _proposalID) internal {
         uint256 _proposedAmount = mapPID_param[_proposalID];
         address _proposedAddress = mapPID_address[_proposalID];
+        require(_proposedParam != 0, "No param proposed");
+        require(_proposedAddress != address(0), "No address proposed");
         _RESERVE.grantFunds(_proposedAmount, _proposedAddress);
         completeProposal(_proposalID);
     }
@@ -469,6 +471,7 @@ contract Dao {
     }
     function _listBondingAsset(uint _proposalID) internal {
          address _proposedAddress = mapPID_address[_proposalID];
+         require(_proposedAddress != address(0), "No address proposed");
         listBondAsset(_proposedAddress); 
         completeProposal(_proposalID);
     }
