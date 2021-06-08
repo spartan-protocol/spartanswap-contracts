@@ -10,6 +10,7 @@ import "./iBEP20.sol";
 import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iSYNTHVAULT.sol";
+import "hardhat/console.sol";
 
 contract Dao {
     address public DEPLOYER;
@@ -22,6 +23,7 @@ contract Dao {
     uint256 public erasToEarn;
     uint256 public daoClaim;
     uint256 public daoFee;
+    uint256 public currentProposal;
     
     struct MemberDetails {
         bool isMember;
@@ -69,6 +71,7 @@ contract Dao {
     mapping(uint256 => bool) public mapPID_finalising;
     mapping(uint256 => bool) public mapPID_finalised;
     mapping(uint256 => bool) public mapPID_open;
+    mapping(uint256 => uint256) public mapPID_startTime;
     mapping(uint256 => mapping(address => uint256)) public mapPIDMember_votes;
 
     event MemberDeposits(address indexed member,address indexed pool,uint256 amount);
@@ -98,6 +101,7 @@ contract Dao {
         majorityFactor = 6666;
         daoClaim = 2000;
         daoFee = 100;
+        proposalCount = 0;
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
 
@@ -160,9 +164,7 @@ contract Dao {
     
     // Member withdraws all from a pool
     function withdraw(address pool) public {
-        for(uint i = 0; i <= proposalCount; i++){
-            removeVote(i);
-        }
+        removeVote();
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Then transfer
     }
 
@@ -281,44 +283,47 @@ contract Dao {
 
     // Simple Action Call
     function newActionProposal(string memory typeStr) public returns(uint) {
+        checkProposal();
         payFee();
-        proposalCount += 1;
-        mapPID_type[proposalCount] = typeStr;
-        mapPID_open[proposalID] = true;
-        emit NewProposal(msg.sender, proposalCount, typeStr);
-        return proposalCount;
+        mapPID_type[currentProposal] = typeStr;
+        emit NewProposal(msg.sender, currentProposal, typeStr);
+        return currentProposal;
     }
     // Action with uint parameter
     function newParamProposal(uint32 param, string memory typeStr) public returns(uint) {
+        checkProposal();
         payFee();
-        proposalCount += 1;
-        mapPID_param[proposalCount] = param;
-        mapPID_type[proposalCount] = typeStr;
-        mapPID_open[proposalCount] = true;
-        emit NewProposal(msg.sender, proposalCount, typeStr);
-        return proposalCount;
+        mapPID_param[currentProposal] = param;
+        mapPID_type[currentProposal] = typeStr;
+        emit NewProposal(msg.sender, currentProposal, typeStr);
+        return currentProposal;
     }
     // Action with address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
+        checkProposal();
         payFee();
-        proposalCount += 1;
-        mapPID_address[proposalCount] = proposedAddress;
-        mapPID_type[proposalCount] = typeStr;
-        mapPID_open[proposalCount] = true;
-        emit NewProposal(msg.sender, proposalCount, typeStr);
-        return proposalCount;
+        mapPID_address[currentProposal] = proposedAddress;
+        mapPID_type[currentProposal] = typeStr;
+        emit NewProposal(msg.sender, currentProposal, typeStr);
+        return currentProposal;
     }
     // Action with funding
     function newGrantProposal(address recipient, uint amount) public returns(uint) {
+        checkProposal();
         payFee();
         string memory typeStr = "GRANT";
+        mapPID_type[currentProposal] = typeStr;
+        mapPID_address[currentProposal] = recipient;
+        mapPID_param[currentProposal] = amount;
+        emit NewProposal(msg.sender, currentProposal, typeStr);
+        return currentProposal;
+    }
+    function checkProposal() internal {
+        require(mapPID_open[currentProposal] == false, '!OPEN');
         proposalCount += 1;
-        mapPID_type[proposalCount] = typeStr;
-        mapPID_address[proposalCount] = recipient;
-        mapPID_param[proposalCount] = amount;
-        mapPID_open[proposalCount] = true;
-        emit NewProposal(msg.sender, proposalCount, typeStr);
-        return proposalCount;
+        currentProposal = proposalCount;
+        mapPID_open[currentProposal] = true;
+        mapPID_startTime[currentProposal] = block.timestamp;
     }
     
     function payFee() internal returns(bool){
@@ -329,86 +334,84 @@ contract Dao {
     //============================== VOTE && FINALISE ================================//
 
     // Vote for a proposal
-    function voteProposal(uint proposalID) external returns (uint voteWeight) {
-        require(mapPID_open[proposalID] == true, "!open");
-        bytes memory _type = bytes(mapPID_type[proposalID]);
-        voteWeight = countVotes(proposalID);
-        if(hasQuorum(proposalID) && mapPID_finalising[proposalID] == false){
+    function voteProposal() external returns (uint voteWeight) {
+        require(mapPID_open[currentProposal] == true, "!open");
+        bytes memory _type = bytes(mapPID_type[currentProposal]);
+        voteWeight = countVotes();
+        if(hasQuorum(currentProposal) && mapPID_finalising[currentProposal] == false){
             if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE') ||isEqual(_type, 'GET_SPARTA') || isEqual(_type, 'ROUTER') || isEqual(_type, 'LIST_BOND')|| isEqual(_type, 'GRANT')|| isEqual(_type, 'ADD_CURATED_POOL')){
-                if(hasMajority(proposalID)){
-                    _finalise(proposalID);
+                if(hasMajority(currentProposal)){
+                    _finalise();
                 }
             } else {
-                _finalise(proposalID);
+                _finalise();
             }
         }
-        emit NewVote(msg.sender, proposalID, voteWeight, mapPID_votes[proposalID], string(_type));
+        emit NewVote(msg.sender, currentProposal, voteWeight, mapPID_votes[currentProposal], string(_type));
     }
 
     //Remove vote from a proposal
-    function removeVote(uint proposalID) public returns (uint voteWeightRemoved){
-        require(mapPID_open[proposalID] == true, "!open");
-        bytes memory _type = bytes(mapPID_type[proposalID]);
-        voteWeightRemoved = mapPIDMember_votes[proposalID][msg.sender]; // get voted weight
-        if(mapPID_votes[proposalID] > 0){
-            mapPID_votes[proposalID] -= voteWeightRemoved; //remove voteweight from totalVotingweight
+    function removeVote() public returns (uint voteWeightRemoved){
+        bytes memory _type = bytes(mapPID_type[currentProposal]);
+        voteWeightRemoved = mapPIDMember_votes[currentProposal][msg.sender]; // get voted weight
+        if(mapPID_open[currentProposal]){
+            mapPID_votes[currentProposal] -= voteWeightRemoved; //remove voteweight from totalVotingweight
         }
-        mapPIDMember_votes[proposalID][msg.sender] = 0; //zero out voting weight for member
-        emit RemovedVote(msg.sender, proposalID, voteWeightRemoved, mapPID_votes[proposalID], string(_type));
+        mapPIDMember_votes[currentProposal][msg.sender] = 0; //zero out voting weight for member
+        emit RemovedVote(msg.sender, currentProposal, voteWeightRemoved, mapPID_votes[currentProposal], string(_type));
         return voteWeightRemoved;
     }
 
-    function _finalise(uint _proposalID) internal {
-        bytes memory _type = bytes(mapPID_type[_proposalID]);
-        mapPID_finalising[_proposalID] = true;
-        mapPID_timeStart[_proposalID] = block.timestamp;
-        emit ProposalFinalising(msg.sender, _proposalID, block.timestamp+coolOffPeriod, string(_type));
+    function _finalise() internal {
+        bytes memory _type = bytes(mapPID_type[currentProposal]);
+        mapPID_finalising[currentProposal] = true;
+        mapPID_timeStart[currentProposal] = block.timestamp;
+        emit ProposalFinalising(msg.sender, currentProposal, block.timestamp+coolOffPeriod, string(_type));
     }
     // If an existing proposal, allow a minority to cancel
-    function cancelProposal(uint oldProposalID, uint newProposalID) public {
-        require(mapPID_finalising[oldProposalID], "!finalising");
-        require(hasMinority(newProposalID), "!minority");
-        require(isEqual(bytes(mapPID_type[oldProposalID]), bytes(mapPID_type[newProposalID])), "!same");
-        mapPID_votes[oldProposalID] = 0;
-        mapPID_open[proposalID] = false;
-        emit CancelProposal(msg.sender, oldProposalID, mapPID_votes[oldProposalID], mapPID_votes[newProposalID], _DAOVAULT.totalWeight());
+    function cancelProposal() public {
+        require(mapPID_finalising[currentProposal], "!finalising");
+        require(block.timestamp > (mapPID_startTime[currentProposal] + 1209600), "!minority");
+        mapPID_votes[currentProposal] = 0;
+        mapPID_open[currentProposal] = false;
+        emit CancelProposal(msg.sender, currentProposal, mapPID_votes[currentProposal], mapPID_votes[currentProposal], _DAOVAULT.totalWeight());
     }
 
     // Proposal with quorum can finalise after cool off period
-    function finaliseProposal(uint proposalID) public  {
-        require((block.timestamp - mapPID_timeStart[proposalID]) > coolOffPeriod, "!cool off");
-        require(mapPID_finalising[proposalID] == true, "!finalising");
-        if(!hasQuorum(proposalID)){
-            mapPID_finalising[proposalID] = false;
+    function finaliseProposal() public  {
+        require((block.timestamp - mapPID_timeStart[currentProposal]) > coolOffPeriod, "!cool off");
+        require(mapPID_finalising[currentProposal] == true, "!finalising");
+        if(!hasQuorum(currentProposal)){
+            mapPID_finalising[currentProposal] = false;
         }
         else {
-        bytes memory _type = bytes(mapPID_type[proposalID]);
+        bytes memory _type = bytes(mapPID_type[currentProposal]);
         if(isEqual(_type, 'DAO')){
-            moveDao(proposalID);
+            moveDao(currentProposal);
         } else if (isEqual(_type, 'ROUTER')) {
-            moveRouter(proposalID);
+            moveRouter(currentProposal);
         } else if (isEqual(_type, 'UTILS')){
-            moveUtils(proposalID);
+            moveUtils(currentProposal);
         } else if (isEqual(_type, 'RESERVE')){
-            moveReserve(proposalID);
+            moveReserve(currentProposal);
         }  else if (isEqual(_type, 'FLIP_EMISSIONS')){
-            flipEmissions(proposalID);
+            flipEmissions(currentProposal);
         } else if (isEqual(_type, 'COOL_OFF')){
-            changeCooloff(proposalID);
+            changeCooloff(currentProposal);
         } else if (isEqual(_type, 'ERAS_TO_EARN')){
-            changeEras(proposalID);
+            changeEras(currentProposal);
         } else if (isEqual(_type, 'GRANT')){
-            grantFunds(proposalID);
+            grantFunds(currentProposal);
         } else if (isEqual(_type, 'GET_SPARTA')){
-            _increaseSpartaAllocation(proposalID);
+            _increaseSpartaAllocation(currentProposal);
         } else if (isEqual(_type, 'LIST_BOND')){
-            _listBondingAsset(proposalID);
+            _listBondingAsset(currentProposal);
         } else if (isEqual(_type, 'DELIST_BOND')){
-            _delistBondingAsset(proposalID);
+            _delistBondingAsset(currentProposal);
         } else if (isEqual(_type, 'ADD_CURATED_POOL')){
-            _addCuratedPool(proposalID);
+            _addCuratedPool(currentProposal);
         } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
-            _removeCuratedPool(proposalID);
+            _removeCuratedPool(currentProposal);
         } 
         }
         
@@ -416,7 +419,7 @@ contract Dao {
     function moveDao(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         require(_proposedAddress != address(0), "No address proposed");
-        DAO = mapPID_address[_proposalID];
+        DAO = _proposedAddress;
         iBASE(BASE).changeDAO(_proposedAddress);
         daoHasMoved = true; 
         completeProposal(_proposalID);
@@ -439,6 +442,7 @@ contract Dao {
         _RESERVE = iRESERVE(_proposedAddress);
         completeProposal(_proposalID);
     }
+    
     function flipEmissions(uint _proposalID) internal {
         iBASE(BASE).flipEmissions();
         completeProposal(_proposalID);
@@ -459,7 +463,7 @@ contract Dao {
     function grantFunds(uint _proposalID) internal {
         uint256 _proposedAmount = mapPID_param[_proposalID];
         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedParam != 0, "No param proposed");
+        require(_proposedAmount != 0, "No param proposed");
         require(_proposedAddress != address(0), "No address proposed");
         _RESERVE.grantFunds(_proposedAmount, _proposedAddress);
         completeProposal(_proposalID);
@@ -471,25 +475,21 @@ contract Dao {
     }
     function _listBondingAsset(uint _proposalID) internal {
          address _proposedAddress = mapPID_address[_proposalID];
-         require(_proposedAddress != address(0), "No address proposed");
         listBondAsset(_proposedAddress); 
         completeProposal(_proposalID);
     }
     function _delistBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
         delistBondAsset(_proposedAddress); 
         completeProposal(_proposalID);
     }
     function _addCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
         _POOLFACTORY.addCuratedPool(_proposedAddress); 
         completeProposal(_proposalID);
     }
     function _removeCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
         _POOLFACTORY.removeCuratedPool(_proposedAddress); 
         completeProposal(_proposalID);
     }
@@ -500,15 +500,15 @@ contract Dao {
         mapPID_votes[_proposalID] = 0;
         mapPID_finalised[_proposalID] = true;
         mapPID_finalising[_proposalID] = false;
-        mapPID_open[proposalID] = false;
+        mapPID_open[_proposalID] = false;
     }
     //============================== CONSENSUS ================================//
 
-    function countVotes(uint _proposalID) internal returns (uint voteWeight){
-        mapPID_votes[_proposalID] -= mapPIDMember_votes[_proposalID][msg.sender];
+    function countVotes() internal returns (uint voteWeight){
+        mapPID_votes[currentProposal] -= mapPIDMember_votes[currentProposal][msg.sender];
         voteWeight = _DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender); 
-        mapPID_votes[_proposalID] += voteWeight;
-        mapPIDMember_votes[_proposalID][msg.sender] = voteWeight;
+        mapPID_votes[currentProposal] += voteWeight;
+        mapPIDMember_votes[currentProposal][msg.sender] = voteWeight;
         return voteWeight;
     }
     function hasMajority(uint _proposalID) public view returns(bool){

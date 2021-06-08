@@ -51,19 +51,18 @@ contract('DAO', function (accounts) {
     //  voteParam()
      voteAction()
 
-     withdrawBNB(acc0)
-     withdrawTKN1(acc1)
-     withdrawTKN1(acc2)
+    withdrawBNB(acc0)
+    withdrawTKN1(acc1)
+    withdrawTKN1(acc2)
      rate()
-    // voteUtils()
-    // voteRouter()
-    //voteDao()
-    deployerListBNB()
+    //  voteRouter()
+    //  voteDao() 
+     deployerListBNB()
      deployerChangeSecondsPerYear(40)
      bondBNB(acc0,  _.BN2Str(_.one * 1))
      bondBNB(acc1, _.BN2Str(_.one * 3))
      bondBNB(acc2, _.BN2Str(_.one * 2))
-     rateBond() 
+      rateBond() 
      claimLP(acc0, 2000) 
      claimLP(acc1, 2000)
      claimLP(acc2, 20) 
@@ -71,19 +70,19 @@ contract('DAO', function (accounts) {
      lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
     lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
     lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-     rate()
-     voteGrant()
-      RemCuratePools()
+      rate()
+      voteGrant()
+       RemCuratePools()
      withdrawBNB(acc0)
      withdrawTKN1(acc1)
      withdrawTKN1(acc2)
      rate()
-    //  rateBond()
-//      curatePools()
-//      lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
-//      lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
-//      lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
-//      lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
+     rateBond()
+     curatePools()
+     lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
+     lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
+     lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
+     lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
    harvest()
 
 })
@@ -269,7 +268,6 @@ async function depositTKN(acc, amount){
     })
 }
 
-
 async function withdrawBNB(acc) {
     it("It should unlock", async () => {
         let balBefore = _.getBN(await poolWBNB.balanceOf(acc))
@@ -325,17 +323,17 @@ async function rateBond() {
 async function voteParam() {
     it("It should vote, finalise curve", async () => {
         await Dao.newParamProposal('1012', 'CURVE', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc0 })
+        let proposalCount = _.BN2Str(await Dao.currentProposal())
+        await Dao.voteProposal( { from: acc0 })
         assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), _.BN2Str(await Dao.mapPIDMember_votes(proposalCount, acc0)))
         assert.equal(await Dao.mapPID_param(proposalCount), '1012')
-        await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!finalising");
-        await Dao.voteProposal(proposalCount, { from: acc1 })
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+        await Dao.voteProposal( { from: acc1 })
         assert.equal(await Dao.hasQuorum(proposalCount), true)
         assert.equal(await Dao.mapPID_finalising(proposalCount), true)
-        await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!cool off");
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!cool off");
         await sleep(3100)
-        await Dao.finaliseProposal(proposalCount)
+        await Dao.finaliseProposal()
         assert.equal(await sparta.emissionCurve(), '1012')
         assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), '0')
         assert.equal(await Dao.mapPID_finalising(proposalCount), false)
@@ -343,22 +341,22 @@ async function voteParam() {
     })
     it("It should vote, cancel, then revote DURATION", async () => {
         await Dao.newParamProposal('86000', 'DURATION', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc0 })
+        let proposalCount = _.BN2Str(await Dao.currentProposal())
+        await Dao.voteProposal( { from: acc0 })
         assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), _.BN2Str(await Dao.mapPIDMember_votes(proposalCount, acc0)))
         assert.equal(await Dao.mapPID_param(proposalCount), '86000')
         await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!finalising");
-        await Dao.voteProposal(proposalCount, { from: acc1 })
+        await Dao.voteProposal({ from: acc1 })
         assert.equal(await Dao.hasQuorum(proposalCount), true)
         assert.equal(await Dao.mapPID_finalising(proposalCount), true)
         await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!cool off");
         await sleep(3100)
         await Dao.newParamProposal('2500', 'DURATION', { from: acc0 })
         let proposalID2 = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalID2, { from: acc0 })
-        await truffleAssert.reverts(Dao.cancelProposal(proposalCount, proposalID2, { from: acc0 }), "!minority");
-        await Dao.voteProposal(proposalID2, { from: acc1 })
-        await Dao.cancelProposal(proposalCount, proposalID2, { from: acc1 })
+        await Dao.voteProposal({ from: acc0 })
+        await truffleAssert.reverts(Dao.cancelProposal({ from: acc0 }), "!minority");
+        await Dao.voteProposal({ from: acc1 })
+        await Dao.cancelProposal({ from: acc1 })
         await sleep(3100)
         await Dao.finaliseProposal(proposalID2)
         assert.equal(await sparta.secondsPerEra(), '2500')
@@ -369,17 +367,17 @@ async function voteParam() {
     })
     it("It should vote, finalise COOL_OFF", async () => {
         await Dao.newParamProposal('2', 'COOL_OFF', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc0 })
+        let proposalCount = _.BN2Str(await Dao.currentProposal())
+        await Dao.voteProposal( { from: acc0 })
         assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), _.BN2Str(await Dao.mapPIDMember_votes(proposalCount, acc0)))
         assert.equal(await Dao.mapPID_param(proposalCount), '2')
-        await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!finalising");
-        await Dao.voteProposal(proposalCount, { from: acc1 })
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+        await Dao.voteProposal( { from: acc1 })
         assert.equal(await Dao.hasQuorum(proposalCount), true)
         assert.equal(await Dao.mapPID_finalising(proposalCount), true)
-        await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!cool off");
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!cool off");
         await sleep(3100)
-        await Dao.finaliseProposal(proposalCount)
+        await Dao.finaliseProposal()
         assert.equal(await Dao.coolOffPeriod(), '2')
         assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), '0')
         assert.equal(await Dao.mapPID_finalising(proposalCount), false)
@@ -390,13 +388,10 @@ async function voteParam() {
         console.log(_.BN2Str(bal)/_.one);
         await Dao.newParamProposal('10', 'ERAS_TO_EARN', { from: acc0 })
         let balA = _.getBN(await sparta.balanceOf(router.address));
-        console.log(_.BN2Str(balA)/_.one);
-        //assert.equal(_.BN2Str(balA), _.BN2Str(bal.plus(100*_.one)))
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc1 })
-        await Dao.voteProposal(proposalCount, { from: acc2 })
+        await Dao.voteProposal( { from: acc1 })
+        await Dao.voteProposal( { from: acc2 })
         await sleep(3100)
-        await Dao.finaliseProposal(proposalCount)
+        await Dao.finaliseProposal()
         assert.equal(_.BN2Str(await Dao.erasToEarn()), '10')
     })
 }
@@ -406,42 +401,30 @@ async function voteAction() {
         let bondSpartaBaLb = _.BN2Str(await sparta.balanceOf(Dao.address));
          console.log(bondSpartaBaLb/_.one);
         await Dao.newActionProposal('GET_SPARTA', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc0 })
-        await Dao.removeVote(proposalCount, { from: acc0 })
+        await Dao.voteProposal({ from: acc0 })
+        await Dao.removeVote()
         await sleep(3100)
-        await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!finalising");
-        await Dao.voteProposal(proposalCount, { from: acc0 })
-        await Dao.voteProposal(proposalCount, { from: acc1 })
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+        await Dao.voteProposal( { from: acc0 })
+        await Dao.voteProposal( { from: acc1 })
         await sleep(3100)
-        await Dao.finaliseProposal(proposalCount)
+        await Dao.finaliseProposal()
         // await sparta.mintFromDAO(_.BN2Str(1000*_.one), Dao.address)
         let bondSpartaBaL = _.BN2Str(await sparta.balanceOf(Dao.address));
         // console.log(bondSpartaBaL/_.one);
 
     })
-    // it("It should vote, finalise STOP_EMISSIONS", async () => {
-        
-    //     await Dao.newActionProposal('STOP_EMISSIONS', { from: acc1 })
-    //     let proposalCount = _.BN2Str(await Dao.proposalCount())
-    //     await Dao.voteProposal(proposalCount, { from: acc1 })
-    //     await Dao.voteProposal(proposalCount, { from: acc2 })
-    //     await sleep(3100)
-    //     await Dao.finaliseProposal(proposalCount)
-       
-    // })
 }
 
 async function voteGrant() {
     it("It should GRANT", async () => {
         await Dao.newGrantProposal(acc0, '1000', { from: acc1 })
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc1 })
-        await Dao.voteProposal(proposalCount, { from: acc2 })
+        await Dao.voteProposal({ from: acc1 })
+        await Dao.voteProposal({ from: acc2 })
         // await Dao.getProposalDetails(proposalCount)
         await sleep(3100)
         let balanceBefore = _.getBN(await sparta.balanceOf(acc0))
-        await Dao.finaliseProposal(proposalCount)
+        await Dao.finaliseProposal()
         let balanceAfter = _.getBN(await sparta.balanceOf(acc0))
         assert.equal(_.BN2Str(balanceAfter.minus(balanceBefore)), '1000')
     })
@@ -451,24 +434,22 @@ async function voteUtils() {
     it("It should vote UTILS", async () => {
         utils2 = await UTILS.new(sparta.address, router.address, Dao.address)
         await Dao.newAddressProposal(utils2.address, 'UTILS', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc2 })
-        await Dao.voteProposal(proposalCount, { from: acc1 })
+        await Dao.voteProposal({ from: acc2 })
+        await Dao.voteProposal({ from: acc1 })
         await sleep(4100)
-        await Dao.finaliseProposal(proposalCount);
+        await Dao.finaliseProposal();
         assert.equal(await Dao.UTILS(), utils2.address)
     })
 }
 
 async function voteRouter() {
     it("It should vote ROUTER", async () => {
-        router2 = await ROUTER.new(sparta.address, wbnb.address, Dao.address)
+        router2 = await ROUTER.new(sparta.address, wbnb.address)
         await Dao.newAddressProposal(router2.address, 'ROUTER', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc1 })
-        await Dao.voteProposal(proposalCount, { from: acc2 })
+        await Dao.voteProposal({ from: acc1 })
+        await Dao.voteProposal({ from: acc2 })
         await sleep(3100)
-        await Dao.finaliseProposal(proposalCount);
+        await Dao.finaliseProposal();
         assert.equal(await Dao.ROUTER(), router2.address)
     })
 }
@@ -476,13 +457,11 @@ async function voteRouter() {
 async function voteDao() {
     it("It should vote", async () => {
         Dao2 = await DAO.new(sparta.address)
-        await Dao.setGenesisAddresses(router.address, utils.address, utils.address, utils.address, daoVault.address,poolFactory.address, utils.address);
         await Dao.newAddressProposal(Dao2.address, 'DAO', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal(proposalCount, { from: acc2 })
-        await Dao.voteProposal(proposalCount, { from: acc1 })
+        await Dao.voteProposal( { from: acc2 })
+        await Dao.voteProposal( { from: acc1 })
         await sleep(4100)
-        await Dao.finaliseProposal(proposalCount);
+        await Dao.finaliseProposal();
         assert.equal(await Dao.DAO(), Dao2.address)
         assert.equal(await Dao.daoHasMoved(), true)
     })
