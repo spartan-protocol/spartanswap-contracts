@@ -68,7 +68,7 @@ contract DaoVault {
     }
 
     function withdraw(address pool, address member) external onlyDAO returns (bool){
-         require(block.timestamp > (mapMember_depositTime[member][pool] + 86400),'!LOCKED');
+        require(block.timestamp > (mapMember_depositTime[member][pool] + 86400),'!LOCKED');
         uint256 _balance = mapMemberPool_balance[member][pool];
         require(_balance > 0, "!balance");
         decreaseWeight(pool, member);

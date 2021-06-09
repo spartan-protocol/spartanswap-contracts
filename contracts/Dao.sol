@@ -10,7 +10,7 @@ import "./iBEP20.sol";
 import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iSYNTHVAULT.sol";
-import "hardhat/console.sol";
+
 
 contract Dao {
     address public DEPLOYER;
@@ -35,12 +35,13 @@ contract Dao {
         uint id;
         string proposalType;
         uint votes;
-        uint timeStart;
+        uint coolOffTime;
         bool finalising;
         bool finalised;
         uint param;
         address proposedAddress;
         bool open;
+        uint startTime;
     }
 
     bool public daoHasMoved;
@@ -67,7 +68,7 @@ contract Dao {
     mapping(uint256 => address) public mapPID_address;
     mapping(uint256 => string) public mapPID_type;
     mapping(uint256 => uint256) public mapPID_votes;
-    mapping(uint256 => uint256) public mapPID_timeStart;
+    mapping(uint256 => uint256) public mapPID_coolOffTime;
     mapping(uint256 => bool) public mapPID_finalising;
     mapping(uint256 => bool) public mapPID_finalised;
     mapping(uint256 => bool) public mapPID_open;
@@ -365,13 +366,12 @@ contract Dao {
     function _finalise() internal {
         bytes memory _type = bytes(mapPID_type[currentProposal]);
         mapPID_finalising[currentProposal] = true;
-        mapPID_timeStart[currentProposal] = block.timestamp;
+        mapPID_coolOffTime[currentProposal] = block.timestamp;
         emit ProposalFinalising(msg.sender, currentProposal, block.timestamp+coolOffPeriod, string(_type));
     }
-    // If an existing proposal, allow a minority to cancel
+
     function cancelProposal() public {
-        require(mapPID_finalising[currentProposal], "!finalising");
-        require(block.timestamp > (mapPID_startTime[currentProposal] + 1209600), "!minority");
+        require(block.timestamp > (mapPID_startTime[currentProposal] + 1209600), "!15DAYS");
         mapPID_votes[currentProposal] = 0;
         mapPID_open[currentProposal] = false;
         emit CancelProposal(msg.sender, currentProposal, mapPID_votes[currentProposal], mapPID_votes[currentProposal], _DAOVAULT.totalWeight());
@@ -379,7 +379,7 @@ contract Dao {
 
     // Proposal with quorum can finalise after cool off period
     function finaliseProposal() public  {
-        require((block.timestamp - mapPID_timeStart[currentProposal]) > coolOffPeriod, "!cool off");
+        require((block.timestamp - mapPID_coolOffTime[currentProposal]) > coolOffPeriod, "!cooloff");
         require(mapPID_finalising[currentProposal] == true, "!finalising");
         if(!hasQuorum(currentProposal)){
             mapPID_finalising[currentProposal] = false;
@@ -442,7 +442,7 @@ contract Dao {
         _RESERVE = iRESERVE(_proposedAddress);
         completeProposal(_proposalID);
     }
-    
+
     function flipEmissions(uint _proposalID) internal {
         iBASE(BASE).flipEmissions();
         completeProposal(_proposalID);
@@ -613,12 +613,13 @@ contract Dao {
         proposalDetails.id = proposalID;
         proposalDetails.proposalType = mapPID_type[proposalID];
         proposalDetails.votes = mapPID_votes[proposalID];
-        proposalDetails.timeStart = mapPID_timeStart[proposalID];
+        proposalDetails.coolOffTime = mapPID_coolOffTime[proposalID];
         proposalDetails.finalising = mapPID_finalising[proposalID];
         proposalDetails.finalised = mapPID_finalised[proposalID];
         proposalDetails.param = mapPID_param[proposalID];
         proposalDetails.proposedAddress = mapPID_address[proposalID];
         proposalDetails.open = mapPID_open[proposalID];
+        proposalDetails.startTime = mapPID_startTime[proposalID];
         return proposalDetails;
     }
     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
