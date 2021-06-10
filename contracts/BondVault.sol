@@ -7,10 +7,9 @@ import "./iUTILS.sol";
 import "./iROUTER.sol";
 import "./iPOOL.sol";
 import "./iPOOLFACTORY.sol";
-import "hardhat/console.sol";
+
 contract BondVault {
     address public BASE;
-    address public WBNB;
     address public DEPLOYER;
     uint256 public totalWeight;
 
@@ -33,9 +32,8 @@ contract BondVault {
     mapping(address => ListedAssets) public mapBondAsset_memberDetails;
     mapping(address => uint256) private mapMember_weight; // Value of weight
     mapping(address => mapping(address => uint256)) private mapMemberPool_weight; // Value of weight for pool
-     constructor (address _base,address _wbnb) {
+     constructor (address _base) {
         BASE = _base;
-        WBNB = _wbnb;
         DEPLOYER = msg.sender;
     }
 
@@ -137,6 +135,5 @@ contract BondVault {
         } else {
             return 0;
         }
-    }
-     
+    } 
 }

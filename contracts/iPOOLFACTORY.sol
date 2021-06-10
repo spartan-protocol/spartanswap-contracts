@@ -2,10 +2,8 @@
 pragma solidity 0.8.3;
 interface iPOOLFACTORY {
     function isCuratedPool(address) external view returns (bool);
-    function challengLowestCuratedPool(address) external view returns (bool);
-    function addCuratedPool(address) external returns (bool);
-    function removeCuratedPool(address) external returns (bool);
-    function getCuratedPool(uint) external view returns(address);
+    function addCuratedPool(address) external;
+    function removeCuratedPool(address) external;
     function isPool(address) external returns (bool);
     function getPool(address) external view returns(address);
     function createPool(address) external view returns(address);

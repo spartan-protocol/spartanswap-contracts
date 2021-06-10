@@ -96,8 +96,8 @@ contract SynthVault {
             isStakedSynth[_synth] = true;
             stakedSynthAssets.push(_synth);
         }
-        mapMemberSynth_lastTime[_member][_synth] = block.timestamp + minimumDepositTime;
-        mapMember_depositTime[_member] = block.timestamp + minimumDepositTime;
+        mapMemberSynth_lastTime[_member][_synth] = block.timestamp + minimumDepositTime; // Synth Deposit Time
+        mapMember_depositTime[_member] = block.timestamp + minimumDepositTime; //Deposit Time
         mapMemberSynth_deposit[_member][_synth] += _amount; // Record balance for member
         uint256 _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(_synth).LayerONE(), _amount); 
         mapMemberSynth_weight[_member][_synth] += _weight;
@@ -131,9 +131,9 @@ contract SynthVault {
                  
             }
         }
-         
         return true;
     }
+
      function harvestSingle(address synth) external returns (bool) {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), "!synth");
         require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");

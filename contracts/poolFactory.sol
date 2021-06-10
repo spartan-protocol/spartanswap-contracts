@@ -83,14 +83,14 @@ contract PoolFactory {
         emit RemoveCuratePool(_pool, isCuratedPool[_pool]);
     }
 
-    function curatedPoolCount() internal returns (uint){
-        uint curatedPoolCount;
+    function curatedPoolCount() internal view returns (uint){
+        uint cPoolCount; 
         for(uint i = 0; i< arrayPools.length; i++){
             if(isCuratedPool[arrayPools[i]] == true){
-              curatedPoolCount += 1;
+              cPoolCount += 1;
             }
         }
-        return curatedPoolCount;
+        return cPoolCount;
     }
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
         if(_amount > 0) {

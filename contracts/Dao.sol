@@ -205,18 +205,16 @@ contract Dao {
          uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
          iBEP20(BASE).transfer(newDAO, baseBal);
     }
-     function listBondAsset(address asset) public onlyDAO returns (bool){
+     function listBondAsset(address asset) external onlyDAO {
          if(!isListed[asset]){
             isListed[asset] = true;
             listedBondAssets.push(asset);
         }
         emit ListedAsset(msg.sender, asset);
-        return true;
     }
-    function delistBondAsset(address asset) public onlyDAO returns (bool){
+    function delistBondAsset(address asset) external onlyDAO {
         isListed[asset] = false;
         emit DelistedAsset(msg.sender, asset);
-        return true;
     }
 
     function bond(address asset, uint256 amount) external payable returns (bool success) {
@@ -475,12 +473,15 @@ contract Dao {
     }
     function _listBondingAsset(uint _proposalID) internal {
          address _proposedAddress = mapPID_address[_proposalID];
-        listBondAsset(_proposedAddress); 
+        if(!isListed[_proposedAddress]){
+            isListed[_proposedAddress] = true;
+            listedBondAssets.push(_proposedAddress);
+        }
         completeProposal(_proposalID);
     }
     function _delistBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
-        delistBondAsset(_proposedAddress); 
+         isListed[_proposedAddress] = false;
         completeProposal(_proposalID);
     }
     function _addCuratedPool(uint _proposalID) internal {

@@ -99,7 +99,7 @@ function constructor(accounts) {
        token1 = await TOKEN.new()   
        reserve = await RESERVE.new(sparta.address) // deploy reserve 
        daoVault = await DAOVAULT.new(sparta.address); // deploy daoVault
-       bondVault = await BONDVAULT.new(sparta.address,wbnb.address); // deploy daoVault
+       bondVault = await BONDVAULT.new(sparta.address); // deploy bondVault
        router = await ROUTER.new(sparta.address, wbnb.address); // deploy router
        poolFactory = await POOLFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
        synthFactory = await SYNTHFACTORY.new(sparta.address,  wbnb.address) // deploy synthFactory

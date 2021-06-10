@@ -6,7 +6,7 @@ interface iBASE {
     function secondsPerEra() external view returns (uint256);
     function changeDAO(address) external;
     function setParams(uint256, uint256) external;
-    function flipEmissions() external returns(bool);
+    function flipEmissions() external;
     function mintFromDAO(uint256, address) external; 
     function burn(uint256) external; 
 }
