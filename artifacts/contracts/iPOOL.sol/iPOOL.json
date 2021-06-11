@@ -68,7 +68,7 @@
           "type": "address"
         }
       ],
-      "name": "mintSynths",
+      "name": "mintSynth",
       "outputs": [
         {
           "internalType": "uint256",

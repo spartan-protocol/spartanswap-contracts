@@ -36,7 +36,7 @@ contract PoolFactory {
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
-    function createPoolADD(uint256 inputBase, uint256 inputToken, address token) external returns(address pool){
+    function createPoolADD(uint256 inputBase, uint256 inputToken, address token) external payable returns(address pool){
         require(getPool(token) == address(0));
         require((inputToken > 0 && inputBase >= (10000*10**18)), "!Minimum");
         Pool newPool; address _token = token;

@@ -119,7 +119,7 @@ contract SynthVault {
                  mapMemberSynth_lastTime[msg.sender][stakedSynthAssets[i]] = block.timestamp;
                  address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(stakedSynthAssets[i]).LayerONE() );
                  iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
-                 (uint synthReward, ) = iPOOL(_poolOUT).mintSynths(stakedSynthAssets[i], address(this));
+                 (uint synthReward, ) = iPOOL(_poolOUT).mintSynth(stakedSynthAssets[i], address(this)); 
                  _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(stakedSynthAssets[i]).LayerONE(), synthReward);
                  mapMemberSynth_deposit[msg.sender][stakedSynthAssets[i]] += synthReward;
                  mapMemberSynth_weight[msg.sender][stakedSynthAssets[i]] += _weight;
@@ -142,7 +142,7 @@ contract SynthVault {
         mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp;
         address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(synth).LayerONE());
         iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
-        (uint synthReward,) = iPOOL(_poolOUT).mintSynths(synth, address(this));
+        (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this));
         _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(synth).LayerONE(), synthReward);
          mapMemberSynth_deposit[msg.sender][synth] += synthReward;
          mapMemberSynth_weight[msg.sender][synth] += _weight;
