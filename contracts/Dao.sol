@@ -100,7 +100,7 @@ contract Dao {
         coolOffPeriod = 1;
         erasToEarn = 30;
         majorityFactor = 6666;
-        daoClaim = 2000;
+        daoClaim = 1000;
         daoFee = 100;
         proposalCount = 0;
         secondsPerEra = iBASE(BASE).secondsPerEra();
@@ -175,13 +175,18 @@ contract Dao {
         require(_RESERVE.emissions(), "!EMISSIONS");
         uint reward = calcCurrentReward(msg.sender);
         mapMember_lastTime[msg.sender] = block.timestamp;
+        uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE));
+        uint daoReward = (reserve * daoClaim) / 10000;
+        if(reward > daoReward){
+            reward = daoReward;
+        }
         _RESERVE.grantFunds(reward, msg.sender); 
     }
 
     function calcCurrentReward(address member) public view returns(uint){
         require(isMember[member], "!member");
         uint secondsSinceClaim = block.timestamp - mapMember_lastTime[member]; // Get time since last claim
-        uint share = calcReward(member);    // get share of rewards for member
+        uint share = calcReward(member);    // get share of rewards for member\
         uint reward = (share * secondsSinceClaim) / secondsPerEra;    // Get owed amount, based on per-day rates
         return reward;
     }
@@ -369,7 +374,7 @@ contract Dao {
     }
 
     function cancelProposal() public {
-        require(block.timestamp > (mapPID_startTime[currentProposal] + 1209600), "!15DAYS");
+        require(block.timestamp > (mapPID_startTime[currentProposal] + 600), "!15DAYS");
         mapPID_votes[currentProposal] = 0;
         mapPID_open[currentProposal] = false;
         emit CancelProposal(msg.sender, currentProposal, mapPID_votes[currentProposal], mapPID_votes[currentProposal], _DAOVAULT.totalWeight());

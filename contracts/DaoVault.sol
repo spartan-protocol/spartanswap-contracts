@@ -21,7 +21,7 @@ contract DaoVault {
     mapping(address => mapping(address => uint256))
         private mapMemberPool_balance; // Member's balance in pool
     mapping(address => uint256) private mapMember_weight; // Value of weight
-    mapping(address => mapping(address => uint256)) private mapMember_depositTime; // Value of weight
+    mapping(address => mapping(address => uint256)) public mapMember_depositTime; // Value of weight
 
     mapping(address => mapping(address => uint256))
         private mapMemberPool_weight; // Value of weight for pool

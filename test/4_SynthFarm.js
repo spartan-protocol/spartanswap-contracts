@@ -190,8 +190,8 @@ async function wrapBNB() {
 }
 async function createPoolWBNB(SPT, token) {
     it("It should deploy BNB Pool", async () => {
-        var _pool = await poolFactory.createPool.call(wbnb.address)
-        await poolFactory.createPool(wbnb.address)
+        var _pool = await poolFactory.createPool.call(_.BNB)
+        await poolFactory.createPool(_.BNB)
         poolWBNB = await POOL.at(_pool)
         //console.log(`Pools: ${poolWBNB.address}`)
         const baseAddr = await poolWBNB.BASE()
@@ -264,8 +264,8 @@ async function createPoolTKN1(SPT, token) {
 }
 async function addLiquidityBNB(acc, b, t) {
     it(`It should addLiquidity BNB from ${acc}`, async () => {
-        let token = wbnb.address
-        let tx = await router.addLiquidity(b, t, token, { from: acc})
+        let token = _.BNB
+        let tx = await router.addLiquidity(b, t, token, { from: acc, value: t})
     })
 }
 async function addLiquidityTKN1(acc, b, t) {
@@ -293,7 +293,7 @@ async function addLiquidityTKN1(acc, b, t) {
 }
 async function curatePools() {
     it("Curate POOls", async () => {
-        await poolFactory.addCuratedPool(wbnb.address);
+        await poolFactory.addCuratedPool(_.BNB);
         await poolFactory.addCuratedPool(token1.address);
         await poolFactory.addCuratedPool(token2.address);
         await poolFactory.addCuratedPool(token3.address);

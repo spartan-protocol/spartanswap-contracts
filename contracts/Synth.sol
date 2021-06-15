@@ -17,7 +17,7 @@ contract Synth is iBEP20 {
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
     mapping(address => uint) public mapSynth_LPBalance;
-    mapping(address => uint) public mapSynth_LPDept;
+    mapping(address => uint) public mapSynth_LPDebt;
    
 
     function _DAO() internal view returns(iDAO) {
@@ -152,7 +152,7 @@ contract Synth is iBEP20 {
 
     function mintSynth(address member, uint amount) external onlyPool returns (uint syntheticAmount){
         uint lpUnits = _getAddedLPAmount(msg.sender);
-        mapSynth_LPDept[msg.sender] += amount;  
+        mapSynth_LPDebt[msg.sender] += amount;  
         mapSynth_LPBalance[msg.sender] += lpUnits;
         _mint(member, amount); 
         return amount;
@@ -160,9 +160,9 @@ contract Synth is iBEP20 {
     
     function burnSynth() external returns (bool){
          uint _syntheticAmount = balanceOf(address(this));
-         uint _amountUnits = (_syntheticAmount * mapSynth_LPBalance[msg.sender]) / mapSynth_LPDept[msg.sender];// share = amount * part/total
+         uint _amountUnits = (_syntheticAmount * mapSynth_LPBalance[msg.sender]) / mapSynth_LPDebt[msg.sender];// share = amount * part/total
          mapSynth_LPBalance[msg.sender] -= _amountUnits;
-         mapSynth_LPDept[msg.sender] -= _syntheticAmount;
+         mapSynth_LPDebt[msg.sender] -= _syntheticAmount;
          if(_amountUnits > 0){
          _burn(address(this), _syntheticAmount); 
          Pool(msg.sender).burn(_amountUnits);
@@ -172,12 +172,14 @@ contract Synth is iBEP20 {
 
     function realise(address pool) external {
         uint baseValueLP = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(mapSynth_LPBalance[pool], BASE, pool);
-        uint baseValueSynth = iUTILS(_DAO().UTILS()).calcActualSynthUnits(mapSynth_LPDept[pool], address(this)); 
-        if((baseValueLP - baseValueSynth) > 10**18){
+        uint baseValueSynth = iUTILS(_DAO().UTILS()).calcActualSynthUnits(mapSynth_LPDebt[pool], address(this)); 
+        if(baseValueLP > baseValueSynth){
             uint premium = baseValueLP - baseValueSynth;
+            if(premium > 10**18){
             uint premiumLP = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(premium, pool);
             mapSynth_LPBalance[pool] -= premiumLP;
             Pool(pool).burn(premiumLP);
+            }
         }
     }
 
@@ -203,7 +205,7 @@ contract Synth is iBEP20 {
         return mapSynth_LPBalance[pool];
     }
     function getmapAddress_LPDebt(address pool) external view returns (uint){
-        return mapSynth_LPDept[pool];
+        return mapSynth_LPDebt[pool];
     }
 
 }
