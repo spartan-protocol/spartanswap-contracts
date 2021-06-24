@@ -20,6 +20,13 @@ contract SynthVault {
     uint256 public blockDelay;
     uint256 public vaultClaim;
     address [] public stakedSynthAssets;
+     uint private lastMonth;
+    uint public genesis;
+
+    uint256 public map30DVaultRevenue;
+    uint256 public mapPast30DVaultRevenue;
+    uint256 [] public revenueArray;
+
 
     // Only DAO can execute
      modifier onlyDAO() {
@@ -33,6 +40,7 @@ contract SynthVault {
         minimumDepositTime = 1;// needs to be 1hr
         blockDelay = 0;
         vaultClaim = 1000;
+        genesis = block.timestamp;
     }
 
     function _DAO() internal view returns(iDAO) {
@@ -110,31 +118,16 @@ contract SynthVault {
     //====================================== HARVEST ========================================//
 
     function harvestAll() external returns (bool) {
-        require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
-        uint256 _weight;
-        for(uint i = 0; i<stakedSynthAssets.length; i++){
-            if(isSynthMember[msg.sender][stakedSynthAssets[i]] == true){
-                 uint256 reward = calcCurrentReward(stakedSynthAssets[i],msg.sender);
-                 if(reward > 0 ){
-                 mapMemberSynth_lastTime[msg.sender][stakedSynthAssets[i]] = block.timestamp;
-                 address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(stakedSynthAssets[i]).LayerONE() );
-                 iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
-                 (uint synthReward, ) = iPOOL(_poolOUT).mintSynth(stakedSynthAssets[i], address(this)); 
-                 _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(stakedSynthAssets[i]).LayerONE(), synthReward);
-                 mapMemberSynth_deposit[msg.sender][stakedSynthAssets[i]] += synthReward;
-                 mapMemberSynth_weight[msg.sender][stakedSynthAssets[i]] += _weight;
-                 mapMemberTotal_weight[msg.sender] += _weight;
-                 totalWeight += _weight;
-                 iSYNTH(stakedSynthAssets[i]).realise(_poolOUT);
-                emit MemberHarvests(stakedSynthAssets[i], msg.sender, reward, _weight, totalWeight);
-                 }
-                 
-            }
+        for(uint i = 0; i< stakedSynthAssets.length; i++){
+            uint256 reward = calcCurrentReward(stakedSynthAssets[i],msg.sender);
+              if(reward > 0 ){
+                  harvestSingle(stakedSynthAssets[i]);
+                }
         }
         return true;
     }
 
-     function harvestSingle(address synth) external returns (bool) {
+     function harvestSingle(address synth) public returns (bool) {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), "!synth");
         require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
         uint256 _weight;
@@ -146,8 +139,9 @@ contract SynthVault {
         _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(synth).LayerONE(), synthReward);
          mapMemberSynth_deposit[msg.sender][synth] += synthReward;
          mapMemberSynth_weight[msg.sender][synth] += _weight;
-        mapMemberTotal_weight[msg.sender] += _weight;
-        totalWeight += _weight;
+         mapMemberTotal_weight[msg.sender] += _weight;
+         totalWeight += _weight;
+        _addVaultMetrics(reward);
         iSYNTH(synth).realise(_poolOUT);
         emit MemberHarvests(synth, msg.sender, reward, _weight, totalWeight);
         return true;
@@ -211,6 +205,36 @@ contract SynthVault {
     function getMemberSynthWeight(address synth, address member) external view returns (uint256) {
         return mapMemberSynth_weight[member][synth];
     }
+    //===========================================POOL FEE ROI=================================//
+    function _addVaultMetrics(uint256 _fee) internal {
+        if(lastMonth == 0){
+            lastMonth = genesis;
+        }
+        if(block.timestamp <= lastMonth + 2592000){//30Days
+            map30DVaultRevenue = map30DVaultRevenue + _fee;
+        }else{
+            lastMonth = lastMonth + 2592000;
+            mapPast30DVaultRevenue = map30DVaultRevenue;
+            addRevenue(mapPast30DVaultRevenue);
+            map30DVaultRevenue = 0;
+            map30DVaultRevenue = map30DVaultRevenue + _fee;
+        }
+    }
+    function addRevenue(uint _totalRev) internal {
+        if(!(revenueArray.length == 2)){
+            revenueArray.push(_totalRev);
+        }else {
+            addFee(_totalRev);
+        }
+    }
+    function addFee(uint _rev) internal {
+        uint _n = revenueArray.length;//2
+        for (uint i = _n - 1; i > 0; i--) {
+        revenueArray[i] = revenueArray[i - 1];
+        }
+         revenueArray[0] = _rev;
+    }
+
 
 
 }
