@@ -11,7 +11,6 @@ import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iSYNTHVAULT.sol";
 
-
 contract Dao {
     address public DEPLOYER;
     address public BASE;
@@ -58,9 +57,9 @@ contract Dao {
 
     address[] public arrayMembers;
     address [] listedBondAssets;
-    uint256 public bondingPeriodSeconds = 15552000;//6 months
+    uint256 public bondingPeriodSeconds = 15552000;// 6 months
     
-    mapping(address => bool) public isMember; // Is Member
+    mapping(address => bool) public isMember;
     mapping(address => bool) public isListed;
     mapping(address => uint256) public mapMember_lastTime;
 
@@ -140,7 +139,7 @@ contract Dao {
         bondingPeriodSeconds = bondingSeconds;
     }
 
-     //============================== USER - DEPOSIT/WITHDRAW ================================//
+    //============================== USER - DEPOSIT/WITHDRAW ================================//
 
     // Member deposits some LP tokens
     function deposit(address pool, uint256 amount) public {
@@ -399,34 +398,34 @@ contract Dao {
             mapPID_finalising[currentProposal] = false;
         }
         else {
-        bytes memory _type = bytes(mapPID_type[currentProposal]);
-        if(isEqual(_type, 'DAO')){
-            moveDao(currentProposal);
-        } else if (isEqual(_type, 'ROUTER')) {
-            moveRouter(currentProposal);
-        } else if (isEqual(_type, 'UTILS')){
-            moveUtils(currentProposal);
-        } else if (isEqual(_type, 'RESERVE')){
-            moveReserve(currentProposal);
-        }  else if (isEqual(_type, 'FLIP_EMISSIONS')){
-            flipEmissions(currentProposal);
-        } else if (isEqual(_type, 'COOL_OFF')){
-            changeCooloff(currentProposal);
-        } else if (isEqual(_type, 'ERAS_TO_EARN')){
-            changeEras(currentProposal);
-        } else if (isEqual(_type, 'GRANT')){
-            grantFunds(currentProposal);
-        } else if (isEqual(_type, 'GET_SPARTA')){
-            _increaseSpartaAllocation(currentProposal);
-        } else if (isEqual(_type, 'LIST_BOND')){
-            _listBondingAsset(currentProposal);
-        } else if (isEqual(_type, 'DELIST_BOND')){
-            _delistBondingAsset(currentProposal);
-        } else if (isEqual(_type, 'ADD_CURATED_POOL')){
-            _addCuratedPool(currentProposal);
-        } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
-            _removeCuratedPool(currentProposal);
-        } 
+            bytes memory _type = bytes(mapPID_type[currentProposal]);
+            if(isEqual(_type, 'DAO')){
+                moveDao(currentProposal);
+            } else if (isEqual(_type, 'ROUTER')) {
+                moveRouter(currentProposal);
+            } else if (isEqual(_type, 'UTILS')){
+                moveUtils(currentProposal);
+            } else if (isEqual(_type, 'RESERVE')){
+                moveReserve(currentProposal);
+            }  else if (isEqual(_type, 'FLIP_EMISSIONS')){
+                flipEmissions(currentProposal);
+            } else if (isEqual(_type, 'COOL_OFF')){
+                changeCooloff(currentProposal);
+            } else if (isEqual(_type, 'ERAS_TO_EARN')){
+                changeEras(currentProposal);
+            } else if (isEqual(_type, 'GRANT')){
+                grantFunds(currentProposal);
+            } else if (isEqual(_type, 'GET_SPARTA')){
+                _increaseSpartaAllocation(currentProposal);
+            } else if (isEqual(_type, 'LIST_BOND')){
+                _listBondingAsset(currentProposal);
+            } else if (isEqual(_type, 'DELIST_BOND')){
+                _delistBondingAsset(currentProposal);
+            } else if (isEqual(_type, 'ADD_CURATED_POOL')){
+                _addCuratedPool(currentProposal);
+            } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
+                _removeCuratedPool(currentProposal);
+            } 
         }
     }
 
