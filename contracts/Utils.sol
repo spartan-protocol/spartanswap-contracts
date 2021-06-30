@@ -6,10 +6,7 @@ import "./iPOOL.sol";
 import "./iSYNTH.sol";
 import "./iBEP20.sol";
 
-
-
 contract Utils {
-
     address public BASE;
     uint public one = 10**18;
     constructor (address _base) {
@@ -26,10 +23,10 @@ contract Utils {
         uint txCount;
         uint poolUnits;
     }
-     function _DAO() internal view returns(iDAO) {
-         return iBASE(BASE).DAO();
-    }
 
+    function _DAO() internal view returns(iDAO) {
+        return iBASE(BASE).DAO();
+    }
 
     //==================================HELPERS================================//
      function getPoolData(address token) public view returns(PoolDataStruct memory poolData){
@@ -48,19 +45,20 @@ contract Utils {
         weight = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
         return (weight);
     }
+
     function getPool(address token) public view returns(address pool){
         return iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
     }
 
     //====================================CORE-MATH====================================//
 
-     function getFeeOnTransfer(uint256 totalSupply, uint256 maxSupply) external pure returns (uint256) {
+    function getFeeOnTransfer(uint256 totalSupply, uint256 maxSupply) external pure returns (uint256) {
         return calcShare(totalSupply, maxSupply, 100); // 0->100BP
     }
 
     function calcPart(uint256 bp, uint256 total) public pure returns (uint256) {
         // 10,000 basis points = 100.00%
-        require(bp <= 10000, "Must be correct BP");
+        require(bp <= 10000, "!bp");
         return calcShare(bp, 10000, total);
     }
 
@@ -88,6 +86,7 @@ contract Utils {
             return _units * slipAdjustment / one;  // Divide by 10**18
         }
     }
+
     function getSlipAdustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
         // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
         // 1 - ABS(part1 - part2)/(part3 * part4))
@@ -105,7 +104,7 @@ contract Utils {
         return one - ((numerator * (one)) / (denominator)); // Multiply by 10**18
     }
 
-     function calcLiquidityHoldings(uint units, address token, address pool) public view returns (uint share){
+    function calcLiquidityHoldings(uint units, address token, address pool) public view returns (uint share){
         // share = amount * part/total
         // address pool = getPool(token);
         uint amount;
@@ -141,15 +140,14 @@ contract Utils {
     }
 
     //synthUnits += (P b)/(2 (b + B))
-     function calcLiquidityUnitsAsym(uint amount, address pool) public view returns (uint units){
+    function calcLiquidityUnitsAsym(uint amount, address pool) public view returns (uint units){
         uint baseAmount = iPOOL(pool).baseAmount();
         uint totalSupply = iBEP20(pool).totalSupply();
         uint two = 2;
-         return (totalSupply * amount) / (two * (amount + baseAmount));
-     }
+        return (totalSupply * amount) / (two * (amount + baseAmount));
+    }
 
     //====================================PRICING====================================//
-
     function calcSpotValueInBase(address token, uint amount) public view returns (uint value){
       address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
        return calcSpotValueInBaseWithPool(pool, amount);
@@ -163,12 +161,13 @@ contract Utils {
     function calcSwapValueInBase(address token, uint amount) public view returns (uint _output){
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         return  calcSwapValueInBaseWithPool(pool, amount);
-   }
-   function calcSwapValueInBaseWithSYNTH(address synth, uint amount) public view returns (uint _output){
+    }
+
+    function calcSwapValueInBaseWithSYNTH(address synth, uint amount) public view returns (uint _output){
        address token = iSYNTH(synth).LayerONE();
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         return  calcSwapValueInBaseWithPool(pool, amount);
-   }
+    }
 
     function calcSwapValueInToken(address token, uint amount) public view returns (uint _output){
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
@@ -191,7 +190,7 @@ contract Utils {
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
         return  calcSwapOutput(amount, _tokenAmount, _baseAmount);
-   }
+    }
 
     function calcSwapValueInTokenWithPool(address pool, uint amount) public view returns (uint _output){
         uint _baseAmount = iPOOL(pool).baseAmount();
@@ -206,9 +205,4 @@ contract Utils {
         uint _tokenAmount = iPOOL(pool).tokenAmount();
         return ((amount * _baseAmount) / (2 * _tokenAmount));
     }
-
-
-    
- 
-
 }

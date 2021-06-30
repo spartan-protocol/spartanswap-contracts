@@ -135,6 +135,7 @@ contract Dao {
     function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
     }
+
     function changeBondingPeriod(uint256 bondingSeconds) external onlyDAO{
         bondingPeriodSeconds = bondingSeconds;
     }
@@ -148,8 +149,8 @@ contract Dao {
 
     // Contract deposits some LP tokens for member
     function depositLPForMember(address pool, uint256 amount, address member) public {
-        require(_POOLFACTORY.isCuratedPool(pool) == true, "!Curated");
-        require(amount > 0, "!Amount");
+        require(_POOLFACTORY.isCuratedPool(pool) == true, "!curated");
+        require(amount > 0, "!amount");
         if (isMember[member] != true) {
             arrayMembers.push(member);
             isMember[member] = true;
@@ -157,7 +158,7 @@ contract Dao {
         if((_DAOVAULT.getMemberWeight(member) + _BONDVAULT.getMemberWeight(member)) > 0) {
                 harvest();
         }
-        require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!FUNDS" );
+        require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!funds" );
         _DAOVAULT.depositLP(pool, amount, member);
         mapMember_lastTime[member] = block.timestamp;
         emit MemberDeposits(member, pool, amount);
@@ -172,7 +173,7 @@ contract Dao {
      //============================== REWARDS ================================//
     // Rewards
     function harvest() public {
-        require(_RESERVE.emissions(), "!EMISSIONS");
+        require(_RESERVE.emissions(), "!emissions");
         uint reward = calcCurrentReward(msg.sender);
         mapMember_lastTime[msg.sender] = block.timestamp;
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE));
@@ -186,7 +187,7 @@ contract Dao {
     function calcCurrentReward(address member) public view returns(uint){
         require(isMember[member], "!member");
         uint secondsSinceClaim = block.timestamp - mapMember_lastTime[member]; // Get time since last claim
-        uint share = calcReward(member);    // get share of rewards for member\
+        uint share = calcReward(member);    // get share of rewards for member
         uint reward = (share * secondsSinceClaim) / secondsPerEra;    // Get owed amount, based on per-day rates
         return reward;
     }
@@ -206,24 +207,27 @@ contract Dao {
         iBASE(BASE).burn(baseBal);   
         return true;
     }
+
     function moveBASEBalance(address newDAO) external onlyDAO {
          uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
          iBEP20(BASE).transfer(newDAO, baseBal);
     }
-     function listBondAsset(address asset) external onlyDAO {
-         if(!isListed[asset]){
+
+    function listBondAsset(address asset) external onlyDAO {
+        if(!isListed[asset]){
             isListed[asset] = true;
             listedBondAssets.push(asset);
         }
         emit ListedAsset(msg.sender, asset);
     }
+
     function delistBondAsset(address asset) external onlyDAO {
         isListed[asset] = false;
         emit DelistedAsset(msg.sender, asset);
     }
 
     function bond(address asset, uint256 amount) external payable returns (bool success) {
-        require(amount > 0, '!asset');
+        require(amount > 0, '!amount');
         require(isListed[asset], '!listed');
         if (isMember[msg.sender] != true) {
             arrayMembers.push(msg.sender);
@@ -238,13 +242,14 @@ contract Dao {
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
+
     function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
         uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); 
         if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < spartaAllocation){
                     iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply());  
                 }
         if(_token == address(0)){
-                require((_amount == msg.value), "InputErr");
+                require((_amount == msg.value), "!amount");
                 LPunits = _ROUTER.addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, address(_BONDVAULT));
             } else {
                 iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
@@ -255,6 +260,7 @@ contract Dao {
                 LPunits = _ROUTER.addLiquidityForMember(spartaAllocation, _amount, _token, address(_BONDVAULT));
             } 
     }
+
     function claimAllForMember(address member) external returns (bool){
         address [] memory listedAssets = listedBondAssets;
         for(uint i =0; i < listedAssets.length; i++){
@@ -265,6 +271,7 @@ contract Dao {
         }
         return true;
     }
+
     function claimForMember(address asset) external returns (bool){
         uint claimA = calcClaimBondedLP(msg.sender,asset);
             if(claimA > 0){
@@ -293,6 +300,7 @@ contract Dao {
         emit NewProposal(msg.sender, currentProposal, typeStr);
         return currentProposal;
     }
+
     // Action with uint parameter
     function newParamProposal(uint32 param, string memory typeStr) public returns(uint) {
         checkProposal();
@@ -302,6 +310,7 @@ contract Dao {
         emit NewProposal(msg.sender, currentProposal, typeStr);
         return currentProposal;
     }
+
     // Action with address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
         checkProposal();
@@ -311,6 +320,7 @@ contract Dao {
         emit NewProposal(msg.sender, currentProposal, typeStr);
         return currentProposal;
     }
+
     // Action with funding
     function newGrantProposal(address recipient, uint amount) public returns(uint) {
         checkProposal();
@@ -322,8 +332,9 @@ contract Dao {
         emit NewProposal(msg.sender, currentProposal, typeStr);
         return currentProposal;
     }
+
     function checkProposal() internal {
-        require(mapPID_open[currentProposal] == false, '!OPEN');
+        require(mapPID_open[currentProposal] == false, '!open');
         proposalCount += 1;
         currentProposal = proposalCount;
         mapPID_open[currentProposal] = true;
@@ -335,8 +346,8 @@ contract Dao {
         require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), _amount), '!fee' ); 
         return true;
     } 
-    //============================== VOTE && FINALISE ================================//
 
+    //============================== VOTE && FINALISE ================================//
     // Vote for a proposal
     function voteProposal() external returns (uint voteWeight) {
         require(mapPID_open[currentProposal] == true, "!open");
@@ -359,9 +370,9 @@ contract Dao {
         bytes memory _type = bytes(mapPID_type[currentProposal]);
         voteWeightRemoved = mapPIDMember_votes[currentProposal][msg.sender]; // get voted weight
         if(mapPID_open[currentProposal]){
-            mapPID_votes[currentProposal] -= voteWeightRemoved; //remove voteweight from totalVotingweight
+            mapPID_votes[currentProposal] -= voteWeightRemoved; // remove voteweight from totalVotingweight
         }
-        mapPIDMember_votes[currentProposal][msg.sender] = 0; //zero out voting weight for member
+        mapPIDMember_votes[currentProposal][msg.sender] = 0; // zero out voting weight for member
         emit RemovedVote(msg.sender, currentProposal, voteWeightRemoved, mapPID_votes[currentProposal], string(_type));
         return voteWeightRemoved;
     }
@@ -374,7 +385,7 @@ contract Dao {
     }
 
     function cancelProposal() public {
-        require(block.timestamp > (mapPID_startTime[currentProposal] + 600), "!15DAYS");
+        require(block.timestamp > (mapPID_startTime[currentProposal] + 600), "!days");
         mapPID_votes[currentProposal] = 0;
         mapPID_open[currentProposal] = false;
         emit CancelProposal(msg.sender, currentProposal, mapPID_votes[currentProposal], mapPID_votes[currentProposal], _DAOVAULT.totalWeight());
@@ -417,31 +428,34 @@ contract Dao {
             _removeCuratedPool(currentProposal);
         } 
         }
-        
     }
+
     function moveDao(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
+        require(_proposedAddress != address(0), "!address");
         DAO = _proposedAddress;
         iBASE(BASE).changeDAO(_proposedAddress);
         daoHasMoved = true; 
         completeProposal(_proposalID);
     }
+
     function moveRouter(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
+        require(_proposedAddress != address(0), "!address");
         _ROUTER = iROUTER(_proposedAddress);
         completeProposal(_proposalID);
     }
+
     function moveUtils(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
+        require(_proposedAddress != address(0), "!address");
         _UTILS = iUTILS(_proposedAddress);
         completeProposal(_proposalID);
     }
+
     function moveReserve(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAddress != address(0), "No address proposed");
+        require(_proposedAddress != address(0), "!address");
         _RESERVE = iRESERVE(_proposedAddress);
         completeProposal(_proposalID);
     }
@@ -453,29 +467,33 @@ contract Dao {
 
     function changeCooloff(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID];
-        require(_proposedParam != 0, "No param proposed");
+        require(_proposedParam != 0, "!param");
         coolOffPeriod = _proposedParam;
         completeProposal(_proposalID);
     }
+
     function changeEras(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID];
-        require(_proposedParam != 0, "No param proposed");
+        require(_proposedParam != 0, "!param");
         erasToEarn = _proposedParam;
         completeProposal(_proposalID);
     }
+
     function grantFunds(uint _proposalID) internal {
         uint256 _proposedAmount = mapPID_param[_proposalID];
         address _proposedAddress = mapPID_address[_proposalID];
-        require(_proposedAmount != 0, "No param proposed");
-        require(_proposedAddress != address(0), "No address proposed");
+        require(_proposedAmount != 0, "!param");
+        require(_proposedAddress != address(0), "!address");
         _RESERVE.grantFunds(_proposedAmount, _proposedAddress);
         completeProposal(_proposalID);
     }
+
     function _increaseSpartaAllocation(uint _proposalID) internal {
         uint256 _2point5m = 2.5*10**6*10**18;//_2.5m
         iBASE(BASE).mintFromDAO(_2point5m, address(this)); 
         completeProposal(_proposalID);
     }
+
     function _listBondingAsset(uint _proposalID) internal {
          address _proposedAddress = mapPID_address[_proposalID];
         if(!isListed[_proposedAddress]){
@@ -484,16 +502,19 @@ contract Dao {
         }
         completeProposal(_proposalID);
     }
+
     function _delistBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
          isListed[_proposedAddress] = false;
         completeProposal(_proposalID);
     }
+
     function _addCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         _POOLFACTORY.addCuratedPool(_proposedAddress); 
         completeProposal(_proposalID);
     }
+
     function _removeCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
         _POOLFACTORY.removeCuratedPool(_proposedAddress); 
@@ -508,8 +529,8 @@ contract Dao {
         mapPID_finalising[_proposalID] = false;
         mapPID_open[_proposalID] = false;
     }
-    //============================== CONSENSUS ================================//
 
+    //============================== CONSENSUS ================================//
     function countVotes() internal returns (uint voteWeight){
         mapPID_votes[currentProposal] -= mapPIDMember_votes[currentProposal][msg.sender];
         voteWeight = _DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender); 
@@ -517,16 +538,18 @@ contract Dao {
         mapPIDMember_votes[currentProposal][msg.sender] = voteWeight;
         return voteWeight;
     }
+
     function hasMajority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
          uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // add BondVault totalWeight
-        uint consensus = _totalWeight * majorityFactor / 10000; // > 66.66%
+        uint consensus = _totalWeight * majorityFactor / 10000; // >66.66%
         if(votes > consensus){
             return true;
         } else {
             return false;
         }
     }
+
     function hasQuorum(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
         uint _totalWeight = _DAOVAULT.totalWeight()  + _BONDVAULT.totalWeight(); // add BondVault totalWeight
@@ -537,6 +560,7 @@ contract Dao {
             return false;
         }
     }
+
     function hasMinority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
          uint _totalWeight = _DAOVAULT.totalWeight()  + _BONDVAULT.totalWeight(); // add BondVault totalWeight
@@ -548,9 +572,7 @@ contract Dao {
         }
     }
 
-
     //======================================PROTOCOL CONTRACTs GETTER=================================//
-
     function ROUTER() public view returns(iROUTER){
         if(daoHasMoved){
             return Dao(DAO).ROUTER();
@@ -558,6 +580,7 @@ contract Dao {
             return _ROUTER;
         }
     }
+
     function UTILS() public view returns(iUTILS){
         if(daoHasMoved){
             return Dao(DAO).UTILS();
@@ -565,6 +588,7 @@ contract Dao {
             return _UTILS;
         }
     }
+
     function BONDVAULT() public view returns(iBONDVAULT){
         if(daoHasMoved){
             return Dao(DAO).BONDVAULT();
@@ -572,6 +596,7 @@ contract Dao {
             return _BONDVAULT;
         }
     }
+
     function DAOVAULT() public view returns(iDAOVAULT){
         if(daoHasMoved){
             return Dao(DAO).DAOVAULT();
@@ -579,6 +604,7 @@ contract Dao {
             return _DAOVAULT;
         }
     }
+
     function POOLFACTORY() public view returns(iPOOLFACTORY){
         if(daoHasMoved){
             return Dao(DAO).POOLFACTORY();
@@ -586,6 +612,7 @@ contract Dao {
             return _POOLFACTORY;
         }
     }
+
      function SYNTHFACTORY() public view returns(iSYNTHFACTORY){
         if(daoHasMoved){
             return Dao(DAO).SYNTHFACTORY();
@@ -593,6 +620,7 @@ contract Dao {
             return _SYNTHFACTORY;
         }
     }
+
     function RESERVE() public view returns(iRESERVE){
         if(daoHasMoved){
             return Dao(DAO).RESERVE();
@@ -600,6 +628,7 @@ contract Dao {
             return _RESERVE;
         }
     }
+
     function SYNTHVAULT() public view returns(iSYNTHVAULT){
         if(daoHasMoved){
             return Dao(DAO).SYNTHVAULT();
@@ -608,9 +637,7 @@ contract Dao {
         }
     }
 
-
     //============================== HELPERS ================================//
-
     function memberCount() public view returns(uint){
         return arrayMembers.length;
     }
@@ -628,6 +655,7 @@ contract Dao {
         proposalDetails.startTime = mapPID_startTime[proposalID];
         return proposalDetails;
     }
+
     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
         if(sha256(part1) == sha256(part2)){
             return true;
@@ -635,13 +663,14 @@ contract Dao {
             return false;
         }
     }
+
     function assetListedCount() external view returns (uint256 count){
         return listedBondAssets.length;
     }
+
     function allListedAssets() external view returns (address[] memory _allListedAssets){
         return listedBondAssets;
     }
-
 }
 
 

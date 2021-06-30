@@ -15,7 +15,7 @@ contract Reserve {
 
     // Only DAO can execute
     modifier onlyGrantor() {
-        require(msg.sender == DAO || msg.sender == ROUTER || msg.sender == DEPLOYER || msg.sender == LEND || msg.sender == SYNTHVAULT, "Must be DAO");
+        require(msg.sender == DAO || msg.sender == ROUTER || msg.sender == DEPLOYER || msg.sender == LEND || msg.sender == SYNTHVAULT, "!DAO");
         _; 
     }
 
@@ -34,19 +34,20 @@ contract Reserve {
     function grantFunds(uint amount, address to) external onlyGrantor {
         uint reserve = iBEP20(BASE).balanceOf(address(this));
         if(amount > 0){
-           if(emissions){
-            if(amount > reserve){
-               iBEP20(BASE).transfer(to, reserve);
-            }else{
-                iBEP20(BASE).transfer(to, amount);
+            if(emissions){
+                if(amount > reserve){
+                    iBEP20(BASE).transfer(to, reserve);
+                }else{
+                    iBEP20(BASE).transfer(to, amount);
+                }
             }
-        }
         }
     }
 
     function flipEmissions() external onlyGrantor {
         emissions = !emissions; 
     }
+
     // Can purge DEPLOYER
     function purgeDeployer() external onlyGrantor {
         DEPLOYER = address(0);

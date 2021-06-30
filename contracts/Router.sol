@@ -78,6 +78,7 @@ contract Router {
      function addLiquiditySingle(uint inputToken, bool fromBase, address token) external payable returns (uint units) {
        return addLiquiditySingleForMember(inputToken,fromBase, token, msg.sender);
     }
+
     // Add Asymmetrically
     function addLiquiditySingleForMember(uint inputToken, bool fromBase, address token, address member) public payable returns (uint units) {
         require(inputToken > 0);
@@ -93,12 +94,14 @@ contract Router {
         }
         return units;
     }
+
     // Remove % for self
     function removeLiquidity(uint basisPoints, address token) external returns (uint outputBase, uint outputToken)  {
         require((basisPoints > 0 && basisPoints <= 10000));
         uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token)).balanceOf(msg.sender));
        return removeLiquidityExact(_units, token);
     }
+
     // Remove an exact qty of units
     function removeLiquidityExact(uint units, address token) public returns (uint outputBase, uint outputToken) {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
@@ -150,6 +153,7 @@ contract Router {
         getsDividend(_pool, fee);
         return fee;
     }
+
     function sellTo(uint amount, address token, address member) public payable returns (uint){
          address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
          _handleTransferIn(token, amount, _pool);
@@ -157,9 +161,11 @@ contract Router {
          getsDividend(_pool,fee);
          return fee;
     }
+
     function swap(uint256 inputAmount, address fromToken, address toToken) public payable {
         swapTo(inputAmount, fromToken, toToken, msg.sender);
     }
+
     function swapTo(uint256 inputAmount, address fromToken, address toToken, address member) public payable{
         require(fromToken != toToken);
         if(fromToken == BASE){
@@ -177,12 +183,14 @@ contract Router {
             _handleTransferOut(toToken, _zz, member);
         }
     }
+
     function getsDividend(address _pool, uint fee) internal {
         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
             addTradeFee(fee);
             addDividend(_pool, fee); 
            }
     }
+
     //==================================================================================//
     // Token Transfer Functions
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
@@ -199,6 +207,7 @@ contract Router {
             }
         }
     }
+
     function _handleTransferOut(address _token, uint256 _amount, address _recipient) internal {
         if(_amount > 0) {
             if (_token == address(0)) {
@@ -209,9 +218,9 @@ contract Router {
             }
         }
     }
+
     //=================================================================================//
     //Swap Synths
-
     function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) public payable returns (uint outputSynth, uint fee){
          require(fromToken != toSynth);
          address _synthLayer1 = iSYNTH(toSynth).LayerONE();
@@ -227,7 +236,6 @@ contract Router {
          return (outputSynth,fee);
     }
    
-
     function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) public returns (uint outputAmount, uint fee){
         require(fromSynth != toToken);
         address _synthINLayer1 = iSYNTH(fromSynth).LayerONE();
@@ -264,6 +272,7 @@ contract Router {
         }
        
     }
+
     function addTradeFee(uint _fee) internal {
         uint totalTradeFees = 0;
         uint arrayFeeLength = feeArray.length;
@@ -277,21 +286,23 @@ contract Router {
         }
         normalAverageFee = totalTradeFees / arrayFeeSize; 
     }
+
     function addFee(uint _fee) internal {
-        uint n = feeArray.length;//20
+        uint n = feeArray.length;// 20
         for (uint i = n - 1; i > 0; i--) {
-        feeArray[i] = feeArray[i - 1];
+            feeArray[i] = feeArray[i - 1];
         }
-         feeArray[0] = _fee;
+        feeArray[0] = _fee;
     }
+
     function revenueDetails(uint _fees, address _pool) internal {
         if(lastMonth == 0){
-            lastMonth = Pool(_pool).genesis();
+            lastMonth = block.timestamp;
         }
-        if(block.timestamp <= lastMonth + 2592000){//30days
+        if(block.timestamp <= lastMonth + 2592000){// 30days
             mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool] + _fees;
         }else{
-            lastMonth = lastMonth + 2592000;
+            lastMonth = block.timestamp;
             mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
             mapAddress_30DayDividends[_pool] = 0;
             mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool] + _fees;
@@ -301,6 +312,7 @@ contract Router {
     function stringToBytes(string memory s) public pure returns (bytes memory){
         return bytes(s);
     }
+
     function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool equal){
         if(sha256(part1) == sha256(part2)){
             return true;
@@ -311,16 +323,20 @@ contract Router {
     function changeArrayFeeSize(uint _size) public onlyDAO {
         arrayFeeSize = _size;
     }
+
     function changeMaxTrades(uint _maxtrades) public onlyDAO {
         maxTrades = _maxtrades;
     }
+
     function changeEraLength(uint _eraLength) public onlyDAO {	
         eraLength = _eraLength;	
     }
+
     //==================================Helpers=================================//
     function currentPoolRevenue(address pool) external view returns(uint256) {
       return mapAddress_30DayDividends[pool];
     }
+
     function pastPoolRevenue(address pool) external view returns(uint256) {
       return mapAddress_Past30DayPoolDividends[pool];
     }

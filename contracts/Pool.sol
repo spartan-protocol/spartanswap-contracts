@@ -39,7 +39,7 @@ contract Pool is iBEP20 {
     event BurnSynth(address indexed member, address indexed base, uint256 baseAmount, address indexed token, uint256 synthAmount);
 
     function _DAO() internal view returns(iDAO) {
-         return iBASE(BASE).DAO();
+        return iBASE(BASE).DAO();
     }
 
     constructor (address _base, address _token) {
@@ -52,54 +52,63 @@ contract Pool is iBEP20 {
         decimals = 18;
         genesis = block.timestamp;
         DEPLOYER = msg.sender;
+        lastMonth = 0;
     }
-
 
      //========================================iBEP20=========================================//
     function name() public view override returns (string memory) {
         return _name;
     }
+
     function symbol() public view override returns (string memory) {
         return _symbol;
     }
+
     function balanceOf(address account) public view override returns (uint256) {
         return _balances[account];
     }
+
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
         return _allowances[owner][spender];
     }
+
     function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(msg.sender, recipient, amount);
         return true;
     }
+
     function approve(address spender, uint256 amount) public virtual override returns (bool) {
         _approve(msg.sender, spender, amount);
         return true;
     }
+
     function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
         _approve(msg.sender, spender, _allowances[msg.sender][spender]+(addedValue));
         return true;
     }
+
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
         uint256 currentAllowance = _allowances[msg.sender][spender];
-        require(currentAllowance >= subtractedValue, "allowance err");
+        require(currentAllowance >= subtractedValue, "!approval");
         _approve(msg.sender, spender, currentAllowance - subtractedValue);
         return true;
     }
+
     function _approve( address owner, address spender, uint256 amount) internal virtual {
-        require(owner != address(0), "sender");
-        require(spender != address(0), "spender");
+        require(owner != address(0), "!owner");
+        require(spender != address(0), "!spender");
         if (_allowances[owner][spender] < type(uint256).max) { // No need to re-approve if already max
             _allowances[owner][spender] = amount;
             emit Approval(owner, spender, amount);
         }
     }
+
     function transferFrom(address sender, address recipient, uint256 amount) external virtual override returns (bool) {
         _transfer(sender, recipient, amount);
         // Unlimited approval (saves an SSTORE)
         if (_allowances[sender][msg.sender] < type(uint256).max) {
             uint256 currentAllowance = _allowances[sender][msg.sender];
-            require(currentAllowance >= amount, "allowance err");
+            require(currentAllowance >= amount, "!approval");
             _approve(sender, msg.sender, currentAllowance - amount);
         }
         return true;
@@ -120,30 +129,34 @@ contract Pool is iBEP20 {
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
-        require(sender != address(0), "transfer err");
+        require(sender != address(0), "!sender");
         uint256 senderBalance = _balances[sender];
-        require(senderBalance >= amount, "balance err");
+        require(senderBalance >= amount, "!balance");
         _balances[sender] -= amount;
         _balances[recipient] += amount;
         emit Transfer(sender, recipient, amount);
     }
+
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "address err");
+        require(account != address(0), "!account");
         totalSupply += amount;
         _balances[account] += amount;
         emit Transfer(address(0), account, amount);
     }
+
     function burn(uint256 amount) public virtual override {
         _burn(msg.sender, amount);
     }
+
     function burnFrom(address account, uint256 amount) public virtual {  
         uint256 decreasedAllowance = allowance(account, msg.sender) - (amount);
         _approve(account, msg.sender, decreasedAllowance); 
         _burn(account, amount);
     }
+
     function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "address err");
-        require(_balances[account] >= amount, "balance err");
+        require(account != address(0), "!account");
+        require(_balances[account] >= amount, "!balance");
         _balances[account] -= amount;
         totalSupply -= amount;
         emit Transfer(account, address(0), amount);
@@ -190,9 +203,10 @@ contract Pool is iBEP20 {
         (outputAmount, fee) = swapTo(token, msg.sender);
         return (outputAmount, fee);
     }
+
     //SWAPTO
     function swapTo(address token, address member) public payable returns (uint outputAmount, uint fee) {
-        require((token == BASE || token == TOKEN), "Must be BASE or TOKEN");
+        require((token == BASE || token == TOKEN), "!BASE||TOKEN");
         address _fromToken; uint _amount;
         if(token == BASE){
             _fromToken = TOKEN;
@@ -218,7 +232,7 @@ contract Pool is iBEP20 {
         uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount);
         fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN,_fee );
         _mint(synthOut, _liquidityUnits); 
-        iSYNTH(synthOut).mintSynth(member, output); //mintSynth to member  
+        iSYNTH(synthOut).mintSynth(member, output); // mintSynth to member  
         _addPoolMetrics(fee);
         emit MintSynth(member, BASE, _actualInputBase, TOKEN, outputAmount); // Mint Synth Event
       return (output, fee);
@@ -231,7 +245,7 @@ contract Pool is iBEP20 {
         uint outputBase = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); 
         fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputSynth, tokenAmount, baseAmount);
         iBEP20(synthIN).transfer(synthIN, _actualInputSynth);
-        iSYNTH(synthIN).burnSynth(); //redeem Synth
+        iSYNTH(synthIN).burnSynth(); // redeem Synth
         _decrementPoolBalances(outputBase, 0);
         iBEP20(BASE).transfer(member, outputBase);
         _addPoolMetrics(fee);
@@ -287,38 +301,41 @@ contract Pool is iBEP20 {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
     }
+
     // Increment internal balances
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount += _baseAmount;
         tokenAmount += _tokenAmount;
     }
+
     // Set internal balances
     function _setPoolAmounts(uint256 _baseAmount, uint256 _tokenAmount) internal  {
         baseAmount = _baseAmount;
         tokenAmount = _tokenAmount; 
     }
+
     // Decrement internal balances
     function _decrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount -= _baseAmount;
         tokenAmount -= _tokenAmount; 
     }
 
-
     //===========================================POOL FEE ROI=================================//
     function _addPoolMetrics(uint256 _fee) internal {
         if(lastMonth == 0){
-            lastMonth = genesis;
+            lastMonth = block.timestamp;
         }
-        if(block.timestamp <= lastMonth+(2592000)){//30Days
+        if(block.timestamp <= lastMonth + 2592000){// 30Days
             map30DPoolRevenue = map30DPoolRevenue+(_fee);
         }else{
-            lastMonth = lastMonth+(2592000);
+            lastMonth = block.timestamp;
             mapPast30DPoolRevenue = map30DPoolRevenue;
             addRevenue(mapPast30DPoolRevenue);
             map30DPoolRevenue = 0;
             map30DPoolRevenue = map30DPoolRevenue+(_fee);
         }
     }
+
     function addRevenue(uint _totalRev) internal {
         if(!(revenueArray.length == 2)){
             revenueArray.push(_totalRev);
@@ -326,14 +343,12 @@ contract Pool is iBEP20 {
             addFee(_totalRev);
         }
     }
+
     function addFee(uint _rev) internal {
-        uint _n = revenueArray.length;//2
+        uint _n = revenueArray.length;// 2
         for (uint i = _n - 1; i > 0; i--) {
-        revenueArray[i] = revenueArray[i - 1];
+            revenueArray[i] = revenueArray[i - 1];
         }
-         revenueArray[0] = _rev;
+        revenueArray[0] = _rev;
     }
-
-    
-
 }

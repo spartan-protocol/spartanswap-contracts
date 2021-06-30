@@ -20,33 +20,34 @@ contract SynthVault {
     uint256 public blockDelay;
     uint256 public vaultClaim;
     address [] public stakedSynthAssets;
-     uint private lastMonth;
+    uint private lastMonth;
     uint public genesis;
 
     uint256 public map30DVaultRevenue;
     uint256 public mapPast30DVaultRevenue;
     uint256 [] public revenueArray;
 
-
     // Only DAO can execute
-     modifier onlyDAO() {
+    modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER );
         _;
     }
+
     constructor(address _base) {
         BASE = _base;
         DEPLOYER = msg.sender;
         erasToEarn = 30;
-        minimumDepositTime = 1;// needs to be 1hr
+        minimumDepositTime = 3600;// needs to be 1hr
         blockDelay = 0;
         vaultClaim = 1000;
         genesis = block.timestamp;
+        lastMonth = 0;
     }
 
     function _DAO() internal view returns(iDAO) {
          return iBASE(BASE).DAO();
-       
     }
+
     mapping(address => mapping(address => uint256)) private mapMemberSynth_weight;
     mapping(address => uint256) private mapMemberTotal_weight;
     mapping(address => mapping(address => uint256)) private mapMemberSynth_deposit;
@@ -99,13 +100,14 @@ contract SynthVault {
         require(iBEP20(synth).transferFrom(msg.sender, address(this), amount));
         _deposit(synth, member, amount);
     }
+
     function _deposit(address _synth, address _member,uint256 _amount) internal {
         if(!isStakedSynth[_synth]){
             isStakedSynth[_synth] = true;
             stakedSynthAssets.push(_synth);
         }
         mapMemberSynth_lastTime[_member][_synth] = block.timestamp + minimumDepositTime; // Synth Deposit Time
-        mapMember_depositTime[_member] = block.timestamp + minimumDepositTime; //Deposit Time
+        mapMember_depositTime[_member] = block.timestamp + minimumDepositTime; // Deposit Time
         mapMemberSynth_deposit[_member][_synth] += _amount; // Record balance for member
         uint256 _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(_synth).LayerONE(), _amount); 
         mapMemberSynth_weight[_member][_synth] += _weight;
@@ -120,16 +122,16 @@ contract SynthVault {
     function harvestAll() external returns (bool) {
         for(uint i = 0; i< stakedSynthAssets.length; i++){
             uint256 reward = calcCurrentReward(stakedSynthAssets[i],msg.sender);
-              if(reward > 0 ){
-                  harvestSingle(stakedSynthAssets[i]);
+                if(reward > 0 ){
+                    harvestSingle(stakedSynthAssets[i]);
                 }
         }
         return true;
     }
 
-     function harvestSingle(address synth) public returns (bool) {
+    function harvestSingle(address synth) public returns (bool) {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), "!synth");
-        require(iRESERVE(_DAO().RESERVE()).emissions(), "!EMISSIONS");
+        require(iRESERVE(_DAO().RESERVE()).emissions(), "!emissions");
         uint256 _weight;
         uint256 reward = calcCurrentReward(synth,msg.sender);
         mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp;
@@ -146,8 +148,9 @@ contract SynthVault {
         emit MemberHarvests(synth, msg.sender, reward, _weight, totalWeight);
         return true;
     }
+
     function calcCurrentReward(address synth, address member) public view returns (uint256 reward){
-        require((block.timestamp > mapMemberSynth_lastTime[member][synth]), "DepositTime"); // stops attacks
+        require((block.timestamp > mapMemberSynth_lastTime[member][synth]), "!unlocked"); // stops attacks
         uint256 _secondsSinceClaim = block.timestamp - mapMemberSynth_lastTime[member][synth]; // Get time since last claim
         uint256 _share = calcReward(synth, member);
         reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra();
@@ -170,7 +173,7 @@ contract SynthVault {
     }
 
     function _processWithdraw( address _synth,address _member,uint256 _basisPoints) internal returns (uint256 synthReward) {
-        require((block.timestamp > mapMember_depositTime[_member]), "DepositTime"); // stops attacks
+        require((block.timestamp > mapMember_depositTime[_member]), "lockout"); // stops attacks
         uint256 _principle = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberSynth_deposit[_member][_synth]); // share of deposits
         mapMemberSynth_deposit[_member][_synth] -= _principle;
         uint256 _weight = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberSynth_weight[_member][_synth]);
@@ -193,48 +196,53 @@ contract SynthVault {
     function getMemberWeight(address member) external view returns (uint256) {
         return mapMemberTotal_weight[member];
     }
+
     function getStakeSynthLength() external view returns (uint256) {
         return stakedSynthAssets.length;
     }
+
     function getMemberLastTime(address member) external view returns (uint256) {
         return mapMember_depositTime[member];
     }
+
     function getMemberLastSynthTime(address synth, address member) external view returns (uint256){
         return mapMemberSynth_lastTime[member][synth];
     }
+
     function getMemberSynthWeight(address synth, address member) external view returns (uint256) {
         return mapMemberSynth_weight[member][synth];
     }
+
     //===========================================POOL FEE ROI=================================//
     function _addVaultMetrics(uint256 _fee) internal {
         if(lastMonth == 0){
-            lastMonth = genesis;
+            lastMonth = block.timestamp;
         }
-        if(block.timestamp <= lastMonth + 2592000){//30Days
+        if(block.timestamp <= lastMonth + 2592000){// 30Days
             map30DVaultRevenue = map30DVaultRevenue + _fee;
-        }else{
-            lastMonth = lastMonth + 2592000;
+        } else {
+            lastMonth = block.timestamp;
             mapPast30DVaultRevenue = map30DVaultRevenue;
             addRevenue(mapPast30DVaultRevenue);
             map30DVaultRevenue = 0;
             map30DVaultRevenue = map30DVaultRevenue + _fee;
         }
     }
+
     function addRevenue(uint _totalRev) internal {
         if(!(revenueArray.length == 2)){
             revenueArray.push(_totalRev);
-        }else {
+        } else {
             addFee(_totalRev);
         }
     }
+
     function addFee(uint _rev) internal {
-        uint _n = revenueArray.length;//2
+        uint _n = revenueArray.length;// 2
         for (uint i = _n - 1; i > 0; i--) {
-        revenueArray[i] = revenueArray[i - 1];
+            revenueArray[i] = revenueArray[i - 1];
         }
-         revenueArray[0] = _rev;
+        revenueArray[0] = _rev;
     }
-
-
 
 }

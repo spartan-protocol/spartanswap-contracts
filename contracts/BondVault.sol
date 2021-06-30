@@ -15,7 +15,7 @@ contract BondVault {
 
     address [] public arrayMembers;
 
-     struct ListedAssets {
+    struct ListedAssets {
         bool isListed;
         address[] members;
         mapping(address => bool) isMember;
@@ -23,16 +23,18 @@ contract BondVault {
         mapping(address => uint256) claimRate;
         mapping(address => uint256) lastBlockTime;
     }
-     struct MemberDetails {
+    struct MemberDetails {
         bool isMember;
         uint256 bondedLP;
         uint256 claimRate;
         uint256 lastBlockTime;
     }
+
     mapping(address => ListedAssets) public mapBondAsset_memberDetails;
     mapping(address => uint256) private mapMember_weight; // Value of weight
     mapping(address => mapping(address => uint256)) private mapMemberPool_weight; // Value of weight for pool
-     constructor (address _base) {
+
+    constructor (address _base) {
         BASE = _base;
         DEPLOYER = msg.sender;
     }
@@ -41,6 +43,7 @@ contract BondVault {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER );
         _;
     }
+
     function purgeDeployer() public onlyDAO {
         DEPLOYER = address(0);
     }
@@ -77,12 +80,11 @@ contract BondVault {
         mapMember_weight[member] += weight;
         totalWeight += weight;
     }
-    
 
-     function calcBondedLP(address member, address asset) public onlyDAO returns (uint claimAmount){
+    function calcBondedLP(address member, address asset) public onlyDAO returns (uint claimAmount){
         if(mapBondAsset_memberDetails[asset].isMember[member]){
-         uint256 _secondsSinceClaim = block.timestamp - mapBondAsset_memberDetails[asset].lastBlockTime[member]; // Get time since last claim
-         uint256 rate = mapBondAsset_memberDetails[asset].claimRate[member];
+            uint256 _secondsSinceClaim = block.timestamp - mapBondAsset_memberDetails[asset].lastBlockTime[member]; // Get time since last claim
+            uint256 rate = mapBondAsset_memberDetails[asset].claimRate[member];
         if(_secondsSinceClaim >= iDAO(_DAO().DAO()).bondingPeriodSeconds()){
             mapBondAsset_memberDetails[asset].claimRate[member] = 0;
             claimAmount = mapBondAsset_memberDetails[asset].bondedLP[member];
@@ -92,18 +94,20 @@ contract BondVault {
         return claimAmount;
         }
     }
+
     function claimForMember(address asset, address member) public onlyDAO returns (bool){
-        require(mapBondAsset_memberDetails[asset].bondedLP[member] > 0, '!bondedlps');
-        require(mapBondAsset_memberDetails[asset].isMember[member], '!deposited');
+        require(mapBondAsset_memberDetails[asset].bondedLP[member] > 0, '!bonded');
+        require(mapBondAsset_memberDetails[asset].isMember[member], '!member');
         uint256 _claimable = calcBondedLP(member, asset); 
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset);
-        require(_claimable <= mapBondAsset_memberDetails[asset].bondedLP[member],'attempted to overclaim');
+        require(_claimable <= mapBondAsset_memberDetails[asset].bondedLP[member],'overclaim');
         mapBondAsset_memberDetails[asset].lastBlockTime[member] = block.timestamp;
         mapBondAsset_memberDetails[asset].bondedLP[member] -= _claimable;
         decreaseWeight(asset, member);
         iBEP20(_pool).transfer(member, _claimable); // send LPs to user
         return true;
     }
+
     function decreaseWeight(address asset, address member) internal {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset);
         totalWeight -= mapMemberPool_weight[member][_pool];
@@ -115,12 +119,14 @@ contract BondVault {
         totalWeight += weight;
     }
 
-     function memberCount() external view returns (uint256 count){
+    function memberCount() external view returns (uint256 count){
         return arrayMembers.length;
     }
+
     function allMembers() external view returns (address[] memory _allMembers){
         return arrayMembers;
     }
+
     function getMemberDetails(address member, address asset) external view returns (MemberDetails memory memberDetails){
         memberDetails.isMember = mapBondAsset_memberDetails[asset].isMember[member];
         memberDetails.bondedLP = mapBondAsset_memberDetails[asset].bondedLP[member];
