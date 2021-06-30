@@ -391,7 +391,7 @@ contract Dao {
     }
 
     // Proposal with quorum can finalise after cool off period
-    function finaliseProposal() public  {
+    function finaliseProposal() public {
         require((block.timestamp - mapPID_coolOffTime[currentProposal]) > coolOffPeriod, "!cooloff");
         require(mapPID_finalising[currentProposal] == true, "!finalising");
         if(!hasQuorum(currentProposal)){
@@ -612,7 +612,7 @@ contract Dao {
         }
     }
 
-     function SYNTHFACTORY() public view returns(iSYNTHFACTORY){
+    function SYNTHFACTORY() public view returns(iSYNTHFACTORY){
         if(daoHasMoved){
             return Dao(DAO).SYNTHFACTORY();
         } else {
@@ -637,11 +637,11 @@ contract Dao {
     }
 
     //============================== HELPERS ================================//
-    function memberCount() public view returns(uint){
+    function memberCount() external view returns(uint){
         return arrayMembers.length;
     }
-    
-    function getProposalDetails(uint proposalID) public view returns (ProposalDetails memory proposalDetails){
+
+    function getProposalDetails(uint proposalID) external view returns (ProposalDetails memory proposalDetails){
         proposalDetails.id = proposalID;
         proposalDetails.proposalType = mapPID_type[proposalID];
         proposalDetails.votes = mapPID_votes[proposalID];
@@ -655,20 +655,20 @@ contract Dao {
         return proposalDetails;
     }
 
-    function isEqual(bytes memory part1, bytes memory part2) public pure returns(bool){
-        if(sha256(part1) == sha256(part2)){
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     function assetListedCount() external view returns (uint256 count){
         return listedBondAssets.length;
     }
 
     function allListedAssets() external view returns (address[] memory _allListedAssets){
         return listedBondAssets;
+    }
+    
+    function isEqual(bytes memory part1, bytes memory part2) private pure returns(bool){
+        if(sha256(part1) == sha256(part2)){
+            return true;
+        } else {
+            return false;
+        }
     }
 }
 
