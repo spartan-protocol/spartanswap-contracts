@@ -80,9 +80,9 @@ contract Dao {
     event NewProposal(address indexed member, uint indexed proposalID, string proposalType);
     event NewVote(address indexed member, uint indexed proposalID, uint voteWeight, uint totalVotes, string proposalType);
     event RemovedVote(address indexed member, uint indexed proposalID, uint voteWeight, uint totalVotes, string proposalType);
-    event ProposalFinalising(address indexed member,uint indexed proposalID, uint timeFinalised, string proposalType);
-    event CancelProposal(address indexed member, uint indexed oldProposalID, uint oldVotes, uint newVotes, uint totalWeight);
-    event FinalisedProposal(address indexed member,uint indexed proposalID, uint votesCast, uint totalWeight, string proposalType);
+    event ProposalFinalising(address indexed member, uint indexed proposalID, uint timeFinalised, string proposalType);
+    event CancelProposal(address indexed member, uint indexed proposalID);
+    event FinalisedProposal(address indexed member, uint indexed proposalID, uint votesCast, uint totalWeight, string proposalType);
     event ListedAsset(address indexed DAO, address indexed asset);
     event DelistedAsset(address indexed DAO, address indexed asset);
     event DepositAsset(address indexed owner, uint256 depositAmount, uint256 bondedLP);
@@ -123,7 +123,7 @@ contract Dao {
         _SYNTHFACTORY = iSYNTHFACTORY(_synthFactory);
     }
 
-    function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) public onlyDAO {
+    function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) external onlyDAO {
         coolOffPeriod = _coolOff;
         erasToEarn = _daysToEarn;
         majorityFactor = _majorityFactor;
@@ -142,7 +142,7 @@ contract Dao {
     //============================== USER - DEPOSIT/WITHDRAW ================================//
 
     // Member deposits some LP tokens
-    function deposit(address pool, uint256 amount) public {
+    function deposit(address pool, uint256 amount) external {
         depositLPForMember(pool, amount, msg.sender);
     }
 
@@ -164,7 +164,7 @@ contract Dao {
     }
     
     // Member withdraws all from a pool
-    function withdraw(address pool) public {
+    function withdraw(address pool) external {
         removeVote();
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Then transfer
     }
@@ -292,7 +292,7 @@ contract Dao {
     // IDs are executed, but type specifies unique logic
 
     // Simple Action Call
-    function newActionProposal(string memory typeStr) public returns(uint) {
+    function newActionProposal(string memory typeStr) external returns(uint) {
         checkProposal();
         payFee();
         mapPID_type[currentProposal] = typeStr;
@@ -301,7 +301,7 @@ contract Dao {
     }
 
     // Action with uint parameter
-    function newParamProposal(uint32 param, string memory typeStr) public returns(uint) {
+    function newParamProposal(uint32 param, string memory typeStr) external returns(uint) {
         checkProposal();
         payFee();
         mapPID_param[currentProposal] = param;
@@ -311,7 +311,7 @@ contract Dao {
     }
 
     // Action with address parameter
-    function newAddressProposal(address proposedAddress, string memory typeStr) public returns(uint) {
+    function newAddressProposal(address proposedAddress, string memory typeStr) external returns(uint) {
         checkProposal();
         payFee();
         mapPID_address[currentProposal] = proposedAddress;
@@ -321,7 +321,7 @@ contract Dao {
     }
 
     // Action with funding
-    function newGrantProposal(address recipient, uint amount) public returns(uint) {
+    function newGrantProposal(address recipient, uint amount) external returns(uint) {
         checkProposal();
         payFee();
         string memory typeStr = "GRANT";
@@ -383,15 +383,15 @@ contract Dao {
         emit ProposalFinalising(msg.sender, currentProposal, block.timestamp+coolOffPeriod, string(_type));
     }
 
-    function cancelProposal() public {
+    function cancelProposal() external {
         require(block.timestamp > (mapPID_startTime[currentProposal] + 600), "!days");
         mapPID_votes[currentProposal] = 0;
         mapPID_open[currentProposal] = false;
-        emit CancelProposal(msg.sender, currentProposal, mapPID_votes[currentProposal], mapPID_votes[currentProposal], _DAOVAULT.totalWeight());
+        emit CancelProposal(msg.sender, currentProposal);
     }
 
     // Proposal with quorum can finalise after cool off period
-    function finaliseProposal() public {
+    function finaliseProposal() external {
         require((block.timestamp - mapPID_coolOffTime[currentProposal]) > coolOffPeriod, "!cooloff");
         require(mapPID_finalising[currentProposal] == true, "!finalising");
         if(!hasQuorum(currentProposal)){
