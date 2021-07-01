@@ -41,7 +41,7 @@ contract Synth is iBEP20 {
         string memory synthSymbol = "-SPS";
         _name = string(abi.encodePacked(iBEP20(_token).name(), synthName));
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), synthSymbol));
-        decimals = 18;
+        decimals = iBEP20(_token).decimals();
         DEPLOYER = msg.sender;
         genesis = block.timestamp;
     }
