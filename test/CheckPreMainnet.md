@@ -35,11 +35,25 @@ ROUTER.arrayFeeSize
 ROUTER.revenueDetails | block.timestamp <= lastMonth + 2592000
 
 ## SPARTA ##
+SPARTA.emitting
+SPARTA.minting
+SPARTA.emissionCurve
+SPARTA.secondsPerEra
 
 ## SYNTH ##
+SYNTH.realise | premium > 10**18
 
 ## SYNTHFACTORY ##
+Nothing
 
 ## SYNTHVAULT ##
+SYNTHVAULT.minimumDepositTime
+SYNTHVAULT.erasToEarn
+SYNTHVAULT.vaultClaim
+SYNTHVAULT._addVaultMetrics | block.timestamp <= lastMonth + 2592000
 
 ## UTILS ##
+UTILS.
+UTILS.
+UTILS.
+UTILS.
