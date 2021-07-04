@@ -24,14 +24,14 @@ contract SynthFactory {
     }
 
     function _DAO() internal view returns(iDAO) {
-         return iBASE(BASE).DAO();
+        return iBASE(BASE).DAO();
     }
 
-    function purgeDeployer() public onlyDAO {
+    function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
     }
 
-    //Create a synth asset - only from curated pools
+    // Create a synth asset - only from curated pools
     function createSynth(address token) external returns(address synth){
         require(getSynth(token) == address(0), "exists");
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
@@ -52,10 +52,10 @@ contract SynthFactory {
         isSynth[_synth] = true;
     }
 
-    //======================================HELPERS========================================//
-    // Helper Functions
+    //================================ Helper Functions ==================================//
+    
     function getSynth(address token) public view returns(address synth){
-         if(token == address(0)){
+        if(token == address(0)){
             synth = mapToken_Synth[WBNB];   // Handle BNB
         } else {
             synth = mapToken_Synth[token];  // Handle normal token

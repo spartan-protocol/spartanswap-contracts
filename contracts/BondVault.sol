@@ -53,7 +53,7 @@ contract BondVault {
     }
 
     function depositForMember(address asset, address member, uint LPS) external onlyDAO returns(bool){
-         if(!mapBondAsset_memberDetails[asset].isMember[member]){
+        if(!mapBondAsset_memberDetails[asset].isMember[member]){
           mapBondAsset_memberDetails[asset].isMember[member] = true;
           arrayMembers.push(member);
           mapBondAsset_memberDetails[asset].members.push(member);

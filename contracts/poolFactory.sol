@@ -14,6 +14,7 @@ contract PoolFactory {
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isListedPool;
     mapping(address=>bool) public isCuratedPool;
+
     event CreatePool(address indexed token, address indexed pool);
     event AddCuratePool(address indexed pool, bool Curated);
     event RemoveCuratePool(address indexed pool, bool Curated);
@@ -35,7 +36,7 @@ contract PoolFactory {
          return iBASE(BASE).DAO();
     }
 
-    function purgeDeployer() public onlyDAO {
+    function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
     }
 
@@ -101,9 +102,9 @@ contract PoolFactory {
 
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
         if(_amount > 0) {
-                uint startBal = iBEP20(_token).balanceOf(_pool); 
-                iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
-                actual = iBEP20(_token).balanceOf(_pool) - (startBal);
+            uint startBal = iBEP20(_token).balanceOf(_pool); 
+            iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
+            actual = iBEP20(_token).balanceOf(_pool) - (startBal);
         }
     }
 

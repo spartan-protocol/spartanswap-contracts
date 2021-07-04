@@ -57,7 +57,7 @@ contract Dao {
 
     address[] public arrayMembers;
     address [] listedBondAssets;
-    uint256 public bondingPeriodSeconds = 15552000;// 6 months
+    uint256 public bondingPeriodSeconds = 15552000; // 6 months
     
     mapping(address => bool) public isMember;
     mapping(address => bool) public isListed;
@@ -105,7 +105,8 @@ contract Dao {
         secondsPerEra = iBASE(BASE).secondsPerEra();
     }
 
-    //======================================PROTOCOL CONTRACTs SETTER==================================//
+    //==================================== PROTOCOL CONTRACTs SETTER =================================//
+
     function setGenesisAddresses(address _router, address _utils, address _reserve) external onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
@@ -155,7 +156,7 @@ contract Dao {
             isMember[member] = true;
         }
         if((_DAOVAULT.getMemberWeight(member) + _BONDVAULT.getMemberWeight(member)) > 0) {
-                harvest();
+            harvest();
         }
         require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!funds" );
         _DAOVAULT.depositLP(pool, amount, member);
@@ -169,7 +170,8 @@ contract Dao {
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Then transfer
     }
 
-     //============================== REWARDS ================================//
+    //============================== REWARDS ================================//
+    
     // Rewards
     function harvest() public {
         require(_RESERVE.emissions(), "!emissions");
@@ -208,8 +210,8 @@ contract Dao {
     }
 
     function moveBASEBalance(address newDAO) external onlyDAO {
-         uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
-         iBEP20(BASE).transfer(newDAO, baseBal);
+        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
+        iBEP20(BASE).transfer(newDAO, baseBal);
     }
 
     function listBondAsset(address asset) external onlyDAO {
@@ -233,7 +235,7 @@ contract Dao {
             isMember[msg.sender] = true;
         }
         if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0) {
-                harvest();
+            harvest();
         }
         uint256 liquidityUnits = handleTransferIn(asset, amount);
         _BONDVAULT.depositForMember(asset, msg.sender, liquidityUnits);
@@ -245,24 +247,24 @@ contract Dao {
     function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
         uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); 
         if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < spartaAllocation){
-                    iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply());  
-                }
+            iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply());  
+        }
         if(_token == address(0)){
-                require((_amount == msg.value), "!amount");
-                LPunits = _ROUTER.addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, address(_BONDVAULT));
-            } else {
-                iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
-                if(iBEP20(_token).allowance(address(this), address(_ROUTER)) < _amount){
-                    uint256 approvalTNK = iBEP20(_token).totalSupply();  
-                    iBEP20(_token).approve(address(_ROUTER), approvalTNK);  
-                }
-                LPunits = _ROUTER.addLiquidityForMember(spartaAllocation, _amount, _token, address(_BONDVAULT));
-            } 
+            require((_amount == msg.value), "!amount");
+            LPunits = _ROUTER.addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, address(_BONDVAULT));
+        } else {
+            iBEP20(_token).transferFrom(msg.sender, address(this), _amount);
+            if(iBEP20(_token).allowance(address(this), address(_ROUTER)) < _amount){
+                uint256 approvalTNK = iBEP20(_token).totalSupply();  
+                iBEP20(_token).approve(address(_ROUTER), approvalTNK);  
+            }
+            LPunits = _ROUTER.addLiquidityForMember(spartaAllocation, _amount, _token, address(_BONDVAULT));
+        } 
     }
 
     function claimAllForMember(address member) external returns (bool){
         address [] memory listedAssets = listedBondAssets;
-        for(uint i =0; i < listedAssets.length; i++){
+        for(uint i = 0; i < listedAssets.length; i++){
             uint claimA = calcClaimBondedLP(member,listedAssets[i]);
             if(claimA > 0){
                _BONDVAULT.claimForMember(listedAssets[i],member);
@@ -347,6 +349,7 @@ contract Dao {
     } 
 
     //============================== VOTE && FINALISE ================================//
+
     // Vote for a proposal
     function voteProposal() external returns (uint voteWeight) {
         require(mapPID_open[currentProposal] == true, "!open");
@@ -364,7 +367,7 @@ contract Dao {
         emit NewVote(msg.sender, currentProposal, voteWeight, mapPID_votes[currentProposal], string(_type));
     }
 
-    //Remove vote from a proposal
+    // Remove vote from a proposal
     function removeVote() public returns (uint voteWeightRemoved){
         bytes memory _type = bytes(mapPID_type[currentProposal]);
         voteWeightRemoved = mapPIDMember_votes[currentProposal][msg.sender]; // get voted weight
@@ -396,8 +399,7 @@ contract Dao {
         require(mapPID_finalising[currentProposal] == true, "!finalising");
         if(!hasQuorum(currentProposal)){
             mapPID_finalising[currentProposal] = false;
-        }
-        else {
+        } else {
             bytes memory _type = bytes(mapPID_type[currentProposal]);
             if(isEqual(_type, 'DAO')){
                 moveDao(currentProposal);
@@ -407,7 +409,7 @@ contract Dao {
                 moveUtils(currentProposal);
             } else if (isEqual(_type, 'RESERVE')){
                 moveReserve(currentProposal);
-            }  else if (isEqual(_type, 'FLIP_EMISSIONS')){
+            } else if (isEqual(_type, 'FLIP_EMISSIONS')){
                 flipEmissions(currentProposal);
             } else if (isEqual(_type, 'COOL_OFF')){
                 changeCooloff(currentProposal);
@@ -488,13 +490,13 @@ contract Dao {
     }
 
     function _increaseSpartaAllocation(uint _proposalID) internal {
-        uint256 _2point5m = 2.5*10**6*10**18;//_2.5m
+        uint256 _2point5m = 2.5*10**6*10**18; //_2.5m
         iBASE(BASE).mintFromDAO(_2point5m, address(this)); 
         completeProposal(_proposalID);
     }
 
     function _listBondingAsset(uint _proposalID) internal {
-         address _proposedAddress = mapPID_address[_proposalID];
+        address _proposedAddress = mapPID_address[_proposalID];
         if(!isListed[_proposedAddress]){
             isListed[_proposedAddress] = true;
             listedBondAssets.push(_proposedAddress);
@@ -504,7 +506,7 @@ contract Dao {
 
     function _delistBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID];
-         isListed[_proposedAddress] = false;
+        isListed[_proposedAddress] = false;
         completeProposal(_proposalID);
     }
 
@@ -540,7 +542,7 @@ contract Dao {
 
     function hasMajority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-         uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // add BondVault totalWeight
+        uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // add BondVault totalWeight
         uint consensus = _totalWeight * majorityFactor / 10000; // >66.66%
         if(votes > consensus){
             return true;
@@ -562,7 +564,7 @@ contract Dao {
 
     function hasMinority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID];
-         uint _totalWeight = _DAOVAULT.totalWeight()  + _BONDVAULT.totalWeight(); // add BondVault totalWeight
+        uint _totalWeight = _DAOVAULT.totalWeight()  + _BONDVAULT.totalWeight(); // add BondVault totalWeight
         uint consensus = _totalWeight / 6; // >16%
         if(votes > consensus){
             return true;
@@ -637,6 +639,7 @@ contract Dao {
     }
 
     //============================== HELPERS ================================//
+    
     function memberCount() external view returns(uint){
         return arrayMembers.length;
     }

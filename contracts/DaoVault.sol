@@ -18,13 +18,10 @@ contract DaoVault {
         DEPLOYER = msg.sender;
     }
 
-    mapping(address => mapping(address => uint256))
-        private mapMemberPool_balance; // Member's balance in pool
     mapping(address => uint256) private mapMember_weight; // Value of weight
+    mapping(address => mapping(address => uint256)) private mapMemberPool_balance; // Member's balance in pool
     mapping(address => mapping(address => uint256)) public mapMember_depositTime; // Deposit time
-
-    mapping(address => mapping(address => uint256))
-        private mapMemberPool_weight; // Value of weight for pool
+    mapping(address => mapping(address => uint256)) private mapMemberPool_weight; // Value of weight for pool
 
     modifier onlyDAO() {
         require(

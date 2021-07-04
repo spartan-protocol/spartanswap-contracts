@@ -24,7 +24,7 @@ contract Reserve {
         DEPLOYER = msg.sender;
     }
 
-     function setIncentiveAddresses(address _router,address _lend,address _synthVault, address _Dao) external onlyGrantor {
+    function setIncentiveAddresses(address _router,address _lend,address _synthVault, address _Dao) external onlyGrantor {
         ROUTER = _router;
         LEND = _lend;
         SYNTHVAULT = _synthVault;
@@ -37,7 +37,7 @@ contract Reserve {
             if(emissions){
                 if(amount > reserve){
                     iBEP20(BASE).transfer(to, reserve);
-                }else{
+                } else {
                     iBEP20(BASE).transfer(to, amount);
                 }
             }

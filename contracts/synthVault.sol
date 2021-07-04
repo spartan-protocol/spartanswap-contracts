@@ -17,7 +17,6 @@ contract SynthVault {
     uint256 public minimumDepositTime;
     uint256 public totalWeight;
     uint256 public erasToEarn;
-    uint256 public blockDelay;
     uint256 public vaultClaim;
     address [] public stakedSynthAssets;
     uint private lastMonth;
@@ -37,15 +36,14 @@ contract SynthVault {
         BASE = _base;
         DEPLOYER = msg.sender;
         erasToEarn = 30;
-        minimumDepositTime = 3600;// needs to be 1hr
-        blockDelay = 0;
+        minimumDepositTime = 3600; // needs to be 1hr
         vaultClaim = 1000;
         genesis = block.timestamp;
         lastMonth = 0;
     }
 
     function _DAO() internal view returns(iDAO) {
-         return iBASE(BASE).DAO();
+        return iBASE(BASE).DAO();
     }
 
     mapping(address => mapping(address => uint256)) private mapMemberSynth_weight;
@@ -81,11 +79,10 @@ contract SynthVault {
         uint256 totalWeight
     );
 
-    function setParams(uint256 one,uint256 two,uint256 three,uint256 four) external onlyDAO {
+    function setParams(uint256 one,uint256 two,uint256 three) external onlyDAO {
         erasToEarn = one;
         minimumDepositTime = two;
-        blockDelay = three;
-        vaultClaim = four;
+        vaultClaim = three;
     }
 
     //======================================DEPOSITS========================================//
@@ -122,9 +119,9 @@ contract SynthVault {
     function harvestAll() external returns (bool) {
         for(uint i = 0; i< stakedSynthAssets.length; i++){
             uint256 reward = calcCurrentReward(stakedSynthAssets[i],msg.sender);
-                if(reward > 0 ){
-                    harvestSingle(stakedSynthAssets[i]);
-                }
+            if(reward > 0 ){
+                harvestSingle(stakedSynthAssets[i]);
+            }
         }
         return true;
     }
@@ -139,10 +136,10 @@ contract SynthVault {
         iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
         (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this));
         _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(synth).LayerONE(), synthReward);
-         mapMemberSynth_deposit[msg.sender][synth] += synthReward;
-         mapMemberSynth_weight[msg.sender][synth] += _weight;
-         mapMemberTotal_weight[msg.sender] += _weight;
-         totalWeight += _weight;
+        mapMemberSynth_deposit[msg.sender][synth] += synthReward;
+        mapMemberSynth_weight[msg.sender][synth] += _weight;
+        mapMemberTotal_weight[msg.sender] += _weight;
+        totalWeight += _weight;
         _addVaultMetrics(reward);
         iSYNTH(synth).realise(_poolOUT);
         emit MemberHarvests(synth, msg.sender, reward, _weight, totalWeight);
@@ -213,12 +210,13 @@ contract SynthVault {
         return mapMemberSynth_weight[member][synth];
     }
 
-    //===========================================POOL FEE ROI=================================//
+    //=============================== SynthVault Metrics =================================//
+
     function _addVaultMetrics(uint256 _fee) internal {
         if(lastMonth == 0){
             lastMonth = block.timestamp;
         }
-        if(block.timestamp <= lastMonth + 2592000){// 30Days
+        if(block.timestamp <= lastMonth + 2592000){ // 30Days
             map30DVaultRevenue = map30DVaultRevenue + _fee;
         } else {
             lastMonth = block.timestamp;
@@ -238,11 +236,10 @@ contract SynthVault {
     }
 
     function addFee(uint _rev) internal {
-        uint _n = revenueArray.length;// 2
+        uint _n = revenueArray.length; // 2
         for (uint i = _n - 1; i > 0; i--) {
             revenueArray[i] = revenueArray[i - 1];
         }
         revenueArray[0] = _rev;
     }
-
 }
