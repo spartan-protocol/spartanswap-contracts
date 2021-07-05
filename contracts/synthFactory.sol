@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
-
 import "./Synth.sol";  
 
 contract SynthFactory { 
@@ -20,25 +19,26 @@ contract SynthFactory {
     }
 
     modifier onlyDAO() {
-        require(msg.sender == DEPLOYER, "DeployerErr");
+        require(msg.sender == DEPLOYER, "!DAO");
         _;
     }
 
     function _DAO() internal view returns(iDAO) {
-         return iBASE(BASE).DAO();
+        return iBASE(BASE).DAO();
     }
-    function purgeDeployer() public onlyDAO {
+
+    function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
     }
 
-    //Create a synth asset - only from curated pools
+    // Create a synth asset - only from curated pools
     function createSynth(address token) external returns(address synth){
-        require(getSynth(token) == address(0), "CreateErr");
+        require(getSynth(token) == address(0), "exists");
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "!Curated");
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "!curated");
         Synth newSynth; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
-        newSynth = new Synth(BASE,_token);  
+        newSynth = new Synth(BASE, _token);  
         synth = address(newSynth);
         addSynth(_token, synth);
         emit CreateSynth(token, synth);
@@ -52,24 +52,22 @@ contract SynthFactory {
         isSynth[_synth] = true;
     }
 
-    //======================================HELPERS========================================//
-    // Helper Functions
-
+    //================================ Helper Functions ==================================//
+    
     function getSynth(address token) public view returns(address synth){
-         if(token == address(0)){
+        if(token == address(0)){
             synth = mapToken_Synth[WBNB];   // Handle BNB
         } else {
             synth = mapToken_Synth[token];  // Handle normal token
         } 
         return synth;
     }
+
     function synthCount() external view returns(uint256){
         return arraySynths.length;
     }
+
     function getSynthsArray(uint256 i) external view returns(address){
         return arraySynths[i];
     }
-   
-
-
 }

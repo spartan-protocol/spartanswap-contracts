@@ -14,6 +14,7 @@ contract PoolFactory {
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isListedPool;
     mapping(address=>bool) public isCuratedPool;
+
     event CreatePool(address indexed token, address indexed pool);
     event AddCuratePool(address indexed pool, bool Curated);
     event RemoveCuratePool(address indexed pool, bool Curated);
@@ -23,6 +24,7 @@ contract PoolFactory {
         require(msg.sender == DEPLOYER || msg.sender == _DAO().DAO());
         _;
     }
+
     constructor (address _base, address _wbnb) {
         BASE = _base;
         WBNB = _wbnb;
@@ -33,12 +35,14 @@ contract PoolFactory {
     function _DAO() internal view returns(iDAO) {
          return iBASE(BASE).DAO();
     }
-    function purgeDeployer() public onlyDAO {
+
+    function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
     }
+
     function createPoolADD(uint256 inputBase, uint256 inputToken, address token) external payable returns(address pool){
         require(getPool(token) == address(0));
-        require((inputToken > 0 && inputBase >= (10000*10**18)), "!Minimum");
+        require((inputToken > 0 && inputBase >= (10000*10**18)), "!min");
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB
         require(_token != BASE && iBEP20(_token).decimals() == 18);
@@ -51,9 +55,10 @@ contract PoolFactory {
         arrayTokens.push(_token);
         isListedPool[pool] = true;
         Pool(pool).addForMember(msg.sender);
-        emit CreatePool(token,pool);
+        emit CreatePool(token, pool);
         return pool;
     }
+
     function createPool(address token) external onlyDAO returns(address pool){
         require(getPool(token) == address(0));
         Pool newPool; address _token = token;
@@ -64,17 +69,19 @@ contract PoolFactory {
         arrayPools.push(pool);
         arrayTokens.push(_token);
         isListedPool[pool] = true;
-        emit CreatePool(token,pool);
+        emit CreatePool(token, pool);
         return pool;
     }
+
     function addCuratedPool(address token) external onlyDAO {
         require(token != BASE);
         address _pool = getPool(token);
         require(isListedPool[_pool] == true);
-        require(curatedPoolCount() < curatedPoolSize, "!Available"); 
+        require(curatedPoolCount() < curatedPoolSize, "maxCurated"); 
         isCuratedPool[_pool] = true;
         emit AddCuratePool(_pool, isCuratedPool[_pool]);
     }
+
     function removeCuratedPool(address token) external onlyDAO {
         require(token != BASE);
         address _pool = getPool(token);
@@ -92,11 +99,12 @@ contract PoolFactory {
         }
         return cPoolCount;
     }
+
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
         if(_amount > 0) {
-                uint startBal = iBEP20(_token).balanceOf(_pool); 
-                iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
-                actual = iBEP20(_token).balanceOf(_pool) - (startBal);
+            uint startBal = iBEP20(_token).balanceOf(_pool); 
+            iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
+            actual = iBEP20(_token).balanceOf(_pool) - (startBal);
         }
     }
 
@@ -110,24 +118,27 @@ contract PoolFactory {
         } 
         return pool;
     }
+
     function isPool(address pool) external view returns (bool){
         if(isListedPool[pool] == true){
             return true;
         }
         return  false;
     }
+
     function poolCount() external view returns(uint256){
         return arrayPools.length;
     }
+
     function tokenCount() external view returns(uint256){
         return arrayTokens.length;
     }
+
     function getToken(uint256 i) external view returns(address){
         return arrayTokens[i];
     }
+
     function getPoolArray(uint256 i) external view returns(address){
         return arrayPools[i];
     }
-
-
 }

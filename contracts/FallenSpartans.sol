@@ -17,7 +17,7 @@ contract FallenSpartans {
     event SpartanClaimed(address indexed spartanAddress, uint256 amount);
 
     modifier onlyDAO() {
-        require(msg.sender == DEPLOYER );
+        require(msg.sender == DEPLOYER);
         _;
     }
     constructor(address _sparta) {

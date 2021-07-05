@@ -18,19 +18,13 @@ contract DaoVault {
         DEPLOYER = msg.sender;
     }
 
-    mapping(address => mapping(address => uint256))
-        private mapMemberPool_balance; // Member's balance in pool
     mapping(address => uint256) private mapMember_weight; // Value of weight
-    mapping(address => mapping(address => uint256)) public mapMember_depositTime; // Value of weight
-
-    mapping(address => mapping(address => uint256))
-        private mapMemberPool_weight; // Value of weight for pool
+    mapping(address => mapping(address => uint256)) private mapMemberPool_balance; // Member's balance in pool
+    mapping(address => mapping(address => uint256)) public mapMember_depositTime; // Deposit time
+    mapping(address => mapping(address => uint256)) private mapMemberPool_weight; // Value of weight for pool
 
     modifier onlyDAO() {
-        require(
-            msg.sender == _DAO().DAO() || msg.sender == DEPLOYER,
-            "!DAO"
-        );
+        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "!DAO");
         _;
     }
 
@@ -38,7 +32,7 @@ contract DaoVault {
         return iBASE(BASE).DAO();
     }
 
-    function depositLP( address pool, uint256 amount, address member ) external onlyDAO returns (bool) {
+    function depositLP(address pool, uint256 amount, address member) external onlyDAO returns (bool) {
         mapMemberPool_balance[member][pool] += amount; // Record total pool balance for member
         increaseWeight(pool, member);
         return true;
@@ -51,7 +45,7 @@ contract DaoVault {
             mapMember_weight[member] -= mapMemberPool_weight[member][pool];
             mapMemberPool_weight[member][pool] = 0;
         }
-        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(pool).TOKEN(),mapMemberPool_balance[member][pool]); 
+        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[member][pool]); 
         mapMemberPool_weight[member][pool] = weight;
         mapMember_weight[member] += weight;
         totalWeight += weight;
@@ -68,7 +62,7 @@ contract DaoVault {
     }
 
     function withdraw(address pool, address member) external onlyDAO returns (bool){
-        require(block.timestamp > (mapMember_depositTime[member][pool] + 86400),'!LOCKED');
+        require(block.timestamp > (mapMember_depositTime[member][pool] + 86400), '!unlocked');
         uint256 _balance = mapMemberPool_balance[member][pool];
         require(_balance > 0, "!balance");
         decreaseWeight(pool, member);
