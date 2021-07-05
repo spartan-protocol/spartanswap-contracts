@@ -562,7 +562,7 @@ async function swapLayer1ToSynth(acc, x) {
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
         let lpBalance = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
-        let lpDebt =_.getBN( await synthBNB.mapSynth_LPDept(poolWBNB.address));
+        let lpDebt =_.getBN( await synthBNB.mapSynth_LPDebt(poolWBNB.address));
         const X = _.getBN(poolData.baseAmount)
         const Y = _.getBN(poolData.tokenAmount)
         let asymAdd = _.getBN(await utils.calcLiquidityUnitsAsym(x, poolWBNB.address))
@@ -579,7 +579,7 @@ async function swapLayer1ToSynth(acc, x) {
 
         poolData = await utils.getPoolData(token);
         let lpBalanceA = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
-        let lpDebtA =_.getBN( await synthBNB.mapSynth_LPDept(poolWBNB.address));
+        let lpDebtA =_.getBN( await synthBNB.mapSynth_LPDebt(poolWBNB.address));
 
         let feeOnTransfer = _.getBN(await sparta.feeOnTransfer())
        //  console.log("Fee BP",_.BN2Str(feeOnTransfer));
@@ -610,7 +610,7 @@ async function swapSynthToLayer1(acc, x) {
         let basBal = _.getBN(await sparta.balanceOf(acc));
 
         let lpBalance = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
-        let lpDebt =_.getBN( await synthBNB.mapSynth_LPDept(poolWBNB.address));
+        let lpDebt =_.getBN( await synthBNB.mapSynth_LPDebt(poolWBNB.address));
         let token = _.BNB
         let poolData = await utils.getPoolData(token);
         const X = _.getBN(poolData.tokenAmount)
@@ -632,7 +632,7 @@ async function swapSynthToLayer1(acc, x) {
         poolData = await utils.getPoolData(token);
 
         let lpBalanceA = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
-        let lpDebtA =_.getBN( await synthBNB.mapSynth_LPDept(poolWBNB.address));
+        let lpDebtA =_.getBN( await synthBNB.mapSynth_LPDebt(poolWBNB.address));
 
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y.minus(baseSwapped)))
         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X))

@@ -43,47 +43,47 @@ contract('DAO', function (accounts) {
     addLiquidityBNB(acc0,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
     addLiquidityBNB(acc2,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
     addLiquidityTKN1(acc2,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
-     curatePools()
+    curatePools()
     lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
     lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
     lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-     rate()
+    rate()
     //  voteParam()
-     voteAction()
+    voteAction()
 
     withdrawBNB(acc0)
     withdrawTKN1(acc1)
     withdrawTKN1(acc2)
-     rate()
+    rate()
     //  voteRouter()
     //  voteDao() 
-     deployerListBNB()
-     deployerChangeSecondsPerYear(40)
-     bondBNB(acc0,  _.BN2Str(_.one * 1))
-     bondBNB(acc1, _.BN2Str(_.one * 3))
-     bondBNB(acc2, _.BN2Str(_.one * 2))
-      rateBond() 
-     claimLP(acc0, 2000) 
-     claimLP(acc1, 2000)
-     claimLP(acc2, 20) 
-     rate()
-     lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
+    deployerListBNB()
+    deployerChangeSecondsPerYear(40)
+    bondBNB(acc0,  _.BN2Str(_.one * 1))
+    bondBNB(acc1, _.BN2Str(_.one * 3))
+    bondBNB(acc2, _.BN2Str(_.one * 2))
+    rateBond() 
+    claimLP(acc0, 2000) 
+    claimLP(acc1, 2000)
+    claimLP(acc2, 20) 
+    rate()
+    lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
     lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
     lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-      rate()
-      voteGrant()
-       RemCuratePools()
-     withdrawBNB(acc0)
-     withdrawTKN1(acc1)
-     withdrawTKN1(acc2)
-     rate()
-     rateBond()
-     curatePools()
-     lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
-     lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
-     lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
-     lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-   harvest()
+    rate()
+    voteGrant()
+    RemCuratePools()
+    withdrawBNB(acc0)
+    withdrawTKN1(acc1)
+    withdrawTKN1(acc2)
+    rate()
+    rateBond()
+    curatePools()
+    lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
+    lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
+    lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
+    lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
+    harvest()
 
 })
 
@@ -271,7 +271,7 @@ async function depositTKN(acc, amount){
 async function withdrawBNB(acc) {
     it("It should unlock", async () => {
         let balBefore = _.getBN(await poolWBNB.balanceOf(acc))
-         let balBeforeD = _.getBN(await poolWBNB.balanceOf(daoVault.address))
+        let balBeforeD = _.getBN(await poolWBNB.balanceOf(daoVault.address))
         console.log(_.BN2Str(balBeforeD));
         await Dao.withdraw(poolWBNB.address,{from:acc});
         let balAfter = _.getBN(await poolWBNB.balanceOf(acc))
@@ -282,7 +282,7 @@ async function withdrawBNB(acc) {
 async function withdrawTKN1(acc) {
     it("It should unlock", async () => {
         let balBefore = _.getBN(await poolTKN1.balanceOf(acc))
-         let balBeforeD = _.getBN(await poolTKN1.balanceOf(daoVault.address))
+        let balBeforeD = _.getBN(await poolTKN1.balanceOf(daoVault.address))
         console.log(_.BN2Str(balBeforeD));
         await Dao.withdraw(poolTKN1.address, {from:acc});
         let balAfter = _.getBN(await poolTKN1.balanceOf(acc))

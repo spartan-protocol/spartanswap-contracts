@@ -55,7 +55,7 @@ contract PoolFactory {
         arrayTokens.push(_token);
         isListedPool[pool] = true;
         Pool(pool).addForMember(msg.sender);
-        emit CreatePool(token,pool);
+        emit CreatePool(token, pool);
         return pool;
     }
 
@@ -69,7 +69,7 @@ contract PoolFactory {
         arrayPools.push(pool);
         arrayTokens.push(_token);
         isListedPool[pool] = true;
-        emit CreatePool(token,pool);
+        emit CreatePool(token, pool);
         return pool;
     }
 

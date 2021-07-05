@@ -1,7 +1,7 @@
 Checklist before mainnet:
 
 ## BONDVAULT ##
-Nothing
+Nothing of note
 
 ## DAO ##
 DAO.bondingPeriodSeconds
@@ -44,7 +44,7 @@ SPARTA.secondsPerEra
 SYNTH.realise | premium > 10**18
 
 ## SYNTHFACTORY ##
-Nothing
+Nothing of note
 
 ## SYNTHVAULT ##
 SYNTHVAULT.minimumDepositTime
@@ -53,7 +53,4 @@ SYNTHVAULT.vaultClaim
 SYNTHVAULT._addVaultMetrics | block.timestamp <= lastMonth + 2592000
 
 ## UTILS ##
-UTILS.
-UTILS.
-UTILS.
-UTILS.
+Nothing of note

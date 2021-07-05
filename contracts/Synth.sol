@@ -31,7 +31,7 @@ contract Synth is iBEP20 {
         _;
     }
     
-    constructor (address _base,address _token) {
+    constructor (address _base, address _token) {
         BASE = _base;
         LayerONE = _token;
         string memory synthName = "-SpartanProtocolSynthetic";
@@ -85,7 +85,7 @@ contract Synth is iBEP20 {
         return true;
     }
 
-    function _approve( address owner, address spender, uint256 amount) internal virtual {
+    function _approve(address owner, address spender, uint256 amount) internal virtual {
         require(owner != address(0), "!owner");
         require(spender != address(0), "!spender");
         if (_allowances[owner][spender] < type(uint256).max) { // No need to re-approve if already max

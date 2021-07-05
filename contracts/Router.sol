@@ -68,14 +68,14 @@ contract Router {
         iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput); // get lps
         (, uint outputToken) = Pool(fromPool).remove(); // remove 
         iBEP20(_fromToken).transfer(fromPool, outputToken); // transfer fromToken for swap
-        Pool(fromPool).swapTo(BASE,toPool); // swap to BASE > transfer to toPOOL
+        Pool(fromPool).swapTo(BASE, toPool); // swap to BASE > transfer to toPOOL
         iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // transfer fromToken for swap
         unitsOutput = Pool(toPool).addForMember(_member); //capture lps
         return (unitsOutput);
     }
 
     function addLiquiditySingle(uint inputToken, bool fromBase, address token) external payable returns (uint units) {
-       return addLiquiditySingleForMember(inputToken,fromBase, token, msg.sender);
+       return addLiquiditySingleForMember(inputToken, fromBase, token, msg.sender);
     }
 
     // Add Asymmetrically
@@ -111,7 +111,7 @@ contract Router {
         } else {
             (, outputToken) = Pool(_pool).remove();
             outputBase = iBEP20(BASE).balanceOf(address(this));
-            _handleTransferOut(token, outputToken,_member);
+            _handleTransferOut(token, outputToken, _member);
             _handleTransferOut(BASE, outputBase, _member);
         }
         return (outputBase, outputToken);
@@ -128,12 +128,12 @@ contract Router {
         if(token == address(0)){_token = WBNB;} // Handle BNB
         if(toBase){
             iBEP20(_token).transfer(_pool, outputToken);
-            (,uint _feey) = Pool(_pool).swap(BASE);
+            (, uint _feey) = Pool(_pool).swap(BASE);
             fee = _feey;
             _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _member);
         } else {
             iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this)));
-            (uint _tokenBought,uint _feez) = Pool(_pool).swap(_token);
+            (uint _tokenBought, uint _feez) = Pool(_pool).swap(_token);
             fee = _feez;
             _handleTransferOut(token, (_tokenBought + outputToken), _member);
         } 
@@ -147,7 +147,7 @@ contract Router {
         if(token == address(0)){_token = WBNB;} // Handle BNB
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         _handleTransferIn(BASE, amount, _pool);
-        (uint outputAmount, uint fee ) = Pool(_pool).swap(_token);
+        (uint outputAmount, uint fee) = Pool(_pool).swap(_token);
         _handleTransferOut(token, outputAmount, member);
         getsDividend(_pool, fee);
         return fee;
@@ -157,7 +157,7 @@ contract Router {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         _handleTransferIn(token, amount, _pool);
         (, uint fee) = Pool(_pool).swapTo(BASE, member);
-        getsDividend(_pool,fee);
+        getsDividend(_pool, fee);
         return fee;
     }
 
@@ -178,7 +178,7 @@ contract Router {
             if(toToken == address(0)){_toToken = WBNB;} 
             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken);
             uint fee = feey+(_feez);
-            getsDividend(_poolTo,fee);
+            getsDividend(_poolTo, fee);
             _handleTransferOut(toToken, _zz, member);
         }
     }
@@ -196,7 +196,8 @@ contract Router {
         if(_amount > 0) {
             if(_token == address(0)){
                 require((_amount == msg.value));
-                payable(WBNB).call{value:_amount}(""); 
+                (bool success, ) = payable(WBNB).call{value: _amount}("");
+                require(success, "!send");
                 iBEP20(WBNB).transfer(_pool, _amount); 
                 actual = _amount;
             } else {
@@ -211,7 +212,8 @@ contract Router {
         if(_amount > 0) {
             if (_token == address(0)) {
                 iWBNB(WBNB).withdraw(_amount);
-                payable(_recipient).call{value:_amount}(""); 
+                (bool success, ) = payable(_recipient).call{value:_amount}(""); 
+                require(success, "!send");
             } else {
                 iBEP20(_token).transfer(_recipient, _amount);
             }
@@ -232,7 +234,7 @@ contract Router {
         }
         (outputSynth, fee) = Pool(_pool).mintSynth(toSynth, msg.sender); 
         getsDividend(_pool, fee);
-        return (outputSynth,fee);
+        return (outputSynth, fee);
     }
    
     function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external returns (uint outputAmount, uint fee){
@@ -264,7 +266,7 @@ contract Router {
             uint dailyAllocation = (reserve / eraLength) / maxTrades; // get max dividend for reserve/30/100 
             uint numerator = _fees * dailyAllocation;
             uint feeDividend = numerator / (_fees + normalAverageFee);
-            revenueDetails(feeDividend,_pool);
+            revenueDetails(feeDividend, _pool);
             iRESERVE(_DAO().RESERVE()).grantFunds(feeDividend, _pool);   
             Pool(_pool).sync();
             }

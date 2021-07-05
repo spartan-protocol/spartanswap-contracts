@@ -11,7 +11,6 @@ import "./iSYNTHFACTORY.sol";
 import "./iBEP677.sol"; 
 
 contract Pool is iBEP20 {  
-
     address public BASE;
     address public TOKEN;
     address public DEPLOYER;
@@ -46,7 +45,7 @@ contract Pool is iBEP20 {
         TOKEN = _token;
         string memory poolName = "-SpartanProtocolPool";
         string memory poolSymbol = "-SPP";
-        _name = string(abi.encodePacked(iBEP20(_token).name(),poolName));
+        _name = string(abi.encodePacked(iBEP20(_token).name(), poolName));
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), poolSymbol));
         decimals = 18;
         genesis = block.timestamp;
@@ -94,7 +93,7 @@ contract Pool is iBEP20 {
         return true;
     }
 
-    function _approve( address owner, address spender, uint256 amount) internal virtual {
+    function _approve(address owner, address spender, uint256 amount) internal virtual {
         require(owner != address(0), "!owner");
         require(spender != address(0), "!spender");
         if (_allowances[owner][spender] < type(uint256).max) { // No need to re-approve if already max
@@ -218,7 +217,7 @@ contract Pool is iBEP20 {
             _amount = _getAddedBaseAmount();
             (outputAmount, fee) = _swapBaseToToken(_amount);
         }
-        emit Swapped(_fromToken, token,member, _amount, outputAmount, fee);
+        emit Swapped(_fromToken, token, member, _amount, outputAmount, fee);
         iBEP20(token).transfer(member, outputAmount);
         return (outputAmount, fee);
     }
@@ -231,7 +230,7 @@ contract Pool is iBEP20 {
         uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this));
         _incrementPoolBalances(_actualInputBase, 0);
         uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount);
-        fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN,_fee );
+        fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, _fee);
         _mint(synthOut, _liquidityUnits); 
         iSYNTH(synthOut).mintSynth(member, output); // mintSynth to member  
         _addPoolMetrics(fee);

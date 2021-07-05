@@ -26,9 +26,9 @@ contract SynthVault {
     uint256 public mapPast30DVaultRevenue;
     uint256 [] public revenueArray;
 
-    // Only DAO can execute
+    // Limit execution
     modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER );
+        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER);
         _;
     }
 
@@ -36,7 +36,7 @@ contract SynthVault {
         BASE = _base;
         DEPLOYER = msg.sender;
         erasToEarn = 30;
-        minimumDepositTime = 3600; // needs to be 1hr
+        minimumDepositTime = 3600; // 1 hour
         vaultClaim = 1000;
         genesis = block.timestamp;
         lastMonth = 0;
@@ -56,7 +56,6 @@ contract SynthVault {
     mapping(address => bool) private isStakedSynth;
     mapping(address => mapping(address => bool)) private isSynthMember;
 
-    // Events
     event MemberDeposits(
         address indexed synth,
         address indexed member,
@@ -79,26 +78,26 @@ contract SynthVault {
         uint256 totalWeight
     );
 
-    function setParams(uint256 one,uint256 two,uint256 three) external onlyDAO {
+    function setParams(uint256 one, uint256 two, uint256 three) external onlyDAO {
         erasToEarn = one;
         minimumDepositTime = two;
         vaultClaim = three;
     }
 
-    //======================================DEPOSITS========================================//
+    //====================================== DEPOSIT ========================================//
 
     // Holders to deposit for Interest Payments
     function deposit(address synth, uint256 amount) external {
         depositForMember(synth, msg.sender, amount);
     }
 
-    function depositForMember(address synth,address member,uint256 amount) public {
+    function depositForMember(address synth, address member, uint256 amount) public {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), "!synth");
         require(iBEP20(synth).transferFrom(msg.sender, address(this), amount));
         _deposit(synth, member, amount);
     }
 
-    function _deposit(address _synth, address _member,uint256 _amount) internal {
+    function _deposit(address _synth, address _member, uint256 _amount) internal {
         if(!isStakedSynth[_synth]){
             isStakedSynth[_synth] = true;
             stakedSynthAssets.push(_synth);
@@ -118,8 +117,8 @@ contract SynthVault {
 
     function harvestAll() external returns (bool) {
         for(uint i = 0; i< stakedSynthAssets.length; i++){
-            uint256 reward = calcCurrentReward(stakedSynthAssets[i],msg.sender);
-            if(reward > 0 ){
+            uint256 reward = calcCurrentReward(stakedSynthAssets[i], msg.sender);
+            if(reward > 0){
                 harvestSingle(stakedSynthAssets[i]);
             }
         }
@@ -130,7 +129,7 @@ contract SynthVault {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), "!synth");
         require(iRESERVE(_DAO().RESERVE()).emissions(), "!emissions");
         uint256 _weight;
-        uint256 reward = calcCurrentReward(synth,msg.sender);
+        uint256 reward = calcCurrentReward(synth, msg.sender);
         mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp;
         address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(synth).LayerONE());
         iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT);
@@ -158,10 +157,11 @@ contract SynthVault {
         uint256 _weight = mapMemberSynth_weight[member][synth];
         uint256 _reserve = reserveBASE() / erasToEarn;
         uint256 _vaultReward = (_reserve * vaultClaim) / 10000;
-        return iUTILS(_DAO().UTILS()).calcShare(_weight,totalWeight,_vaultReward); // Get member's share of that
+        return iUTILS(_DAO().UTILS()).calcShare(_weight, totalWeight, _vaultReward); // Get member's share of that
     }
 
     //====================================== WITHDRAW ========================================//
+
     // Members to withdraw
     function withdraw(address synth, uint256 basisPoints) external returns (uint256 redeemedAmount) {
         redeemedAmount = _processWithdraw(synth, msg.sender, basisPoints);
@@ -169,19 +169,20 @@ contract SynthVault {
         return redeemedAmount;
     }
 
-    function _processWithdraw( address _synth,address _member,uint256 _basisPoints) internal returns (uint256 synthReward) {
+    function _processWithdraw(address _synth, address _member, uint256 _basisPoints) internal returns (uint256 synthReward) {
         require((block.timestamp > mapMember_depositTime[_member]), "lockout"); // stops attacks
         uint256 _principle = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberSynth_deposit[_member][_synth]); // share of deposits
         mapMemberSynth_deposit[_member][_synth] -= _principle;
-        uint256 _weight = iUTILS(_DAO().UTILS()).calcPart( _basisPoints, mapMemberSynth_weight[_member][_synth]);
+        uint256 _weight = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberSynth_weight[_member][_synth]);
         mapMemberTotal_weight[_member] -= _weight;
         mapMemberSynth_weight[_member][_synth] -= _weight;
         totalWeight -= _weight; 
-        emit MemberWithdraws(_synth,_member,synthReward,_weight,totalWeight);
+        emit MemberWithdraws(_synth, _member, synthReward, _weight, totalWeight);
         return (_principle + synthReward);
     }
 
-    //================================ HELPERS ===============================//
+    //================================ Helper Functions ===============================//
+
     function reserveBASE() public view returns (uint256) {
         return iBEP20(BASE).balanceOf(_DAO().RESERVE());
     }
@@ -216,7 +217,7 @@ contract SynthVault {
         if(lastMonth == 0){
             lastMonth = block.timestamp;
         }
-        if(block.timestamp <= lastMonth + 2592000){ // 30Days
+        if(block.timestamp <= lastMonth + 2592000){ // 30 days
             map30DVaultRevenue = map30DVaultRevenue + _fee;
         } else {
             lastMonth = block.timestamp;

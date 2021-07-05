@@ -40,7 +40,7 @@ contract BondVault {
     }
 
     modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER );
+        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER);
         _;
     }
 
@@ -49,7 +49,7 @@ contract BondVault {
     }
 
     function _DAO() internal view returns(iDAO) {
-         return iBASE(BASE).DAO(); 
+         return iBASE(BASE).DAO();
     }
 
     function depositForMember(address asset, address member, uint LPS) external onlyDAO returns(bool){
@@ -75,7 +75,7 @@ contract BondVault {
             mapMember_weight[member] -= mapMemberPool_weight[member][pool];
             mapMemberPool_weight[member][pool] = 0;
         }
-        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(asset,mapBondAsset_memberDetails[asset].bondedLP[member]); 
+        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(asset, mapBondAsset_memberDetails[asset].bondedLP[member]);
         mapMemberPool_weight[member][pool] = weight;
         mapMember_weight[member] += weight;
         totalWeight += weight;
@@ -98,9 +98,9 @@ contract BondVault {
     function claimForMember(address asset, address member) public onlyDAO returns (bool){
         require(mapBondAsset_memberDetails[asset].bondedLP[member] > 0, '!bonded');
         require(mapBondAsset_memberDetails[asset].isMember[member], '!member');
-        uint256 _claimable = calcBondedLP(member, asset); 
+        uint256 _claimable = calcBondedLP(member, asset);
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset);
-        require(_claimable <= mapBondAsset_memberDetails[asset].bondedLP[member],'overclaim');
+        require(_claimable <= mapBondAsset_memberDetails[asset].bondedLP[member], 'overclaim');
         mapBondAsset_memberDetails[asset].lastBlockTime[member] = block.timestamp;
         mapBondAsset_memberDetails[asset].bondedLP[member] -= _claimable;
         decreaseWeight(asset, member);
@@ -113,7 +113,7 @@ contract BondVault {
         totalWeight -= mapMemberPool_weight[member][_pool];
         mapMember_weight[member] -= mapMemberPool_weight[member][_pool];
         mapMemberPool_weight[member][_pool] = 0;
-        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(_pool).TOKEN(),mapBondAsset_memberDetails[asset].bondedLP[member]); 
+        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(_pool).TOKEN(), mapBondAsset_memberDetails[asset].bondedLP[member]);
         mapMemberPool_weight[member][_pool] = weight;
         mapMember_weight[member] += weight;
         totalWeight += weight;

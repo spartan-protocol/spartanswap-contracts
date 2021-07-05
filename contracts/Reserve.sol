@@ -19,12 +19,12 @@ contract Reserve {
         _; 
     }
 
-    constructor (address _base ) {
+    constructor (address _base) {
         BASE = _base;
         DEPLOYER = msg.sender;
     }
 
-    function setIncentiveAddresses(address _router,address _lend,address _synthVault, address _Dao) external onlyGrantor {
+    function setIncentiveAddresses(address _router, address _lend, address _synthVault, address _Dao) external onlyGrantor {
         ROUTER = _router;
         LEND = _lend;
         SYNTHVAULT = _synthVault;
