@@ -1,2 +1,2 @@
 *.sol linguist-language=Solidity
-/contracts/*.json binary
+/artifacts/*.json binary
