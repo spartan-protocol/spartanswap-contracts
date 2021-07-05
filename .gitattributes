@@ -1,2 +1,2 @@
 *.sol linguist-language=Solidity
-/artifacts/*.json binary
+*.json merge=ours
