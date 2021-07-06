@@ -33,7 +33,7 @@ contract PoolFactory {
     }
 
     function _DAO() internal view returns(iDAO) {
-         return iBASE(BASE).DAO();
+        return iBASE(BASE).DAO();
     }
 
     function purgeDeployer() external onlyDAO {
