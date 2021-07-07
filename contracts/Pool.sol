@@ -20,15 +20,15 @@ contract Pool is iBEP20 {
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 
-    uint256 public baseAmount;
-    uint256 public tokenAmount;
+    uint256 public baseAmount; // SPARTA amount that should be in the pool
+    uint256 public tokenAmount; // TOKEN amount that should be in the pool
 
-    uint private lastMonth;
-    uint public genesis;
+    uint private lastMonth; // Timestamp of the start of current metric period (For UI)
+    uint public genesis; // Timestamp from when the pool was first deployed (For UI)
 
-    uint256 public map30DPoolRevenue;
-    uint256 public mapPast30DPoolRevenue;
-    uint256 [] public revenueArray;
+    uint256 public map30DPoolRevenue; // Tally of revenue during current incomplete metric period (for UI)
+    uint256 public mapPast30DPoolRevenue; // Tally of revenue from last full metric period (for UI)
+    uint256 [] public revenueArray; // Array of the last two metric periods (For UI)
 
     event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
@@ -163,98 +163,99 @@ contract Pool is iBEP20 {
 
     //====================================POOL FUNCTIONS =================================//
 
-    //ADD
+    // User adds liquidity to the pool
     function add() external returns(uint liquidityUnits){
         liquidityUnits = addForMember(msg.sender);
         return liquidityUnits;
     }
 
-    //ADD for member
+    // Contract adds liquidity for user 
     function addForMember(address member) public returns(uint liquidityUnits){
-        uint256 _actualInputBase = _getAddedBaseAmount();
-        uint256 _actualInputToken = _getAddedTokenAmount();
-        liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply);
-        _incrementPoolBalances(_actualInputBase, _actualInputToken);
-        _mint(member, liquidityUnits); 
+        uint256 _actualInputBase = _getAddedBaseAmount(); // Get the received SPARTA amount
+        uint256 _actualInputToken = _getAddedTokenAmount(); // Get the received TOKEN amount
+        liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply); // Calculate LP tokens to mint
+        _incrementPoolBalances(_actualInputBase, _actualInputToken); // Update recorded BASE and TOKEN amounts
+        _mint(member, liquidityUnits); // Mint the LP tokens directly to the user
         emit AddLiquidity(member, _actualInputBase, _actualInputToken, liquidityUnits);
         return liquidityUnits;
     }
     
-    //REMOVE 
+    // User removes liquidity from the pool 
     function remove() external returns (uint outputBase, uint outputToken) {
         return removeForMember(msg.sender);
     } 
 
-    //REMOVE for member
+    // Contract removes liquidity for the user
     function removeForMember(address member) public returns (uint outputBase, uint outputToken) {
-        uint256 _actualInputUnits = balanceOf(address(this));
-        outputBase = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, BASE, address(this));
-        outputToken = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this));
-        _decrementPoolBalances(outputBase, outputToken);
-        _burn(address(this), _actualInputUnits);
-        iBEP20(BASE).transfer(member, outputBase); 
-        iBEP20(TOKEN).transfer(member, outputToken);
+        uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
+        outputBase = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
+        outputToken = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
+        _decrementPoolBalances(outputBase, outputToken); // Update recorded BASE and TOKEN amounts
+        _burn(address(this), _actualInputUnits); // Burn the LP tokens
+        iBEP20(BASE).transfer(member, outputBase); // Transfer the SPARTA to user
+        iBEP20(TOKEN).transfer(member, outputToken); // Transfer the TOKENs to user
         emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
 
-    //SWAP
+    // Caller swaps tokens
     function swap(address token) external returns (uint outputAmount, uint fee){
         (outputAmount, fee) = swapTo(token, msg.sender);
         return (outputAmount, fee);
     }
 
-    //SWAPTO
+    // Contract swaps tokens for the member
     function swapTo(address token, address member) public payable returns (uint outputAmount, uint fee) {
-        require((token == BASE || token == TOKEN), "!BASE||TOKEN");
+        require((token == BASE || token == TOKEN), "!BASE||TOKEN"); // Must be SPARTA or the pool's relevant TOKEN
         address _fromToken; uint _amount;
         if(token == BASE){
-            _fromToken = TOKEN;
-            _amount = _getAddedTokenAmount();
-            (outputAmount, fee) = _swapTokenToBase(_amount);
+            _fromToken = TOKEN; // If SPARTA is selected; swap from TOKEN
+            _amount = _getAddedTokenAmount(); // Get the received TOKEN amount
+            (outputAmount, fee) = _swapTokenToBase(_amount); // Calculate the SPARTA output from the swap
         } else {
-            _fromToken = BASE;
-            _amount = _getAddedBaseAmount();
-            (outputAmount, fee) = _swapBaseToToken(_amount);
+            _fromToken = BASE; // If TOKEN is selected; swap from SPARTA
+            _amount = _getAddedBaseAmount(); // Get the received SPARTA amount
+            (outputAmount, fee) = _swapBaseToToken(_amount); // Calculate the TOKEN output from the swap
         }
         emit Swapped(_fromToken, token, member, _amount, outputAmount, fee);
-        iBEP20(token).transfer(member, outputAmount);
+        iBEP20(token).transfer(member, outputAmount); // Transfer the swap output to the selected user
         return (outputAmount, fee);
     }
 
-    //MINTSYNTH
+    // Swap SPARTA for Synths
     function mintSynth(address synthOut, address member) external returns(uint outputAmount, uint fee) {
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut) == true, "!synth");
-        uint256 _actualInputBase = _getAddedBaseAmount();
-        uint output = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); 
-        uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this));
-        _incrementPoolBalances(_actualInputBase, 0);
-        uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount);
-        fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, _fee);
-        _mint(synthOut, _liquidityUnits); 
-        iSYNTH(synthOut).mintSynth(member, output); // mintSynth to member  
-        _addPoolMetrics(fee);
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut) == true, "!synth"); // Must be a valid Synth
+        uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
+        uint output = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
+        uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
+        _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
+        uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount); // Calc slip fee in TOKEN
+        fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, _fee); // Convert TOKEN fee to SPARTA
+        _mint(synthOut, _liquidityUnits); // Mint the LP tokens directly to the Synth contract to hold
+        iSYNTH(synthOut).mintSynth(member, output); // Mint the Synth tokens directly to the user
+        _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         emit MintSynth(member, BASE, _actualInputBase, TOKEN, outputAmount);
       return (output, fee);
     }
     
-    //BURNSYNTH
+    // Swap Synths for SPARTA
     function burnSynth(address synthIN, address member) external returns(uint outputAmount, uint fee) {
-       require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth");
-        uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this));
-        uint outputBase = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); 
-        fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputSynth, tokenAmount, baseAmount);
-        iBEP20(synthIN).transfer(synthIN, _actualInputSynth);
-        iSYNTH(synthIN).burnSynth(); // redeem Synth
-        _decrementPoolBalances(outputBase, 0);
-        iBEP20(BASE).transfer(member, outputBase);
-        _addPoolMetrics(fee);
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth"); // Must be a valid Synth
+        uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
+        uint outputBase = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA
+        fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA
+        iBEP20(synthIN).transfer(synthIN, _actualInputSynth); // Transfer SYNTH to relevant synth contract
+        iSYNTH(synthIN).burnSynth(); // Burn the SYNTH units
+        _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
+        iBEP20(BASE).transfer(member, outputBase); // Transfer SPARTA to user
+        _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         emit BurnSynth(member, BASE, outputBase, TOKEN, _actualInputSynth);
       return (outputBase, fee);
     }
 
     //=======================================INTERNAL MATHS======================================//
 
+    // Check the SPARTA amount received by this Pool
     function _getAddedBaseAmount() internal view returns(uint256 _actual){
         uint _baseBalance = iBEP20(BASE).balanceOf(address(this)); 
         if(_baseBalance > baseAmount){
@@ -265,6 +266,7 @@ contract Pool is iBEP20 {
         return _actual;
     }
   
+    // Check the TOKEN amount received by this Pool
     function _getAddedTokenAmount() internal view returns(uint256 _actual){
         uint _tokenBalance = iBEP20(TOKEN).balanceOf(address(this)); 
         if(_tokenBalance > tokenAmount){
@@ -275,24 +277,26 @@ contract Pool is iBEP20 {
         return _actual;
     }
 
+    // Calculate output of swapping SPARTA for TOKEN & update recorded amounts
     function _swapBaseToToken(uint256 _x) internal returns (uint256 _y, uint256 _fee){
         uint256 _X = baseAmount;
         uint256 _Y = tokenAmount;
-        _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
-        uint fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
-        _fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, fee);
-        _setPoolAmounts(_X + _x, _Y - _y);
-        _addPoolMetrics(_fee);
+        _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y); // Calc TOKEN output
+        uint fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y); // Calc TOKEN fee
+        _fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, fee); // Convert TOKEN fee to SPARTA
+        _setPoolAmounts(_X + _x, _Y - _y); // Update recorded BASE and TOKEN amounts
+        _addPoolMetrics(_fee); // Add slip fee to the revenue metrics
         return (_y, _fee);
     }
 
+    // Calculate output of swapping TOKEN for SPARTA & update recorded amounts
     function _swapTokenToBase(uint256 _x) internal returns (uint256 _y, uint256 _fee){
         uint256 _X = tokenAmount;
         uint256 _Y = baseAmount;
-        _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y);
-        _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y);
-        _setPoolAmounts(_Y - _y, _X + _x);
-        _addPoolMetrics(_fee);
+        _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y); // Calc SPARTA output
+        _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y); // Calc SPARTA fee
+        _setPoolAmounts(_Y - _y, _X + _x); // Update recorded BASE and TOKEN amounts
+        _addPoolMetrics(_fee); // Add slip fee to the revenue metrics
         return (_y, _fee);
     }
 
