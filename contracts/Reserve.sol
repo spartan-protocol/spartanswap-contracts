@@ -13,7 +13,7 @@ contract Reserve {
     address public DEPLOYER;
     bool public emissions;
 
-    // Only DAO can execute
+    // Restrict access
     modifier onlyGrantor() {
         require(msg.sender == DAO || msg.sender == ROUTER || msg.sender == DEPLOYER || msg.sender == LEND || msg.sender == SYNTHVAULT, "!DAO");
         _; 
@@ -31,24 +31,25 @@ contract Reserve {
         DAO = _Dao;
     }
 
+    // Send SPARTA to an incentive address (Vault harvest, dividends etc)
     function grantFunds(uint amount, address to) external onlyGrantor {
-        uint reserve = iBEP20(BASE).balanceOf(address(this));
-        if(amount > 0){
-            if(emissions){
+        uint reserve = iBEP20(BASE).balanceOf(address(this)); // Get RESERVE's SPARTA balance
+        if(amount > 0){ // Skip if amount is not valid
+            if(emissions){ // Skip if emissions are off
                 if(amount > reserve){
-                    iBEP20(BASE).transfer(to, reserve);
+                    iBEP20(BASE).transfer(to, reserve); // Send remainder
                 } else {
-                    iBEP20(BASE).transfer(to, amount);
+                    iBEP20(BASE).transfer(to, amount); // Send requested amount
                 }
             }
         }
     }
 
     function flipEmissions() external onlyGrantor {
-        emissions = !emissions; 
+        emissions = !emissions; // Flip emissions on/off
     }
 
-    // Can purge DEPLOYER
+    // Can purge deployer once DAO is stable and final
     function purgeDeployer() external onlyGrantor {
         DEPLOYER = address(0);
     }
