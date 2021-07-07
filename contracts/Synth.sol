@@ -5,7 +5,7 @@ import "./iPOOLFACTORY.sol";
 
 contract Synth is iBEP20 {
     address public BASE;
-    address public LayerONE;
+    address public LayerONE; // Underlying relevant layer1 token
     uint public genesis;
     address public DEPLOYER;
 
@@ -21,11 +21,13 @@ contract Synth is iBEP20 {
         return iBASE(BASE).DAO();
     }
     
-     modifier onlyDAO() {
+    // Restrict access
+    modifier onlyDAO() {
         require(msg.sender == DEPLOYER, "!DAO");
         _;
     }
 
+    // Restrict access
     modifier onlyPool() {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, "!curated");
         _;
@@ -157,52 +159,59 @@ contract Synth is iBEP20 {
         emit Transfer(account, address(0), amount);
     }
 
+    //==================================== SYNTH FUNCTIONS =================================//
+
+    // Handle received LP tokens and mint Synths
     function mintSynth(address member, uint amount) external onlyPool returns (uint syntheticAmount){
-        uint lpUnits = _getAddedLPAmount(msg.sender);
-        mapSynth_LPDebt[msg.sender] += amount;  
-        mapSynth_LPBalance[msg.sender] += lpUnits;
-        _mint(member, amount); 
+        uint lpUnits = _getAddedLPAmount(msg.sender); // Get the received LP units
+        mapSynth_LPDebt[msg.sender] += amount; // Increase debt by synth amount
+        mapSynth_LPBalance[msg.sender] += lpUnits; // Increase lp balance by LPs received
+        _mint(member, amount); // Mint the synths & tsf to user
         return amount;
     }
     
+    // Handle received Synths and burn the LPs and Synths
     function burnSynth() external returns (bool){
-        uint _syntheticAmount = balanceOf(address(this));
+        uint _syntheticAmount = balanceOf(address(this)); // Get the received synth units
         uint _amountUnits = (_syntheticAmount * mapSynth_LPBalance[msg.sender]) / mapSynth_LPDebt[msg.sender]; // share = amount * part/total
-        mapSynth_LPBalance[msg.sender] -= _amountUnits;
-        mapSynth_LPDebt[msg.sender] -= _syntheticAmount;
+        mapSynth_LPBalance[msg.sender] -= _amountUnits; // Reduce lp balance
+        mapSynth_LPDebt[msg.sender] -= _syntheticAmount; // Reduce debt by synths being burnt
         if(_amountUnits > 0){
-        _burn(address(this), _syntheticAmount); 
-        Pool(msg.sender).burn(_amountUnits);
+            _burn(address(this), _syntheticAmount); // Burn the synths
+            Pool(msg.sender).burn(_amountUnits); // Burn the LP tokens
         }
         return true;
     }
 
+    // Burn LPs to if their value outweights the synths supply value (Ensures incentives are funnelled to existing LPers)
     function realise(address pool) external {
-        uint baseValueLP = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(mapSynth_LPBalance[pool], BASE, pool);
-        uint baseValueSynth = iUTILS(_DAO().UTILS()).calcActualSynthUnits(mapSynth_LPDebt[pool], address(this)); 
+        uint baseValueLP = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(mapSynth_LPBalance[pool], BASE, pool); // Get the SPARTA value of the LP tokens
+        uint baseValueSynth = iUTILS(_DAO().UTILS()).calcActualSynthUnits(mapSynth_LPDebt[pool], address(this)); // Get the SPARTA value of the synths
         if(baseValueLP > baseValueSynth){
-            uint premium = baseValueLP - baseValueSynth;
+            uint premium = baseValueLP - baseValueSynth; // Get the premium between the two values
             if(premium > 10**18){
-            uint premiumLP = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(premium, pool);
-            mapSynth_LPBalance[pool] -= premiumLP;
-            Pool(pool).burn(premiumLP);
+                uint premiumLP = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(premium, pool); // Get the LP value of the premium
+                mapSynth_LPBalance[pool] -= premiumLP; // Reduce the LP balance
+                Pool(pool).burn(premiumLP); // Burn the premium of the LP tokens
             }
         }
     }
 
+    // Check the received token amount
     function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 _actual){
         if(_amount > 0) {
-            uint startBal = iBEP20(_token).balanceOf(address(this)); 
-            iBEP20(_token).transferFrom(msg.sender, address(this), _amount); 
-            _actual = iBEP20(_token).balanceOf(address(this))-startBal;
+            uint startBal = iBEP20(_token).balanceOf(address(this)); // Get existing balance
+            iBEP20(_token).transferFrom(msg.sender, address(this), _amount); // Transfer tokens in
+            _actual = iBEP20(_token).balanceOf(address(this)) - startBal; // Calculate received amount
         }
         return _actual;
     }
 
+    // Check the received LP tokens amount
     function _getAddedLPAmount(address _pool) internal view returns(uint256 _actual){
-        uint _lpCollateralBalance = iBEP20(_pool).balanceOf(address(this)); 
+        uint _lpCollateralBalance = iBEP20(_pool).balanceOf(address(this)); // Get total balance held
         if(_lpCollateralBalance > mapSynth_LPBalance[_pool]){
-            _actual = _lpCollateralBalance-(mapSynth_LPBalance[_pool]);
+            _actual = _lpCollateralBalance - mapSynth_LPBalance[_pool]; // Get received amount
         } else {
             _actual = 0;
         }
