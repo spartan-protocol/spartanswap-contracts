@@ -54,30 +54,32 @@ contract Utils {
     }
 
     //================================== CORE-MATH ==================================//
-
+    
+    // Calculate the feeBurn's feeOnTransfer based on total supply
     function getFeeOnTransfer(uint256 totalSupply, uint256 maxSupply) external pure returns (uint256) {
         return calcShare(totalSupply, maxSupply, 100); // 0 -> 100bp
     }
 
+    // Calculate 'part' of a total using basis points | 10,000 basis points = 100.00%
     function calcPart(uint256 bp, uint256 total) external pure returns (uint256) {
-        // 10,000 basis points = 100.00%
-        require(bp <= 10000, "!bp");
+        require(bp <= 10000, "!bp"); // basis points must be valid
         return calcShare(bp, 10000, total);
     }
 
+    // Calc share | share = amount * part / total
     function calcShare(uint256 part, uint256 total, uint256 amount) public pure returns (uint256 share) {
-        // share = amount * part/total
         if (part > total) {
-            part = total;
+            part = total; // Part cant be greater than the total
         }
         if (total > 0) {
             share = (amount * part) / total;
         }
     }
 
+    // Calculate liquidity units
     function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) external view returns (uint units){
         if(P == 0){
-            return b;
+            return b; // If pool is empty; use b as initial units
         } else {
             // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
             // P * (part1 + part2) / (part3) * slipAdjustment
@@ -90,6 +92,7 @@ contract Utils {
         }
     }
 
+    // Get slip adjustment
     function getSlipAdustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
         // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
         // 1 - ABS(part1 - part2)/(part3 * part4))
@@ -107,8 +110,9 @@ contract Utils {
         return one - ((numerator * (one)) / (denominator)); // Multiply by 10**18
     }
 
+    // Calculate symmetrical redemption value of LP tokens (per side)
     function calcLiquidityHoldings(uint units, address token, address pool) external view returns (uint share){
-        // share = amount * part/total
+        // share = amount * part / total
         // address pool = getPool(token);
         uint amount;
         if(token == BASE){
@@ -134,6 +138,7 @@ contract Utils {
         return numerator / (denominator);
     }
 
+    // Calculate asymmetrical redemption value of LP tokens (remove all to TOKEN)
     function calcAsymmetricValueToken(address pool, uint amount) external view returns (uint tokenValue){
         uint baseAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
         uint tokenAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
