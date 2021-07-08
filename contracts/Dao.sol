@@ -20,7 +20,7 @@ contract Dao {
     uint256 public proposalCount;   // Count of proposals
     uint256 public majorityFactor;  // Number used to calculate majority; intended to be 6666bp === 2/3
     uint256 public erasToEarn;      // Amount of eras that make up the targeted RESERVE depletion; regulates incentives
-    uint256 public daoClaim;        // The DAOVault's portion of intended rewards; intended to be ~10% initially
+    uint256 public daoClaim;        // The DAOVault's portion of rewards; intended to be ~10% initially
     uint256 public daoFee;          // The SPARTA fee for a user to create a new proposal, intended to be 100 SPARTA initially
     uint256 public currentProposal; // The most recent proposal; should be === proposalCount
     
