@@ -7,7 +7,7 @@ contract SynthFactory {
     address public WBNB;
     address public DEPLOYER;
 
-    address[] public arraySynths;
+    address[] public arraySynths; // Array of all deployed synths
     mapping(address => address) private mapToken_Synth;
     mapping(address => bool) public isSynth;
     event CreateSynth(address indexed token, address indexed pool);
@@ -18,6 +18,7 @@ contract SynthFactory {
         DEPLOYER = msg.sender; 
     }
 
+    // Restrict access
     modifier onlyDAO() {
         require(msg.sender == DEPLOYER, "!DAO");
         _;
@@ -27,29 +28,31 @@ contract SynthFactory {
         return iBASE(BASE).DAO();
     }
 
+    // Can purge deployer once DAO is stable and final
     function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
     }
 
-    // Create a synth asset - only from curated pools
+    // Anyone can create a synth if it's pool is curated
     function createSynth(address token) external returns(address synth){
-        require(getSynth(token) == address(0), "exists");
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "!curated");
+        require(getSynth(token) == address(0), "exists"); // Synth must not already exist
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "!curated"); // Pool must be Curated
         Synth newSynth; address _token = token;
-        if(token == address(0)){_token = WBNB;} // Handle BNB
-        newSynth = new Synth(BASE, _token);  
-        synth = address(newSynth);
-        addSynth(_token, synth);
+        if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
+        newSynth = new Synth(BASE, _token); // Deploy synth asset contract
+        synth = address(newSynth); // Get new synth's address
+        addSynth(_token, synth); // Record new synth contract with the SynthFactory
         emit CreateSynth(token, synth);
         return synth;
     }
 
+    // Record synth with the SynthFactory
     function addSynth(address _token, address _synth) internal {
-        require(_token != BASE);
-        mapToken_Synth[_token] = _synth;
-        arraySynths.push(_synth); 
-        isSynth[_synth] = true;
+        require(_token != BASE); // Must not be SPARTA
+        mapToken_Synth[_token] = _synth; // Record synth address
+        arraySynths.push(_synth); // Add synth address to the array
+        isSynth[_synth] = true; // Record synth as valid
     }
 
     //================================ Helper Functions ==================================//
