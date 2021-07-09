@@ -10,8 +10,6 @@ contract Router {
     address public WBNB;
     address public DEPLOYER;
 
-    uint public secondsPerEra;
-    uint public nextEraTime;
     uint private maxTrades;         // Amount of dividend events per era
     uint private eraLength;         // Dividend factor to regulate the max percentage of RESERVE balance
     uint public normalAverageFee;   // The average fee size (dividend smoothing)
@@ -289,7 +287,7 @@ contract Router {
     function addTradeFee(uint _fee) internal {
         uint totalTradeFees = 0;
         uint arrayFeeLength = feeArray.length;
-        if(!(arrayFeeLength == arrayFeeSize)){
+        if(arrayFeeLength < arrayFeeSize){
             feeArray.push(_fee); // Build array until it is == arrayFeeSize
         } else {
             addFee(_fee); // If array is required length; shift in place of oldest item
@@ -337,6 +335,7 @@ contract Router {
 
     function changeArrayFeeSize(uint _size) external onlyDAO {
         arrayFeeSize = _size;
+        delete feeArray;
     }
 
     function changeMaxTrades(uint _maxtrades) external onlyDAO {

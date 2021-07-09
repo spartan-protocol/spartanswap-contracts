@@ -120,10 +120,13 @@ contract SynthVault {
     // User harvests all of their available rewards
     function harvestAll() external returns (bool) {
         for(uint i = 0; i < stakedSynthAssets.length; i++){
-            uint256 reward = calcCurrentReward(stakedSynthAssets[i], msg.sender);
-            if(reward > 0){
-                harvestSingle(stakedSynthAssets[i]);
+            if((block.timestamp > mapMemberSynth_lastTime[msg.sender][stakedSynthAssets[i]])){
+                uint256 reward = calcCurrentReward(stakedSynthAssets[i], msg.sender);
+                if(reward > 0){
+                    harvestSingle(stakedSynthAssets[i]);
+                }
             }
+            
         }
         return true;
     }

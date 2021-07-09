@@ -173,6 +173,9 @@ contract Pool is iBEP20 {
     function addForMember(address member) public returns(uint liquidityUnits){
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get the received SPARTA amount
         uint256 _actualInputToken = _getAddedTokenAmount(); // Get the received TOKEN amount
+        if(baseAmount == 0 || tokenAmount == 0){
+        require(_actualInputBase != 0 && _actualInputToken != 0, "!Balanced");
+        }
         liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply); // Calculate LP tokens to mint
         _incrementPoolBalances(_actualInputBase, _actualInputToken); // Update recorded BASE and TOKEN amounts
         _mint(member, liquidityUnits); // Mint the LP tokens directly to the user
