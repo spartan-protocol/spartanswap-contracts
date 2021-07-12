@@ -39,45 +39,41 @@ contract('SWAP', function (accounts) {
     addLiquidityBNB(acc0,_.BN2Str(100*_.one),  _.BN2Str(10*_.one)); //SPV2
     addLiquidityTKN1(acc0,_.BN2Str(100*_.one),  _.BN2Str(50*_.one))
     addLiquidityTKN1(acc1,_.BN2Str(100*_.one),  _.BN2Str(50*_.one))
-    FeeArray()
     swapBASEToBNB(acc1, _.BN2Str(10*_.one))// wbnb swaps
     swapBNBtoBASE(acc1, _.BN2Str(1*_.one))// wbnb swaps
     curatePools() // SPV2
     buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
     sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
     buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    swapTKN1ToBNB(acc2, _.BN2Str(_.one * 1))//double swaps
-    swapBNBToTKN1(acc2, _.BN2Str(_.one * 1))//double swaps
-    swapBASE(acc0, _.BN2Str(_.one)) // dividends
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
+    // sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
+    // swapTKN1ToBNB(acc2, _.BN2Str(_.one * 1))//double swaps
+    // swapBNBToTKN1(acc2, _.BN2Str(_.one * 1))//double swaps
+    // swapBASE(acc0, _.BN2Str(_.one)) // dividends
     swapTOKEN(acc0, _.BN2Str(_.one * 1))// dividends
     swapBASE(acc0, _.BN2Str(_.one)) // dividends
     swapTOKEN(acc0, _.BN2Str(_.one * 1))// dividends
     createSyntheticBNB() 
-    FeeArray()
     sellBNB(acc2, _.BN2Str(_.one * 1))// bnbswaps
-    FeeArray()
     buyBNB(acc2, _.BN2Str(_.one * 1)) // bnbswaps
-    FeeArray()
-    // swapLayer1ToSynth(acc1, _.BN2Str(10*_.one))
-    // swapLayer1ToSynth(acc0, _.BN2Str(1*_.one))
-    //  swapLayer1ToSynth(acc2, _.BN2Str(5*_.one))
-    //  swapSynthToLayer1(acc1, _.BN2Str(1.1*_.one))
-    //  swapSynthToLayer1(acc0, _.BN2Str(0.1*_.one))
-    //  swapSynthToLayer1(acc2, _.BN2Str(0.2*_.one))
-    // zapLiquidity(acc1,  _.BN2Str(_.one * 10))
+    swapLayer1ToSynth(acc1, _.BN2Str(10*_.one))
+    swapLayer1ToSynth(acc0, _.BN2Str(1*_.one))
+    swapLayer1ToSynth(acc2, _.BN2Str(5*_.one))
+    swapSynthToLayer1(acc1, _.BN2Str(1.1*_.one))
+    swapSynthToLayer1(acc0, _.BN2Str(0.1*_.one))
+    swapSynthToLayer1(acc2, _.BN2Str(0.2*_.one))
+    zapLiquidity(acc1,  _.BN2Str(_.one * 10))
     
 
 })
@@ -107,7 +103,7 @@ function constructor(accounts) {
             await reserve.setIncentiveAddresses(router.address,utils.address,utils.address,Dao.address );
             // await reserve.flipEmissions();    
             // await sparta.flipEmissions();  
-    
+           
             await sparta.transfer(acc1, _.getBN(_.BN2Str(10000 * _.one)))
             await sparta.transfer(acc2, _.getBN(_.BN2Str(10000 * _.one)))
     
@@ -692,16 +688,16 @@ async function zapLiquidity(acc, x) {
     })
 }
 
-async function FeeArray() {
-    it(`FeeArray`, async () => {
-        let feeL = _.BN2Str(await router.feeLength());
-       for(let i = 0; i < feeL; i++){
-        let fee = await router.feeArray(i)
-        console.log(_.BN2Str(fee))
-       }
+// async function FeeArray() {
+//     it(`FeeArray`, async () => {
+//         let feeL = _.BN2Str(await router.feeLength());
+//        for(let i = 0; i < feeL; i++){
+//         let fee = await router.feeArray(i)
+//         console.log(_.BN2Str(fee))
+//        }
        
-    })
-}
+//     })
+// }
 
 
 
