@@ -12,7 +12,7 @@ contract BondVault {
     address public BASE;
     address public DEPLOYER;
     uint256 public totalWeight;
-
+    bool private bondRelease;
     address [] public arrayMembers;
 
     struct ListedAssets {
@@ -37,6 +37,7 @@ contract BondVault {
     constructor (address _base) {
         BASE = _base;
         DEPLOYER = msg.sender;
+        bondRelease = false;
     }
 
     // Restrict access
@@ -92,7 +93,7 @@ contract BondVault {
             uint256 _secondsSinceClaim = block.timestamp - mapBondAsset_memberDetails[asset].lastBlockTime[member]; // Get seconds passed since last claim
             uint256 rate = mapBondAsset_memberDetails[asset].claimRate[member]; // Get user's claim rate
             claimAmount = _secondsSinceClaim * rate; // Set claim amount
-            if(claimAmount >= mapBondAsset_memberDetails[asset].bondedLP[member]){
+            if(claimAmount >= mapBondAsset_memberDetails[asset].bondedLP[member] || bondRelease){
                 claimAmount = mapBondAsset_memberDetails[asset].bondedLP[member]; // If final claim; set claimAmount as remainder
             }
             return claimAmount;
@@ -135,6 +136,10 @@ contract BondVault {
     // Get array of all existing & past BondVault members
     function allMembers() external view returns (address[] memory _allMembers){
         return arrayMembers;
+    }
+
+    function release() external onlyDAO {
+        bondRelease = true;
     }
 
     // Get a bond details (scope: user -> asset)
