@@ -62,9 +62,9 @@ contract Router {
         address _fromToken = Pool(fromPool).TOKEN(); // Get token underlying the fromPool
         address _member = msg.sender; // Get user's address
         require(unitsInput <= iBEP20(fromPool).totalSupply()); // Input must be valid
-        iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput); // Transfer LPs from user to their pool
+        iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput); // Transfer LPs from user to the pool
         Pool(fromPool).remove(); // Remove liquidity to ROUTER
-        iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))); // Transfer TOKENs from ROUTER to fromPool for swap
+        iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))); // Transfer TOKENs from ROUTER to fromPool
         Pool(fromPool).swapTo(BASE, toPool); // Swap the received TOKENs for SPARTA then transfer to the toPool
         iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to toPool
         Pool(toPool).addForMember(_member); // Add liquidity and send the LPs to user
@@ -77,7 +77,7 @@ contract Router {
 
     // Contract adds liquidity asymetrically for user (one asset)
     function addLiquiditySingleForMember(uint inputToken, bool fromBase, address token, address member) public payable{
-        require(inputToken > 0); // Must be valid amount
+        require(inputToken > 0); // Must be valid input amount
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
         address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
@@ -119,12 +119,12 @@ contract Router {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true); // Pool must be valid
         address _member = msg.sender; // Get user's address
         iBEP20(_pool).transferFrom(_member, _pool, units); // Transfer LPs to pool
-        Pool(_pool).remove(); // Remove liquidity & transfer to ROUTER
+        Pool(_pool).remove(); // Remove liquidity & tsf to ROUTER
         address _token = token; // Get token address
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         if(toBase){
             iBEP20(_token).transfer(_pool, iBEP20(_token).balanceOf(address(this))); // Transfer TOKEN to pool
-            Pool(_pool).swapTo(BASE, _member); // Swap TOKEN for SPARTA & transfer to ROUTER
+            Pool(_pool).swapTo(BASE, _member); // Swap TOKEN for SPARTA & tsf to user
         } else {
             iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA to pool
             Pool(_pool).swap(_token); // Swap SPARTA for TOKEN & transfer to ROUTER
@@ -140,11 +140,11 @@ contract Router {
         _handleTransferIn(BASE, amount, _pool); // Transfer SPARTA to pool
         uint fee;
         if(token != address(0)){
-            (, uint feey) = Pool(_pool).swapTo(token, member); // Swap SPARTA to TOKEN & transfer to ROUTER
+            (, uint feey) = Pool(_pool).swapTo(token, member); // Swap SPARTA to TOKEN & tsf to user
             fee = feey;
         } else {
-            (uint outputAmount, uint feez) = Pool(_pool).swap(WBNB);
-            _handleTransferOut(token, outputAmount, member); // Transfer TOKEN from ROUTER to user
+            (uint outputAmount, uint feez) = Pool(_pool).swap(WBNB); // Swap SPARTA to WBNB
+            _handleTransferOut(token, outputAmount, member); // Unwrap to BNB & tsf to user
             fee = feez;
         }
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
@@ -215,10 +215,10 @@ contract Router {
         if(_amount > 0) {
             if (_token == address(0)) {
                 iWBNB(WBNB).withdraw(_amount); // Unwrap WBNB to BNB
-                (bool success, ) = payable(_recipient).call{value:_amount}("");  // Send BNB to user
+                (bool success, ) = payable(_recipient).call{value:_amount}("");  // Send BNB to recipient
                 require(success, "!send");
             } else {
-                iBEP20(_token).transfer(_recipient, _amount); // Transfer TOKEN to user
+                iBEP20(_token).transfer(_recipient, _amount); // Transfer TOKEN to recipient
             }
         }
     }
@@ -231,10 +231,10 @@ contract Router {
         address _synthLayer1 = iSYNTH(toSynth).LayerONE(); // Get underlying token's address
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthLayer1); // Get relevant pool address
         if(fromToken != BASE){
-            sellTo(inputAmount, fromToken, address(this)); // Swap TOKEN to SPARTA
-            iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA to pool
+            sellTo(inputAmount, fromToken, address(this)); // Swap TOKEN to SPARTA & tsf to ROUTER
+            iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to pool
         } else {
-            iBEP20(BASE).transferFrom(msg.sender, _pool, inputAmount); // Transfer SPARTA to pool
+            iBEP20(BASE).transferFrom(msg.sender, _pool, inputAmount); // Transfer SPARTA from ROUTER to pool
         }
         (, uint fee) = Pool(_pool).mintSynth(toSynth, msg.sender); // Mint synths & tsf to user
         getsDividend(_pool, fee); // Check and tsf dividend to pool
@@ -249,15 +249,15 @@ contract Router {
         iBEP20(fromSynth).transferFrom(msg.sender, _poolIN, inputAmount); // Transfer synth from user to pool
         uint outputAmount; uint fee;
         if(toToken == BASE){
-            Pool(_poolIN).burnSynth(fromSynth, msg.sender); // Swap Synths for SPARTA & tsf to ROUTER
+            Pool(_poolIN).burnSynth(fromSynth, msg.sender); // Swap Synths for SPARTA & tsf to user
         } else {
-            (outputAmount,fee) = Pool(_poolIN).burnSynth(fromSynth, address(this)); // Swap Synths to SPARTA & tsf to user
+            (outputAmount,fee) = Pool(_poolIN).burnSynth(fromSynth, address(this)); // Swap Synths to SPARTA & tsf to ROUTER
             if(toToken != address(0)){
-                (, uint feey) = Pool(_pool).swapTo(toToken, msg.sender); // Swap SPARTA to TOKEN & transfer to msg.sender
+                (, uint feey) = Pool(_pool).swapTo(toToken, msg.sender); // Swap SPARTA to TOKEN & transfer to user
                 fee = feey + fee;
             } else {
-                (uint outputAmountY, uint feez) = Pool(_pool).swap(WBNB);
-                _handleTransferOut(toToken, outputAmountY, msg.sender); // Transfer TOKEN to user// Handle BNB -> WBNB
+                (uint outputAmountY, uint feez) = Pool(_pool).swap(WBNB); // Swap SPARTA to WBNB & tsf to ROUTER
+                _handleTransferOut(toToken, outputAmountY, msg.sender); // Unwrap to BNB & tsf to user
                 fee = feez + fee;
             }
         }
