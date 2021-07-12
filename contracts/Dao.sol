@@ -97,7 +97,7 @@ contract Dao {
         BASE = _base;
         DEPLOYER = msg.sender;
         DAO = address(this);
-        coolOffPeriod = 1;
+        coolOffPeriod = 259200;
         erasToEarn = 30;
         majorityFactor = 6666;
         daoClaim = 1000;
@@ -404,7 +404,7 @@ contract Dao {
 
     // Attempt to cancel the open proposal
     function cancelProposal() external {
-        require(block.timestamp > (mapPID_startTime[currentProposal] + 600), "!days"); // Proposal must not be new
+        require(block.timestamp > (mapPID_startTime[currentProposal] + 1296000), "!days"); // Proposal must not be new
         mapPID_votes[currentProposal] = 0; // Clear all votes from the proposal
         mapPID_open[currentProposal] = false; // Set the proposal as not open (closed status)
         emit CancelProposal(msg.sender, currentProposal);
