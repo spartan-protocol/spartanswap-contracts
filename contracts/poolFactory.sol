@@ -56,8 +56,8 @@ contract PoolFactory {
         arrayPools.push(pool); // Add pool address to the pool array
         arrayTokens.push(_token); // Add token to the listed array
         isListedPool[pool] = true; // Record pool as currently listed
+        emit CreatePool(token, pool); // Emit CreatePool before the AddLiquidity event for cleaner subgraph code
         Pool(pool).addForMember(msg.sender); // Perform the liquidity-add for the user
-        emit CreatePool(token, pool);
         return pool;
     }
 
