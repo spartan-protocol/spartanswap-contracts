@@ -33,8 +33,8 @@ contract Pool is iBEP20 {
     event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address indexed tokenFrom, address indexed tokenTo, address indexed recipient, uint inputAmount, uint outputAmount, uint fee);
-    event MintSynth(address indexed member, address indexed base, uint256 baseAmount, address indexed token, uint256 synthAmount);
-    event BurnSynth(address indexed member, address indexed base, uint256 baseAmount, address indexed token, uint256 synthAmount);
+    event MintSynth(address indexed member, uint256 baseAmount, uint256 liqUnits, uint256 synthAmount, uint256 fee);
+    event BurnSynth(address indexed member, uint256 baseAmount, uint256 liqUnits, uint256 synthAmount, uint256 fee);
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
@@ -237,7 +237,7 @@ contract Pool is iBEP20 {
         _mint(synthOut, _liquidityUnits); // Mint the LP tokens directly to the Synth contract to hold
         iSYNTH(synthOut).mintSynth(member, output); // Mint the Synth tokens directly to the user
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
-        emit MintSynth(member, BASE, _actualInputBase, TOKEN, outputAmount);
+        emit MintSynth(member, _actualInputBase, _liquidityUnits, outputAmount, fee);
       return (output, fee);
     }
     
@@ -248,11 +248,11 @@ contract Pool is iBEP20 {
         uint outputBase = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA
         fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA
         iBEP20(synthIN).transfer(synthIN, _actualInputSynth); // Transfer SYNTH to relevant synth contract
-        iSYNTH(synthIN).burnSynth(); // Burn the SYNTH units
+        uint liqUnits = iSYNTH(synthIN).burnSynth(); // Burn the SYNTH units
         _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         iBEP20(BASE).transfer(member, outputBase); // Transfer SPARTA to user
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
-        emit BurnSynth(member, BASE, outputBase, TOKEN, _actualInputSynth);
+        emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
       return (outputBase, fee);
     }
 

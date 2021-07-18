@@ -171,7 +171,7 @@ contract Synth is iBEP20 {
     }
     
     // Handle received Synths and burn the LPs and Synths
-    function burnSynth() external returns (bool){
+    function burnSynth() external returns (uint){
         uint _syntheticAmount = balanceOf(address(this)); // Get the received synth units
         uint _amountUnits = (_syntheticAmount * mapSynth_LPBalance[msg.sender]) / mapSynth_LPDebt[msg.sender]; // share = amount * part/total
         mapSynth_LPBalance[msg.sender] -= _amountUnits; // Reduce lp balance
@@ -180,7 +180,7 @@ contract Synth is iBEP20 {
             _burn(address(this), _syntheticAmount); // Burn the synths
             Pool(msg.sender).burn(_amountUnits); // Burn the LP tokens
         }
-        return true;
+        return _amountUnits;
     }
 
     // Burn LPs to if their value outweights the synths supply value (Ensures incentives are funnelled to existing LPers)
