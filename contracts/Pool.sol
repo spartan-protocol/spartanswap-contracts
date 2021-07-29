@@ -249,11 +249,11 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
         uint outputBase = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA
         fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA
+        _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
+        _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         iBEP20(synthIN).transfer(synthIN, _actualInputSynth); // Transfer SYNTH to relevant synth contract
         uint liqUnits = iSYNTH(synthIN).burnSynth(); // Burn the SYNTH units
-        _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         iBEP20(BASE).transfer(member, outputBase); // Transfer SPARTA to user
-        _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
       return (outputBase, fee);
     }
