@@ -28,8 +28,13 @@ contract Synth is iBEP20 {
     }
 
     // Restrict access
+    modifier onlyCuratedPool() {
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, "!CURATED");
+        _;
+    }
+    // Restrict access
     modifier onlyPool() {
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, "!curated");
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, "!POOL");
         _;
     }
     
@@ -107,21 +112,6 @@ contract Synth is iBEP20 {
         }
         return true;
     }
-
-    //iBEP677 approveAndCall
-    function approveAndCall(address recipient, uint amount, bytes calldata data) external returns (bool) {
-        _approve(msg.sender, recipient, type(uint256).max); // Give recipient max approval
-        iBEP677(recipient).onTokenApproval(address(this), amount, msg.sender, data); // Amount is passed thru to recipient
-        return true;
-    }
-
-    //iBEP677 transferAndCall
-    function transferAndCall(address recipient, uint amount, bytes calldata data) external returns (bool) {
-        _transfer(msg.sender, recipient, amount);
-        iBEP677(recipient).onTokenTransfer(address(this), amount, msg.sender, data); // Amount is passed thru to recipient 
-        return true;
-    }
-
     // Internal transfer function
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
         require(sender != address(0), "!sender");
@@ -162,7 +152,7 @@ contract Synth is iBEP20 {
     //==================================== SYNTH FUNCTIONS =================================//
 
     // Handle received LP tokens and mint Synths
-    function mintSynth(address member, uint amount) external onlyPool returns (uint syntheticAmount){
+    function mintSynth(address member, uint amount) external onlyCuratedPool returns (uint syntheticAmount){
         uint lpUnits = _getAddedLPAmount(msg.sender); // Get the received LP units
         mapSynth_LPDebt[msg.sender] += amount; // Increase debt by synth amount
         mapSynth_LPBalance[msg.sender] += lpUnits; // Increase lp balance by LPs received
@@ -171,15 +161,11 @@ contract Synth is iBEP20 {
     }
     
     // Handle received Synths and burn the LPs and Synths
-    function burnSynth() external returns (uint){
-        uint _syntheticAmount = balanceOf(address(this)); // Get the received synth units
+    function burnSynth(uint _syntheticAmount) external onlyPool returns (uint){
         uint _amountUnits = (_syntheticAmount * mapSynth_LPBalance[msg.sender]) / mapSynth_LPDebt[msg.sender]; // share = amount * part/total
         mapSynth_LPBalance[msg.sender] -= _amountUnits; // Reduce lp balance
         mapSynth_LPDebt[msg.sender] -= _syntheticAmount; // Reduce debt by synths being burnt
-        if(_amountUnits > 0){
-            _burn(address(this), _syntheticAmount); // Burn the synths
-            Pool(msg.sender).burn(_amountUnits); // Burn the LP tokens
-        }
+        _burn(msg.sender, _syntheticAmount); // Burn the synths
         return _amountUnits;
     }
 

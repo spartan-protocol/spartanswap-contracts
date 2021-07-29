@@ -236,8 +236,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA
         _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
-        iBEP20(synthIN).transfer(synthIN, _actualInputSynth); // Transfer SYNTH to relevant synth contract
-        uint liqUnits = iSYNTH(synthIN).burnSynth(); // Burn the SYNTH units
+        uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the SYNTH units 
+        _burn(synthIN, liqUnits);
         iBEP20(BASE).transfer(member, outputBase); // Transfer SPARTA to user
         emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
       return (outputBase, fee);
