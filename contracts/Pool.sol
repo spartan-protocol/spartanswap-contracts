@@ -129,6 +129,7 @@ contract Pool is iBEP20 {
 
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
         require(sender != address(0), "!sender");
+        require(recipient != 0x0000000000000000000000000000000000000000, '!BURN');
         uint256 senderBalance = _balances[sender];
         require(senderBalance >= amount, "!balance");
         _balances[sender] -= amount;

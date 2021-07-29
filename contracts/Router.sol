@@ -4,6 +4,7 @@ import "./Pool.sol";
 import "./iRESERVE.sol"; 
 import "./iPOOLFACTORY.sol";  
 import "./iWBNB.sol";
+import "hardhat/console.sol";
 
 contract Router {
     address public BASE;
@@ -50,6 +51,7 @@ contract Router {
     // Contract adds liquidity for user
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable{
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);  // Get pool address
+        console.log(pool);
         _handleTransferIn(BASE, inputBase, pool); // Transfer SPARTA to pool
         _handleTransferIn(token, inputToken, pool); // Transfer TOKEN to pool
         Pool(pool).addForMember(member); // Add liquidity to pool for user
