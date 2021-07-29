@@ -14,10 +14,9 @@ import "./iSYNTHFACTORY.sol";
 contract Pool is iBEP20, ReentrancyGuard {  
     address public BASE;
     address public TOKEN;
-    address public DEPLOYER;
 
     string _name; string _symbol;
-    uint8 public override decimals; uint256 public override totalSupply;
+    uint8 public override immutable decimals; uint256 public override totalSupply;
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 
@@ -25,12 +24,12 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint256 public tokenAmount; // TOKEN amount that should be in the pool
 
     uint private lastMonth; // Timestamp of the start of current metric period (For UI)
-    uint public genesis; // Timestamp from when the pool was first deployed (For UI)
+    uint public immutable genesis; // Timestamp from when the pool was first deployed (For UI)
 
     uint256 public map30DPoolRevenue; // Tally of revenue during current incomplete metric period (for UI)
     uint256 public mapPast30DPoolRevenue; // Tally of revenue from last full metric period (for UI)
     uint256 [] public revenueArray; // Array of the last two metric periods (For UI)
-
+    
     event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address indexed tokenFrom, address indexed tokenTo, address indexed recipient, uint inputAmount, uint outputAmount, uint fee);
@@ -50,8 +49,6 @@ contract Pool is iBEP20, ReentrancyGuard {
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), poolSymbol));
         decimals = 18;
         genesis = block.timestamp;
-        DEPLOYER = msg.sender;
-        lastMonth = 0;
     }
 
     //========================================iBEP20=========================================//
@@ -178,8 +175,9 @@ contract Pool is iBEP20, ReentrancyGuard {
     // Contract removes liquidity for the user
     function removeForMember(address member) public returns (uint outputBase, uint outputToken) {
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
-        outputBase = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
-        outputToken = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
+        iUTILS _utils = iUTILS(_DAO().UTILS());
+        outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
+        outputToken = _utils.calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
         _decrementPoolBalances(outputBase, outputToken); // Update recorded BASE and TOKEN amounts
         _burn(address(this), _actualInputUnits); // Burn the LP tokens
         iBEP20(BASE).transfer(member, outputBase); // Transfer the SPARTA to user
@@ -215,12 +213,13 @@ contract Pool is iBEP20, ReentrancyGuard {
     // Swap SPARTA for Synths
     function mintSynth(address synthOut, address member) external returns(uint outputAmount, uint fee) {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut) == true, "!synth"); // Must be a valid Synth
+        iUTILS _utils = iUTILS(_DAO().UTILS());
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
-        outputAmount = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
-        uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
+        outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
+        uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
-        uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount); // Calc slip fee in TOKEN
-        fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, _fee); // Convert TOKEN fee to SPARTA
+        uint _fee = _utils.calcSwapFee(_actualInputBase, baseAmount, tokenAmount); // Calc slip fee in TOKEN
+        fee = _utils.calcSpotValueInBase(TOKEN, _fee); // Convert TOKEN fee to SPARTA
         _mint(synthOut, _liquidityUnits); // Mint the LP tokens directly to the Synth contract to hold
         iSYNTH(synthOut).mintSynth(member, outputAmount); // Mint the Synth tokens directly to the user
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
@@ -231,9 +230,10 @@ contract Pool is iBEP20, ReentrancyGuard {
     // Swap Synths for SPARTA
     function burnSynth(address synthIN, address member) external returns(uint outputAmount, uint fee) {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth"); // Must be a valid Synth
+         iUTILS _utils = iUTILS(_DAO().UTILS());
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
-        uint outputBase = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA
-        fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA
+        uint outputBase = _utils.calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA
+        fee = _utils.calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA
         _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the SYNTH units 
@@ -271,9 +271,10 @@ contract Pool is iBEP20, ReentrancyGuard {
     function _swapBaseToToken(uint256 _x) internal returns (uint256 _y, uint256 _fee){
         uint256 _X = baseAmount;
         uint256 _Y = tokenAmount;
-        _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y); // Calc TOKEN output
-        uint fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y); // Calc TOKEN fee
-        _fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, fee); // Convert TOKEN fee to SPARTA
+        iUTILS _utils = iUTILS(_DAO().UTILS());
+        _y =  _utils.calcSwapOutput(_x, _X, _Y); // Calc TOKEN output
+        uint fee = _utils.calcSwapFee(_x, _X, _Y); // Calc TOKEN fee
+        _fee = _utils.calcSpotValueInBase(TOKEN, fee); // Convert TOKEN fee to SPARTA
         _setPoolAmounts(_X + _x, _Y - _y); // Update recorded BASE and TOKEN amounts
         _addPoolMetrics(_fee); // Add slip fee to the revenue metrics
         return (_y, _fee);
@@ -283,8 +284,9 @@ contract Pool is iBEP20, ReentrancyGuard {
     function _swapTokenToBase(uint256 _x) internal returns (uint256 _y, uint256 _fee){
         uint256 _X = tokenAmount;
         uint256 _Y = baseAmount;
-        _y =  iUTILS(_DAO().UTILS()).calcSwapOutput(_x, _X, _Y); // Calc SPARTA output
-        _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_x, _X, _Y); // Calc SPARTA fee
+        iUTILS _utils = iUTILS(_DAO().UTILS());
+        _y = _utils.calcSwapOutput(_x, _X, _Y); // Calc SPARTA output
+        _fee = _utils.calcSwapFee(_x, _X, _Y); // Calc SPARTA fee
         _setPoolAmounts(_Y - _y, _X + _x); // Update recorded BASE and TOKEN amounts
         _addPoolMetrics(_fee); // Add slip fee to the revenue metrics
         return (_y, _fee);
@@ -323,30 +325,24 @@ contract Pool is iBEP20, ReentrancyGuard {
             lastMonth = block.timestamp;
         }
         if(block.timestamp <= lastMonth + 2592000){ // 30Days
-            map30DPoolRevenue = map30DPoolRevenue+(_fee);
+            map30DPoolRevenue = map30DPoolRevenue + _fee;
         } else {
             lastMonth = block.timestamp;
             mapPast30DPoolRevenue = map30DPoolRevenue;
-            addRevenue(mapPast30DPoolRevenue);
+            archiveRevenue(mapPast30DPoolRevenue);
             map30DPoolRevenue = _fee;
         }
     }
 
-    function addRevenue(uint _totalRev) internal {
-        if(!(revenueArray.length == 2)){
-            revenueArray.push(_totalRev);
-        } else {
-            addFee(_totalRev);
-        }
-    }
+    function archiveRevenue(uint _totalRev) internal {
+	  if (revenueArray.length == 2) {
+		// shift value to the right
+		revenueArray[0] = revenueArray[1];
+		revenueArray[1] = _totalRev;
+      } else {
+       // populate revenueArray to be of length 2
+        revenueArray.push(_totalRev);
+     }
+}
 
-    function addFee(uint _rev) internal {
-        uint [] memory _revArray = revenueArray;
-        uint _n = _revArray.length; // 2
-        for (uint i = _n - 1; i > 0; i--) {
-            _revArray[i] = _revArray[i - 1];
-        }
-        _revArray[0] = _rev;
-        revenueArray = _revArray;
-    }
 }
