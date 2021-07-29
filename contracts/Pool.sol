@@ -328,8 +328,7 @@ contract Pool is iBEP20, ReentrancyGuard {
             lastMonth = block.timestamp;
             mapPast30DPoolRevenue = map30DPoolRevenue;
             addRevenue(mapPast30DPoolRevenue);
-            map30DPoolRevenue = 0;
-            map30DPoolRevenue = map30DPoolRevenue+(_fee);
+            map30DPoolRevenue = _fee;
         }
     }
 

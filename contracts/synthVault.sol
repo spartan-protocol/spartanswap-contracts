@@ -233,8 +233,7 @@ contract SynthVault {
             lastMonth = block.timestamp;
             mapPast30DVaultRevenue = map30DVaultRevenue;
             addRevenue(mapPast30DVaultRevenue);
-            map30DVaultRevenue = 0;
-            map30DVaultRevenue = map30DVaultRevenue + _fee;
+            map30DVaultRevenue = _fee;
         }
     }
 

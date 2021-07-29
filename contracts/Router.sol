@@ -314,8 +314,7 @@ contract Router {
         } else {
             lastMonth = block.timestamp;
             mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
-            mapAddress_30DayDividends[_pool] = 0;
-            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool] + _fees;
+            mapAddress_30DayDividends[_pool] = _fees;
         }
     }
 
