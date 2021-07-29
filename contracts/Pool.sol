@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./iBEP20.sol";
 import "./iUTILS.sol";
 import "./iDAO.sol";
@@ -10,7 +11,8 @@ import "./iSYNTH.sol";
 import "./iSYNTHFACTORY.sol"; 
 import "./iBEP677.sol"; 
 
-contract Pool is iBEP20 {  
+
+contract Pool is iBEP20, ReentrancyGuard {  
     address public BASE;
     address public TOKEN;
     address public DEPLOYER;
@@ -208,7 +210,7 @@ contract Pool is iBEP20 {
     }
 
     // Contract swaps tokens for the member
-    function swapTo(address token, address member) public payable returns (uint outputAmount, uint fee) {
+    function swapTo(address token, address member) public returns (uint outputAmount, uint fee) {
         require((token == BASE || token == TOKEN), "!BASE||TOKEN"); // Must be SPARTA or the pool's relevant TOKEN
         address _fromToken; uint _amount;
         if(token == BASE){
