@@ -9,7 +9,6 @@ import "./iDAOVAULT.sol";
 import "./iROUTER.sol";
 import "./iSYNTH.sol"; 
 import "./iSYNTHFACTORY.sol"; 
-import "./iBEP677.sol"; 
 
 
 contract Pool is iBEP20, ReentrancyGuard {  
@@ -113,20 +112,6 @@ contract Pool is iBEP20, ReentrancyGuard {
             _approve(sender, msg.sender, currentAllowance - amount);
         }
         return true;
-    }
-
-    //iBEP677 approveAndCall
-    function approveAndCall(address recipient, uint amount, bytes calldata data) external returns (bool) {
-      _approve(msg.sender, recipient, type(uint256).max); // Give recipient max approval
-      iBEP677(recipient).onTokenApproval(address(this), amount, msg.sender, data); // Amount is passed thru to recipient
-      return true;
-    }
-
-    //iBEP677 transferAndCall
-    function transferAndCall(address recipient, uint amount, bytes calldata data) external returns (bool) {
-      _transfer(msg.sender, recipient, amount);
-      iBEP677(recipient).onTokenTransfer(address(this), amount, msg.sender, data); // Amount is passed thru to recipient 
-      return true;
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
