@@ -229,16 +229,16 @@ contract Pool is iBEP20 {
     function mintSynth(address synthOut, address member) external returns(uint outputAmount, uint fee) {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut) == true, "!synth"); // Must be a valid Synth
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
-        uint output = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
+        outputAmount = iUTILS(_DAO().UTILS()).calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
         uint _liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
         uint _fee = iUTILS(_DAO().UTILS()).calcSwapFee(_actualInputBase, baseAmount, tokenAmount); // Calc slip fee in TOKEN
         fee = iUTILS(_DAO().UTILS()).calcSpotValueInBase(TOKEN, _fee); // Convert TOKEN fee to SPARTA
         _mint(synthOut, _liquidityUnits); // Mint the LP tokens directly to the Synth contract to hold
-        iSYNTH(synthOut).mintSynth(member, output); // Mint the Synth tokens directly to the user
+        iSYNTH(synthOut).mintSynth(member, outputAmount); // Mint the Synth tokens directly to the user
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         emit MintSynth(member, _actualInputBase, _liquidityUnits, outputAmount, fee);
-      return (output, fee);
+      return (outputAmount, fee);
     }
     
     // Swap Synths for SPARTA
