@@ -39,6 +39,10 @@ contract Pool is iBEP20, ReentrancyGuard {
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
     }
+    modifier onlyROUTER() {
+        require(msg.sender == _DAO().ROUTER());
+        _;
+    }
 
     constructor (address _base, address _token) {
         BASE = _base;
@@ -131,12 +135,6 @@ contract Pool is iBEP20, ReentrancyGuard {
         _burn(msg.sender, amount);
     }
 
-    function burnFrom(address account, uint256 amount) external virtual {  
-        uint256 decreasedAllowance = allowance(account, msg.sender) - (amount);
-        _approve(account, msg.sender, decreasedAllowance); 
-        _burn(account, amount);
-    }
-
     function _burn(address account, uint256 amount) internal virtual {
         require(account != address(0), "!account");
         require(_balances[account] >= amount, "!balance");
@@ -147,14 +145,8 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     //====================================POOL FUNCTIONS =================================//
 
-    // User adds liquidity to the pool
-    function add() external returns(uint liquidityUnits){
-        liquidityUnits = addForMember(msg.sender);
-        return liquidityUnits;
-    }
-
     // Contract adds liquidity for user 
-    function addForMember(address member) public returns(uint liquidityUnits){
+    function addForMember(address member) external onlyROUTER returns (uint liquidityUnits){
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get the received SPARTA amount
         uint256 _actualInputToken = _getAddedTokenAmount(); // Get the received TOKEN amount
         if(baseAmount == 0 || tokenAmount == 0){
@@ -166,14 +158,9 @@ contract Pool is iBEP20, ReentrancyGuard {
         emit AddLiquidity(member, _actualInputBase, _actualInputToken, liquidityUnits);
         return liquidityUnits;
     }
-    
-    // User removes liquidity from the pool 
-    function remove() external returns (uint outputBase, uint outputToken) {
-        return removeForMember(msg.sender);
-    } 
 
     // Contract removes liquidity for the user
-    function removeForMember(address member) public returns (uint outputBase, uint outputToken) {
+    function removeForMember(address member) external onlyROUTER returns (uint outputBase, uint outputToken) {
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS());
         outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
@@ -186,14 +173,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         return (outputBase, outputToken);
     }
 
-    // Caller swaps tokens
-    function swap(address token) external returns (uint outputAmount, uint fee){
-        (outputAmount, fee) = swapTo(token, msg.sender);
-        return (outputAmount, fee);
-    }
-
     // Contract swaps tokens for the member
-    function swapTo(address token, address member) public returns (uint outputAmount, uint fee) {
+    function swapTo(address token, address member) external onlyROUTER returns (uint outputAmount, uint fee) {
         require((token == BASE || token == TOKEN), "!BASE||TOKEN"); // Must be SPARTA or the pool's relevant TOKEN
         address _fromToken; uint _amount;
         if(token == BASE){
@@ -211,7 +192,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     // Swap SPARTA for Synths
-    function mintSynth(address synthOut, address member) external returns(uint outputAmount, uint fee) {
+    function mintSynth(address synthOut, address member) external onlyROUTER returns(uint outputAmount, uint fee) {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut) == true, "!synth"); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS());
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
@@ -228,7 +209,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
     
     // Swap Synths for SPARTA
-    function burnSynth(address synthIN, address member) external returns(uint outputAmount, uint fee) {
+    function burnSynth(address synthIN, address member) external onlyROUTER returns(uint outputAmount, uint fee) {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth"); // Must be a valid Synth
          iUTILS _utils = iUTILS(_DAO().UTILS());
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
@@ -295,7 +276,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     //=======================================BALANCES=========================================//
 
     // Sync internal balances to actual
-    function sync() external {
+    function sync() external onlyROUTER {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
     }
