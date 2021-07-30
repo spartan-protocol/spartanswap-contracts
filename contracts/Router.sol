@@ -141,11 +141,11 @@ contract Router {
         uint fee;
         if(token != address(0)){
             (uint output, uint feey) = Pool(_pool).swapTo(token, member); // Swap SPARTA to TOKEN & tsf to user
-            require(output > minAmount, 'FRUN');
+            require(output > minAmount, '!RATE');
             fee = feey;
         } else {
             (uint output, uint feez) = Pool(_pool).swap(WBNB); // Swap SPARTA to WBNB
-            require(output > minAmount, 'FRUN');
+            require(output > minAmount, '!RATE');
             _handleTransferOut(token, output, member); // Unwrap to BNB & tsf to user
             fee = feez;
         }
@@ -157,7 +157,7 @@ contract Router {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
         _handleTransferIn(token, amount, _pool); // Transfer TOKEN to pool
         (uint output, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA & transfer to user
-        require(output > minAmount, 'FRUN');
+        require(output > minAmount, '!RATE');
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
         return fee;
     }
@@ -180,7 +180,7 @@ contract Router {
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} // Handle BNB -> WBNB
             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken); // Swap SPARTA to TOKEN & tsf to ROUTER
-            require(_zz > minAmount, 'FRUN');
+            require(_zz > minAmount, '!RATE');
             uint fee = feey + _feez; // Get total slip fees
             getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
             _handleTransferOut(toToken,iBEP20(_toToken).balanceOf(address(this)), member); // Transfer TOKEN to user
