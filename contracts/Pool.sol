@@ -88,7 +88,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     function increaseAllowance(address spender, uint256 addedValue) external virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender]+(addedValue));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender] + addedValue);
         return true;
     }
 
@@ -102,20 +102,15 @@ contract Pool is iBEP20, ReentrancyGuard {
     function _approve(address owner, address spender, uint256 amount) internal virtual {
         require(owner != address(0), "!owner");
         require(spender != address(0), "!spender");
-        if (_allowances[owner][spender] < type(uint256).max) { // No need to re-approve if already max
-            _allowances[owner][spender] = amount;
-            emit Approval(owner, spender, amount);
-        }
+        _allowances[owner][spender] = amount;
+        emit Approval(owner, spender, amount);
     }
 
     function transferFrom(address sender, address recipient, uint256 amount) external virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        // Max approval (saves an SSTORE)
-        if (_allowances[sender][msg.sender] < type(uint256).max) {
-            uint256 currentAllowance = _allowances[sender][msg.sender];
-            require(currentAllowance >= amount, "!approval");
-            _approve(sender, msg.sender, currentAllowance - amount);
-        }
+        uint256 currentAllowance = _allowances[sender][msg.sender];
+        require(currentAllowance >= amount, "!approval");
+        _approve(sender, msg.sender, currentAllowance - amount);
         return true;
     }
 
