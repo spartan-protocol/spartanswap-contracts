@@ -43,6 +43,10 @@ contract Pool is iBEP20, ReentrancyGuard {
         require(msg.sender == _DAO().ROUTER());
         _;
     }
+    modifier onlyDAO() {
+        require(msg.sender == _DAO().DAO());
+        _;
+    }
 
     constructor (address _base, address _token) {
         BASE = _base;
@@ -276,7 +280,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     //=======================================BALANCES=========================================//
 
     // Sync internal balances to actual
-    function sync() external onlyROUTER {
+    function sync() external onlyDAO {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
     }
