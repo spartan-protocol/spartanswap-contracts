@@ -16,6 +16,10 @@ contract Synth is iBEP20 {
     mapping(address => mapping(address => uint)) private _allowances;
     mapping(address => uint) public mapSynth_LPBalance;
     mapping(address => uint) public mapSynth_LPDebt;
+
+    function _POOL() internal view returns(address) {
+        return iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(LayerONE); // Get pool address
+    }
    
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
@@ -26,15 +30,12 @@ contract Synth is iBEP20 {
         require(msg.sender == DEPLOYER, "!DAO");
         _;
     }
-
-    // Restrict access
     modifier onlyCuratedPool() {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, "!CURATED");
         _;
     }
-    // Restrict access
     modifier onlyPool() {
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(msg.sender) == true, "!POOL");
+        require(msg.sender == _POOL(), "!POOL");
         _;
     }
     
@@ -147,7 +148,7 @@ contract Synth is iBEP20 {
     //==================================== SYNTH FUNCTIONS =================================//
 
     // Handle received LP tokens and mint Synths
-    function mintSynth(address member, uint amount) external onlyCuratedPool returns (uint syntheticAmount){
+    function mintSynth(address member, uint amount) external onlyPool onlyCuratedPool returns (uint syntheticAmount){
         uint lpUnits = _getAddedLPAmount(msg.sender); // Get the received LP units
         mapSynth_LPDebt[msg.sender] += amount; // Increase debt by synth amount
         mapSynth_LPBalance[msg.sender] += lpUnits; // Increase lp balance by LPs received
