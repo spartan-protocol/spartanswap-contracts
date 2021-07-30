@@ -135,51 +135,55 @@ contract Router {
     //============================== Swapping Functions ====================================//
     
     // Swap SPARTA for TOKEN
-    function buyTo(uint amount, address token, address member) public {
+    function buyTo(uint amount, address token, address member, uint minAmount) public {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get the pool address
         _handleTransferIn(BASE, amount, _pool); // Transfer SPARTA to pool
         uint fee;
         if(token != address(0)){
-            (, uint feey) = Pool(_pool).swapTo(token, member); // Swap SPARTA to TOKEN & tsf to user
+            (uint output, uint feey) = Pool(_pool).swapTo(token, member); // Swap SPARTA to TOKEN & tsf to user
+            require(output > minAmount, 'FRUN');
             fee = feey;
         } else {
-            (uint outputAmount, uint feez) = Pool(_pool).swap(WBNB); // Swap SPARTA to WBNB
-            _handleTransferOut(token, outputAmount, member); // Unwrap to BNB & tsf to user
+            (uint output, uint feez) = Pool(_pool).swap(WBNB); // Swap SPARTA to WBNB
+            require(output > minAmount, 'FRUN');
+            _handleTransferOut(token, output, member); // Unwrap to BNB & tsf to user
             fee = feez;
         }
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
     }
 
     // Swap TOKEN for SPARTA
-    function sellTo(uint amount, address token, address member) public payable returns (uint){
+    function sellTo(uint amount, address token, address member, uint minAmount) public payable returns (uint){
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
         _handleTransferIn(token, amount, _pool); // Transfer TOKEN to pool
-        (, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA & transfer to user
+        (uint output, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA & transfer to user
+        require(output > minAmount, 'FRUN');
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
         return fee;
     }
 
     // User performs a simple swap (to -> from)
-    function swap(uint256 inputAmount, address fromToken, address toToken) external payable{
-        swapTo(inputAmount, fromToken, toToken, msg.sender);
+    function swap(uint256 inputAmount, address fromToken, address toToken, uint256 minAmount) external payable{
+        swapTo(inputAmount, fromToken, toToken, msg.sender, minAmount);
     }
 
     // Contract checks which swap function the user will require
-    function swapTo(uint256 inputAmount, address fromToken, address toToken, address member) public payable{
+    function swapTo(uint256 inputAmount, address fromToken, address toToken, address member, uint256 minAmount) public payable{
         require(fromToken != toToken); // Tokens must not be the same
         if(fromToken == BASE){
-            buyTo(inputAmount, toToken, member); // Swap SPARTA to TOKEN & tsf to user
+            buyTo(inputAmount, toToken, member, minAmount); // Swap SPARTA to TOKEN & tsf to user
         } else if(toToken == BASE) {
-            sellTo(inputAmount, fromToken, member); // Swap TOKEN to SPARTA & tsf to user
+            sellTo(inputAmount, fromToken, member, minAmount); // Swap TOKEN to SPARTA & tsf to user
         } else {
             address _poolTo = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken); // Get pool address
-            uint feey = sellTo(inputAmount, fromToken, _poolTo); // Swap TOKEN to SPARTA & tsf to pool
+            uint feey = sellTo(inputAmount, fromToken, _poolTo, 0); // Swap TOKEN to SPARTA & tsf to pool
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} // Handle BNB -> WBNB
             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken); // Swap SPARTA to TOKEN & tsf to ROUTER
-            uint fee = feey+(_feez); // Get total slip fees
+            require(_zz > minAmount, 'FRUN');
+            uint fee = feey + _feez; // Get total slip fees
             getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
-            _handleTransferOut(toToken, _zz, member); // Transfer TOKEN to user
+            _handleTransferOut(toToken,iBEP20(_toToken).balanceOf(address(this)), member); // Transfer TOKEN to user
         }
     }
 
