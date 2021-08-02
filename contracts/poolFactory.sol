@@ -8,6 +8,7 @@ contract PoolFactory {
     address public WBNB;
     address public DEPLOYER;
     uint public curatedPoolSize;    // Max amount of pools that can be curated status
+    uint public curatedPoolCount;   // Current count of pools that are curated status
     address[] public arrayPools;    // Array of all deployed pools
     address[] public arrayTokens;   // Array of all listed tokens
 
@@ -16,8 +17,8 @@ contract PoolFactory {
     mapping(address=>bool) public isCuratedPool;
 
     event CreatePool(address indexed token, address indexed pool);
-    event AddCuratePool(address indexed pool, bool Curated);
-    event RemoveCuratePool(address indexed pool, bool Curated);
+    event AddCuratePool(address indexed pool);
+    event RemoveCuratePool(address indexed pool);
 
     // Restrict access
     modifier onlyDAO() {
@@ -81,9 +82,11 @@ contract PoolFactory {
         require(token != BASE); // Token must not be SPARTA
         address _pool = getPool(token); // Get pool address
         require(isListedPool[_pool] == true); // Pool must be valid
-        require(curatedPoolCount() < curatedPoolSize, "maxCurated"); // Must be room in the Curated list
+        require(isCuratedPool[_pool] == false); // Pool must not be curated already
+        require(curatedPoolCount < curatedPoolSize, "maxCurated"); // Must be room in the Curated list
         isCuratedPool[_pool] = true; // Record pool as Curated
-        emit AddCuratePool(_pool, isCuratedPool[_pool]);
+        curatedPoolCount = curatedPoolCount + 1;
+        emit AddCuratePool(_pool);
     }
 
     // Remove pool from the Curated list
@@ -92,17 +95,8 @@ contract PoolFactory {
         address _pool = getPool(token); // Get pool address
         require(isCuratedPool[_pool] == true); // Pool must be Curated
         isCuratedPool[_pool] = false; // Record pool as not curated
-        emit RemoveCuratePool(_pool, isCuratedPool[_pool]);
-    }
-
-    function curatedPoolCount() internal view returns (uint){
-        uint cPoolCount; 
-        for(uint i = 0; i< arrayPools.length; i++){
-            if(isCuratedPool[arrayPools[i]] == true){
-                cPoolCount += 1;
-            }
-        }
-        return cPoolCount;
+        curatedPoolCount = curatedPoolCount - 1;
+        emit RemoveCuratePool(_pool);
     }
 
     // Transfer assets into new pool
