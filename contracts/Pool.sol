@@ -36,9 +36,14 @@ contract Pool is iBEP20, ReentrancyGuard {
     event MintSynth(address indexed member, uint256 baseAmount, uint256 liqUnits, uint256 synthAmount, uint256 fee);
     event BurnSynth(address indexed member, uint256 baseAmount, uint256 liqUnits, uint256 synthAmount, uint256 fee);
 
+    function _SYNTH() internal view returns(address) {
+        return iSYNTHFACTORY(_DAO().SYNTHFACTORY()).getSynth(TOKEN); // Get the synth address
+    }
+
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
     }
+
     modifier onlyROUTER() {
         require(msg.sender == _DAO().ROUTER());
         _;
@@ -149,7 +154,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get the received SPARTA amount
         uint256 _actualInputToken = _getAddedTokenAmount(); // Get the received TOKEN amount
         if(baseAmount == 0 || tokenAmount == 0){
-        require(_actualInputBase != 0 && _actualInputToken != 0, "!Balanced");
+            require(_actualInputBase != 0 && _actualInputToken != 0, "!Balanced");
         }
         liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply); // Calculate LP tokens to mint
         _incrementPoolBalances(_actualInputBase, _actualInputToken); // Update recorded BASE and TOKEN amounts
@@ -191,8 +196,9 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     // Swap SPARTA for Synths
-    function mintSynth(address synthOut, address member) external onlyROUTER returns(uint outputAmount, uint fee) {
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut) == true, "!synth"); // Must be a valid Synth
+    function mintSynth(address member) external onlyROUTER returns(uint outputAmount, uint fee) {
+        address synthOut = _SYNTH(); // Get the synth address
+        require(synthOut != address(0), "!synth"); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS());
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
         outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
@@ -208,9 +214,10 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
     
     // Swap Synths for SPARTA
-    function burnSynth(address synthIN, address member) external onlyROUTER returns(uint outputAmount, uint fee) {
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthIN) == true, "!synth"); // Must be a valid Synth
-         iUTILS _utils = iUTILS(_DAO().UTILS());
+    function burnSynth(address member) external onlyROUTER returns(uint outputAmount, uint fee) {
+        address synthIN = _SYNTH(); // Get the synth address
+        require(synthIN != address(0), "!synth"); // Must be a valid Synth
+        iUTILS _utils = iUTILS(_DAO().UTILS());
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
         uint outputBase = _utils.calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA
         fee = _utils.calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA
