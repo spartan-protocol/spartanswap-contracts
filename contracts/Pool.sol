@@ -52,6 +52,11 @@ contract Pool is iBEP20, ReentrancyGuard {
         require(msg.sender == _DAO().DAO());
         _;
     }
+     modifier onlySYNTH() {
+        require(msg.sender == _SYNTH());
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_SYNTH()),'!SYNTH');
+        _;
+    }
 
     constructor (address _base, address _token) {
         BASE = _base;
@@ -135,7 +140,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         emit Transfer(address(0), account, amount);
     }
 
-    function burn(uint256 amount) external virtual override {
+    function burn(uint256 amount) external onlySYNTH virtual override {
         _burn(msg.sender, amount);
     }
 
@@ -153,10 +158,13 @@ contract Pool is iBEP20, ReentrancyGuard {
     function addForMember(address member) external onlyROUTER returns (uint liquidityUnits){
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get the received SPARTA amount
         uint256 _actualInputToken = _getAddedTokenAmount(); // Get the received TOKEN amount
+         liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply); // Calculate LP tokens to mint
         if(baseAmount == 0 || tokenAmount == 0){
             require(_actualInputBase != 0 && _actualInputToken != 0, "!Balanced");
+            uint createFee = 100 * liquidityUnits / 10000;
+            liquidityUnits -= createFee;
+            _mint(BASE,createFee);
         }
-        liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply); // Calculate LP tokens to mint
         _incrementPoolBalances(_actualInputBase, _actualInputToken); // Update recorded BASE and TOKEN amounts
         _mint(member, liquidityUnits); // Mint the LP tokens directly to the user
         emit AddLiquidity(member, _actualInputBase, _actualInputToken, liquidityUnits);
