@@ -151,8 +151,7 @@ contract Utils {
         // synthUnits += (P b)/(2 (b + B))
         uint baseAmount = iPOOL(pool).baseAmount();
         uint totalSupply = iBEP20(pool).totalSupply();
-        uint two = 2;
-        return (totalSupply * amount) / (two * (amount + baseAmount));
+        return (totalSupply * amount) / ((amount + baseAmount) * 2);
     }
 
     //==================================== PRICING ====================================//
