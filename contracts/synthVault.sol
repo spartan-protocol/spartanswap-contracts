@@ -138,7 +138,7 @@ contract SynthVault {
         uint256 _weight;
         uint256 reward = calcCurrentReward(synth, msg.sender); // Calc user's current SPARTA reward
         mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp; // Set last harvest time as now
-        address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(synth).LayerONE()); // Get pool address
+        address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(synth).LayerONE()); // Get pool address || CHANGE THIS TO GET THE POOL DIRECTLY FROM SYNTH CONTRACT
         iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT); // Send the SPARTA from RESERVE to POOL
         (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this)); // Mint synths & tsf to SynthVault
         _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(synth).LayerONE(), synthReward); // Calc reward's SPARTA value
