@@ -8,7 +8,6 @@ contract Synth is iBEP20 {
     address public TOKEN; // Underlying relevant layer1 token address
     address public POOL; // Underlying pool address
     uint public genesis;
-    address public DEPLOYER;
     uint256 public collateral;
 
     string _name; string _symbol;
@@ -22,11 +21,6 @@ contract Synth is iBEP20 {
         return iBASE(BASE).DAO();
     }
     
-    // Restrict access
-    modifier onlyDAO() {
-        require(msg.sender == DEPLOYER, "!DAO");
-        _;
-    }
     modifier onlyCuratedPool() {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, "!CURATED");
         _;
@@ -46,7 +40,6 @@ contract Synth is iBEP20 {
         _name = string(abi.encodePacked(iBEP20(_token).name(), synthName));
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), synthSymbol));
         decimals = iBEP20(_token).decimals();
-        DEPLOYER = msg.sender;
         genesis = block.timestamp;
     }
 
@@ -169,16 +162,6 @@ contract Synth is iBEP20 {
                 Pool(POOL).burn(premiumLP); // Burn the premium of the LP tokens
             }
         }
-    }
-
-    // Check the received token amount
-    function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 _actual){
-        if(_amount > 0) {
-            uint startBal = iBEP20(_token).balanceOf(address(this)); // Get existing balance
-            iBEP20(_token).transferFrom(msg.sender, address(this), _amount); // Transfer tokens in
-            _actual = iBEP20(_token).balanceOf(address(this)) - startBal; // Calculate received amount
-        }
-        return _actual;
     }
 
     // Check the received LP tokens amount
