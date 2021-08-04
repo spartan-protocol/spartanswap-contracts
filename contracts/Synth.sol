@@ -68,20 +68,18 @@ contract Synth is iBEP20 {
         return _allowances[owner][spender];
     }
 
-    // iBEP20 Transfer function
     function transfer(address recipient, uint256 amount) external virtual override returns (bool) {
         _transfer(msg.sender, recipient, amount);
         return true;
     }
 
-    // iBEP20 Approve, change allowance functions
     function approve(address spender, uint256 amount) external virtual override returns (bool) {
         _approve(msg.sender, spender, amount);
         return true;
     }
 
     function increaseAllowance(address spender, uint256 addedValue) external virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender]+(addedValue));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender] + addedValue);
         return true;
     }
 
@@ -99,7 +97,6 @@ contract Synth is iBEP20 {
         emit Approval(owner, spender, amount);
     }
     
-    // iBEP20 TransferFrom function
     function transferFrom(address sender, address recipient, uint256 amount) external virtual override returns (bool) {
         _transfer(sender, recipient, amount);
         uint256 currentAllowance = _allowances[sender][msg.sender];
@@ -107,9 +104,10 @@ contract Synth is iBEP20 {
         _approve(sender, msg.sender, currentAllowance - amount);
         return true;
     }
-    // Internal transfer function
+
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
         require(sender != address(0), "!sender");
+        require(recipient != address(0), '!BURN');
         uint256 senderBalance = _balances[sender];
         require(senderBalance >= amount, "!balance");
         _balances[sender] -= amount;
@@ -117,7 +115,6 @@ contract Synth is iBEP20 {
         emit Transfer(sender, recipient, amount);
     }
 
-    // Internal mint (upgrading and daily emissions)
     function _mint(address account, uint256 amount) internal virtual {
         require(account != address(0), "!account");
         totalSupply += amount;
@@ -125,7 +122,6 @@ contract Synth is iBEP20 {
         emit Transfer(address(0), account, amount);
     }
 
-    // Burn supply
     function burn(uint256 amount) external virtual override {
       
     }
