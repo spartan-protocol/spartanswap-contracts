@@ -146,8 +146,13 @@ contract Synth is iBEP20 {
     
     // Handle received Synths and burn the LPs and Synths
     function burnSynth(uint _syntheticAmount) external onlyPool returns (uint){
-        uint _amountUnits = (_syntheticAmount * collateral) / totalSupply; // share = amount * part/total
-        collateral -= _amountUnits; // Reduce lp balance
+        require(_syntheticAmount > 0, '!AMOUNT');
+        uint _collateral = collateral;
+        uint _amountUnits = 0;
+        if (_collateral > 0) {
+            _amountUnits = (_syntheticAmount * _collateral) / totalSupply; // share = amount * part/total
+            collateral = _collateral - _amountUnits; // Reduce lp balance
+        }
         _burn(msg.sender, _syntheticAmount); // Burn the synths
         return _amountUnits;
     }
