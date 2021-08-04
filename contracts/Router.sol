@@ -65,7 +65,7 @@ contract Router {
         address _member = msg.sender; // Get user's address
         require(unitsInput <= iBEP20(fromPool).totalSupply()); // Input must be valid
         iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput); // Transfer LPs from user to the pool
-        Pool(fromPool).remove(); // Remove liquidity to ROUTER
+        Pool(fromPool).removeForMember(address(this)); // Remove liquidity to ROUTER
         iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))); // Transfer TOKENs from ROUTER to fromPool
         Pool(fromPool).swapTo(BASE, toPool); // Swap the received TOKENs for SPARTA then transfer to the toPool
         iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to toPool
@@ -109,7 +109,7 @@ contract Router {
         if(token != address(0)){
             Pool(_pool).removeForMember(_member); // Remove liquidity and send assets directly to user
         } else {
-            Pool(_pool).remove(); // If BNB; remove liquidity and send to ROUTER instead
+            Pool(_pool).removeForMember(address(this)); // If BNB; remove liquidity and send to ROUTER instead
             uint outputBase = iBEP20(BASE).balanceOf(address(this)); // Get the received SPARTA amount
             uint outputToken = iBEP20(WBNB).balanceOf(address(this)); // Get the received WBNB amount
             _handleTransferOut(token, outputToken, _member); // Unwrap to BNB & tsf it to user
@@ -124,7 +124,7 @@ contract Router {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true); // Pool must be valid
         address _member = msg.sender; // Get user's address
         iBEP20(_pool).transferFrom(_member, _pool, units); // Transfer LPs to pool
-        Pool(_pool).remove(); // Remove liquidity & tsf to ROUTER
+        Pool(_pool).removeForMember(address(this)); // Remove liquidity & tsf to ROUTER
         address _token = token; // Get token address
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         if(toBase){
@@ -132,7 +132,7 @@ contract Router {
             Pool(_pool).swapTo(BASE, _member); // Swap TOKEN for SPARTA & tsf to user
         } else {
             iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA to pool
-            Pool(_pool).swap(_token); // Swap SPARTA for TOKEN & transfer to ROUTER
+            Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA for TOKEN & transfer to ROUTER
             _handleTransferOut(token, iBEP20(_token).balanceOf(address(this)), _member); // Send TOKEN to user
         } 
     }
@@ -150,7 +150,7 @@ contract Router {
             require(output > minAmount, '!RATE');
             fee = feey;
         } else {
-            (uint output, uint feez) = Pool(_pool).swap(WBNB); // Swap SPARTA to WBNB
+            (uint output, uint feez) = Pool(_pool).swapTo(WBNB, address(this)); // Swap SPARTA to WBNB
             require(output > minAmount, '!RATE');
             _handleTransferOut(token, output, member); // Unwrap to BNB & tsf to user
             fee = feez;
@@ -187,7 +187,7 @@ contract Router {
             uint feey = sellTo(inputAmount, fromToken, _poolTo, 0); // Swap TOKEN to SPARTA & tsf to pool
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} // Handle BNB -> WBNB
-            (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken); // Swap SPARTA to TOKEN & tsf to ROUTER
+            (uint _zz, uint _feez) = Pool(_poolTo).swapTo(_toToken, address(this)); // Swap SPARTA to TOKEN & tsf to ROUTER
             require(_zz > minAmount, '!RATE');
             uint fee = feey + _feez; // Get total slip fees
             getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
@@ -243,12 +243,12 @@ contract Router {
         address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         if(fromToken != BASE){
-            sellTo(inputAmount, fromToken, address(this)); // Swap TOKEN to SPARTA & tsf to ROUTER
+            sellTo(inputAmount, fromToken, address(this), 0); // Swap TOKEN to SPARTA & tsf to ROUTER
             iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to pool
         } else {
             iBEP20(BASE).transferFrom(msg.sender, _pool, inputAmount); // Transfer SPARTA from ROUTER to pool
         }
-        (, uint fee) = Pool(_pool).mintSynth(toSynth, msg.sender); // Mint synths & tsf to user
+        (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Mint synths & tsf to user
         getsDividend(_pool, fee); // Check and tsf dividend to pool
     }
    
@@ -262,14 +262,14 @@ contract Router {
         uint outputAmount;
         uint fee;
         if(toToken == BASE){
-            Pool(_poolIN).burnSynth(fromSynth, msg.sender); // Swap Synths for SPARTA & tsf to user
+            Pool(_poolIN).burnSynth(msg.sender); // Swap Synths for SPARTA & tsf to user
         } else {
-            (outputAmount,fee) = Pool(_poolIN).burnSynth(fromSynth, address(this)); // Swap Synths to SPARTA & tsf to ROUTER
+            (outputAmount,fee) = Pool(_poolIN).burnSynth(address(this)); // Swap Synths to SPARTA & tsf to ROUTER
             if(toToken != address(0)){
                 (, uint feey) = Pool(_pool).swapTo(toToken, msg.sender); // Swap SPARTA to TOKEN & transfer to user
                 fee = feey + fee;
             } else {
-                (uint outputAmountY, uint feez) = Pool(_pool).swap(WBNB); // Swap SPARTA to WBNB & tsf to ROUTER
+                (uint outputAmountY, uint feez) = Pool(_pool).swapTo(WBNB, address(this)); // Swap SPARTA to WBNB & tsf to ROUTER
                 _handleTransferOut(toToken, outputAmountY, msg.sender); // Unwrap to BNB & tsf to user
                 fee = feez + fee;
             }
@@ -330,33 +330,23 @@ contract Router {
             mapAddress_30DayDividends[_pool] = _fees;
         }
     }
-
-    function stringToBytes(string memory s) external pure returns (bytes memory){
-        return bytes(s);
-    }
-
-    function isEqual(bytes memory part1, bytes memory part2) external pure returns(bool equal){
-        if(sha256(part1) == sha256(part2)){
-            return true;
-        }
-    }
     
     //======================= Change Dividend Variables ===========================//
 
     function changeArrayFeeSize(uint _size) external onlyDAO {
-        require(_size != 0, 'ZERO');
+        require(_size > 0, 'ZERO');
         arrayFeeSize = _size;
         normalAverageFee = 0; // Set to 0 to ensure dividends are paused until array is full again
         delete feeArray;
     }
 
     function changeMaxTrades(uint _maxtrades) external onlyDAO {
-        require(_maxtrades != 0, 'ZERO');
+        require(_maxtrades > 0, 'ZERO');
         maxTrades = _maxtrades;
     }
 
     function changeEraLength(uint _eraLength) external onlyDAO {
-        require(_eraLength != 0, 'ZERO');
+        require(_eraLength > 0, 'ZERO');
         eraLength = _eraLength;	
     }
 
