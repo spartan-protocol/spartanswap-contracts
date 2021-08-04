@@ -44,11 +44,11 @@ contract PoolFactory {
 
     // Anyone can create a pool and add liquidity at the same time
     function createPoolADD(uint256 inputBase, uint256 inputToken, address token) external payable returns(address pool){
-        require(token != address(0), '!BNB'); // Must not be BNB; should already be listed (via createPool)
+        require(token != address(0), '!VALID'); // Must not be BNB; should already be listed (via createPool)
         require(getPool(token) == address(0), '!NEW'); // Must not have a valid pool address yet
         require((inputToken > 0 && inputBase >= (10000*10**18)), "!MIN"); // User must add at least 10,000 SPARTA liquidity & ratio must be finite
         Pool newPool;
-        require(token != BASE && iBEP20(token).decimals() == 18); // Token must not be SPARTA & it's decimals must be 18
+        require(token != BASE && iBEP20(token).decimals() == 18, '!DECIMALS'); // Token must not be SPARTA & it's decimals must be 18
         newPool = new Pool(BASE, token); // Deploy new pool
         pool = address(newPool); // Get address of new pool
         mapToken_Pool[token] = pool; // Record the new pool address in PoolFactory
@@ -73,29 +73,29 @@ contract PoolFactory {
         arrayPools.push(pool); // Add pool address to the pool array
         arrayTokens.push(_token); // Add token to the listed array
         isListedPool[pool] = true; // Record pool as currently listed
-        emit CreatePool(token, pool);
+        emit CreatePool(_token, pool);
         return pool;
     }
 
     // Add pool to the Curated list, enabling it's synths & dividends & dao/vault weight
     function addCuratedPool(address token) external onlyDAO {
-        require(token != BASE); // Token must not be SPARTA
+        require(token != BASE, '!VALID'); // Token must not be SPARTA
         address _pool = getPool(token); // Get pool address
-        require(isListedPool[_pool] == true); // Pool must be valid
-        require(isCuratedPool[_pool] == false); // Pool must not be curated already
-        require(curatedPoolCount < curatedPoolSize, "maxCurated"); // Must be room in the Curated list
+        require(isListedPool[_pool] == true, '!POOL'); // Pool must be valid
+        require(isCuratedPool[_pool] == false, 'isCurated'); // Pool must not be curated already
+        require(curatedPoolCount < curatedPoolSize, 'maxCurated'); // Must be room in the Curated list
         isCuratedPool[_pool] = true; // Record pool as Curated
-        curatedPoolCount = curatedPoolCount + 1;
+        curatedPoolCount = curatedPoolCount + 1; // Increase the curated pool count
         emit AddCuratePool(_pool);
     }
 
     // Remove pool from the Curated list
     function removeCuratedPool(address token) external onlyDAO {
-        require(token != BASE); // Token must not be SPARTA
+        require(token != BASE, '!VALID'); // Token must not be SPARTA
         address _pool = getPool(token); // Get pool address
-        require(isCuratedPool[_pool] == true); // Pool must be Curated
+        require(isCuratedPool[_pool] == true, '!CURATED'); // Pool must be Curated
         isCuratedPool[_pool] = false; // Record pool as not curated
-        curatedPoolCount = curatedPoolCount - 1;
+        curatedPoolCount = curatedPoolCount - 1; // Decrease the curated pool count
         emit RemoveCuratePool(_pool);
     }
 
