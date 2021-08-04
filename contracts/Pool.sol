@@ -210,10 +210,11 @@ contract Pool is iBEP20, ReentrancyGuard {
         require(synthOut != address(0), "!synth"); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS());
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
-        outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
+        uint256 _synthSupply = iBEP20(synthOut).totalSupply();
+        outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount - _synthSupply); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
         uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
-        uint _fee = _utils.calcSwapFee(_actualInputBase, baseAmount, tokenAmount); // Calc slip fee in TOKEN
+        uint _fee = _utils.calcSwapFee(_actualInputBase, baseAmount, tokenAmount - _synthSupply); // Calc slip fee in TOKEN
         fee = _utils.calcSpotValueInBase(TOKEN, _fee); // Convert TOKEN fee to SPARTA
         _mint(synthOut, _liquidityUnits); // Mint the LP tokens directly to the Synth contract to hold
         iSYNTH(synthOut).mintSynth(member, outputAmount); // Mint the Synth tokens directly to the user
@@ -227,9 +228,10 @@ contract Pool is iBEP20, ReentrancyGuard {
         address synthIN = _SYNTH(); // Get the synth address
         require(synthIN != address(0), "!synth"); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS());
+        uint256 _synthSupply = iBEP20(synthIN).totalSupply();
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
-        uint outputBase = _utils.calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA
-        fee = _utils.calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA
+        uint outputBase = _utils.calcSwapOutput(_actualInputSynth, tokenAmount - _synthSupply, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA
+        fee = _utils.calcSwapFee(_actualInputSynth, tokenAmount - _synthSupply, baseAmount); // Calc slip fee in SPARTA
         _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the SYNTH units 
@@ -265,8 +267,14 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Calculate output of swapping SPARTA for TOKEN & update recorded amounts
     function _swapBaseToToken(uint256 _x) internal returns (uint256 _y, uint256 _fee){
+        address synth = _SYNTH(); // Get the synth address
+        uint256 _synthSupply = 0; 
         uint256 _X = baseAmount;
         uint256 _Y = tokenAmount;
+        if(synth != address(0)){ // Must be a valid Synth
+         _synthSupply = iBEP20(synth).totalSupply();
+         _Y -= _synthSupply;
+        } 
         iUTILS _utils = iUTILS(_DAO().UTILS());
         _y =  _utils.calcSwapOutput(_x, _X, _Y); // Calc TOKEN output
         uint fee = _utils.calcSwapFee(_x, _X, _Y); // Calc TOKEN fee
@@ -278,8 +286,14 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Calculate output of swapping TOKEN for SPARTA & update recorded amounts
     function _swapTokenToBase(uint256 _x) internal returns (uint256 _y, uint256 _fee){
+        address synth = _SYNTH(); // Get the synth address
+        uint256 _synthSupply = 0; 
         uint256 _X = tokenAmount;
         uint256 _Y = baseAmount;
+        if(synth != address(0)){ // Must be a valid Synth
+         _synthSupply = iBEP20(synth).totalSupply();
+         _X -= _synthSupply;
+        } 
         iUTILS _utils = iUTILS(_DAO().UTILS());
         _y = _utils.calcSwapOutput(_x, _X, _Y); // Calc SPARTA output
         _fee = _utils.calcSwapFee(_x, _X, _Y); // Calc SPARTA fee
