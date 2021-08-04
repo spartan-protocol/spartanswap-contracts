@@ -37,10 +37,11 @@ contract SynthFactory {
     function createSynth(address token) external returns(address synth){
         require(getSynth(token) == address(0), "exists"); // Synth must not already exist
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "!curated"); // Pool must be Curated
         Synth newSynth; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
-        newSynth = new Synth(BASE, _token); // Deploy synth asset contract
+        newSynth = new Synth(BASE, _token, _pool); // Deploy synth asset contract
         synth = address(newSynth); // Get new synth's address
         addSynth(_token, synth); // Record new synth contract with the SynthFactory
         emit CreateSynth(token, synth);

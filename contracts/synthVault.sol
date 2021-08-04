@@ -107,7 +107,7 @@ contract SynthVault {
         mapMemberSynth_lastTime[_member][_synth] = block.timestamp + minimumDepositTime; // Record deposit time (scope: member -> synth)
         mapMember_depositTime[_member] = block.timestamp + minimumDepositTime; // Record deposit time (scope: member)
         mapMemberSynth_deposit[_member][_synth] += _amount; // Record balance for member
-        uint256 _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(_synth).LayerONE(), _amount); // Get the SPARTA weight of the deposit
+        uint256 _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(_synth).TOKEN(), _amount); // Get the SPARTA weight of the deposit
         mapMemberSynth_weight[_member][_synth] += _weight; // Add the weight to the user (scope: member -> synth)
         mapMemberTotal_weight[_member] += _weight; // Add to the user's total weight (scope: member)
         totalWeight += _weight; // Add to the total weight (scope: vault)
@@ -138,16 +138,16 @@ contract SynthVault {
         uint256 _weight;
         uint256 reward = calcCurrentReward(synth, msg.sender); // Calc user's current SPARTA reward
         mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp; // Set last harvest time as now
-        address _poolOUT = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(iSYNTH(synth).LayerONE()); // Get pool address
+        address _poolOUT = iSYNTH(synth).POOL(); // Get pool address
         iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT); // Send the SPARTA from RESERVE to POOL
         (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this)); // Mint synths & tsf to SynthVault
-        _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(synth).LayerONE(), synthReward); // Calc reward's SPARTA value
+        _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(synth).TOKEN(), synthReward); // Calc reward's SPARTA value
         mapMemberSynth_deposit[msg.sender][synth] += synthReward; // Record deposit for the user (scope: member -> synth)
         mapMemberSynth_weight[msg.sender][synth] += _weight; // Add the weight to the user (scope: member -> synth)
         mapMemberTotal_weight[msg.sender] += _weight; // Add to the user's total weight (scope: member)
         totalWeight += _weight; // Add to the total weight (scope: vault)
         _addVaultMetrics(reward); // Add to the revenue metrics (for UI)
-        iSYNTH(synth).realise(_poolOUT); // Check synth-held LP value for premium; burn if so
+        iSYNTH(synth).realise(); // Check synth-held LP value for premium; burn if so
         emit MemberHarvests(synth, msg.sender, reward, _weight, totalWeight);
         return true;
     }
@@ -233,8 +233,7 @@ contract SynthVault {
             lastMonth = block.timestamp;
             mapPast30DVaultRevenue = map30DVaultRevenue;
             addRevenue(mapPast30DVaultRevenue);
-            map30DVaultRevenue = 0;
-            map30DVaultRevenue = map30DVaultRevenue + _fee;
+            map30DVaultRevenue = _fee;
         }
     }
 

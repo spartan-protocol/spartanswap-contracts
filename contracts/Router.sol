@@ -51,7 +51,7 @@ contract Router {
     // Contract adds liquidity for user
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable{
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);  // Get pool address
-        console.log(pool);
+        require(pool != address(0), "!POOL"); // Must be a valid pool
         _handleTransferIn(BASE, inputBase, pool); // Transfer SPARTA to pool
         _handleTransferIn(token, inputToken, pool); // Transfer TOKEN to pool
         Pool(pool).addForMember(member); // Add liquidity to pool for user
@@ -81,6 +81,7 @@ contract Router {
     function addLiquiditySingleForMember(uint inputToken, bool fromBase, address token, address member) public payable{
         require(inputToken > 0); // Must be valid input amount
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         if(fromBase){
@@ -102,6 +103,7 @@ contract Router {
     // User removes liquidity - redeems exact qty of LP tokens
     function removeLiquidityExact(uint units, address token) public {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get the pool address
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         address _member = msg.sender; // The the user's address
         iBEP20(_pool).transferFrom(_member, _pool, units); // Transfer LPs to the pool
         if(token != address(0)){
@@ -118,6 +120,7 @@ contract Router {
     // User removes liquidity asymetrically (one asset)
     function removeLiquiditySingle(uint units, bool toBase, address token) external{
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true); // Pool must be valid
         address _member = msg.sender; // Get user's address
         iBEP20(_pool).transferFrom(_member, _pool, units); // Transfer LPs to pool
@@ -137,51 +140,58 @@ contract Router {
     //============================== Swapping Functions ====================================//
     
     // Swap SPARTA for TOKEN
-    function buyTo(uint amount, address token, address member) public {
+    function buyTo(uint amount, address token, address member, uint minAmount) public {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get the pool address
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         _handleTransferIn(BASE, amount, _pool); // Transfer SPARTA to pool
         uint fee;
         if(token != address(0)){
-            (, uint feey) = Pool(_pool).swapTo(token, member); // Swap SPARTA to TOKEN & tsf to user
+            (uint output, uint feey) = Pool(_pool).swapTo(token, member); // Swap SPARTA to TOKEN & tsf to user
+            require(output > minAmount, '!RATE');
             fee = feey;
         } else {
-            (uint outputAmount, uint feez) = Pool(_pool).swap(WBNB); // Swap SPARTA to WBNB
-            _handleTransferOut(token, outputAmount, member); // Unwrap to BNB & tsf to user
+            (uint output, uint feez) = Pool(_pool).swap(WBNB); // Swap SPARTA to WBNB
+            require(output > minAmount, '!RATE');
+            _handleTransferOut(token, output, member); // Unwrap to BNB & tsf to user
             fee = feez;
         }
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
     }
 
     // Swap TOKEN for SPARTA
-    function sellTo(uint amount, address token, address member) public payable returns (uint){
+    function sellTo(uint amount, address token, address member, uint minAmount) public payable returns (uint){
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         _handleTransferIn(token, amount, _pool); // Transfer TOKEN to pool
-        (, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA & transfer to user
+        (uint output, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA & transfer to user
+        require(output > minAmount, '!RATE');
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
         return fee;
     }
 
     // User performs a simple swap (to -> from)
-    function swap(uint256 inputAmount, address fromToken, address toToken) external payable{
-        swapTo(inputAmount, fromToken, toToken, msg.sender);
+    function swap(uint256 inputAmount, address fromToken, address toToken, uint256 minAmount) external payable{
+        swapTo(inputAmount, fromToken, toToken, msg.sender, minAmount);
     }
 
     // Contract checks which swap function the user will require
-    function swapTo(uint256 inputAmount, address fromToken, address toToken, address member) public payable{
+    function swapTo(uint256 inputAmount, address fromToken, address toToken, address member, uint256 minAmount) public payable{
         require(fromToken != toToken); // Tokens must not be the same
         if(fromToken == BASE){
-            buyTo(inputAmount, toToken, member); // Swap SPARTA to TOKEN & tsf to user
+            buyTo(inputAmount, toToken, member, minAmount); // Swap SPARTA to TOKEN & tsf to user
         } else if(toToken == BASE) {
-            sellTo(inputAmount, fromToken, member); // Swap TOKEN to SPARTA & tsf to user
+            sellTo(inputAmount, fromToken, member, minAmount); // Swap TOKEN to SPARTA & tsf to user
         } else {
             address _poolTo = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken); // Get pool address
-            uint feey = sellTo(inputAmount, fromToken, _poolTo); // Swap TOKEN to SPARTA & tsf to pool
+            require(_poolTo != address(0), "!POOL"); // Must be a valid pool
+            uint feey = sellTo(inputAmount, fromToken, _poolTo, 0); // Swap TOKEN to SPARTA & tsf to pool
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} // Handle BNB -> WBNB
             (uint _zz, uint _feez) = Pool(_poolTo).swap(_toToken); // Swap SPARTA to TOKEN & tsf to ROUTER
-            uint fee = feey+(_feez); // Get total slip fees
+            require(_zz > minAmount, '!RATE');
+            uint fee = feey + _feez; // Get total slip fees
             getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
-            _handleTransferOut(toToken, _zz, member); // Transfer TOKEN to user
+            _handleTransferOut(toToken,iBEP20(_toToken).balanceOf(address(this)), member); // Transfer TOKEN to user
         }
     }
 
@@ -230,8 +240,8 @@ contract Router {
     // Swap TOKEN to Synth
     function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) external payable {
         require(fromToken != toSynth); // Tokens must not be the same
-        address _synthLayer1 = iSYNTH(toSynth).LayerONE(); // Get underlying token's address
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthLayer1); // Get relevant pool address
+        address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         if(fromToken != BASE){
             sellTo(inputAmount, fromToken, address(this)); // Swap TOKEN to SPARTA & tsf to ROUTER
             iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to pool
@@ -245,11 +255,12 @@ contract Router {
     // Swap Synth to TOKEN
     function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external {
         require(fromSynth != toToken); // Tokens must not be the same
-        address _synthINLayer1 = iSYNTH(fromSynth).LayerONE(); // Get synth's underlying token's address
-        address _poolIN = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_synthINLayer1); // Get synth's relevant pool address
+        address _poolIN = iSYNTH(fromSynth).POOL(); // Get underlying pool address
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken); // Get TOKEN's relevant pool address
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         iBEP20(fromSynth).transferFrom(msg.sender, _poolIN, inputAmount); // Transfer synth from user to pool
-        uint outputAmount; uint fee;
+        uint outputAmount;
+        uint fee;
         if(toToken == BASE){
             Pool(_poolIN).burnSynth(fromSynth, msg.sender); // Swap Synths for SPARTA & tsf to user
         } else {
@@ -316,8 +327,7 @@ contract Router {
         } else {
             lastMonth = block.timestamp;
             mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
-            mapAddress_30DayDividends[_pool] = 0;
-            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool] + _fees;
+            mapAddress_30DayDividends[_pool] = _fees;
         }
     }
 
