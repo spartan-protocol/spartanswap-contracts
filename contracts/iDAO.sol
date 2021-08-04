@@ -6,6 +6,7 @@ interface iDAO {
     function UTILS() external view returns(address);
     function DAO() external view returns (address);
     function RESERVE() external view returns(address);
+    function SYNTHVAULT() external view returns(address);
     function BOND() external view returns (address);
     function SYNTHFACTORY() external view returns(address);
     function POOLFACTORY() external view returns(address);

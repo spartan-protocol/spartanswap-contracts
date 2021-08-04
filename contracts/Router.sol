@@ -10,13 +10,14 @@ contract Router {
     address public BASE;
     address public WBNB;
     address public DEPLOYER;
-
+    uint256 public globalCAP;
     uint private maxTrades;         // Amount of dividend events per era
     uint private eraLength;         // Dividend factor to regulate the max percentage of RESERVE balance
     uint public normalAverageFee;   // The average fee size (dividend smoothing)
     uint private arrayFeeSize;      // The size of the average window used for normalAverageFee
     uint [] private feeArray;       // The array used to calc normalAverageFee
     uint private lastMonth;         // Timestamp of the start of current metric period (For UI)
+
 
     mapping(address=> uint) public mapAddress_30DayDividends;
     mapping(address=> uint) public mapAddress_Past30DayPoolDividends;
@@ -34,6 +35,7 @@ contract Router {
         eraLength = 30;
         maxTrades = 100;
         lastMonth = 0;
+        globalCAP = 2000;
         DEPLOYER = msg.sender;
     }
 
@@ -354,6 +356,15 @@ contract Router {
 
     function changeEraLength(uint _eraLength) external onlyDAO {	
         eraLength = _eraLength;	
+    }
+    function changeGlobalCap(uint _globalCap) external onlyDAO {	
+        globalCAP = _globalCap;	
+    }
+    function changePoolCap(uint poolCAP, address _pool) external onlyDAO {
+        Pool(_pool).setCAP(poolCAP);
+    }
+    function RTC(uint poolRTC, address _pool) external onlyDAO {
+        Pool(_pool).RTC(poolRTC);
     }
 
     //================================== Helpers =================================//

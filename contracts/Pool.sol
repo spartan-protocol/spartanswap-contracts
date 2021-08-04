@@ -14,6 +14,8 @@ import "./iSYNTHFACTORY.sol";
 contract Pool is iBEP20, ReentrancyGuard {  
     address public BASE;
     address public TOKEN;
+    uint256 public poolCAP;
+    uint256 public baseCAP;
 
     string _name; string _symbol;
     uint8 public override immutable decimals; uint256 public override totalSupply;
@@ -44,8 +46,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         return iBASE(BASE).DAO();
     }
 
-    modifier onlyROUTER() {
-        require(msg.sender == _DAO().ROUTER());
+    modifier onlyPROTOCOL() {
+        require(msg.sender == _DAO().ROUTER() || msg.sender == _DAO().SYNTHVAULT()); 
         _;
     }
     modifier onlyDAO() {
@@ -67,6 +69,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), poolSymbol));
         decimals = 18;
         genesis = block.timestamp;
+        poolCAP = 3000;
+        baseCAP = 100000;
     }
 
     //========================================iBEP20=========================================//
@@ -156,8 +160,9 @@ contract Pool is iBEP20, ReentrancyGuard {
     //====================================POOL FUNCTIONS =================================//
 
     // Contract adds liquidity for user 
-    function addForMember(address member) external onlyROUTER returns (uint liquidityUnits){
+    function addForMember(address member) external onlyPROTOCOL returns (uint liquidityUnits){
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get the received SPARTA amount
+        require((baseAmount + _actualInputBase) < baseCAP, "RTC");
         uint256 _actualInputToken = _getAddedTokenAmount(); // Get the received TOKEN amount
          liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply); // Calculate LP tokens to mint
         if(baseAmount == 0 || tokenAmount == 0){
@@ -173,7 +178,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     // Contract removes liquidity for the user
-    function removeForMember(address member) external onlyROUTER returns (uint outputBase, uint outputToken) {
+    function removeForMember(address member) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS());
         outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
@@ -187,7 +192,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     // Contract swaps tokens for the member
-    function swapTo(address token, address member) external onlyROUTER returns (uint outputAmount, uint fee) {
+    function swapTo(address token, address member) external onlyPROTOCOL returns (uint outputAmount, uint fee) {
         require((token == BASE || token == TOKEN), "!BASE||TOKEN"); // Must be SPARTA or the pool's relevant TOKEN
         address _fromToken; uint _amount;
         if(token == BASE){
@@ -205,13 +210,16 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     // Swap SPARTA for Synths
-    function mintSynth(address member) external onlyROUTER returns(uint outputAmount, uint fee) {
+    function mintSynth(address member) external onlyPROTOCOL returns(uint outputAmount, uint fee) {
         address synthOut = _SYNTH(); // Get the synth address
         require(synthOut != address(0), "!synth"); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS());
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
+         require((baseAmount + _actualInputBase) < baseCAP, "RTC");
         uint256 _synthSupply = iBEP20(synthOut).totalSupply();
         outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount - _synthSupply); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
+        uint256 synthsCap = tokenAmount * poolCAP / 10000; 
+        require((outputAmount + _synthSupply) < synthsCap, 'CAPPED');
         uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
         uint _fee = _utils.calcSwapFee(_actualInputBase, baseAmount, tokenAmount - _synthSupply); // Calc slip fee in TOKEN
@@ -224,7 +232,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
     
     // Swap Synths for SPARTA
-    function burnSynth(address member) external onlyROUTER returns(uint outputAmount, uint fee) {
+    function burnSynth(address member) external onlyPROTOCOL returns(uint outputAmount, uint fee) {
         address synthIN = _SYNTH(); // Get the synth address
         require(synthIN != address(0), "!synth"); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS());
@@ -353,6 +361,15 @@ contract Pool is iBEP20, ReentrancyGuard {
        // populate revenueArray to be of length 2
         revenueArray.push(_totalRev);
      }
-}
-
+     }
+    //=========================================== SYNTH CAPS =================================//
+    
+    function setCAP(uint256 _poolCap) external onlyPROTOCOL {
+        require(_poolCap <= 3000, '!MAX');
+        poolCAP = _poolCap;
+    }
+    function RTC(uint256 _newRTC) external onlyPROTOCOL {
+        require(_newRTC <= (baseCAP * 2), '!MAX');
+        baseCAP = _newRTC;
+    }
 }
