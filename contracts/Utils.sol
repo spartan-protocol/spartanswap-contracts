@@ -151,8 +151,7 @@ contract Utils {
         // synthUnits += (P b)/(2 (b + B))
         uint baseAmount = iPOOL(pool).baseAmount();
         uint totalSupply = iBEP20(pool).totalSupply();
-        uint two = 2;
-        return (totalSupply * amount) / (two * (amount + baseAmount));
+        return (totalSupply * amount) / ((amount + baseAmount) * 2);
     }
 
     //==================================== PRICING ====================================//
@@ -173,8 +172,7 @@ contract Utils {
     }
 
     function calcSwapValueInBaseWithSYNTH(address synth, uint amount) external view returns (uint _output){
-        address token = iSYNTH(synth).LayerONE();
-        address pool = getPool(token);
+        address pool = iSYNTH(synth).POOL();
         return  calcSwapValueInBaseWithPool(pool, amount);
     }
 
@@ -208,8 +206,7 @@ contract Utils {
     }
 
     function calcActualSynthUnits(uint amount, address synth) external view returns (uint _output) {
-        address token = iSYNTH(synth).LayerONE();
-        address pool = getPool(token);
+        address pool = iSYNTH(synth).POOL();
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
         return ((amount * _baseAmount) / (2 * _tokenAmount));
