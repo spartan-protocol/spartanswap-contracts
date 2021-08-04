@@ -5,8 +5,8 @@ import "./iPOOLFACTORY.sol";
 
 contract Synth is iBEP20 {
     address public BASE;
-    address public TOKEN; // Underlying relevant layer1 token
-    address public POOL;
+    address public TOKEN; // Underlying relevant layer1 token address
+    address public POOL; // Underlying pool address
     uint public genesis;
     address public DEPLOYER;
     uint256 public collateral;

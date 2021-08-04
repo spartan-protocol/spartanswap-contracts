@@ -76,7 +76,7 @@ contract BondVault {
     // Increase user's weight in the BondVault
     function increaseWeight(address asset, address member) internal{
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get pool address
-        require(pool != address(0)); // Must be a valid pool
+        require(pool != address(0), "!POOL"); // Must be a valid pool
         if (mapMemberPool_weight[member][pool] > 0) {
             totalWeight -= mapMemberPool_weight[member][pool]; // Remove user weight from totalWeight (scope: vault)
             mapMember_weight[member] -= mapMemberPool_weight[member][pool]; // Remove user weight from totalWeight (scope: user)
@@ -107,7 +107,7 @@ contract BondVault {
         require(mapBondAsset_memberDetails[asset].isMember[member], '!member'); // They must be a member (scope: user -> asset)
         uint256 _claimable = calcBondedLP(member, asset); // Get the current claimable amount
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get the pool address
-        require(_pool != address(0)); // Must be a valid pool
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         mapBondAsset_memberDetails[asset].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
         mapBondAsset_memberDetails[asset].bondedLP[member] -= _claimable; // Remove the claim amount from the user's remainder
         if(_claimable == mapBondAsset_memberDetails[asset].bondedLP[member]){
@@ -121,7 +121,7 @@ contract BondVault {
     // Decrease user's weight in the BondVault
     function decreaseWeight(address asset, address member) internal {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get pool address
-        require(_pool != address(0)); // Must be a valid pool
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
         totalWeight -= mapMemberPool_weight[member][_pool]; // Remove user weight from totalWeight (scope: vault)
         mapMember_weight[member] -= mapMemberPool_weight[member][_pool]; // Remove user weight from totalWeight (scope: user)
         mapMemberPool_weight[member][_pool] = 0; // Zero out user weight (scope: user -> pool)
