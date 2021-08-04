@@ -197,7 +197,7 @@ contract Router {
 
     // Check if fee should generate a dividend & send it to the pool
     function getsDividend(address _pool, uint fee) internal {
-        if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
+        if(fee > 10**18 && iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
             addTradeFee(fee); // Add fee to array for avgFee calcs etc
             addDividend(_pool, fee); // Check and tsf dividend to pool
         }
@@ -281,9 +281,9 @@ contract Router {
     
     // Calculate the Dividend and transfer it to the pool
     function addDividend(address _pool, uint256 _fees) internal {
-        if(!(normalAverageFee == 0)){
+        if(normalAverageFee > 0){
             uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
-            if(!(reserve == 0)){
+            if(reserve > 0){
                 uint dailyAllocation = (reserve / eraLength) / maxTrades; // Calculate max dividend
                 uint numerator = _fees * dailyAllocation;
                 uint feeDividend = numerator / (_fees + normalAverageFee); // Calculate actual dividend
@@ -296,26 +296,26 @@ contract Router {
 
     // Add fee to feeArray, used to calculate normalAverageFee
     function addTradeFee(uint _fee) internal {
-        uint totalTradeFees = 0;
+        uint _arrayFeeSize = arrayFeeSize;
         uint arrayFeeLength = feeArray.length;
-        if(arrayFeeLength < arrayFeeSize){
+        if(arrayFeeLength < _arrayFeeSize) {
             feeArray.push(_fee); // Build array until it is == arrayFeeSize
         } else {
-            addFee(_fee); // If array is required length; shift in place of oldest item
-            for(uint i = 0; i < arrayFeeSize; i++){
-                totalTradeFees = totalTradeFees + feeArray[i]; // NET sum of feeArray
-            }
+            uint totalTradeFees = addFee(arrayFeeLength, _fee); 
+            normalAverageFee = totalTradeFees / _arrayFeeSize; // Calc average fee
         }
-        normalAverageFee = totalTradeFees / arrayFeeSize; // Calc average fee
     }
 
     // Shift out oldest fee item and add newest
-    function addFee(uint _fee) internal {
-        uint n = feeArray.length; // 20
-        for (uint i = n - 1; i > 0; i--) {
-            feeArray[i] = feeArray[i - 1];
+    function addFee(uint arrayFeeLength, uint _fee) internal returns (uint totalTradeFees) {
+        totalTradeFees = _fee; // add newest fee
+        uint[] memory _feeArray = feeArray; // store in memory to save gas
+        for (uint i = arrayFeeLength - 1; i > 0; i--) {
+            _feeArray[i] = _feeArray[i - 1];
+            totalTradeFees += _feeArray[i];
         }
-        feeArray[0] = _fee;
+        _feeArray[0] = _fee;
+        feeArray = _feeArray;
     }
 
     function revenueDetails(uint _fees, address _pool) internal {
@@ -344,15 +344,19 @@ contract Router {
     //======================= Change Dividend Variables ===========================//
 
     function changeArrayFeeSize(uint _size) external onlyDAO {
+        require(_size != 0, 'ZERO');
         arrayFeeSize = _size;
+        normalAverageFee = 0; // Set to 0 to ensure dividends are paused until array is full again
         delete feeArray;
     }
 
     function changeMaxTrades(uint _maxtrades) external onlyDAO {
+        require(_maxtrades != 0, 'ZERO');
         maxTrades = _maxtrades;
     }
 
-    function changeEraLength(uint _eraLength) external onlyDAO {	
+    function changeEraLength(uint _eraLength) external onlyDAO {
+        require(_eraLength != 0, 'ZERO');
         eraLength = _eraLength;	
     }
 
