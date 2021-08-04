@@ -239,7 +239,7 @@ contract Router {
     // Swap TOKEN to Synth
     function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) external payable {
         require(fromToken != toSynth); // Tokens must not be the same
-        address _pool = iSYNTH(toSynth).POOL; // Get underlying pool address
+        address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         if(fromToken != BASE){
             sellTo(inputAmount, fromToken, address(this)); // Swap TOKEN to SPARTA & tsf to ROUTER
@@ -254,7 +254,7 @@ contract Router {
     // Swap Synth to TOKEN
     function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external {
         require(fromSynth != toToken); // Tokens must not be the same
-        address _poolIN = iSYNTH(fromSynth).POOL; // Get underlying pool address
+        address _poolIN = iSYNTH(fromSynth).POOL(); // Get underlying pool address
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken); // Get TOKEN's relevant pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         iBEP20(fromSynth).transferFrom(msg.sender, _poolIN, inputAmount); // Transfer synth from user to pool
