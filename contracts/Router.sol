@@ -92,13 +92,13 @@ contract Router {
         } else {
             _handleTransferIn(token, inputToken, _pool); // Transfer TOKEN into pool
         }
-         Pool(_pool).addForMember(member); // Add liquidity and send LPs to user
-         safetyTrigger(_pool);
+        Pool(_pool).addForMember(member); // Add liquidity and send LPs to user
+        safetyTrigger(_pool);
     }
 
     // User removes liquidity - redeems a percentage of their balance
     function removeLiquidity(uint basisPoints, address token) external{
-        require((basisPoints > 0 && basisPoints <= 10000)); // Must be valid basis points
+        require((basisPoints > 0)); // Must be valid basis points, calcPart() handles the upper-check
         uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token)).balanceOf(msg.sender));
         removeLiquidityExact(_units, token);
     }
@@ -118,7 +118,7 @@ contract Router {
             _handleTransferOut(token, outputToken, _member); // Unwrap to BNB & tsf it to user
             _handleTransferOut(BASE, outputBase, _member); // Transfer SPARTA to user
         }
-         safetyTrigger(_pool);
+        safetyTrigger(_pool);
     }
 
     // User removes liquidity asymetrically (one asset)
