@@ -12,6 +12,7 @@ contract Reserve {
     address public SYNTHVAULT;
     address public DEPLOYER;
     bool public emissions;
+    bool public globalFreeze;
 
     // Restrict access
     modifier onlyGrantor() {
@@ -47,6 +48,10 @@ contract Reserve {
 
     function flipEmissions() external onlyGrantor {
         emissions = !emissions; // Flip emissions on/off
+    }
+
+    function setGlobalFreeze(bool gF) external onlyGrantor {
+        globalFreeze = gF;
     }
 
     // Can purge deployer once DAO is stable and final

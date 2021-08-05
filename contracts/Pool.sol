@@ -16,6 +16,10 @@ contract Pool is iBEP20, ReentrancyGuard {
     address public TOKEN;
     uint256 public poolCAP;
     uint256 public baseCAP;
+    uint256 private oldRate;
+    uint256 private period;
+    uint256 private SPR;
+    bool public freeze;
 
     string _name; string _symbol;
     uint8 public override immutable decimals; uint256 public override totalSupply;
@@ -70,7 +74,9 @@ contract Pool is iBEP20, ReentrancyGuard {
         decimals = 18;
         genesis = block.timestamp;
         poolCAP = 3000;
+        SPR = 3000;
         baseCAP = 100000;
+        period = block.timestamp;
     }
 
     //========================================iBEP20=========================================//
@@ -170,6 +176,7 @@ contract Pool is iBEP20, ReentrancyGuard {
             uint createFee = 100 * liquidityUnits / 10000;
             liquidityUnits -= createFee;
             _mint(BASE, createFee);
+             oldRate = baseAmount/tokenAmount;
         }
         _incrementPoolBalances(_actualInputBase, _actualInputToken); // Update recorded BASE and TOKEN amounts
         _mint(member, liquidityUnits); // Mint the LP tokens directly to the user
@@ -315,25 +322,43 @@ contract Pool is iBEP20, ReentrancyGuard {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
     }
-
-    // Increment internal balances
-    function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
-        baseAmount += _baseAmount;
-        tokenAmount += _tokenAmount;
-    }
-
     // Set internal balances
     function _setPoolAmounts(uint256 _baseAmount, uint256 _tokenAmount) internal  {
         baseAmount = _baseAmount;
         tokenAmount = _tokenAmount; 
+        safetyCheck();
     }
-
+    // Increment internal balances
+    function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
+        baseAmount += _baseAmount;
+        tokenAmount += _tokenAmount;
+        safetyCheck();
+    }
     // Decrement internal balances
     function _decrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount -= _baseAmount;
         tokenAmount -= _tokenAmount; 
+        safetyCheck();
     }
 
+    function safetyCheck() internal {
+         uint256 newRate = baseAmount/tokenAmount;
+         uint256 absRate;
+         if(block.timestamp > period){
+            period += 14400;
+            oldRate = newRate;
+         }
+         if(newRate < oldRate){
+            absRate = (oldRate / newRate) - 1;
+         }else{
+            absRate = (newRate / oldRate) - 1;
+         }
+        uint256 difference = absRate * 10000;
+        if(difference > SPR){
+           freeze = true;
+        }
+    }
+  
     //===========================================POOL FEE ROI=================================//
 
     function _addPoolMetrics(uint256 _fee) internal {
@@ -371,6 +396,13 @@ contract Pool is iBEP20, ReentrancyGuard {
     function RTC(uint256 _newRTC) external onlyPROTOCOL {
         require(_newRTC <= (baseCAP * 2), '!MAX');
         baseCAP = _newRTC;
+    }
+    function setSPR(uint256 _newSPR) external onlyPROTOCOL {
+        SPR = _newSPR;
+    }
+
+    function flipFreeze() external onlyPROTOCOL {
+         freeze = !freeze;
     }
         
 }

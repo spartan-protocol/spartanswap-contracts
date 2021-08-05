@@ -57,6 +57,7 @@ contract Router {
         _handleTransferIn(BASE, inputBase, pool); // Transfer SPARTA to pool
         _handleTransferIn(token, inputToken, pool); // Transfer TOKEN to pool
         Pool(pool).addForMember(member); // Add liquidity to pool for user
+        safetyTrigger(pool);
     }
 
     // Trade LP tokens for another type of LP tokens
@@ -73,6 +74,7 @@ contract Router {
         Pool(fromPool).swapTo(BASE, toPool); // Swap the received TOKENs for SPARTA then transfer to the toPool
         iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to toPool
         Pool(toPool).addForMember(_member); // Add liquidity and send the LPs to user
+        safetyTrigger(toPool);
     }
 
     // User adds liquidity asymetrically (one asset)
@@ -89,11 +91,11 @@ contract Router {
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         if(fromBase){
             _handleTransferIn(BASE, inputToken, _pool); // Transfer SPARTA into pool
-            Pool(_pool).addForMember(member); // Add liquidity and send LPs to user
         } else {
             _handleTransferIn(token, inputToken, _pool); // Transfer TOKEN into pool
-            Pool(_pool).addForMember(member); // Add liquidity and send LPs to user
         }
+         Pool(_pool).addForMember(member); // Add liquidity and send LPs to user
+         safetyTrigger(_pool);
     }
 
     // User removes liquidity - redeems a percentage of their balance
@@ -118,6 +120,7 @@ contract Router {
             _handleTransferOut(token, outputToken, _member); // Unwrap to BNB & tsf it to user
             _handleTransferOut(BASE, outputBase, _member); // Transfer SPARTA to user
         }
+         safetyTrigger(_pool);
     }
 
     // User removes liquidity asymetrically (one asset)
@@ -138,6 +141,7 @@ contract Router {
             Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA for TOKEN & transfer to ROUTER
             _handleTransferOut(token, iBEP20(_token).balanceOf(address(this)), _member); // Send TOKEN to user
         } 
+        safetyTrigger(_pool);
     }
 
     //============================== Swapping Functions ====================================//
@@ -159,6 +163,7 @@ contract Router {
             fee = feez;
         }
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
+         safetyTrigger(_pool);
     }
 
     // Swap TOKEN for SPARTA
@@ -169,6 +174,7 @@ contract Router {
         (uint output, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA & transfer to user
         require(output > minAmount, '!RATE');
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
+         safetyTrigger(_pool);
         return fee;
     }
 
@@ -194,6 +200,7 @@ contract Router {
             require(_zz > minAmount, '!RATE');
             uint fee = feey + _feez; // Get total slip fees
             getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
+            safetyTrigger(_poolTo);
             _handleTransferOut(toToken,iBEP20(_toToken).balanceOf(address(this)), member); // Transfer TOKEN to user
         }
     }
@@ -253,6 +260,7 @@ contract Router {
         }
         (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Mint synths & tsf to user
         getsDividend(_pool, fee); // Check and tsf dividend to pool
+         safetyTrigger(_pool);
     }
    
     // Swap Synth to TOKEN
@@ -278,6 +286,7 @@ contract Router {
             }
         }
         getsDividend(_pool, fee); // Check and tsf dividend to pool
+         safetyTrigger(_pool);
     }
     
     //============================= Token Dividends / Curated Pools =================================//
@@ -360,6 +369,14 @@ contract Router {
     }
     function RTC(uint poolRTC, address _pool) external onlyDAO {
         Pool(_pool).RTC(poolRTC);
+    }
+    function safetyTrigger(address _pool) internal {
+        if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool)){
+            if(Pool(_pool).freeze()){
+                iRESERVE(_DAO().RESERVE()).setGlobalFreeze(true);  
+            } 
+        }
+        
     }
 
     //================================== Helpers =================================//

@@ -121,7 +121,7 @@ contract Utils {
             amount = iPOOL(pool).tokenAmount();
         }
         uint totalSupply = iBEP20(pool).totalSupply();
-        return(amount*(units))/(totalSupply);
+        return (amount * units) / totalSupply;
     }
 
     function calcSwapOutput(uint x, uint X, uint Y) public pure returns (uint output){
