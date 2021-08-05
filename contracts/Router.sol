@@ -59,11 +59,12 @@ contract Router {
 
     // Trade LP tokens for another type of LP tokens
     function zapLiquidity(uint unitsInput, address fromPool, address toPool) external {
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(fromPool) == true); // FromPool must be a valid pool
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(toPool) == true); // ToPool must be a valid pool
+        require(fromPool != toPool && unitsInput > 0, '!VALID'); // Pools must be different and input must be valid
+        iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY());
+        require(_poolFactory.isPool(fromPool) == true); // FromPool must be a valid pool
+        require(_poolFactory.isPool(toPool) == true); // ToPool must be a valid pool
         address _fromToken = Pool(fromPool).TOKEN(); // Get token underlying the fromPool
         address _member = msg.sender; // Get user's address
-        require(unitsInput <= iBEP20(fromPool).totalSupply()); // Input must be valid
         iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput); // Transfer LPs from user to the pool
         Pool(fromPool).removeForMember(address(this)); // Remove liquidity to ROUTER
         iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))); // Transfer TOKENs from ROUTER to fromPool
