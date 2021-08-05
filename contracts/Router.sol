@@ -87,8 +87,6 @@ contract Router {
         require(inputToken > 0); // Must be valid input amount
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
-        address _token = token;
-        if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         if(fromBase){
             _handleTransferIn(BASE, inputToken, _pool); // Transfer SPARTA into pool
         } else {
