@@ -8,7 +8,6 @@ contract Synth is iBEP20 {
     address public TOKEN; // Underlying relevant layer1 token address
     address public POOL; // Underlying pool address
     uint public genesis;
-    address public DEPLOYER;
     uint256 public collateral;
 
     string _name; string _symbol;
@@ -22,11 +21,6 @@ contract Synth is iBEP20 {
         return iBASE(BASE).DAO();
     }
     
-    // Restrict access
-    modifier onlyDAO() {
-        require(msg.sender == DEPLOYER, "!DAO");
-        _;
-    }
     modifier onlyCuratedPool() {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, "!CURATED");
         _;
@@ -46,7 +40,6 @@ contract Synth is iBEP20 {
         _name = string(abi.encodePacked(iBEP20(_token).name(), synthName));
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), synthSymbol));
         decimals = iBEP20(_token).decimals();
-        DEPLOYER = msg.sender;
         genesis = block.timestamp;
     }
 
@@ -68,20 +61,18 @@ contract Synth is iBEP20 {
         return _allowances[owner][spender];
     }
 
-    // iBEP20 Transfer function
     function transfer(address recipient, uint256 amount) external virtual override returns (bool) {
         _transfer(msg.sender, recipient, amount);
         return true;
     }
 
-    // iBEP20 Approve, change allowance functions
     function approve(address spender, uint256 amount) external virtual override returns (bool) {
         _approve(msg.sender, spender, amount);
         return true;
     }
 
     function increaseAllowance(address spender, uint256 addedValue) external virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender]+(addedValue));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender] + addedValue);
         return true;
     }
 
@@ -99,7 +90,6 @@ contract Synth is iBEP20 {
         emit Approval(owner, spender, amount);
     }
     
-    // iBEP20 TransferFrom function
     function transferFrom(address sender, address recipient, uint256 amount) external virtual override returns (bool) {
         _transfer(sender, recipient, amount);
         uint256 currentAllowance = _allowances[sender][msg.sender];
@@ -107,9 +97,10 @@ contract Synth is iBEP20 {
         _approve(sender, msg.sender, currentAllowance - amount);
         return true;
     }
-    // Internal transfer function
+
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
         require(sender != address(0), "!sender");
+        require(recipient != address(0), '!BURN');
         uint256 senderBalance = _balances[sender];
         require(senderBalance >= amount, "!balance");
         _balances[sender] -= amount;
@@ -117,7 +108,6 @@ contract Synth is iBEP20 {
         emit Transfer(sender, recipient, amount);
     }
 
-    // Internal mint (upgrading and daily emissions)
     function _mint(address account, uint256 amount) internal virtual {
         require(account != address(0), "!account");
         totalSupply += amount;
@@ -125,7 +115,6 @@ contract Synth is iBEP20 {
         emit Transfer(address(0), account, amount);
     }
 
-    // Burn supply
     function burn(uint256 amount) external virtual override {
       
     }
@@ -150,6 +139,7 @@ contract Synth is iBEP20 {
     
     // Handle received Synths and burn the LPs and Synths
     function burnSynth(uint _syntheticAmount) external onlyPool returns (uint){
+        require(_syntheticAmount > 0, '!AMOUNT'); // Input must not be zero
         uint _amountUnits = (_syntheticAmount * collateral) / totalSupply; // share = amount * part/total
         collateral -= _amountUnits; // Reduce lp balance
         _burn(msg.sender, _syntheticAmount); // Burn the synths
@@ -168,16 +158,6 @@ contract Synth is iBEP20 {
                 Pool(POOL).burn(premiumLP); // Burn the premium of the LP tokens
             }
         }
-    }
-
-    // Check the received token amount
-    function _handleTransferIn(address _token, uint256 _amount) internal returns(uint256 _actual){
-        if(_amount > 0) {
-            uint startBal = iBEP20(_token).balanceOf(address(this)); // Get existing balance
-            iBEP20(_token).transferFrom(msg.sender, address(this), _amount); // Transfer tokens in
-            _actual = iBEP20(_token).balanceOf(address(this)) - startBal; // Calculate received amount
-        }
-        return _actual;
     }
 
     // Check the received LP tokens amount

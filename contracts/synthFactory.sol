@@ -10,7 +10,7 @@ contract SynthFactory {
     address[] public arraySynths; // Array of all deployed synths
     mapping(address => address) private mapToken_Synth;
     mapping(address => bool) public isSynth;
-    event CreateSynth(address indexed token, address indexed pool);
+    event CreateSynth(address indexed token, address indexed pool, address indexed synth);
 
     constructor (address _base, address _wbnb) {
         BASE = _base;
@@ -44,7 +44,7 @@ contract SynthFactory {
         newSynth = new Synth(BASE, _token, _pool); // Deploy synth asset contract
         synth = address(newSynth); // Get new synth's address
         addSynth(_token, synth); // Record new synth contract with the SynthFactory
-        emit CreateSynth(token, synth);
+        emit CreateSynth(_token, _pool, synth);
         return synth;
     }
 
