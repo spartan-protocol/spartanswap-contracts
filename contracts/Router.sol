@@ -214,18 +214,15 @@ contract Router {
     //============================== Token Transfer Functions ======================================//
     
     // Handle the transfer of assets into the pool
-    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
+    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal {
         if(_amount > 0) {
             if(_token == address(0)){
                 require((_amount == msg.value));
                 (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
                 require(success, "!send");
                 iBEP20(WBNB).transfer(_pool, _amount); // Transfer WBNB from ROUTER to pool
-                actual = _amount;
             } else {
-                uint startBal = iBEP20(_token).balanceOf(_pool); // Get prior TOKEN balance of pool
                 iBEP20(_token).transferFrom(msg.sender, _pool, _amount); // Transfer TOKEN to pool
-                actual = iBEP20(_token).balanceOf(_pool)-(startBal); // Get received TOKEN amount
             }
         }
     }
