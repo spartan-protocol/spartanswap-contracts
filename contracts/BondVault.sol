@@ -69,24 +69,10 @@ contract BondVault {
         mapBondAsset_memberDetails[asset].bondedLP[member] += LPS; // Add new deposit to users remainder
         mapBondAsset_memberDetails[asset].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
         mapBondAsset_memberDetails[asset].claimRate[member] = mapBondAsset_memberDetails[asset].bondedLP[member] / iDAO(_DAO().DAO()).bondingPeriodSeconds(); // Set claim rate per second
-        increaseWeight(asset, member); // Update user's weight
+        updateWeight(asset, member); // Update user's weight
         return true;
     }
 
-    // Increase user's weight in the BondVault
-    function increaseWeight(address asset, address member) internal{
-        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get pool address
-        require(pool != address(0), "!POOL"); // Must be a valid pool
-        if (mapMemberPool_weight[member][pool] > 0) {
-            totalWeight -= mapMemberPool_weight[member][pool]; // Remove user weight from totalWeight (scope: vault)
-            mapMember_weight[member] -= mapMemberPool_weight[member][pool]; // Remove user weight from totalWeight (scope: user)
-            mapMemberPool_weight[member][pool] = 0; // Zero out user weight (scope: user -> pool)
-        }
-        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(asset, mapBondAsset_memberDetails[asset].bondedLP[member]); // Calculate user's bonded weight
-        mapMemberPool_weight[member][pool] = weight; // Set new weight (scope: user -> pool)
-        mapMember_weight[member] += weight; // Add new weight to totalWeight (scope: user)
-        totalWeight += weight; // Add new weight to totalWeight (scope: vault)
-    }
 
     // Calculate the user's current available claim amount
     function calcBondedLP(address member, address asset) public view returns (uint claimAmount){ 
@@ -113,22 +99,23 @@ contract BondVault {
         if(_claimable == mapBondAsset_memberDetails[asset].bondedLP[member]){
             mapBondAsset_memberDetails[asset].claimRate[member] = 0; // If final claim; zero-out their claimRate
         }
-        decreaseWeight(asset, member); // Update user's weight
+        updateWeight(asset, member); // Update user's weight
         iBEP20(_pool).transfer(member, _claimable); // Send claim amount to user
         return true;
     }
 
-    // Decrease user's weight in the BondVault
-    function decreaseWeight(address asset, address member) internal {
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get pool address
-        require(_pool != address(0), "!POOL"); // Must be a valid pool
-        totalWeight -= mapMemberPool_weight[member][_pool]; // Remove user weight from totalWeight (scope: vault)
-        mapMember_weight[member] -= mapMemberPool_weight[member][_pool]; // Remove user weight from totalWeight (scope: user)
-        mapMemberPool_weight[member][_pool] = 0; // Zero out user weight (scope: user -> pool)
+    // Update user's weight in the BondVault
+    function updateWeight(address asset, address member) internal{
+        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get pool address
+        require(pool != address(0), "!POOL"); // Must be a valid pool
+        if (mapMemberPool_weight[member][pool] > 0) {
+            totalWeight -= mapMemberPool_weight[member][pool]; // Remove user weight from totalWeight (scope: vault)
+            mapMember_weight[member] -= mapMemberPool_weight[member][pool]; // Remove user weight from totalWeight (scope: user)
+        }
         uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(asset, mapBondAsset_memberDetails[asset].bondedLP[member]); // Calculate user's bonded weight
-        mapMemberPool_weight[member][_pool] = weight; // Set new weight (scope: user -> pool)
+        mapMemberPool_weight[member][pool] = weight; // Set new weight (scope: user -> pool)
         mapMember_weight[member] += weight; // Add new weight to totalWeight (scope: user)
-        totalWeight += weight; // // Add new weight to totalWeight (scope: vault)
+        totalWeight += weight; // Add new weight to totalWeight (scope: vault)
     }
 
     // Get the total count of all existing & past BondVault members
