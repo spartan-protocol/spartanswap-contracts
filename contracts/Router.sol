@@ -74,6 +74,7 @@ contract Router {
         iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to toPool
         Pool(toPool).addForMember(_member); // Add liquidity and send the LPs to user
         safetyTrigger(toPool);
+        safetyTrigger(fromPool);
     }
 
     // User adds liquidity asymetrically (one asset)
@@ -105,6 +106,7 @@ contract Router {
     // User removes liquidity - redeems exact qty of LP tokens
     function removeLiquidityExact(uint units, address token) public {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get the pool address
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         address _member = msg.sender; // The the user's address
         iBEP20(_pool).transferFrom(_member, _pool, units); // Transfer LPs to the pool
@@ -123,6 +125,7 @@ contract Router {
     // User removes liquidity asymetrically (one asset)
     function removeLiquiditySingle(uint units, bool toBase, address token) external{
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true); // Pool must be valid
         address _member = msg.sender; // Get user's address
@@ -245,6 +248,7 @@ contract Router {
     // Swap TOKEN to Synth
     function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) external payable {
         require(fromToken != toSynth); // Tokens must not be the same
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         if(fromToken != BASE){
@@ -261,6 +265,7 @@ contract Router {
     // Swap Synth to TOKEN
     function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external {
         require(fromSynth != toToken); // Tokens must not be the same
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         address _poolIN = iSYNTH(fromSynth).POOL(); // Get underlying pool address
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken); // Get TOKEN's relevant pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
@@ -372,7 +377,7 @@ contract Router {
     function safetyTrigger(address _pool) internal {
         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool)){
             if(Pool(_pool).freeze()){
-                iRESERVE(_DAO().RESERVE()).setGlobalFreeze(true);  
+                iRESERVE(_DAO().RESERVE()).setGlobalFreeze(true);   
             } 
         }
         

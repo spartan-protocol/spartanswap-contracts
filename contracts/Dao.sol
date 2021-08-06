@@ -153,6 +153,7 @@ contract Dao {
     // Contract deposits LP tokens for member
     function depositLPForMember(address pool, uint256 amount, address member) public {
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!curated"); // Pool must be Curated
+        require(_RESERVE.globalFreeze() != true, '');
         require(amount > 0, "!amount"); // Deposit amount must be valid
         if (isMember[member] != true) {
             arrayMembers.push(member); // If not a member; add user to member array
@@ -349,6 +350,7 @@ contract Dao {
 
     // If no existing open DAO proposal; register a new one
     function checkProposal() internal {
+        require(_RESERVE.globalFreeze() != true, '');
         require(mapPID_open[currentProposal] == false, '!open'); // There must not be an existing open proposal
         proposalCount += 1; // Increase proposal count
         currentProposal = proposalCount; // Set current proposal to the new count
@@ -412,6 +414,7 @@ contract Dao {
 
     // A finalising-stage proposal can be finalised after the cool off period
     function finaliseProposal() external {
+        require(_RESERVE.globalFreeze() != true, '');
         require((block.timestamp - mapPID_coolOffTime[currentProposal]) > coolOffPeriod, "!cooloff"); // Must be past cooloff period
         require(mapPID_finalising[currentProposal] == true, "!finalising"); // Must be in finalising stage
         if(!hasQuorum(currentProposal)){

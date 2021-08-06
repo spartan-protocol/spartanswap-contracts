@@ -46,13 +46,15 @@ contract Reserve {
         }
     }
 
-    function flipEmissions() external onlyGrantor {
+    function flipEmissions() public onlyGrantor {
         emissions = !emissions; // Flip emissions on/off
     }
 
-    function setGlobalFreeze(bool gF) external onlyGrantor {
-        globalFreeze = gF;
+    function setGlobalFreeze(bool freeze) external onlyGrantor {
+        globalFreeze = freeze;
+        emissions = !freeze;
     }
+   
 
     // Can purge deployer once DAO is stable and final
     function purgeDeployer() external onlyGrantor {

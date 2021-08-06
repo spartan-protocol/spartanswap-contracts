@@ -342,10 +342,11 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     function safetyCheck() internal {
+        if(!freeze){
          uint256 newRate = baseAmount/tokenAmount;
          uint256 absRate;
          if(block.timestamp > period){
-            period += 14400;
+            period += 3600;
             oldRate = newRate;
          }
          if(newRate < oldRate){
@@ -357,6 +358,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         if(difference > SPR){
            freeze = true;
         }
+         }
     }
   
     //===========================================POOL FEE ROI=================================//
@@ -401,8 +403,13 @@ contract Pool is iBEP20, ReentrancyGuard {
         SPR = _newSPR;
     }
 
-    function flipFreeze() external onlyPROTOCOL {
+    function flipFreeze(uint newPeriod) external onlyPROTOCOL {
+        require(newPeriod < 580, '!VALID');
          freeze = !freeze;
+         period = block.timestamp + newPeriod;
+        
     }
+
+
         
 }
