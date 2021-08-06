@@ -132,8 +132,8 @@ contract Router {
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         if(toBase){
             iBEP20(_token).transfer(_pool, iBEP20(_token).balanceOf(address(this))); // Transfer TOKEN to pool
-            Pool(_pool).swapTo(BASE, _member); // Swap TOKEN for SPARTA & tsf to user
-            iBEP20(BASE).transfer(_member, iBEP20(BASE).balanceOf(address(this))); // Transfer the other SPARTA from ROUTER to user
+            Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN for SPARTA & tsf to ROUTER
+            iBEP20(BASE).transfer(_member, iBEP20(BASE).balanceOf(address(this))); // Transfer all SPARTA from ROUTER to user
         } else {
             iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA to pool
             Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA for TOKEN & transfer to ROUTER
