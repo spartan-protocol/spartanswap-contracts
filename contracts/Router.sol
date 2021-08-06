@@ -16,8 +16,7 @@ contract Router {
     uint public normalAverageFee;   // The average fee size (dividend smoothing)
     uint private arrayFeeSize;      // The size of the average window used for normalAverageFee
     uint [] private feeArray;       // The array used to calc normalAverageFee
-    uint private lastMonth;         // Timestamp of the start of current metric period (For UI)
-
+    uint public lastMonth;         // Timestamp of the start of current metric period (For UI)
 
     mapping(address=> uint) public mapAddress_30DayDividends;
     mapping(address=> uint) public mapAddress_Past30DayPoolDividends;
