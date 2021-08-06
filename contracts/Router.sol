@@ -133,6 +133,7 @@ contract Router {
         if(toBase){
             iBEP20(_token).transfer(_pool, iBEP20(_token).balanceOf(address(this))); // Transfer TOKEN to pool
             Pool(_pool).swapTo(BASE, _member); // Swap TOKEN for SPARTA & tsf to user
+            iBEP20(BASE).transfer(_member, iBEP20(BASE).balanceOf(address(this))); // Transfer the other SPARTA from ROUTER to user
         } else {
             iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA to pool
             Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA for TOKEN & transfer to ROUTER
@@ -198,7 +199,7 @@ contract Router {
             uint fee = feey + _feez; // Get total slip fees
             getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
             safetyTrigger(_poolTo);
-            _handleTransferOut(toToken,iBEP20(_toToken).balanceOf(address(this)), member); // Transfer TOKEN to user
+            _handleTransferOut(toToken, iBEP20(_toToken).balanceOf(address(this)), member); // Transfer TOKEN to user
         }
     }
 
@@ -355,15 +356,19 @@ contract Router {
         require(_eraLength > 0, 'ZERO');
         eraLength = _eraLength;	
     }
+
     function changeGlobalCap(uint _globalCap) external onlyDAO {	
         globalCAP = _globalCap;	
     }
+
     function changePoolCap(uint poolCAP, address _pool) external onlyDAO {
         Pool(_pool).setCAP(poolCAP);
     }
+
     function RTC(uint poolRTC, address _pool) external onlyDAO {
         Pool(_pool).RTC(poolRTC);
     }
+
     function safetyTrigger(address _pool) internal {
         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool)){
             if(Pool(_pool).freeze()){
