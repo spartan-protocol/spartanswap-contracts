@@ -41,7 +41,8 @@ contract DaoVault {
     }
 
     // Update a member's weight in the DAOVault (scope: pool)
-    function increaseWeight(address pool, address member) internal returns (uint256){
+    function increaseWeight(address pool, address member) internal returns (uint256) {
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         if (mapMemberPool_weight[member][pool] > 0) {
             totalWeight -= mapMemberPool_weight[member][pool]; // Remove user's previous weight (scope: vault)
             mapMember_weight[member] -= mapMemberPool_weight[member][pool]; // Remove user's previous weight (scope: member -> pool)

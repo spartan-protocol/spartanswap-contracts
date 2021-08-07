@@ -10,7 +10,6 @@ import "./iROUTER.sol";
 import "./iSYNTH.sol"; 
 import "./iSYNTHFACTORY.sol"; 
 
-
 contract Pool is iBEP20, ReentrancyGuard {  
     address public BASE;
     address public TOKEN;
@@ -322,18 +321,21 @@ contract Pool is iBEP20, ReentrancyGuard {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
     }
+
     // Set internal balances
     function _setPoolAmounts(uint256 _baseAmount, uint256 _tokenAmount) internal  {
         baseAmount = _baseAmount;
         tokenAmount = _tokenAmount; 
         safetyCheck();
     }
+
     // Increment internal balances
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount += _baseAmount;
         tokenAmount += _tokenAmount;
         safetyCheck();
     }
+
     // Decrement internal balances
     function _decrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount -= _baseAmount;
@@ -343,22 +345,22 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     function safetyCheck() internal {
         if(!freeze){
-         uint256 newRate = baseAmount/tokenAmount;
-         uint256 absRate;
-         if(block.timestamp > period){
-            period += 3600;
-            oldRate = newRate;
-         }
-         if(newRate < oldRate){
-            absRate = (oldRate / newRate) - 1;
-         }else{
-            absRate = (newRate / oldRate) - 1;
-         }
-        uint256 difference = absRate * 10000;
-        if(difference > SPR){
-           freeze = true;
+            uint256 newRate = baseAmount / tokenAmount;
+            uint256 absRate;
+            if(block.timestamp > period){
+                period += 3600;
+                oldRate = newRate;
+            }
+            if(newRate < oldRate){
+                absRate = (oldRate / newRate) - 1;
+            }else{
+                absRate = (newRate / oldRate) - 1;
+            }
+            uint256 difference = absRate * 10000;
+            if(difference > SPR){
+                freeze = true;
+            }
         }
-         }
     }
   
     //===========================================POOL FEE ROI=================================//
@@ -399,17 +401,15 @@ contract Pool is iBEP20, ReentrancyGuard {
         require(_newRTC <= (baseCAP * 2), '!MAX');
         baseCAP = _newRTC;
     }
+
     function setSPR(uint256 _newSPR) external onlyPROTOCOL {
         SPR = _newSPR;
     }
 
     function flipFreeze(uint newPeriod) external onlyPROTOCOL {
         require(newPeriod < 580, '!VALID');
-         freeze = !freeze;
-         period = block.timestamp + newPeriod;
-        
+        freeze = !freeze;
+        period = block.timestamp + newPeriod;
     }
-
-
         
 }

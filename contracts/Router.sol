@@ -16,7 +16,7 @@ contract Router {
     uint public normalAverageFee;   // The average fee size (dividend smoothing)
     uint private arrayFeeSize;      // The size of the average window used for normalAverageFee
     uint [] private feeArray;       // The array used to calc normalAverageFee
-    uint public lastMonth;         // Timestamp of the start of current metric period (For UI)
+    uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
 
     mapping(address=> uint) public mapAddress_30DayDividends;
     mapping(address=> uint) public mapAddress_Past30DayPoolDividends;
@@ -73,8 +73,8 @@ contract Router {
         Pool(fromPool).swapTo(BASE, toPool); // Swap the received TOKENs for SPARTA then transfer to the toPool
         iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to toPool
         Pool(toPool).addForMember(_member); // Add liquidity and send the LPs to user
-        safetyTrigger(toPool);
         safetyTrigger(fromPool);
+        safetyTrigger(toPool);
     }
 
     // User adds liquidity asymetrically (one asset)
@@ -163,8 +163,8 @@ contract Router {
             _handleTransferOut(token, output, member); // Unwrap to BNB & tsf to user
             fee = feez;
         }
+        safetyTrigger(_pool);
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
-         safetyTrigger(_pool);
     }
 
     // Swap TOKEN for SPARTA
@@ -174,8 +174,8 @@ contract Router {
         _handleTransferIn(token, amount, _pool); // Transfer TOKEN to pool
         (uint output, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA & transfer to user
         require(output > minAmount, '!RATE');
+        safetyTrigger(_pool);
         getsDividend(_pool, fee); // Check for dividend & tsf it to pool
-         safetyTrigger(_pool);
         return fee;
     }
 
@@ -200,8 +200,8 @@ contract Router {
             (uint _zz, uint _feez) = Pool(_poolTo).swapTo(_toToken, address(this)); // Swap SPARTA to TOKEN & tsf to ROUTER
             require(_zz > minAmount, '!RATE');
             uint fee = feey + _feez; // Get total slip fees
-            getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
             safetyTrigger(_poolTo);
+            getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
             _handleTransferOut(toToken, iBEP20(_toToken).balanceOf(address(this)), member); // Transfer TOKEN to user
         }
     }
@@ -258,8 +258,8 @@ contract Router {
             iBEP20(BASE).transferFrom(msg.sender, _pool, inputAmount); // Transfer SPARTA from ROUTER to pool
         }
         (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Mint synths & tsf to user
+        safetyTrigger(_pool);
         getsDividend(_pool, fee); // Check and tsf dividend to pool
-         safetyTrigger(_pool);
     }
    
     // Swap Synth to TOKEN
@@ -285,8 +285,9 @@ contract Router {
                 fee = feez + fee;
             }
         }
+        safetyTrigger(_poolIN);
+        safetyTrigger(_pool);
         getsDividend(_pool, fee); // Check and tsf dividend to pool
-         safetyTrigger(_pool);
     }
     
     //============================= Token Dividends / Curated Pools =================================//

@@ -46,7 +46,7 @@ contract Reserve {
         }
     }
 
-    function flipEmissions() public onlyGrantor {
+    function flipEmissions() external onlyGrantor {
         emissions = !emissions; // Flip emissions on/off
     }
 
@@ -55,7 +55,6 @@ contract Reserve {
         emissions = !freeze;
     }
    
-
     // Can purge deployer once DAO is stable and final
     function purgeDeployer() external onlyGrantor {
         DEPLOYER = address(0);

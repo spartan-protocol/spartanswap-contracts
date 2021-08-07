@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
+import "./iBASE.sol";
 import "./iBEP20.sol";
 import "./iDAO.sol";
-import "./iBASE.sol";
-import "./iUTILS.sol";
-import "./iROUTER.sol";
 import "./iPOOL.sol";
 import "./iPOOLFACTORY.sol";
+import "./iRESERVE.sol";
+import "./iROUTER.sol";
+import "./iUTILS.sol";
 
 contract BondVault {
     address public BASE;
@@ -87,7 +88,7 @@ contract BondVault {
         }
     }
 
-    // Perform a claim of the users's current available claim amount
+    // Perform a claim of the users's current available claim amount (Called from DAO)
     function claimForMember(address asset, address member) public onlyDAO returns (bool){
         require(mapBondAsset_memberDetails[asset].bondedLP[member] > 0, '!bonded'); // They must have remaining unclaimed LPs
         require(mapBondAsset_memberDetails[asset].isMember[member], '!member'); // They must be a member (scope: user -> asset)
@@ -106,6 +107,7 @@ contract BondVault {
 
     // Update user's weight in the BondVault
     function updateWeight(address asset, address member) internal{
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get pool address
         require(pool != address(0), "!POOL"); // Must be a valid pool
         if (mapMemberPool_weight[member][pool] > 0) {

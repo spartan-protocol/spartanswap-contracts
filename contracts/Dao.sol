@@ -139,7 +139,7 @@ contract Dao {
     }
 
     // Can change vesting period for bonders
-    function changeBondingPeriod(uint256 bondingSeconds) external onlyDAO{
+    function changeBondingPeriod(uint256 bondingSeconds) external onlyDAO {
         bondingPeriodSeconds = bondingSeconds;
     }
 
@@ -153,7 +153,6 @@ contract Dao {
     // Contract deposits LP tokens for member
     function depositLPForMember(address pool, uint256 amount, address member) public {
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!curated"); // Pool must be Curated
-        require(_RESERVE.globalFreeze() != true, '');
         require(amount > 0, "!amount"); // Deposit amount must be valid
         if (isMember[member] != true) {
             arrayMembers.push(member); // If not a member; add user to member array
@@ -369,6 +368,7 @@ contract Dao {
 
     // Vote for a proposal
     function voteProposal() external returns (uint voteWeight) {
+        require(_RESERVE.globalFreeze() != true, '');
         require(mapPID_open[currentProposal] == true, "!open"); // Proposal must be open status
         bytes memory _type = bytes(mapPID_type[currentProposal]); // Get the proposal type
         voteWeight = countVotes(); // Vote for proposal and recount
@@ -591,7 +591,7 @@ contract Dao {
     // Check if a proposal has Quorum consensus
     function hasQuorum(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID]; // Get the proposal's total voting weight
-        uint _totalWeight = _DAOVAULT.totalWeight()  + _BONDVAULT.totalWeight(); // Get combined total vault weights
+        uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // Get combined total vault weights
         uint consensus = _totalWeight / 2; // Quorum > 50%
         if(votes > consensus){
             return true;
@@ -603,7 +603,7 @@ contract Dao {
     // Check if a proposal has Minority consensus
     function hasMinority(uint _proposalID) public view returns(bool){
         uint votes = mapPID_votes[_proposalID]; // Get the proposal's total voting weight
-        uint _totalWeight = _DAOVAULT.totalWeight()  + _BONDVAULT.totalWeight(); // Get combined total vault weights
+        uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // Get combined total vault weights
         uint consensus = _totalWeight / 6; // Minority > 16.6%
         if(votes > consensus){
             return true;
