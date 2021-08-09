@@ -36,6 +36,7 @@ contract BondVault {
     mapping(address => mapping(address => uint256)) private mapMemberPool_weight; // Value of users weight (scope: pool)
 
     constructor (address _base) {
+        require(_base != address(0), '!ZERO');
         BASE = _base;
         DEPLOYER = msg.sender;
         bondRelease = false;
