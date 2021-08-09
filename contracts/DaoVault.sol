@@ -14,6 +14,7 @@ contract DaoVault {
     uint256 public totalWeight; // Total weight of the whole DAOVault
 
     constructor(address _base) {
+        require(_base != address(0), '!ZERO');
         BASE = _base;
         DEPLOYER = msg.sender;
     }
