@@ -18,10 +18,10 @@ contract DaoVault {
         DEPLOYER = msg.sender;
     }
 
-    mapping(address => uint256) private mapMember_weight; // Member's total weight in DAOVault
-    mapping(address => mapping(address => uint256)) private mapMemberPool_balance; // Member's LPs locked in DAOVault
+    mapping(address => uint256) public mapMember_weight; // Member's total weight in DAOVault
+    mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's LPs locked in DAOVault
     mapping(address => mapping(address => uint256)) public mapMember_depositTime; // Timestamp when user last deposited
-    mapping(address => mapping(address => uint256)) private mapMemberPool_weight; // Member's total weight in DOAVault (scope: pool)
+    mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Member's total weight in DOAVault (scope: pool)
 
     // Restrict access
     modifier onlyDAO() {
@@ -77,11 +77,7 @@ contract DaoVault {
 
     // Get user's current total DAOVault weight
     function getMemberWeight(address member) external view returns (uint256) {
-        if (mapMember_weight[member] > 0) {
-            return mapMember_weight[member];
-        } else {
-            return 0;
-        }
+         return mapMember_weight[member];
     }
 
     // Get user's current balance of a chosen asset

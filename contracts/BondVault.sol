@@ -32,8 +32,8 @@ contract BondVault {
     }
 
     mapping(address => ListedAssets) public mapBondAsset_memberDetails;
-    mapping(address => uint256) private mapMember_weight; // Value of users weight (scope: user)
-    mapping(address => mapping(address => uint256)) private mapMemberPool_weight; // Value of users weight (scope: pool)
+    mapping(address => uint256) public mapMember_weight; // Value of users weight (scope: user)
+    mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of users weight (scope: pool)
 
     constructor (address _base) {
         require(_base != address(0), '!ZERO');
@@ -146,10 +146,11 @@ contract BondVault {
 
     // Get a users's totalWeight (scope: user)
     function getMemberWeight(address member) external view returns (uint256) {
-        if (mapMember_weight[member] > 0) {
             return mapMember_weight[member];
-        } else {
-            return 0;
-        }
     } 
+    
+    // Get user's current DAOVault weight from a chosen asset
+    function getMemberPoolWeight(address pool, address member) external view returns (uint256){
+        return mapMemberPool_weight[member][pool];
+    }
 }
