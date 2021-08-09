@@ -30,6 +30,12 @@ contract Synth is iBEP20 {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(POOL),'!POOL');
         _;
     }
+    // Restrict access
+    modifier onlyDAO() {
+        require(msg.sender == _DAO().DAO());
+        _;
+    }
+    
     
     constructor (address _base, address _token, address _pool) {
         BASE = _base;
@@ -147,7 +153,7 @@ contract Synth is iBEP20 {
     }
 
     // Burn LPs to if their value outweights the synths supply value (Ensures incentives are funnelled to existing LPers)
-    function realise() external {
+    function realise() external onlyDAO {
         uint baseValueLP = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(collateral, BASE, POOL); // Get the SPARTA value of the LP tokens
         uint baseValueSynth = iUTILS(_DAO().UTILS()).calcActualSynthUnits(totalSupply, address(this)); // Get the SPARTA value of the synths
         if(baseValueLP > baseValueSynth){

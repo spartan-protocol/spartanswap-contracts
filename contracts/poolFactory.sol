@@ -42,6 +42,12 @@ contract PoolFactory {
         DEPLOYER = address(0);
     }
 
+    //Set Curated Pool Size
+    function setParams(uint256 newSize) external onlyDAO {
+        require(newSize > 0, '!VALID');
+        curatedPoolSize = newSize;
+    }
+
     // Anyone can create a pool and add liquidity at the same time
     function createPoolADD(uint256 inputBase, uint256 inputToken, address token) external payable returns(address pool){
         require(token != address(0), '!VALID'); // Must not be BNB; should already be listed (via createPool)
