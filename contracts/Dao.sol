@@ -273,19 +273,16 @@ contract Dao {
     }
 
     // User claims all of their unlocked Bonded LPs
-    function claimAllForMember(address member) external returns (bool){
+    function claimAllForMember() external returns (bool){
         address [] memory listedAssets = listedBondAssets; // Get array of bond assets
         for(uint i = 0; i < listedAssets.length; i++){
-            uint claimA = calcClaimBondedLP(member, listedAssets[i]); // Check user's unlocked Bonded LPs for each asset
-            if(claimA > 0){
-               _BONDVAULT.claimForMember(listedAssets[i], member); // Claim LPs if any unlocked
-            }
+            claimForMember(listedAssets[i]);
         }
         return true;
     }
 
     // User claims unlocked Bond units of a selected asset
-    function claimForMember(address asset) external returns (bool){
+    function claimForMember(address asset) public returns (bool){
         uint claimA = calcClaimBondedLP(msg.sender, asset); // Check user's unlocked Bonded LPs
         if(claimA > 0){
             _BONDVAULT.claimForMember(asset, msg.sender); // Claim LPs if any unlocked
@@ -359,7 +356,7 @@ contract Dao {
     
     // Pay the fee for a new DAO proposal
     function payFee() internal returns(bool){
-        uint _amount = daoFee*(10**18); // Convert DAO fee to WEI
+        uint _amount = daoFee * (10**18); // Convert DAO fee to WEI
         require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), _amount), '!fee'); // User pays the new proposal fee
         return true;
     } 

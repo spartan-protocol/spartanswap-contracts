@@ -101,15 +101,14 @@ contract BondVault {
         if(_claimable == mapBondAsset_memberDetails[asset].bondedLP[member]){
             mapBondAsset_memberDetails[asset].claimRate[member] = 0; // If final claim; zero-out their claimRate
         }
-        updateWeight(asset, member); // Update user's weight
+        updateWeight(asset, member, _pool); // Update user's weight
         iBEP20(_pool).transfer(member, _claimable); // Send claim amount to user
         return true;
     }
 
     // Update user's weight in the BondVault
-    function updateWeight(address asset, address member) internal{
+    function updateWeight(address asset, address member, address pool) internal{
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
-        address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get pool address
         require(pool != address(0), "!POOL"); // Must be a valid pool
         if (mapMemberPool_weight[member][pool] > 0) {
             totalWeight -= mapMemberPool_weight[member][pool]; // Remove user weight from totalWeight (scope: vault)
@@ -148,7 +147,7 @@ contract BondVault {
     function getMemberWeight(address member) external view returns (uint256) {
             return mapMember_weight[member];
     } 
-    
+
     // Get user's current DAOVault weight from a chosen asset
     function getMemberPoolWeight(address pool, address member) external view returns (uint256){
         return mapMemberPool_weight[member][pool];

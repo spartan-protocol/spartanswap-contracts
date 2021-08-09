@@ -93,7 +93,6 @@ contract SynthVault {
 
     // Contract deposits Synths in the SynthVault for user
     function depositForMember(address synth, address member, uint256 amount) public {
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), "!synth"); // Must be a valid synth
         require(iBEP20(synth).transferFrom(msg.sender, address(this), amount)); // Must successfuly transfer in
         _deposit(synth, member, amount); // Assess and record the deposit
     }
@@ -106,11 +105,7 @@ contract SynthVault {
         }
         mapMemberSynth_lastTime[_member][_synth] = block.timestamp + minimumDepositTime; // Record deposit time (scope: member -> synth)
         mapMember_depositTime[_member] = block.timestamp + minimumDepositTime; // Record deposit time (scope: member)
-        mapMemberSynth_deposit[_member][_synth] += _amount; // Record balance for member
-        uint256 _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(_synth).TOKEN(), _amount); // Get the SPARTA weight of the deposit
-        mapMemberSynth_weight[_member][_synth] += _weight; // Add the weight to the user (scope: member -> synth)
-        mapMemberTotal_weight[_member] += _weight; // Add to the user's total weight (scope: member)
-        totalWeight += _weight; // Add to the total weight (scope: vault)
+        uint256 _weight = changeWeight(_member, _synth, _amount);
         isSynthMember[_member][_synth] = true; // Record user as a member
         emit MemberDeposits(_synth, _member, _amount, _weight, totalWeight);
     }
@@ -131,23 +126,26 @@ contract SynthVault {
         return true;
     }
 
+    function changeWeight(address _member, address _synth, uint256 _amount) internal returns (uint256 _weight){
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(_synth), "!synth"); // Must be valid synth
+        require(iRESERVE(_DAO().RESERVE()).emissions(), "!emissions"); // RESERVE emissions must be on
+        mapMemberSynth_deposit[_member][_synth] += _amount; // Record balance for member
+        _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(_synth).TOKEN(), _amount); // Get the SPARTA weight of the deposit
+        mapMemberSynth_weight[_member][_synth] += _weight; // Add the weight to the user (scope: member -> synth)
+        mapMemberTotal_weight[_member] += _weight; // Add to the user's total weight (scope: member)
+        totalWeight += _weight; // Add to the total weight (scope: vault)
+        return _weight;
+    }
+
     // User harvests available rewards of the chosen asset
     function harvestSingle(address synth) public returns (bool) {
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), "!synth"); // Must be valid synth
-        require(iRESERVE(_DAO().RESERVE()).emissions(), "!emissions"); // RESERVE emissions must be on
-        uint256 _weight;
         uint256 reward = calcCurrentReward(synth, msg.sender); // Calc user's current SPARTA reward
         mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp; // Set last harvest time as now
         address _poolOUT = iSYNTH(synth).POOL(); // Get pool address
         iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT); // Send the SPARTA from RESERVE to POOL
         (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this)); // Mint synths & tsf to SynthVault
-        _weight = iUTILS(_DAO().UTILS()).calcSpotValueInBase(iSYNTH(synth).TOKEN(), synthReward); // Calc reward's SPARTA value
-        mapMemberSynth_deposit[msg.sender][synth] += synthReward; // Record deposit for the user (scope: member -> synth)
-        mapMemberSynth_weight[msg.sender][synth] += _weight; // Add the weight to the user (scope: member -> synth)
-        mapMemberTotal_weight[msg.sender] += _weight; // Add to the user's total weight (scope: member)
-        totalWeight += _weight; // Add to the total weight (scope: vault)
+        uint256 _weight = changeWeight(msg.sender, synth, synthReward);
         _addVaultMetrics(reward); // Add to the revenue metrics (for UI)
-        iSYNTH(synth).realise(); // Check synth-held LP value for premium; burn if so
         emit MemberHarvests(synth, msg.sender, reward, _weight, totalWeight);
         return true;
     }

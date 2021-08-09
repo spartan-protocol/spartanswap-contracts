@@ -46,7 +46,6 @@ contract DaoVault {
         if (mapMemberPool_weight[member][pool] > 0) {
             totalWeight -= mapMemberPool_weight[member][pool]; // Remove user's previous weight (scope: vault)
             mapMember_weight[member] -= mapMemberPool_weight[member][pool]; // Remove user's previous weight (scope: member -> pool)
-            mapMemberPool_weight[member][pool] = 0; // Reset user's weight to zero (scope: member -> pool)
         }
         uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[member][pool]); // Get user's current weight
         mapMemberPool_weight[member][pool] = weight; // Set user's new weight (scope: member -> pool)
