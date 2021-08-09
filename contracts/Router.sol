@@ -218,7 +218,7 @@ contract Router {
     
     // Handle the transfer of assets into the pool
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal {
-        if(_amount > 0) {
+      require(_amount > 0, '!GAS');
             if(_token == address(0)){
                 require((_amount == msg.value));
                 (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
@@ -227,7 +227,6 @@ contract Router {
             } else {
                 iBEP20(_token).transferFrom(msg.sender, _pool, _amount); // Transfer TOKEN to pool
             }
-        }
     }
 
     // Handle the transfer of assets out of the ROUTER

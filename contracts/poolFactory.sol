@@ -107,12 +107,10 @@ contract PoolFactory {
     }
 
     // Transfer assets into new pool
-    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal returns(uint256 actual){
-        if(_amount > 0) {
-            uint startBal = iBEP20(_token).balanceOf(_pool); 
-            iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
-            actual = iBEP20(_token).balanceOf(_pool) - (startBal);
-        }
+    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal {
+        require(_amount > 0, '!GAS');
+        iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
+        
     }
 
     //======================================HELPERS========================================//

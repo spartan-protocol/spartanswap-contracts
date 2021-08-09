@@ -246,7 +246,7 @@ contract Dao {
         if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0) {
             harvest(); // If member has existing weight; force harvest to block manipulation of lastTime + harvest
         }
-        uint256 liquidityUnits = handleTransferIn(asset, amount); // Add liquidity and calculate LP units
+        uint256 liquidityUnits = _handleTransferIn(asset, amount); // Add liquidity and calculate LP units
         _BONDVAULT.depositForMember(asset, msg.sender, liquidityUnits); // Deposit the Bonded LP units in the BondVault
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
         emit DepositAsset(msg.sender, amount, liquidityUnits);
@@ -254,7 +254,7 @@ contract Dao {
     }
 
     // Add Bonded assets as liquidity and calculate LP units
-    function handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
+    function _handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
         uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); // Get the SPARTA swap value of the bonded assets
         if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < spartaAllocation){
             iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply()); // Increase SPARTA allowance if required
