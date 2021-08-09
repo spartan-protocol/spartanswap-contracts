@@ -103,9 +103,10 @@ contract BondVault {
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         mapBondAsset_memberDetails[asset].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
         mapBondAsset_memberDetails[asset].bondedLP[member] -= _claimable; // Remove the claim amount from the user's remainder
-        if(_claimable == mapBondAsset_memberDetails[asset].bondedLP[member]){
+        if (mapBondAsset_memberDetails[asset].bondedLP[member] == 0){
             mapBondAsset_memberDetails[asset].claimRate[member] = 0; // If final claim; zero-out their claimRate
         }
+        
         updateWeight(asset, member, _pool); // Update user's weight
         iBEP20(_pool).transfer(member, _claimable); // Send claim amount to user
         return true;
