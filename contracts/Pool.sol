@@ -19,6 +19,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint256 private period;
     uint256 private SPR;
     bool public freeze;
+    uint256 public initiationPeriod;
 
     string _name; string _symbol;
     uint8 public override immutable decimals; uint256 public override totalSupply;
@@ -76,6 +77,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         SPR = 3000;
         baseCAP = 100000;
         period = block.timestamp;
+        initiationPeriod = 604800;
     }
 
     //========================================iBEP20=========================================//
@@ -185,6 +187,7 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Contract removes liquidity for the user
     function removeForMember(address member) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
+        require(block.timestamp > (genesis + initiationPeriod), '!INITIATED');
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS());
         outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
@@ -410,6 +413,10 @@ contract Pool is iBEP20, ReentrancyGuard {
         require(newPeriod < 580, '!VALID');
         freeze = !freeze;
         period = block.timestamp + newPeriod;
+    }
+    function setInitiation(uint newInitiation) external onlyPROTOCOL {
+        require(newInitiation < 604800, '!VALID');
+       initiationPeriod = newInitiation;
     }
         
 }
