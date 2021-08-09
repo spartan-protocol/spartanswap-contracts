@@ -5,7 +5,6 @@ import "./Synth.sol";
 contract SynthFactory { 
     address public BASE;
     address public WBNB;
-    address public DEPLOYER;
 
     address[] public arraySynths; // Array of all deployed synths
     mapping(address => address) private mapToken_Synth;
@@ -15,22 +14,10 @@ contract SynthFactory {
     constructor (address _base, address _wbnb) {
         BASE = _base;
         WBNB = _wbnb;
-        DEPLOYER = msg.sender; 
-    }
-
-    // Restrict access
-    modifier onlyDAO() {
-        require(msg.sender == DEPLOYER, "!DAO");
-        _;
     }
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
-    }
-
-    // Can purge deployer once DAO is stable and final
-    function purgeDeployer() external onlyDAO {
-        DEPLOYER = address(0);
     }
 
     // Anyone can create a synth if it's pool is curated

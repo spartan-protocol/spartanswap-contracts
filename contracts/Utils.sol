@@ -68,12 +68,11 @@ contract Utils {
 
     // Calc share | share = amount * part / total
     function calcShare(uint256 part, uint256 total, uint256 amount) public pure returns (uint256 share) {
+        require(total > 0, '!DIVISION');
         if (part > total) {
             part = total; // Part cant be greater than the total
         }
-        if (total > 0) {
-            share = (amount * part) / total;
-        }
+        share = (amount * part) / total;
     }
 
     // Calculate liquidity units
@@ -84,10 +83,11 @@ contract Utils {
             // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
             // P * (part1 + part2) / (part3) * slipAdjustment
             uint slipAdjustment = getSlipAdustment(b, B, t, T);
-            uint part1 = t*(B);
-            uint part2 = T*(b);
-            uint part3 = T*(B)*(2);
-            uint _units = (P * (part1 + (part2))) / (part3);
+            uint part1 = t * B;
+            uint part2 = T * b;
+            uint part3 = T * B * 2;
+            require(part3 > 0, '!DIVISION');
+            uint _units = (P * (part1 + part2)) / part3;
             return _units * slipAdjustment / one;  // Divide by 10**18
         }
     }
@@ -96,18 +96,19 @@ contract Utils {
     function getSlipAdustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
         // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
         // 1 - ABS(part1 - part2)/(part3 * part4))
-        uint part1 = B * (t);
-        uint part2 = b * (T);
-        uint part3 = b * (2) + (B);
-        uint part4 = t + (T);
+        uint part1 = B * t;
+        uint part2 = b * T;
+        uint part3 = 2 * b + B;
+        uint part4 = t + T;
         uint numerator;
         if(part1 > part2){
-            numerator = part1 - (part2);
+            numerator = part1 - part2;
         } else {
-            numerator = part2 - (part1);
+            numerator = part2 - part1;
         }
-        uint denominator = part3 * (part4);
-        return one - ((numerator * (one)) / (denominator)); // Multiply by 10**18
+        uint denominator = part3 * part4;
+        require(denominator > 0, '!DIVISION');
+        return one - ((numerator * one) / denominator); // Multiply by 10**18
     }
 
     // Calculate symmetrical redemption value of LP tokens (per side)
@@ -121,21 +122,24 @@ contract Utils {
             amount = iPOOL(pool).tokenAmount();
         }
         uint totalSupply = iBEP20(pool).totalSupply();
+        require(totalSupply > 0, '!DIVISION');
         return (amount * units) / totalSupply;
     }
 
     function calcSwapOutput(uint x, uint X, uint Y) public pure returns (uint output){
         // y = (x * X * Y )/(x + X)^2
-        uint numerator = x * (X * (Y));
-        uint denominator = (x + (X)) * (x + (X));
-        return numerator / (denominator);
+        uint numerator = x * X * Y;
+        uint denominator = (x + X) * (x + X);
+        require(denominator > 0, '!DIVISION');
+        return numerator / denominator;
     }
 
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output){
         // y = (x * x * Y) / (x + X)^2
-        uint numerator = x * (x * (Y));
-        uint denominator = (x + (X)) * (x + (X));
-        return numerator / (denominator);
+        uint numerator = x * x * Y;
+        uint denominator = (x + X) * (x + X);
+        require(denominator > 0, '!DIVISION');
+        return numerator / denominator;
     }
 
     // Calculate asymmetrical redemption value of LP tokens (remove all to TOKEN)
@@ -184,13 +188,15 @@ contract Utils {
     function calcSpotValueInBaseWithPool(address pool, uint amount) public view returns (uint value){
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
-        return (amount*(_baseAmount))/(_tokenAmount);
+        require(_tokenAmount > 0, '!DIVISION');
+        return (amount * _baseAmount) / _tokenAmount;
     }
 
     function calcSpotValueInTokenWithPool(address pool, uint amount) public view returns (uint value){
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
-        return (amount*(_tokenAmount))/(_baseAmount);
+        require(_baseAmount > 0, '!DIVISION');
+        return (amount* _tokenAmount) / _baseAmount;
     }
 
     function calcSwapValueInBaseWithPool(address pool, uint amount) public view returns (uint _output){
@@ -209,6 +215,7 @@ contract Utils {
         address pool = iSYNTH(synth).POOL();
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
+        require(_tokenAmount > 0, '!DIVISION');
         return ((amount * _baseAmount) / (2 * _tokenAmount));
     }
 }
