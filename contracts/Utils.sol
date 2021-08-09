@@ -46,7 +46,7 @@ contract Utils {
     function getPoolShareWeight(address token, uint units) external view returns(uint weight){
         address pool = getPool(token);
         weight = calcShare(units, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
-        return (weight);
+        return weight;
     }
 
     function getPool(address token) public view returns(address pool){
@@ -140,15 +140,6 @@ contract Utils {
         uint denominator = (x + X) * (x + X);
         require(denominator > 0, '!DIVISION');
         return numerator / denominator;
-    }
-
-    // Calculate asymmetrical redemption value of LP tokens (remove all to TOKEN)
-    function calcAsymmetricValueToken(address pool, uint amount) external view returns (uint tokenValue){
-        uint baseAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).baseAmount());
-        uint tokenAmount = calcShare(amount, iBEP20(pool).totalSupply(), iPOOL(pool).tokenAmount());
-        uint baseSwapped = calcSwapValueInTokenWithPool(pool, baseAmount);
-        tokenValue = tokenAmount + baseSwapped;
-        return tokenValue;
     }
 
     function calcLiquidityUnitsAsym(uint amount, address pool) external view returns (uint units){
