@@ -175,7 +175,7 @@ contract Pool is iBEP20, ReentrancyGuard {
             uint createFee = 100 * liquidityUnits / 10000;
             liquidityUnits -= createFee;
             _mint(BASE, createFee);
-            oldRate = baseAmount / tokenAmount;
+            oldRate = _actualInputBase / _actualInputToken;
         }
         _incrementPoolBalances(_actualInputBase, _actualInputToken); // Update recorded BASE and TOKEN amounts
         _mint(member, liquidityUnits); // Mint the LP tokens directly to the user
