@@ -52,6 +52,7 @@ contract Router {
     // Contract adds liquidity for user
     function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable{
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);  // Get pool address
+        require(inputBase > 0 || inputToken > 0, '!VALID');
         require(pool != address(0), "!POOL"); // Must be a valid pool
         _handleTransferIn(BASE, inputBase, pool); // Transfer SPARTA to pool
         _handleTransferIn(token, inputToken, pool); // Transfer TOKEN to pool
