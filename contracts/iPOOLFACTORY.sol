@@ -11,5 +11,5 @@ interface iPOOLFACTORY {
     function poolCount() external view returns(uint);
     function getToken(uint) external view returns(address);
     function tokenCount() external view returns(uint);
-    function getCuratedPoolsLength() external view returns (uint);
+    function curatedPoolCount() external view returns (uint);
 }

@@ -11,9 +11,11 @@ contract Router is ReentrancyGuard {
     address public BASE;
     address public WBNB;
     address public DEPLOYER;
+    uint256 public diviClaim;
     uint256 public globalCAP;
     uint private feeAllocation;         // Amount of dividend events per era
     uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
+    uint256 public curatedPoolsCount;
 
     mapping(address=> uint) public mapAddress_30DayDividends;
     mapping(address=> uint) public mapAddress_Past30DayPoolDividends;
@@ -30,6 +32,7 @@ contract Router is ReentrancyGuard {
         feeAllocation = 100;
         lastMonth = 0;
         globalCAP = 2000;
+        diviClaim = 100;
         DEPLOYER = msg.sender;
     }
 
@@ -291,11 +294,12 @@ contract Router is ReentrancyGuard {
     function addDividend(address _pool, uint256 _fees) internal {
         uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
             if(reserve > 0){
-                uint allocation = feeAllocation * reserve / 10000; // Calculate max dividend
-                uint feeDividend = allocation * _fees / 10000; // Calculate actual dividend
-                revenueDetails(feeDividend, _pool); // Add to revenue metrics
-                iRESERVE(_DAO().RESERVE()).grantFunds(feeDividend, _pool); // Transfer dividend from RESERVE to POOL
-                Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
+                 uint256 _dividendReward = (reserve * diviClaim)/curatedPoolsCount/10000; // Get the dividend share 
+                if((mapAddress_30DayDividends[_pool] + _fees) < _dividendReward){
+                     revenueDetails(_fees, _pool); // Add to revenue metrics
+                     iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Transfer dividend from RESERVE to POOL
+                     Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
+                }
             }
     }
 
@@ -309,14 +313,15 @@ contract Router is ReentrancyGuard {
             lastMonth = block.timestamp;
             mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
             mapAddress_30DayDividends[_pool] = _fees;
+            curatedPoolsCount = iPOOLFACTORY(_DAO().POOLFACTORY()).curatedPoolCount(); 
         }
     }
     
     //======================= Change Dividend Variables ===========================//
 
-    function changefeeAllocation(uint _feeAllocation) external onlyDAO {
-        require(_feeAllocation > 0, 'ZERO');
-        feeAllocation = _feeAllocation;
+    function changeDiviClaim(uint _newDiviClaim) external onlyDAO {
+        require(_newDiviClaim > 0 && _newDiviClaim < 5000, 'ZERO');
+        diviClaim = _newDiviClaim;
     }
 
     function changeGlobalCap(uint _globalCap) external onlyDAO {	
