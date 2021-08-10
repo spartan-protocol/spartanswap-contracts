@@ -12,11 +12,7 @@ contract Router is ReentrancyGuard {
     address public WBNB;
     address public DEPLOYER;
     uint256 public globalCAP;
-    uint private maxTrades;         // Amount of dividend events per era
-    uint private eraLength;         // Dividend factor to regulate the max percentage of RESERVE balance
-    uint public normalAverageFee;   // The average fee size (dividend smoothing)
-    uint private arrayFeeSize;      // The size of the average window used for normalAverageFee
-    uint [] private feeArray;       // The array used to calc normalAverageFee
+    uint private feeAllocation;         // Amount of dividend events per era
     uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
 
     mapping(address=> uint) public mapAddress_30DayDividends;
@@ -31,9 +27,7 @@ contract Router is ReentrancyGuard {
     constructor (address _base, address _wbnb) {
         BASE = _base;
         WBNB = _wbnb;
-        arrayFeeSize = 20;
-        eraLength = 30;
-        maxTrades = 100;
+        feeAllocation = 100;
         lastMonth = 0;
         globalCAP = 2000;
         DEPLOYER = msg.sender;
@@ -208,42 +202,6 @@ contract Router is ReentrancyGuard {
         }
     }
 
-    // Check if fee should generate a dividend & send it to the pool
-    function getsDividend(address _pool, uint fee) internal {
-        if(fee > 10**18 && iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
-            addTradeFee(fee); // Add fee to array for avgFee calcs etc
-            addDividend(_pool, fee); // Check and tsf dividend to pool
-        }
-    }
-
-    //============================== Token Transfer Functions ======================================//
-    
-    // Handle the transfer of assets into the pool
-    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal {
-      require(_amount > 0, '!GAS');
-            if(_token == address(0)){
-                require((_amount == msg.value));
-                (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
-                require(success, "!send");
-                iBEP20(WBNB).transfer(_pool, _amount); // Transfer WBNB from ROUTER to pool
-            } else {
-                iBEP20(_token).transferFrom(msg.sender, _pool, _amount); // Transfer TOKEN to pool
-            }
-    }
-
-    // Handle the transfer of assets out of the ROUTER
-    function _handleTransferOut(address _token, uint256 _amount, address _recipient) nonReentrant internal {
-        if(_amount > 0) {
-            if (_token == address(0)) {
-                iWBNB(WBNB).withdraw(_amount); // Unwrap WBNB to BNB
-                (bool success, ) = payable(_recipient).call{value:_amount}("");  // Send BNB to recipient
-                require(success, "!send");
-            } else {
-                iBEP20(_token).transfer(_recipient, _amount); // Transfer TOKEN to recipient
-            }
-        }
-    }
-
     //================================ Swap Synths ========================================//
     
     // Swap TOKEN to Synth
@@ -291,45 +249,54 @@ contract Router is ReentrancyGuard {
         getsDividend(_pool, fee); // Check and tsf dividend to pool
     }
     
-    //============================= Token Dividends / Curated Pools =================================//
+
+    //============================== Token Transfer Functions ======================================//
     
-    // Calculate the Dividend and transfer it to the pool
-    function addDividend(address _pool, uint256 _fees) internal {
-        if(normalAverageFee > 0){
-            uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
-            if(reserve > 0){
-                uint dailyAllocation = (reserve / eraLength) / maxTrades; // Calculate max dividend
-                uint numerator = _fees * dailyAllocation;
-                uint feeDividend = numerator / (_fees + normalAverageFee); // Calculate actual dividend
-                revenueDetails(feeDividend, _pool); // Add to revenue metrics
-                iRESERVE(_DAO().RESERVE()).grantFunds(feeDividend, _pool); // Transfer dividend from RESERVE to POOL
-                Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
+    // Handle the transfer of assets into the pool
+    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal {
+      require(_amount > 0, '!GAS');
+            if(_token == address(0)){
+                require((_amount == msg.value));
+                (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
+                require(success, "!send");
+                iBEP20(WBNB).transfer(_pool, _amount); // Transfer WBNB from ROUTER to pool
+            } else {
+                iBEP20(_token).transferFrom(msg.sender, _pool, _amount); // Transfer TOKEN to pool
+            }
+    }
+
+    // Handle the transfer of assets out of the ROUTER
+    function _handleTransferOut(address _token, uint256 _amount, address _recipient) nonReentrant internal {
+        if(_amount > 0) {
+            if (_token == address(0)) {
+                iWBNB(WBNB).withdraw(_amount); // Unwrap WBNB to BNB
+                (bool success, ) = payable(_recipient).call{value:_amount}("");  // Send BNB to recipient
+                require(success, "!send");
+            } else {
+                iBEP20(_token).transfer(_recipient, _amount); // Transfer TOKEN to recipient
             }
         }
     }
 
-    // Add fee to feeArray, used to calculate normalAverageFee
-    function addTradeFee(uint _fee) internal {
-        uint _arrayFeeSize = arrayFeeSize;
-        uint arrayFeeLength = feeArray.length;
-        if(arrayFeeLength < _arrayFeeSize) {
-            feeArray.push(_fee); // Build array until it is == arrayFeeSize
-        } else {
-            uint totalTradeFees = addFee(arrayFeeLength, _fee); 
-            normalAverageFee = totalTradeFees / _arrayFeeSize; // Calc average fee
+    
+    //============================= Token Dividends / Curated Pools =================================//
+    // Check if fee should generate a dividend & send it to the pool
+    function getsDividend(address _pool, uint fee) internal {
+        if(fee > 10**18 && iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
+            addDividend(_pool, fee); // Check and tsf dividend to pool
         }
     }
 
-    // Shift out oldest fee item and add newest
-    function addFee(uint arrayFeeLength, uint _fee) internal returns (uint totalTradeFees) {
-        totalTradeFees = _fee; // add newest fee
-        uint[] memory _feeArray = feeArray; // store in memory to save gas
-        for (uint i = arrayFeeLength - 1; i > 0; i--) {
-            _feeArray[i] = _feeArray[i - 1];
-            totalTradeFees += _feeArray[i];
-        }
-        _feeArray[0] = _fee;
-        feeArray = _feeArray;
+    // Calculate the Dividend and transfer it to the pool
+    function addDividend(address _pool, uint256 _fees) internal {
+        uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
+            if(reserve > 0){
+                uint allocation = feeAllocation * reserve / 10000; // Calculate max dividend
+                uint feeDividend = allocation * _fees / 10000; // Calculate actual dividend
+                revenueDetails(feeDividend, _pool); // Add to revenue metrics
+                iRESERVE(_DAO().RESERVE()).grantFunds(feeDividend, _pool); // Transfer dividend from RESERVE to POOL
+                Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
+            }
     }
 
     function revenueDetails(uint _fees, address _pool) internal {
@@ -347,21 +314,9 @@ contract Router is ReentrancyGuard {
     
     //======================= Change Dividend Variables ===========================//
 
-    function changeArrayFeeSize(uint _size) external onlyDAO {
-        require(_size > 0, 'ZERO');
-        arrayFeeSize = _size;
-        normalAverageFee = 0; // Set to 0 to ensure dividends are paused until array is full again
-        delete feeArray;
-    }
-
-    function changeMaxTrades(uint _maxtrades) external onlyDAO {
-        require(_maxtrades > 0, 'ZERO');
-        maxTrades = _maxtrades;
-    }
-
-    function changeEraLength(uint _eraLength) external onlyDAO {
-        require(_eraLength > 0, 'ZERO');
-        eraLength = _eraLength;	
+    function changefeeAllocation(uint _feeAllocation) external onlyDAO {
+        require(_feeAllocation > 0, 'ZERO');
+        feeAllocation = _feeAllocation;
     }
 
     function changeGlobalCap(uint _globalCap) external onlyDAO {	
