@@ -38,7 +38,7 @@ contract Router {
         DEPLOYER = msg.sender;
     }
 
-    receive() external payable {}
+    receive() external payable {} // Used to receive BNB from WBNB contract
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
