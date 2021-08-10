@@ -179,14 +179,14 @@ contract SynthVault {
     // Contract withdraws a percentage of user's synths from the vault
     function _processWithdraw(address _synth, address _member, uint256 _basisPoints) internal returns (uint256 synthReward) {
         require((block.timestamp > mapMember_depositTime[_member]), "lockout"); // Must not withdraw before lockup period passed
-        uint256 _principle = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberSynth_deposit[_member][_synth]); // Calc amount to withdraw
-        mapMemberSynth_deposit[_member][_synth] -= _principle; // Remove from user's recorded vault holdings
+        synthReward = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberSynth_deposit[_member][_synth]); // Calc amount to withdraw
+        mapMemberSynth_deposit[_member][_synth] -= synthReward; // Remove from user's recorded vault holdings
         uint256 _weight = iUTILS(_DAO().UTILS()).calcPart(_basisPoints, mapMemberSynth_weight[_member][_synth]); // Calc SPARTA value of amount
         mapMemberTotal_weight[_member] -= _weight; // Remove from member's total weight (scope: member)
         mapMemberSynth_weight[_member][_synth] -= _weight; // Remove from member's synth weight (scope: member -> synth)
         totalWeight -= _weight; // Remove from total weight (scope: vault)
         emit MemberWithdraws(_synth, _member, synthReward, _weight, totalWeight);
-        return (_principle + synthReward);
+        return synthReward;
     }
 
     //================================ Helper Functions ===============================//
