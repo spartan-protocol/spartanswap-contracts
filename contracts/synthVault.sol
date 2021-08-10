@@ -109,11 +109,12 @@ contract SynthVault {
 
     // User harvests all of their available rewards
     function harvestAll() external returns (bool) {
-        for(uint i = 0; i < stakedSynthAssets.length; i++){
-            if((block.timestamp > mapMemberSynth_lastTime[msg.sender][stakedSynthAssets[i]])){
-                uint256 reward = calcCurrentReward(stakedSynthAssets[i], msg.sender);
+        address [] memory _stakedSynthAssets = stakedSynthAssets;
+        for(uint i = 0; i < _stakedSynthAssets.length; i++){
+            if((block.timestamp > mapMemberSynth_lastTime[msg.sender][_stakedSynthAssets[i]])){
+                uint256 reward = calcCurrentReward(_stakedSynthAssets[i], msg.sender);
                 if(reward > 0){
-                    harvestSingle(stakedSynthAssets[i]);
+                    harvestSingle(_stakedSynthAssets[i]);
                 }
             }
             
