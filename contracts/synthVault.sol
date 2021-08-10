@@ -240,10 +240,12 @@ contract SynthVault {
     }
 
     function addFee(uint _rev) internal {
-        uint _n = revenueArray.length; // 2
+        uint [] memory _revArray = revenueArray;
+        uint _n = _revArray.length; // 2
         for (uint i = _n - 1; i > 0; i--) {
-            revenueArray[i] = revenueArray[i - 1];
+            _revArray[i] = _revArray[i - 1];
         }
-        revenueArray[0] = _rev;
+        _revArray[0] = _rev;
+        revenueArray = _revArray
     }
 }
