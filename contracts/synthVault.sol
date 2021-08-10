@@ -86,15 +86,10 @@ contract SynthVault {
 
     //====================================== DEPOSIT ========================================//
 
-    // User deposits Synths in the SynthVault
-    function deposit(address synth, uint256 amount) external {
-        depositForMember(synth, msg.sender, amount);
-    }
-
     // Contract deposits Synths in the SynthVault for user
-    function depositForMember(address synth, address member, uint256 amount) public {
+    function deposit(address synth, uint256 amount) external {
         require(iBEP20(synth).transferFrom(msg.sender, address(this), amount)); // Must successfuly transfer in
-        _deposit(synth, member, amount); // Assess and record the deposit
+        _deposit(synth, msg.sender, amount); // Assess and record the deposit
     }
 
     // Check and record the deposit
