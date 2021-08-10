@@ -5,8 +5,9 @@ import "./iRESERVE.sol";
 import "./iPOOLFACTORY.sol";  
 import "./iWBNB.sol";
 import "hardhat/console.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Router {
+contract Router is ReentrancyGuard {
     address public BASE;
     address public WBNB;
     address public DEPLOYER;
@@ -231,7 +232,7 @@ contract Router {
     }
 
     // Handle the transfer of assets out of the ROUTER
-    function _handleTransferOut(address _token, uint256 _amount, address _recipient) internal {
+    function _handleTransferOut(address _token, uint256 _amount, address _recipient) nonReentrant internal {
         if(_amount > 0) {
             if (_token == address(0)) {
                 iWBNB(WBNB).withdraw(_amount); // Unwrap WBNB to BNB
