@@ -4,6 +4,7 @@ interface iRESERVE {
     function grantFunds(uint, address) external; 
     function emissions() external returns(bool); 
     function setGlobalFreeze(bool) external; 
+    function setIncentiveAddresses(address, address, address, address) external;
     function globalFreeze() external returns(bool); 
 
 }

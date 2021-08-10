@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 import "./iUTILS.sol";
+import "./iLEND.sol"; 
 import "./iRESERVE.sol";
 import "./iDAOVAULT.sol";
 import "./iROUTER.sol";
@@ -54,6 +55,7 @@ contract Dao {
     iSYNTHFACTORY private _SYNTHFACTORY;
     iRESERVE private _RESERVE;
     iSYNTHVAULT private _SYNTHVAULT;
+    iLEND private _LEND;
 
     address[] public arrayMembers;
     address [] listedBondAssets; // Only used in UI; is intended to be a historical array of all past Bond listed assets
@@ -108,10 +110,11 @@ contract Dao {
 
     //==================================== PROTOCOL CONTRACTs SETTER =================================//
 
-    function setGenesisAddresses(address _router, address _utils, address _reserve) external onlyDAO {
+    function setGenesisAddresses(address _router, address _utils, address _reserve, address _lend) external onlyDAO {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
         _RESERVE = iRESERVE(_reserve);
+        _LEND = iLEND(_LEND);
     }
 
     function setVaultAddresses(address _daovault, address _bondvault, address _synthVault) external onlyDAO {
@@ -680,6 +683,14 @@ contract Dao {
             return Dao(DAO).SYNTHVAULT();
         } else {
             return _SYNTHVAULT;
+        }
+    }
+    // Get the LEND address that the DAO currently points to
+    function LEND() public view returns(iLEND){
+        if(daoHasMoved){
+            return Dao(DAO).LEND();
+        } else {
+            return _LEND;
         }
     }
 

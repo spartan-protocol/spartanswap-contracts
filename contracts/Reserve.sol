@@ -6,17 +6,13 @@ import "./iDAO.sol";
 
 contract Reserve {
     address public BASE;
-    address public ROUTER;
-    address public LEND;
-    address public DAO;
-    address public SYNTHVAULT;
     address public DEPLOYER;
     bool public emissions;
     bool public globalFreeze;
 
     // Restrict access
     modifier onlyGrantor() {
-        require(msg.sender == DAO || msg.sender == ROUTER || msg.sender == DEPLOYER || msg.sender == LEND || msg.sender == SYNTHVAULT, "!DAO");
+        require(msg.sender == _DAO().DAO() || msg.sender == _DAO().ROUTER() || msg.sender == _DAO().SYNTHVAULT() || msg.sender == DEPLOYER || msg.sender == _DAO().LEND(), "!DAO"); 
         _; 
     }
 
@@ -25,11 +21,8 @@ contract Reserve {
         DEPLOYER = msg.sender;
     }
 
-    function setIncentiveAddresses(address _router, address _lend, address _synthVault, address _Dao) external onlyGrantor {
-        ROUTER = _router;
-        LEND = _lend;
-        SYNTHVAULT = _synthVault;
-        DAO = _Dao;
+    function _DAO() internal view returns(iDAO) {
+        return iBASE(BASE).DAO();
     }
 
     // Send SPARTA to an incentive address (Vault harvest, dividends etc)
