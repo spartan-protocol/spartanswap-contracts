@@ -594,11 +594,7 @@ contract Dao is ReentrancyGuard{
         uint votes = mapPID_votes[_proposalID]; // Get the proposal's total voting weight
         uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // Get combined total vault weights
         uint consensus = _totalWeight * majorityFactor / 10000; // Majority > 66.6%
-        if(votes > consensus){
-            return true;
-        } else {
-            return false;
-        }
+        return (votes > consensus);
     }
 
     // Check if a proposal has Quorum consensus
@@ -606,11 +602,7 @@ contract Dao is ReentrancyGuard{
         uint votes = mapPID_votes[_proposalID]; // Get the proposal's total voting weight
         uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // Get combined total vault weights
         uint consensus = _totalWeight / 2; // Quorum > 50%
-        if(votes > consensus){
-            return true;
-        } else {
-            return false;
-        }
+        return (votes > consensus);
     }
 
     //======================================PROTOCOL CONTRACTs GETTER=================================//
