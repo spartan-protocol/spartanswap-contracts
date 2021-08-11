@@ -421,6 +421,8 @@ contract Dao is ReentrancyGuard{
         require(_RESERVE.globalFreeze() != true, '');
         require((block.timestamp - mapPID_coolOffTime[currentProposal]) > coolOffPeriod, "!cooloff"); // Must be past cooloff period
         require(mapPID_finalising[currentProposal] == true, "!finalising"); // Must be in finalising stage
+        require(mapPID_open[currentProposal] == true);
+        require(mapPID_finalised[currentProposal] == false);
         if(!hasQuorum(currentProposal)){
             mapPID_finalising[currentProposal] = false; // If proposal has lost quorum consensus; kick it out of the finalising stage
         } else {
