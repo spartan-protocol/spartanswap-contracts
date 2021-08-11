@@ -168,7 +168,9 @@ contract Dao {
     // User withdraws all of their selected asset from the DAOVault
     function withdraw(address pool) external {
         removeVote(); // Users weight is removed from the current open DAO proposal
+        uint256 amount = _DAOVAULT.mapMemberPool_balance(msg.sender, pool); 
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // User receives their withdrawal
+        emit MemberWithdraws(msg.sender, pool, amount);
     }
 
     //============================== REWARDS ================================//
