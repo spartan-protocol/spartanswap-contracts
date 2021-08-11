@@ -312,6 +312,8 @@ contract Dao is ReentrancyGuard{
 
     // New DAO proposal: Simple action
     function newActionProposal(string memory typeStr) external returns(uint) {
+        bytes memory _type = bytes(typeStr); // Get the proposal type
+        require(isEqual(_type, 'FLIP_EMISSIONS') || isEqual(_type, 'GET_SPARTA'), '!TYPE');
         checkProposal(); // If no open proposal; construct new one
         payFee(); // Pay SPARTA fee for new proposal
         mapPID_type[currentProposal] = typeStr; // Set the proposal type
@@ -320,7 +322,10 @@ contract Dao is ReentrancyGuard{
     }
 
     // New DAO proposal: uint parameter
-    function newParamProposal(uint32 param, string memory typeStr) external returns(uint) {
+    function newParamProposal(uint256 param, string memory typeStr) external returns(uint) {
+        require(param > 0, "!param"); // Param must be valid
+        bytes memory _type = bytes(typeStr); // Get the proposal type
+        require(isEqual(_type, 'COOL_OFF') || isEqual(_type, 'ERAS_TO_EARN'), '!TYPE');
         checkProposal(); // If no open proposal; construct new one
         payFee(); // Pay SPARTA fee for new proposal
         mapPID_param[currentProposal] = param; // Set the proposed parameter
@@ -331,6 +336,12 @@ contract Dao is ReentrancyGuard{
 
     // New DAO proposal: Address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) external returns(uint) {
+        bytes memory _type = bytes(typeStr); // Get the proposal type
+        if (isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE')) {
+            require(proposedAddress != address(0), "!address"); // Proposed address must be valid
+        } else {
+            require((isEqual(_type, 'LIST_BOND') || isEqual(_type, 'DELIST_BOND') || isEqual(_type, 'ADD_CURATED_POOL') || isEqual(_type, 'REMOVE_CURATED_POOL')), '!TYPE');
+        }
         checkProposal(); // If no open proposal; construct new one
         payFee(); // Pay SPARTA fee for new proposal
         mapPID_address[currentProposal] = proposedAddress; // Set the proposed new address
@@ -341,6 +352,10 @@ contract Dao is ReentrancyGuard{
 
     // New DAO proposal: Grant SPARTA to wallet
     function newGrantProposal(address recipient, uint amount) external returns(uint) {
+        require(recipient != address(0), "!address"); // Proposed recipient must be valid
+        uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)); // Get total BASE balance of RESERVE
+        uint daoReward = (reserve * daoClaim) / 10000; // Get DAO's share of BASE balance of RESERVE (max user claim amount)
+        require((amount > 0) && (amount < daoReward), "!AMOUNT"); // Proposed grant amount must be valid
         checkProposal(); // If no open proposal; construct new one
         payFee(); // Pay SPARTA fee for new proposal
         string memory typeStr = "GRANT";
@@ -460,14 +475,15 @@ contract Dao is ReentrancyGuard{
                 _addCuratedPool(currentProposal);
             } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
                 _removeCuratedPool(currentProposal);
-            } 
+            } else {
+                completeProposal(currentProposal); // If no match; close proposal
+            }
         }
     }
 
     // Change the DAO to a new contract address
     function moveDao(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
-        require(_proposedAddress != address(0), "!address"); // Proposed address must be valid
         DAO = _proposedAddress; // Change the DAO to point to the new DAO address
         iBASE(BASE).changeDAO(_proposedAddress); // Change the BASE contract to point to the new DAO address
         daoHasMoved = true; // Set status of this old DAO
@@ -477,7 +493,6 @@ contract Dao is ReentrancyGuard{
     // Change the ROUTER to a new contract address
     function moveRouter(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
-        require(_proposedAddress != address(0), "!address"); // Proposed address must be valid
         _ROUTER = iROUTER(_proposedAddress); // Change the DAO to point to the new ROUTER address
         completeProposal(_proposalID); // Finalise the proposal
     }
@@ -485,7 +500,6 @@ contract Dao is ReentrancyGuard{
     // Change the UTILS to a new contract address
     function moveUtils(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
-        require(_proposedAddress != address(0), "!address"); // Proposed address must be valid
         _UTILS = iUTILS(_proposedAddress); // Change the DAO to point to the new UTILS address
         completeProposal(_proposalID); // Finalise the proposal
     }
@@ -493,7 +507,6 @@ contract Dao is ReentrancyGuard{
     // Change the RESERVE to a new contract address
     function moveReserve(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
-        require(_proposedAddress != address(0), "!address"); // Proposed address must be valid
         _RESERVE = iRESERVE(_proposedAddress); // Change the DAO to point to the new RESERVE address
         completeProposal(_proposalID); // Finalise the proposal
     }
@@ -507,7 +520,6 @@ contract Dao is ReentrancyGuard{
     // Change cool off period (Period of time until a finalising proposal can be finalised)
     function changeCooloff(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID]; // Get the proposed new param
-        require(_proposedParam != 0, "!param"); // Proposed param must be valid
         coolOffPeriod = _proposedParam; // Change coolOffPeriod
         completeProposal(_proposalID); // Finalise the proposal
     }
@@ -515,7 +527,6 @@ contract Dao is ReentrancyGuard{
     // Change erasToEarn (Used to regulate the incentives flow)
     function changeEras(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID]; // Get the proposed new param
-        require(_proposedParam != 0, "!param"); // Proposed param must be valid
         erasToEarn = _proposedParam; // Change erasToEarn
         completeProposal(_proposalID); // Finalise the proposal
     }
@@ -524,8 +535,6 @@ contract Dao is ReentrancyGuard{
     function grantFunds(uint _proposalID) internal {
         uint256 _proposedAmount = mapPID_param[_proposalID]; // Get the proposed SPARTA grant amount
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed SPARTA grant recipient
-        require(_proposedAmount != 0, "!param"); // Proposed grant amount must be valid
-        require(_proposedAddress != address(0), "!address"); // Proposed recipient must be valid
         _RESERVE.grantFunds(_proposedAmount, _proposedAddress); // Grant the funds to the recipient
         completeProposal(_proposalID); // Finalise the proposal
     }
