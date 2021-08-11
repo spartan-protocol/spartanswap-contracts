@@ -399,6 +399,8 @@ contract Dao is ReentrancyGuard{
             mapPID_votes[currentProposal] -= voteWeightRemoved; // Remove user's votes from propsal (scope: proposal)
         }
         mapPIDMember_votes[currentProposal][msg.sender] = 0; // Remove user's votes from propsal (scope: member)
+        uint _removalFee = 50 * voteWeightRemoved / 10000;
+        require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), _removalFee), '!fee'); // User pays the new proposal fee
          if(voteWeightRemoved > 0){
            emit RemovedVote(msg.sender, currentProposal, voteWeightRemoved, mapPID_votes[currentProposal], string(_type));
          }
