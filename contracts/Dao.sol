@@ -385,7 +385,10 @@ contract Dao is ReentrancyGuard{
                 _finalise(); // Other proposals require 'quorum' consensus to enter finalization phase
             }
         }
-        emit NewVote(msg.sender, currentProposal, voteWeight, mapPID_votes[currentProposal], string(_type));
+        if(voteWeight > 0){
+             emit NewVote(msg.sender, currentProposal, voteWeight, mapPID_votes[currentProposal], string(_type));
+        }
+       
     }
 
     // Remove vote from a proposal
