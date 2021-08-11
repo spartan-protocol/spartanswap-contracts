@@ -280,16 +280,15 @@ contract Dao is ReentrancyGuard{
     }
 
     // User claims all of their unlocked Bonded LPs
-    function claimAll() external operational returns (bool){
-        address [] memory listedAssets = listedBondAssets; // Get array of bond assets
-        for(uint i = 0; i < listedAssets.length; i++){
-            claim(listedAssets[i]);
+    function claimAll(address [] memory bondAssets) external operational returns (bool){
+        for(uint i = 0; i < bondAssets.length; i++){
+            claim(bondAssets[i]);
         }
         return true;
     }
 
     // User claims unlocked Bond units of a selected asset
-    function claim(address asset)  public operational returns (bool){
+    function claim(address asset) public operational returns (bool){
         uint claimA = calcClaimBondedLP(msg.sender, asset); // Check user's unlocked Bonded LPs
         if(claimA > 0){
             _BONDVAULT.claimForMember(asset, msg.sender); // Claim LPs if any unlocked

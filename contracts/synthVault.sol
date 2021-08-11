@@ -108,16 +108,9 @@ contract SynthVault {
     //====================================== HARVEST ========================================//
 
     // User harvests all of their available rewards
-    function harvestAll() external returns (bool) {
-        address [] memory _stakedSynthAssets = stakedSynthAssets;
-        for(uint i = 0; i < _stakedSynthAssets.length; i++){
-            if((block.timestamp > mapMemberSynth_lastTime[msg.sender][_stakedSynthAssets[i]])){
-                uint256 reward = calcCurrentReward(_stakedSynthAssets[i], msg.sender);
-                if(reward > 0){
-                    harvestSingle(_stakedSynthAssets[i]);
-                }
-            }
-            
+    function harvestAll(address [] memory synthAssets) external returns (bool) {
+        for(uint i = 0; i < synthAssets.length; i++){
+            harvestSingle(synthAssets[i]);
         }
         return true;
     }
@@ -136,23 +129,27 @@ contract SynthVault {
     // User harvests available rewards of the chosen asset
     function harvestSingle(address synth) public returns (bool) {
         uint256 reward = calcCurrentReward(synth, msg.sender); // Calc user's current SPARTA reward
-        mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp; // Set last harvest time as now
-        address _poolOUT = iSYNTH(synth).POOL(); // Get pool address
-        iPOOL(_poolOUT).sync(); 
-        iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT); // Send the SPARTA from RESERVE to POOL
-        (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this)); // Mint synths & tsf to SynthVault
-        uint256 _weight = changeWeight(msg.sender, synth, synthReward);
-        _addVaultMetrics(reward); // Add to the revenue metrics (for UI)
-        emit MemberHarvests(synth, msg.sender, reward, _weight, totalWeight);
+        if(reward > 0){
+            require((block.timestamp > mapMemberSynth_lastTime[msg.sender][synth]), 'LOCKED');  // Must not harvest before lockup period passed
+            mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp; // Set last harvest time as now
+            address _poolOUT = iSYNTH(synth).POOL(); // Get pool address
+            iPOOL(_poolOUT).sync(); // Sync here to prevent bypassing lockup (user does a SYNTH.transfer() to )
+            iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT); // Send the SPARTA from RESERVE to POOL
+            (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this)); // Mint synths & tsf to SynthVault
+            uint256 _weight = changeWeight(msg.sender, synth, synthReward);
+            _addVaultMetrics(reward); // Add to the revenue metrics (for UI)
+            emit MemberHarvests(synth, msg.sender, reward, _weight, totalWeight);
+        }
         return true;
     }
 
     // Calculate the user's current incentive-claim per era based on selected asset
     function calcCurrentReward(address synth, address member) public view returns (uint256 reward){
-        require((block.timestamp > mapMemberSynth_lastTime[member][synth]), "!unlocked"); // Must not harvest before lockup period passed
-        uint256 _secondsSinceClaim = block.timestamp - mapMemberSynth_lastTime[member][synth]; // Get seconds passed since last claim
-        uint256 _share = calcReward(synth, member); // Get member's share of RESERVE incentives
-        reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra(); // User's share times eras since they last claimed
+        if (block.timestamp > mapMemberSynth_lastTime[member][synth]) {
+            uint256 _secondsSinceClaim = block.timestamp - mapMemberSynth_lastTime[member][synth]; // Get seconds passed since last claim
+            uint256 _share = calcReward(synth, member); // Get member's share of RESERVE incentives
+            reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra(); // User's share times eras since they last claimed
+        }
         return reward;
     }
 
