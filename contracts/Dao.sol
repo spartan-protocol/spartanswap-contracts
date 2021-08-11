@@ -148,26 +148,21 @@ contract Dao {
 
     //============================== USER - DEPOSIT/WITHDRAW ================================//
 
-    // User deposits LP tokens in the DAOVault
-    function deposit(address pool, uint256 amount) external {
-        depositLPForMember(pool, amount, msg.sender);
-    }
-
     // Contract deposits LP tokens for member
-    function depositLPForMember(address pool, uint256 amount, address member) public {
+    function deposit(address pool, uint256 amount) public {
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!curated"); // Pool must be Curated
         require(amount > 0, "!amount"); // Deposit amount must be valid
-        if (isMember[member] != true) {
-            arrayMembers.push(member); // If not a member; add user to member array
-            isMember[member] = true; // If not a member; register the user as member
+        if (isMember[msg.sender] != true) {
+            arrayMembers.push(msg.sender); // If not a member; add user to member array
+            isMember[msg.sender] = true; // If not a member; register the user as member
         }
-        if((_DAOVAULT.getMemberWeight(member) + _BONDVAULT.getMemberWeight(member)) > 0) {
+        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0) {
             harvest(); // If member has existing weight; force harvest to block manipulation of lastTime + harvest
         }
         require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!funds"); // Send user's deposit to the DAOVault
-        _DAOVAULT.depositLP(pool, amount, member); // Update user's deposit balance & weight
-        mapMember_lastTime[member] = block.timestamp; // Reset user's last harvest time
-        emit MemberDeposits(member, pool, amount);
+        _DAOVAULT.depositLP(pool, amount, msg.sender); // Update user's deposit balance & weight
+        mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
+        emit MemberDeposits(msg.sender, pool, amount);
     }
     
     // User withdraws all of their selected asset from the DAOVault
@@ -276,16 +271,16 @@ contract Dao {
     }
 
     // User claims all of their unlocked Bonded LPs
-    function claimAllForMember() external returns (bool){
+    function claimAll() external returns (bool){
         address [] memory listedAssets = listedBondAssets; // Get array of bond assets
         for(uint i = 0; i < listedAssets.length; i++){
-            claimForMember(listedAssets[i]);
+            claim(listedAssets[i]);
         }
         return true;
     }
 
     // User claims unlocked Bond units of a selected asset
-    function claimForMember(address asset) public returns (bool){
+    function claim(address asset) public returns (bool){
         uint claimA = calcClaimBondedLP(msg.sender, asset); // Check user's unlocked Bonded LPs
         if(claimA > 0){
             _BONDVAULT.claimForMember(asset, msg.sender); // Claim LPs if any unlocked
