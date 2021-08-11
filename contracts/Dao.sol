@@ -613,18 +613,6 @@ contract Dao is ReentrancyGuard{
         }
     }
 
-    // Check if a proposal has Minority consensus
-    function hasMinority(uint _proposalID) public view returns(bool){
-        uint votes = mapPID_votes[_proposalID]; // Get the proposal's total voting weight
-        uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // Get combined total vault weights
-        uint consensus = _totalWeight / 6; // Minority > 16.6%
-        if(votes > consensus){
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     //======================================PROTOCOL CONTRACTs GETTER=================================//
     
     // Get the ROUTER address that the DAO currently points to
