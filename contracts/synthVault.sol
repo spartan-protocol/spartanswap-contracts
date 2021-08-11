@@ -78,10 +78,10 @@ contract SynthVault {
         uint256 totalWeight
     );
 
-    function setParams(uint256 one, uint256 two, uint256 three) external onlyDAO {
-        erasToEarn = one;
-        minimumDepositTime = two;
-        vaultClaim = three;
+    function setParams(uint256 _erasToEarn, uint256 _minTime, uint256 _vaultClaim) external onlyDAO {
+        erasToEarn = _erasToEarn;
+        minimumDepositTime = _minTime;
+        vaultClaim = _vaultClaim;
     }
 
     //====================================== DEPOSIT ========================================//

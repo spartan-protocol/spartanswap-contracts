@@ -114,7 +114,7 @@ contract Dao {
         _ROUTER = iROUTER(_router);
         _UTILS = iUTILS(_utils);
         _RESERVE = iRESERVE(_reserve);
-        _LEND = iLEND(_LEND);
+        _LEND = iLEND(_lend);
     }
 
     function setVaultAddresses(address _daovault, address _bondvault, address _synthVault) external onlyDAO {
