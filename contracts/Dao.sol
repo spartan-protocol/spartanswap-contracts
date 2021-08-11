@@ -128,9 +128,9 @@ contract Dao {
         _SYNTHFACTORY = iSYNTHFACTORY(_synthFactory);
     }
 
-    function setGenesisFactors(uint32 _coolOff, uint32 _daysToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) external onlyDAO {
+    function setGenesisFactors(uint32 _coolOff, uint32 _erasToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) external onlyDAO {
         coolOffPeriod = _coolOff;
-        erasToEarn = _daysToEarn;
+        erasToEarn = _erasToEarn;
         majorityFactor = _majorityFactor;
         daoClaim = _daoClaim;
         daoFee = _daoFee;
