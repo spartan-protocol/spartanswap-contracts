@@ -163,7 +163,7 @@ contract Dao is ReentrancyGuard{
             arrayMembers.push(msg.sender); // If not a member; add user to member array
             isMember[msg.sender] = true; // If not a member; register the user as member
         }
-        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0) {
+        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0 && _RESERVE.emissions() == true) {
             harvest(); // If member has existing weight; force harvest to block manipulation of lastTime + harvest
         }
         require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!funds"); // Send user's deposit to the DAOVault
@@ -250,7 +250,7 @@ contract Dao is ReentrancyGuard{
             arrayMembers.push(msg.sender); // If user is not a member; add them to the member array
             isMember[msg.sender] = true; // Register user as a member
         }
-        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0) {
+        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0 && _RESERVE.emissions() == true) {
             harvest(); // If member has existing weight; force harvest to block manipulation of lastTime + harvest
         }
         uint256 liquidityUnits = _handleTransferIn(asset, amount); // Add liquidity and calculate LP units
