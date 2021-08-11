@@ -11,8 +11,9 @@ import "./iBEP20.sol";
 import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iSYNTHVAULT.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Dao {
+contract Dao is ReentrancyGuard{
     address public DEPLOYER;
     address public BASE;
     bool public retire;
@@ -242,7 +243,7 @@ contract Dao {
     }
 
     // User deposits assets to be Bonded
-    function bond(address asset, uint256 amount) external payable operational returns (bool success) {
+    function bond(address asset, uint256 amount) external payable operational nonReentrant returns (bool success) {
         require(amount > 0, '!amount'); // Amount must be valid
         require(isListed[asset], '!listed'); // Asset must be listed for Bond
         if (isMember[msg.sender] != true) {
@@ -253,8 +254,8 @@ contract Dao {
             harvest(); // If member has existing weight; force harvest to block manipulation of lastTime + harvest
         }
         uint256 liquidityUnits = _handleTransferIn(asset, amount); // Add liquidity and calculate LP units
-        _BONDVAULT.depositForMember(asset, msg.sender, liquidityUnits); // Deposit the Bonded LP units in the BondVault
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
+        _BONDVAULT.depositForMember(asset, msg.sender, liquidityUnits); // Deposit the Bonded LP units in the BondVault
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
