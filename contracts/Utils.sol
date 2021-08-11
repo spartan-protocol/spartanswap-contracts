@@ -82,24 +82,24 @@ contract Utils {
         } else {
             // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
             // P * (part1 + part2) / (part3) * slipAdjustment
-            uint slipAdjustment = getSlipAdustment(b, B, t, T);
-            uint part1 = t * B;
-            uint part2 = T * b;
-            uint part3 = T * B * 2;
+            uint slipAdjustment = getSlipAdjustment(b, B, t, T);
+            uint part1 = t * B;     // tokenInput * baseDepth
+            uint part2 = T * b;     // tokenDepth * baseInput
+            uint part3 = T * B * 2; // tokenDepth * baseDepth * 2
             require(part3 > 0, '!DIVISION');
-            uint _units = (P * (part1 + part2)) / part3;
+            uint _units = (P * (part1 + part2)) / part3;  // P == totalSupply
             return _units * slipAdjustment / one;  // Divide by 10**18
         }
     }
 
-    // Get slip adjustment
-    function getSlipAdustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
+    // Get slip adjustment (Protects capital erosion from asymAdds)
+    function getSlipAdjustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
         // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
         // 1 - ABS(part1 - part2)/(part3 * part4))
-        uint part1 = B * t;
-        uint part2 = b * T;
-        uint part3 = 2 * b + B;
-        uint part4 = t + T;
+        uint part1 = B * t;     // baseDepth * tokenInput
+        uint part2 = b * T;     // baseInput * tokenDepth
+        uint part3 = 2 * b + B; // 2 * baseInput + baseDepth (Modified to reduce slip adjustment)
+        uint part4 = t + T;     // tokenInput + tokenDepth
         uint numerator;
         if(part1 > part2){
             numerator = part1 - part2;

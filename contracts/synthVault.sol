@@ -247,6 +247,6 @@ contract SynthVault {
             _revArray[i] = _revArray[i - 1];
         }
         _revArray[0] = _rev;
-        revenueArray = _revArray
+        revenueArray = _revArray;
     }
 }
