@@ -133,7 +133,7 @@ contract SynthVault {
             require((block.timestamp > mapMemberSynth_lastTime[msg.sender][synth]), 'LOCKED');  // Must not harvest before lockup period passed
             mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp; // Set last harvest time as now
             address _poolOUT = iSYNTH(synth).POOL(); // Get pool address
-            iPOOL(_poolOUT).sync(); // Sync here to prevent bypassing lockup (user does a SYNTH.transfer() to )
+            iPOOL(_poolOUT).sync(); // Sync here to prevent using SYNTH.transfer() to bypass lockup
             iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT); // Send the SPARTA from RESERVE to POOL
             (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this)); // Mint synths & tsf to SynthVault
             uint256 _weight = changeWeight(msg.sender, synth, synthReward);

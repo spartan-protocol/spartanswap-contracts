@@ -173,7 +173,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint256 _actualInputToken = _getAddedTokenAmount(); // Get the received TOKEN amount
         liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply); // Calculate LP tokens to mint
         if(baseAmount == 0 || tokenAmount == 0){
-            require(_actualInputBase != 0 && _actualInputToken != 0, "!Balanced");
+            require(_actualInputBase >= 1000 && _actualInputToken >= 1000, "!Balanced");
             uint createFee = 100 * liquidityUnits / 10000;
             liquidityUnits -= createFee;
             _mint(BASE, createFee);
