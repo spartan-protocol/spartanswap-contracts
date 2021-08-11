@@ -15,6 +15,7 @@ import "./iSYNTHVAULT.sol";
 contract Dao {
     address public DEPLOYER;
     address public BASE;
+    bool public retire;
 
     uint256 public secondsPerEra;   // Amount of seconds per era (Inherited from BASE contract; intended to be ~1 day)
     uint256 public coolOffPeriod;   // Amount of time a proposal will need to be in finalising stage before it can be finalised
@@ -94,6 +95,11 @@ contract Dao {
         require(msg.sender == DEPLOYER);
         _;
     }
+    // Let the DAO Sleep
+    modifier operational() {
+        require(!retire, 'COMA');
+        _;
+    }
 
     constructor (address _base){
         BASE = _base;
@@ -149,7 +155,7 @@ contract Dao {
     //============================== USER - DEPOSIT/WITHDRAW ================================//
 
     // Contract deposits LP tokens for member
-    function deposit(address pool, uint256 amount) public {
+    function deposit(address pool, uint256 amount) public operational {
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!curated"); // Pool must be Curated
         require(amount > 0, "!amount"); // Deposit amount must be valid
         if (isMember[msg.sender] != true) {
@@ -166,7 +172,7 @@ contract Dao {
     }
     
     // User withdraws all of their selected asset from the DAOVault
-    function withdraw(address pool) external {
+    function withdraw(address pool) external operational {
         removeVote(); // Users weight is removed from the current open DAO proposal
         uint256 amount = _DAOVAULT.mapMemberPool_balance(msg.sender, pool); 
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // User receives their withdrawal
@@ -176,7 +182,7 @@ contract Dao {
     //============================== REWARDS ================================//
     
     // User claims their DAOVault incentives
-    function harvest() public {
+    function harvest() public operational {
         require(_RESERVE.emissions(), "!emissions"); // Reserve must have emissions turned on
         uint reward = calcCurrentReward(msg.sender); // Calculate the user's claimable incentive
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
@@ -189,7 +195,7 @@ contract Dao {
     }
 
     // Calculate the user's current incentive-claim per era
-    function calcCurrentReward(address member) public view returns(uint){
+    function calcCurrentReward(address member) public view operational returns(uint){
         uint secondsSinceClaim = block.timestamp - mapMember_lastTime[member]; // Get seconds passed since last claim
         uint share = calcReward(member); // Get share of rewards for user
         uint reward = (share * secondsSinceClaim) / secondsPerEra; // User's share times eras since they last claimed
@@ -197,7 +203,7 @@ contract Dao {
     }
 
     // Calculate the user's current total claimable incentive
-    function calcReward(address member) public view returns(uint){
+    function calcReward(address member) public view operational returns(uint){
         uint weight = _DAOVAULT.getMemberWeight(member) + _BONDVAULT.getMemberWeight(member); // Get combined total weights (scope: user)
         uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // Get combined total weights (scope: vaults)
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)) / erasToEarn; // Aim to deplete reserve over a number of days
@@ -236,7 +242,7 @@ contract Dao {
     }
 
     // User deposits assets to be Bonded
-    function bond(address asset, uint256 amount) external payable returns (bool success) {
+    function bond(address asset, uint256 amount) external payable operational returns (bool success) {
         require(amount > 0, '!amount'); // Amount must be valid
         require(isListed[asset], '!listed'); // Asset must be listed for Bond
         if (isMember[msg.sender] != true) {
@@ -273,7 +279,7 @@ contract Dao {
     }
 
     // User claims all of their unlocked Bonded LPs
-    function claimAll() external returns (bool){
+    function claimAll() external operational returns (bool){
         address [] memory listedAssets = listedBondAssets; // Get array of bond assets
         for(uint i = 0; i < listedAssets.length; i++){
             claim(listedAssets[i]);
@@ -282,7 +288,7 @@ contract Dao {
     }
 
     // User claims unlocked Bond units of a selected asset
-    function claim(address asset) public returns (bool){
+    function claim(address asset)  public operational returns (bool){
         uint claimA = calcClaimBondedLP(msg.sender, asset); // Check user's unlocked Bonded LPs
         if(claimA > 0){
             _BONDVAULT.claimForMember(asset, msg.sender); // Claim LPs if any unlocked
@@ -345,7 +351,7 @@ contract Dao {
     }
 
     // If no existing open DAO proposal; register a new one
-    function checkProposal() internal {
+    function checkProposal() internal operational{
         require(_RESERVE.globalFreeze() != true, '');
         require(mapPID_open[currentProposal] == false, '!open'); // There must not be an existing open proposal
         proposalCount += 1; // Increase proposal count
@@ -364,7 +370,7 @@ contract Dao {
     //============================== VOTE && FINALISE ================================//
 
     // Vote for a proposal
-    function voteProposal() external returns (uint voteWeight) {
+    function voteProposal() external operational returns (uint voteWeight) {
         require(_RESERVE.globalFreeze() != true, '');
         require(mapPID_open[currentProposal] == true, "!open"); // Proposal must be open status
         bytes memory _type = bytes(mapPID_type[currentProposal]); // Get the proposal type
@@ -382,7 +388,7 @@ contract Dao {
     }
 
     // Remove vote from a proposal
-    function removeVote() public returns (uint voteWeightRemoved){
+    function removeVote() public operational returns (uint voteWeightRemoved){
         bytes memory _type = bytes(mapPID_type[currentProposal]); // Get the proposal type
         voteWeightRemoved = mapPIDMember_votes[currentProposal][msg.sender]; // Get user's current vote weight
         if(mapPID_open[currentProposal]){
@@ -402,7 +408,7 @@ contract Dao {
     }
 
     // Attempt to cancel the open proposal
-    function cancelProposal() external {
+    function cancelProposal() operational external {
         require(block.timestamp > (mapPID_startTime[currentProposal] + 1296000), "!days"); // Proposal must not be new
         mapPID_votes[currentProposal] = 0; // Clear all votes from the proposal
         mapPID_open[currentProposal] = false; // Set the proposal as not open (closed status)
@@ -410,7 +416,7 @@ contract Dao {
     }
 
     // A finalising-stage proposal can be finalised after the cool off period
-    function finaliseProposal() external {
+    function finaliseProposal() external operational {
         require(_RESERVE.globalFreeze() != true, '');
         require((block.timestamp - mapPID_coolOffTime[currentProposal]) > coolOffPeriod, "!cooloff"); // Must be past cooloff period
         require(mapPID_finalising[currentProposal] == true, "!finalising"); // Must be in finalising stage
@@ -726,6 +732,7 @@ contract Dao {
             return false;
         }
     }
+
 }
 
 
