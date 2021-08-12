@@ -17,7 +17,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint256 public baseCAP;
     uint256 private oldRate;
     uint256 private period;
-    uint256 private SPR;
+    uint256 private freezePoint;
     bool public freeze;
     uint256 public initiationPeriod;
 
@@ -74,7 +74,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         decimals = 18;
         genesis = block.timestamp;
         poolCAP = 3000;
-        SPR = 3000;
+        freezePoint = 3000;
         baseCAP = 100000;
         period = block.timestamp;
         initiationPeriod = 604800;
@@ -173,11 +173,11 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint256 _actualInputToken = _getAddedTokenAmount(); // Get the received TOKEN amount
         liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply); // Calculate LP tokens to mint
         if(baseAmount == 0 || tokenAmount == 0){
-            require(_actualInputBase >= (100 * (10**18)) && _actualInputToken >= 10000, "!Balanced");
+            require(_actualInputBase >= (100 * 10**18) && _actualInputToken >= 10000, "!Balanced");
             uint createFee = 100 * liquidityUnits / 10000;
             liquidityUnits -= createFee;
             _mint(BASE, createFee);
-            oldRate = _actualInputBase / _actualInputToken;
+            oldRate = (_actualInputBase * _actualInputBase) / _actualInputToken;
         }
         _incrementPoolBalances(_actualInputBase, _actualInputToken); // Update recorded BASE and TOKEN amounts
         _mint(member, liquidityUnits); // Mint the LP tokens directly to the user
@@ -348,20 +348,20 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     function safetyCheck() internal {
         if(!freeze){
-            uint256 newRate = baseAmount / tokenAmount;
-            uint256 absRate;
-            if(block.timestamp > period){
-                period += 3600;
-                oldRate = newRate;
+            uint currentRate = (baseAmount * baseAmount) / tokenAmount;
+            uint rateDiff;
+            if (currentRate > oldRate) {
+                rateDiff = currentRate - oldRate;
+            } else {
+                rateDiff = oldRate - currentRate;
             }
-            if(newRate < oldRate){
-                absRate = (oldRate / newRate) - 1;
-            }else{
-                absRate = (newRate / oldRate) - 1;
-            }
-            uint256 difference = absRate * 10000;
-            if(difference > SPR){
+            rateDiff = rateDiff * 10000 / currentRate;
+            if (rateDiff >= freezePoint) {
                 freeze = true;
+            }
+            if (block.timestamp > period) {
+                period = block.timestamp + 3600;
+                oldRate = currentRate;
             }
         }
     }
@@ -405,8 +405,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         baseCAP = _newRTC;
     }
 
-    function setSPR(uint256 _newSPR) external onlyPROTOCOL {
-        SPR = _newSPR;
+    function setFreezePoint(uint256 _newFreezePoint) external onlyPROTOCOL {
+        freezePoint = _newFreezePoint;
     }
 
     function flipFreeze(uint newPeriod) external onlyPROTOCOL {

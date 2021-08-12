@@ -243,7 +243,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // User deposits assets to be Bonded
-    function bond(address asset, uint256 amount) external payable operational nonReentrant returns (bool success) {
+    function bond(address asset, uint amount) external payable operational nonReentrant returns (bool success) {
         require(amount > 0, '!amount'); // Amount must be valid
         require(isListed[asset], '!listed'); // Asset must be listed for Bond
         if (isMember[msg.sender] != true) {
@@ -262,21 +262,23 @@ contract Dao is ReentrancyGuard{
 
     // Add Bonded assets as liquidity and calculate LP units
     function _handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
-        uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); // Get the SPARTA swap value of the bonded assets
-        if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < spartaAllocation){
+        if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < 2.5 * 10**6 * 10**18){
             iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply()); // Increase SPARTA allowance if required
         }
         if(_token == address(0)){
             require((_amount == msg.value), "!amount");
+            uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); // Get the SPARTA swap value of the bonded assets
             LPunits = _ROUTER.addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, address(_BONDVAULT)); // Add spartaAllocation & BNB as liquidity to mint LP tokens
         } else {
             iBEP20(_token).transferFrom(msg.sender, address(this), _amount); // Transfer user's assets to Dao contract
-            if(iBEP20(_token).allowance(address(this), address(_ROUTER)) < _amount){
+            uint _actualAmount = iBEP20(_token).balanceOf(address(this)); // Get actual received token amount
+            uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _actualAmount); // Get the SPARTA swap value of the bonded assets
+            if(iBEP20(_token).allowance(address(this), address(_ROUTER)) < _actualAmount){
                 uint256 approvalTNK = iBEP20(_token).totalSupply();
                 iBEP20(_token).approve(address(_ROUTER), approvalTNK); // Increase allowance if required
             }
-            LPunits = _ROUTER.addLiquidityForMember(spartaAllocation, _amount, _token, address(_BONDVAULT)); // Add spartaAllocation & assets as liquidity to mint LP tokens
-        } 
+            LPunits = _ROUTER.addLiquidityForMember(spartaAllocation, _actualAmount, _token, address(_BONDVAULT)); // Add spartaAllocation & assets as liquidity to mint LP tokens
+        }
     }
 
     // User claims all of their unlocked Bonded LPs
