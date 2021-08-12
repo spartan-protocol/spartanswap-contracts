@@ -28,7 +28,7 @@ contract SynthVault {
 
     // Restrict access
     modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER);
+        require(msg.sender == DEPLOYER);
         _;
     }
 
@@ -77,6 +77,11 @@ contract SynthVault {
         uint256 weight,
         uint256 totalWeight
     );
+    
+    // Can purge deployer once DAO is stable and final
+    function purgeDeployer() external onlyDAO {
+        DEPLOYER = address(0);
+    }
 
     function setParams(uint256 _erasToEarn, uint256 _minTime, uint256 _vaultClaim) external onlyDAO {
         erasToEarn = _erasToEarn;

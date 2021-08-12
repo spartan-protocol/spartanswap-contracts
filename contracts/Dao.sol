@@ -17,6 +17,7 @@ contract Dao is ReentrancyGuard{
     address public DEPLOYER;
     address public BASE;
     bool public retire;
+    bool public running;
 
     uint256 public secondsPerEra;   // Amount of seconds per era (Inherited from BASE contract; intended to be ~1 day)
     uint256 public coolOffPeriod;   // Amount of time a proposal will need to be in finalising stage before it can be finalised
@@ -101,6 +102,11 @@ contract Dao is ReentrancyGuard{
         require(!retire, 'COMA');
         _;
     }
+    // Pause proposals
+    modifier isRunning() {
+        require(running, 'SLEEP');
+        _;
+    }
 
     constructor (address _base){
         BASE = _base;
@@ -113,6 +119,7 @@ contract Dao is ReentrancyGuard{
         daoFee = 100;
         proposalCount = 0;
         secondsPerEra = iBASE(BASE).secondsPerEra();
+        running = false;
     }
 
     //==================================== PROTOCOL CONTRACTs SETTER =================================//
@@ -368,7 +375,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // If no existing open DAO proposal; register a new one
-    function checkProposal() internal operational{
+    function checkProposal() internal operational isRunning {
         require(_RESERVE.globalFreeze() != true, '');
         require(mapPID_open[currentProposal] == false, '!open'); // There must not be an existing open proposal
         proposalCount += 1; // Increase proposal count
@@ -440,7 +447,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // A finalising-stage proposal can be finalised after the cool off period
-    function finaliseProposal() external operational {
+    function finaliseProposal() external operational isRunning {
         require(_RESERVE.globalFreeze() != true, '');
         require((block.timestamp - mapPID_coolOffTime[currentProposal]) > coolOffPeriod, "!cooloff"); // Must be past cooloff period
         require(mapPID_finalising[currentProposal] == true, "!finalising"); // Must be in finalising stage
