@@ -299,7 +299,7 @@ contract Dao is ReentrancyGuard{
     }
     
     // Calculate user's unlocked Bond units of a selected asset
-    function calcClaimBondedLP(address bondedMember, address asset) public returns (uint){
+    function calcClaimBondedLP(address bondedMember, address asset) public view returns (uint){
         uint claimAmount = _BONDVAULT.calcBondedLP(bondedMember, asset); // Check user's unlocked Bonded LPs
         return claimAmount;
     }
