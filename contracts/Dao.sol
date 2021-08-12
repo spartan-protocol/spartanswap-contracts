@@ -135,7 +135,7 @@ contract Dao is ReentrancyGuard{
         _SYNTHFACTORY = iSYNTHFACTORY(_synthFactory);
     }
 
-    function setGenesisFactors(uint32 _coolOff, uint32 _erasToEarn, uint32 _majorityFactor, uint32 _daoClaim, uint32 _daoFee) external onlyDAO {
+    function setGenesisFactors(uint256 _coolOff, uint256 _erasToEarn, uint256 _majorityFactor, uint256 _daoClaim, uint256 _daoFee) external onlyDAO {
         coolOffPeriod = _coolOff;
         erasToEarn = _erasToEarn;
         majorityFactor = _majorityFactor;
