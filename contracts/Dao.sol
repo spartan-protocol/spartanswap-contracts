@@ -181,10 +181,14 @@ contract Dao is ReentrancyGuard{
     
     // User withdraws all of their selected asset from the DAOVault
     function withdraw(address pool) external operational {
-        removeVote(); // Users weight is removed from the current open DAO proposal
+        uint voteWeightBefore = mapPIDMember_votes[currentProposal][msg.sender]; // Get user's current vote weight
         uint256 amount = _DAOVAULT.mapMemberPool_balance(msg.sender, pool); 
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // User receives their withdrawal
         emit MemberWithdraws(msg.sender, pool, amount);
+        uint voteWeightNow = countVotes(); // Users weight is updated in the current open DAO proposal
+        uint voteWeightRemoved = voteWeightBefore - voteWeightNow; // Get user's removed vote weight
+        uint _removalFee = 50 * voteWeightRemoved / 10000;
+        payFee(_removalFee); // User pays a fee to remove vote weight
     }
 
     //============================== REWARDS ================================//
@@ -236,19 +240,17 @@ contract Dao is ReentrancyGuard{
 
     // List an asset to be enabled for Bonding
     function listBondAsset(address asset) external onlyDAO {
-        if(!isListed[asset]){
-            isListed[asset] = true; // Register as a currently enabled asset
-            listedBondAssets.push(asset); // Add to historical record of past Bond assets
-            emit ListedAsset(msg.sender, asset);
-        }
+        require(!isListed[asset], 'listed'); // Asset must not be listed for Bond
+        isListed[asset] = true; // Register as a bond-enabled asset
+        listedBondAssets.push(asset); // Add to historical record of past Bond assets
+        emit ListedAsset(msg.sender, asset);
     }
 
     // Delist an asset from the Bond program
     function delistBondAsset(address asset) external onlyDAO {
-        if(isListed[asset]){
-            isListed[asset] = false; // Register as a currently enabled asset
-            emit DelistedAsset(msg.sender, asset);
-        }
+        require(isListed[asset], '!listed'); // Asset must be listed for Bond
+        isListed[asset] = false; // Unregister as bond-enabled asset
+        emit DelistedAsset(msg.sender, asset);
     }
 
     // User deposits assets to be Bonded
@@ -325,7 +327,7 @@ contract Dao is ReentrancyGuard{
         bytes memory _type = bytes(typeStr); // Get the proposal type
         require(isEqual(_type, 'FLIP_EMISSIONS') || isEqual(_type, 'GET_SPARTA'), '!TYPE');
         checkProposal(); // If no open proposal; construct new one
-        payFee(); // Pay SPARTA fee for new proposal
+        payFee(daoFee * 10**18); // Pay SPARTA fee for new proposal
         mapPID_type[currentProposal] = typeStr; // Set the proposal type
         emit NewProposal(msg.sender, currentProposal, typeStr);
         return currentProposal;
@@ -337,7 +339,7 @@ contract Dao is ReentrancyGuard{
         bytes memory _type = bytes(typeStr); // Get the proposal type
         require(isEqual(_type, 'COOL_OFF') || isEqual(_type, 'ERAS_TO_EARN'), '!TYPE');
         checkProposal(); // If no open proposal; construct new one
-        payFee(); // Pay SPARTA fee for new proposal
+        payFee(daoFee * 10**18); // Pay SPARTA fee for new proposal
         mapPID_param[currentProposal] = param; // Set the proposed parameter
         mapPID_type[currentProposal] = typeStr; // Set the proposal type
         emit NewProposal(msg.sender, currentProposal, typeStr);
@@ -357,7 +359,7 @@ contract Dao is ReentrancyGuard{
             require(_pool != address(0), '!CURATED');
         }
         checkProposal(); // If no open proposal; construct new one
-        payFee(); // Pay SPARTA fee for new proposal
+        payFee(daoFee * 10**18); // Pay SPARTA fee for new proposal
         mapPID_address[currentProposal] = proposedAddress; // Set the proposed new address
         mapPID_type[currentProposal] = typeStr; // Set the proposal type
         emit NewProposal(msg.sender, currentProposal, typeStr);
@@ -371,7 +373,7 @@ contract Dao is ReentrancyGuard{
         uint daoReward = (reserve * daoClaim) / 10000; // Get DAO's share of BASE balance of RESERVE (max user claim amount)
         require((amount > 0) && (amount < daoReward), "!AMOUNT"); // Proposed grant amount must be valid
         checkProposal(); // If no open proposal; construct new one
-        payFee(); // Pay SPARTA fee for new proposal
+        payFee(daoFee * 10**18); // Pay SPARTA fee for new proposal
         string memory typeStr = "GRANT";
         mapPID_type[currentProposal] = typeStr; // Set the proposal type
         mapPID_address[currentProposal] = recipient; // Set the proposed grant recipient
@@ -390,10 +392,11 @@ contract Dao is ReentrancyGuard{
         mapPID_startTime[currentProposal] = block.timestamp; // Set the start time of the proposal to now
     }
     
-    // Pay the fee for a new DAO proposal
-    function payFee() internal returns(bool){
-        uint _amount = daoFee * (10**18); // Convert DAO fee to WEI
-        require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), _amount), '!fee'); // User pays the new proposal fee
+    // Pay a DAO fee
+    function payFee(uint amount) internal returns(bool){
+        if (amount >= 10**18) {
+            require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), amount), '!fee'); // User pays the DAO fee
+        }
         return true;
     } 
 
@@ -415,9 +418,8 @@ contract Dao is ReentrancyGuard{
             }
         }
         if(voteWeight > 0){
-             emit NewVote(msg.sender, currentProposal, voteWeight, mapPID_votes[currentProposal], string(_type));
+            emit NewVote(msg.sender, currentProposal, voteWeight, mapPID_votes[currentProposal], string(_type));
         }
-       
     }
 
     // Remove vote from a proposal
@@ -429,10 +431,10 @@ contract Dao is ReentrancyGuard{
         }
         mapPIDMember_votes[currentProposal][msg.sender] = 0; // Remove user's votes from propsal (scope: member)
         uint _removalFee = 50 * voteWeightRemoved / 10000;
-        require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), _removalFee), '!fee'); // User pays the new proposal fee
-         if(voteWeightRemoved > 0){
-           emit RemovedVote(msg.sender, currentProposal, voteWeightRemoved, mapPID_votes[currentProposal], string(_type));
-         }
+        payFee(_removalFee); // User pays a fee to remove vote weight
+        if(voteWeightRemoved > 0){
+            emit RemovedVote(msg.sender, currentProposal, voteWeightRemoved, mapPID_votes[currentProposal], string(_type));
+        }
         return voteWeightRemoved;
     }
 
