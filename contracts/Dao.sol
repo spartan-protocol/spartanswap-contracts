@@ -588,7 +588,7 @@ contract Dao is ReentrancyGuard{
     // After completing the proposal's action; close it
     function completeProposal(uint _proposalID) internal {
         string memory _typeStr = mapPID_type[_proposalID]; // Get proposal type
-        emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID], _DAOVAULT.totalWeight(), _typeStr);
+        emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID], _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(), _typeStr);
         mapPID_votes[_proposalID] = 0; // Reset proposal votes to 0
         mapPID_finalised[_proposalID] = true; // Finalise the proposal
         mapPID_finalising[_proposalID] = false; // Remove proposal from 'finalising' stage
