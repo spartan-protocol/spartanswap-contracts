@@ -239,14 +239,16 @@ contract Dao is ReentrancyGuard{
         if(!isListed[asset]){
             isListed[asset] = true; // Register as a currently enabled asset
             listedBondAssets.push(asset); // Add to historical record of past Bond assets
+            emit ListedAsset(msg.sender, asset);
         }
-        emit ListedAsset(msg.sender, asset);
     }
 
     // Delist an asset from the Bond program
     function delistBondAsset(address asset) external onlyDAO {
-        isListed[asset] = false; // Unregister as a currently enabled asset
-        emit DelistedAsset(msg.sender, asset);
+        if(isListed[asset]){
+            isListed[asset] = false; // Register as a currently enabled asset
+            emit DelistedAsset(msg.sender, asset);
+        }
     }
 
     // User deposits assets to be Bonded
@@ -345,10 +347,14 @@ contract Dao is ReentrancyGuard{
     // New DAO proposal: Address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) external returns(uint) {
         bytes memory _type = bytes(typeStr); // Get the proposal type
+        address _pool = _POOLFACTORY.getPool(proposedAddress);
         if (isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE')) {
             require(proposedAddress != address(0), "!address"); // Proposed address must be valid
+        } else if (isEqual(_type, 'LIST_BOND') || isEqual(_type, 'REMOVE_CURATED_POOL')) {
+            require(_POOLFACTORY.isCuratedPool(_pool), '!CURATED');
         } else {
-            require((isEqual(_type, 'LIST_BOND') || isEqual(_type, 'DELIST_BOND') || isEqual(_type, 'ADD_CURATED_POOL') || isEqual(_type, 'REMOVE_CURATED_POOL')), '!TYPE');
+            require(isEqual(_type, 'DELIST_BOND') || isEqual(_type, 'ADD_CURATED_POOL'), '!TYPE');
+            require(_pool != address(0), '!CURATED');
         }
         checkProposal(); // If no open proposal; construct new one
         payFee(); // Pay SPARTA fee for new proposal
@@ -400,7 +406,7 @@ contract Dao is ReentrancyGuard{
         bytes memory _type = bytes(mapPID_type[currentProposal]); // Get the proposal type
         voteWeight = countVotes(); // Vote for proposal and recount
         if(hasQuorum(currentProposal) && mapPID_finalising[currentProposal] == false){
-            if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE') ||isEqual(_type, 'GET_SPARTA') || isEqual(_type, 'ROUTER') || isEqual(_type, 'LIST_BOND')|| isEqual(_type, 'GRANT')|| isEqual(_type, 'ADD_CURATED_POOL')){
+            if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE') || isEqual(_type, 'GET_SPARTA') || isEqual(_type, 'ROUTER') || isEqual(_type, 'LIST_BOND') || isEqual(_type, 'GRANT') || isEqual(_type, 'ADD_CURATED_POOL')){
                 if(hasMajority(currentProposal)){
                     _finalise(); // Critical proposals require 'majority' consensus to enter finalization phase
                 }
@@ -567,7 +573,9 @@ contract Dao is ReentrancyGuard{
     // Delist an asset from being allowed to Bond
     function _delistBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
-        isListed[_proposedAddress] = false; // Unregister asset as listed for Bond (Keep it in the array though; as this is used in the UI)
+        if(isListed[_proposedAddress]){
+            isListed[_proposedAddress] = false; // Unregister asset as listed for Bond (Keep it in the array though; as this is used in the UI)
+        }
         completeProposal(_proposalID); // Finalise the proposal
     }
 
@@ -582,6 +590,9 @@ contract Dao is ReentrancyGuard{
     function _removeCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed asset for removal
         _POOLFACTORY.removeCuratedPool(_proposedAddress); // Remove pool as Curated
+        if (isListed[_proposedAddress]) {
+            isListed[_proposedAddress] = false;
+        }
         completeProposal(_proposalID); // Finalise the proposal
     }
     
