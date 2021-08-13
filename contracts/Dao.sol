@@ -213,11 +213,13 @@ contract Dao is ReentrancyGuard{
 
     // Calculate the user's current total claimable incentive
     function calcReward(address member) public view operational returns(uint){
-        (uint256 weight, uint256 totalWeight) = _DAOVAULT.getMemberLPWeight(member); 
-        //neeed to consider BONDWEIGHT
+        (uint256 weightDAO, uint256 totalDAOWeight) = _DAOVAULT.getMemberLPWeight(member);
+        (uint256 weightBOND, uint256 totalBONDWeight) = _BONDVAULT.getMemberLPWeight(member);
+        uint256 memberWeight = weightDAO + weightBOND;
+        uint256 totalWeight = totalDAOWeight + totalBONDWeight;
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)) / erasToEarn; // Aim to deplete reserve over a number of days
         uint daoReward = (reserve * daoClaim) / 10000; // Get the DAO's share of that
-        return _UTILS.calcShare(weight, totalWeight, daoReward); // Get users's share of that (1 era worth)
+        return _UTILS.calcShare(memberWeight, totalWeight, daoReward); // Get users's share of that (1 era worth)
     }
 
     //================================ BOND Feature ==================================//

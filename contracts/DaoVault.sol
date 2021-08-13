@@ -21,7 +21,7 @@ contract DaoVault {
 
     // mapping(address => uint256) public mapMember_weight; // Member's total weight in DAOVault
     mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's LPs locked in DAOVault
-    mapping(address => uint256) public mapTOTALPool_balance; // LP's locked in DAOVault
+    mapping(address => uint256) public mapTotalPool_balance; // LP's locked in DAOVault
     mapping(address => mapping(address => uint256)) public mapMember_depositTime; // Timestamp when user last deposited
     // mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Member's total weight in DOAVault (scope: pool)
 
@@ -38,7 +38,7 @@ contract DaoVault {
     // User despoits LP tokens in the DAOVault
     function depositLP(address pool, uint256 amount, address member) external onlyDAO returns (bool) {
         mapMemberPool_balance[member][pool] += amount; // Updated user's vault balance
-        mapTOTALPool_balance[pool] += amount;
+        mapTotalPool_balance[pool] += amount;
         mapMember_depositTime[member][pool] = block.timestamp; // Set user's new last-deposit-time
         // increaseLPWeight(pool, member); // Recalculate user's DAOVault weights
         return true;
@@ -50,7 +50,7 @@ contract DaoVault {
         address [] memory vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).vaultAssets(); 
         for(uint i =0; i< vaultAssets.length; i++){
             memberWeight = iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapMemberPool_balance[member][vaultAssets[i]]); // Get user's current weight
-            totalWeight = iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapTOTALPool_balance[vaultAssets[i]]); // Get user's current weight
+            totalWeight = iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapTotalPool_balance[vaultAssets[i]]); // Get user's current weight
         }
         return (memberWeight, totalWeight);
     }
