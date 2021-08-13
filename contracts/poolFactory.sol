@@ -11,6 +11,7 @@ contract PoolFactory {
     uint public curatedPoolCount;   // Current count of pools that are curated status
     address[] public arrayPools;    // Array of all deployed pools
     address[] public arrayTokens;   // Array of all listed tokens
+    address [] public vaultAssets;
 
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isListedPool;
@@ -93,6 +94,7 @@ contract PoolFactory {
         require(curatedPoolCount < curatedPoolSize, 'maxCurated'); // Must be room in the Curated list
         isCuratedPool[_pool] = true; // Record pool as Curated
         curatedPoolCount = curatedPoolCount + 1; // Increase the curated pool count
+        vaultAssets.push(_pool);
         emit AddCuratePool(_pool);
     }
 
@@ -103,6 +105,12 @@ contract PoolFactory {
         require(isCuratedPool[_pool] == true, '!CURATED'); // Pool must be Curated
         isCuratedPool[_pool] = false; // Record pool as not curated
         curatedPoolCount = curatedPoolCount - 1; // Decrease the curated pool count
+        for(uint i = 0 ; i < vaultAssets.length; i++){
+            if(vaultAssets[i] == _pool){
+                vaultAssets[i] = vaultAssets[vaultAssets.length - 1]; // Move the last element into the place to delete
+                vaultAssets.pop();// Remove the last element
+            }
+        }
         emit RemoveCuratePool(_pool);
     }
 

@@ -61,7 +61,7 @@ contract Dao is ReentrancyGuard{
     iLEND private _LEND;
 
     address[] public arrayMembers;
-    address [] listedBondAssets; // Only used in UI; is intended to be a historical array of all past Bond listed assets
+    address [] listedBondPools; // Only used in UI; is intended to be a historical array of all past Bond listed assets
     uint256 public bondingPeriodSeconds = 15552000; // Vesting period for bonders (6 months)
     
     mapping(address => bool) public isMember;
@@ -170,9 +170,6 @@ contract Dao is ReentrancyGuard{
             arrayMembers.push(msg.sender); // If not a member; add user to member array
             isMember[msg.sender] = true; // If not a member; register the user as member
         }
-        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0 && _RESERVE.emissions() == true) {
-            harvest(); // If member has existing weight; force harvest to block manipulation of lastTime + harvest
-        }
         require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!funds"); // Send user's deposit to the DAOVault
         _DAOVAULT.depositLP(pool, amount, msg.sender); // Update user's deposit balance & weight
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
@@ -216,11 +213,11 @@ contract Dao is ReentrancyGuard{
 
     // Calculate the user's current total claimable incentive
     function calcReward(address member) public view operational returns(uint){
-        uint weight = _DAOVAULT.getMemberWeight(member) + _BONDVAULT.getMemberWeight(member); // Get combined total weights (scope: user)
-        uint _totalWeight = _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(); // Get combined total weights (scope: vaults)
+        (uint256 weight, uint256 totalWeight) = _DAOVAULT.getMemberLPWeight(member); 
+        //neeed to consider BONDWEIGHT
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)) / erasToEarn; // Aim to deplete reserve over a number of days
         uint daoReward = (reserve * daoClaim) / 10000; // Get the DAO's share of that
-        return _UTILS.calcShare(weight, _totalWeight, daoReward); // Get users's share of that (1 era worth)
+        return _UTILS.calcShare(weight, totalWeight, daoReward); // Get users's share of that (1 era worth)
     }
 
     //================================ BOND Feature ==================================//
@@ -240,33 +237,39 @@ contract Dao is ReentrancyGuard{
 
     // List an asset to be enabled for Bonding
     function listBondAsset(address asset) external onlyDAO {
-        require(!isListed[asset], 'listed'); // Asset must not be listed for Bond
-        isListed[asset] = true; // Register as a bond-enabled asset
-        listedBondAssets.push(asset); // Add to historical record of past Bond assets
+        address _pool = _POOLFACTORY.getPool(asset);
+        require(!isListed[_pool], 'listed'); // Asset must not be listed for Bond
+        isListed[_pool] = true; // Register as a bond-enabled asset
+        listedBondPools.push(_pool); // Add to historical record of past Bond assets
         emit ListedAsset(msg.sender, asset);
     }
 
-    // Delist an asset from the Bond program
+    // Delist an asset from the Bond program (REFACTOR STORAGE TO MEMORY HERE FOR GAS OPT)
     function delistBondAsset(address asset) external onlyDAO {
-        require(isListed[asset], '!listed'); // Asset must be listed for Bond
-        isListed[asset] = false; // Unregister as bond-enabled asset
+        address _pool = _POOLFACTORY.getPool(asset);
+        require(isListed[_pool], '!listed'); // Asset must be listed for Bond
+        isListed[_pool] = false; // Unregister as a currently enabled asset
+        for(uint i = 0; i < listedBondPools.length; i++){
+            if(listedBondPools[i] == _pool){
+                listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
+                listedBondPools.pop(); // Remove the last element
+            }
+        }
         emit DelistedAsset(msg.sender, asset);
     }
 
     // User deposits assets to be Bonded
-    function bond(address asset, uint amount) external payable operational nonReentrant returns (bool success) {
+    function bond(address asset, uint256 amount) external payable operational nonReentrant returns (bool success) {
         require(amount > 0, '!amount'); // Amount must be valid
         require(isListed[asset], '!listed'); // Asset must be listed for Bond
+        address _pool = _POOLFACTORY.getPool(asset); // Get the pool address
         if (isMember[msg.sender] != true) {
             arrayMembers.push(msg.sender); // If user is not a member; add them to the member array
             isMember[msg.sender] = true; // Register user as a member
         }
-        if((_DAOVAULT.getMemberWeight(msg.sender) + _BONDVAULT.getMemberWeight(msg.sender)) > 0 && _RESERVE.emissions() == true) {
-            harvest(); // If member has existing weight; force harvest to block manipulation of lastTime + harvest
-        }
         uint256 liquidityUnits = _handleTransferIn(asset, amount); // Add liquidity and calculate LP units
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
-        _BONDVAULT.depositForMember(asset, msg.sender, liquidityUnits); // Deposit the Bonded LP units in the BondVault
+        _BONDVAULT.depositForMember(_pool, msg.sender, liquidityUnits); // Deposit the Bonded LP units in the BondVault
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
@@ -567,7 +570,7 @@ contract Dao is ReentrancyGuard{
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
         if(!isListed[_proposedAddress]){
             isListed[_proposedAddress] = true; // Register asset as listed for Bond
-            listedBondAssets.push(_proposedAddress); // Add asset to array of listed Bond assets
+            listedBondPools.push(_proposedAddress); // Add asset to array of listed Bond assets
         }
         completeProposal(_proposalID); // Finalise the proposal
     }
@@ -577,6 +580,12 @@ contract Dao is ReentrancyGuard{
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
         if(isListed[_proposedAddress]){
             isListed[_proposedAddress] = false; // Unregister asset as listed for Bond (Keep it in the array though; as this is used in the UI)
+            for(uint i = 0; i < listedBondPools.length; i++){
+                if(listedBondPools[i] == _proposedAddress){
+                    listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
+                    listedBondPools.pop(); // Remove the last element
+                }
+            }
         }
         completeProposal(_proposalID); // Finalise the proposal
     }
@@ -738,11 +747,11 @@ contract Dao is ReentrancyGuard{
     }
 
     function assetListedCount() external view returns (uint256 count){
-        return listedBondAssets.length;
+        return listedBondPools.length;
     }
 
     function allListedAssets() external view returns (address[] memory _allListedAssets){
-        return listedBondAssets;
+        return listedBondPools;
     }
     
     function isEqual(bytes memory part1, bytes memory part2) private pure returns(bool){

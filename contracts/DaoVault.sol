@@ -7,11 +7,11 @@ import "./iPOOL.sol";
 import "./iUTILS.sol";
 import "./iROUTER.sol";
 import "./iRESERVE.sol";
+import "./iPOOLFACTORY.sol";
 
 contract DaoVault {
     address public BASE;
     address public DEPLOYER;
-    uint256 public totalWeight; // Total weight of the whole DAOVault
 
     constructor(address _base) {
         require(_base != address(0), '!ZERO');
@@ -19,10 +19,11 @@ contract DaoVault {
         DEPLOYER = msg.sender;
     }
 
-    mapping(address => uint256) public mapMember_weight; // Member's total weight in DAOVault
+    // mapping(address => uint256) public mapMember_weight; // Member's total weight in DAOVault
     mapping(address => mapping(address => uint256)) public mapMemberPool_balance; // Member's LPs locked in DAOVault
+    mapping(address => uint256) public mapTOTALPool_balance; // LP's locked in DAOVault
     mapping(address => mapping(address => uint256)) public mapMember_depositTime; // Timestamp when user last deposited
-    mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Member's total weight in DOAVault (scope: pool)
+    // mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Member's total weight in DOAVault (scope: pool)
 
     // Restrict access
     modifier onlyDAO() {
@@ -37,32 +38,21 @@ contract DaoVault {
     // User despoits LP tokens in the DAOVault
     function depositLP(address pool, uint256 amount, address member) external onlyDAO returns (bool) {
         mapMemberPool_balance[member][pool] += amount; // Updated user's vault balance
-        increaseWeight(pool, member); // Recalculate user's DAOVault weights
+        mapTOTALPool_balance[pool] += amount;
+        mapMember_depositTime[member][pool] = block.timestamp; // Set user's new last-deposit-time
+        // increaseLPWeight(pool, member); // Recalculate user's DAOVault weights
         return true;
     }
 
     // Update a member's weight in the DAOVault (scope: pool)
-    function increaseWeight(address pool, address member) internal returns (uint256) {
+    function getMemberLPWeight(address member) external onlyDAO returns (uint256 memberWeight, uint256 totalWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
-        if (mapMemberPool_weight[member][pool] > 0) {
-            totalWeight -= mapMemberPool_weight[member][pool]; // Remove user's previous weight (scope: vault)
-            mapMember_weight[member] -= mapMemberPool_weight[member][pool]; // Remove user's previous weight (scope: member -> pool)
+        address [] memory vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).vaultAssets(); 
+        for(uint i =0; i< vaultAssets.length; i++){
+            memberWeight = iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapMemberPool_balance[member][vaultAssets[i]]); // Get user's current weight
+            totalWeight = iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapTOTALPool_balance[vaultAssets[i]]); // Get user's current weight
         }
-        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(iPOOL(pool).TOKEN(), mapMemberPool_balance[member][pool]); // Get user's current weight
-        mapMemberPool_weight[member][pool] = weight; // Set user's new weight (scope: member -> pool)
-        mapMember_weight[member] += weight; // Set user's new total weight (scope: member)
-        totalWeight += weight; // Add user's new weight to the total weight (scope: DAOVault)
-        mapMember_depositTime[member][pool] = block.timestamp; // Set user's new last-deposit-time
-        return weight;
-    }
-
-    // Update a member's weight in the DAOVault (scope: pool)
-    function decreaseWeight(address pool, address member) internal {
-        uint256 weight = mapMemberPool_weight[member][pool]; // Get user's previous weight
-        mapMemberPool_balance[member][pool] = 0; // Zero out user's balance (scope: member -> pool)
-        mapMemberPool_weight[member][pool] = 0; // Zero out user's weight (scope: member -> pool)
-        totalWeight -= weight; // Remove user's previous weight from the total weight (scope: DAOVault)
-        mapMember_weight[member] -= weight; // Remove user's previous weight from their total weight (scope: member)
+        return (memberWeight, totalWeight);
     }
 
     // Withdraw 100% of user's LPs from their DAOVault
@@ -70,23 +60,13 @@ contract DaoVault {
         require(block.timestamp > (mapMember_depositTime[member][pool] + 86400), '!unlocked'); // 1 day must have passed since last deposit (lockup period)
         uint256 _balance = mapMemberPool_balance[member][pool]; // Get user's whole balance (scope: member -> pool)
         require(_balance > 0, "!balance"); // Withdraw amount must be valid
-        decreaseWeight(pool, member); // Recalculate user's DAOVault weights
+        mapMemberPool_balance[member][pool] = 0; // Zero out user's balance (scope: member -> pool)
         require(iBEP20(pool).transfer(member, _balance), "!transfer"); // Transfer user's balance to their wallet
         return true;
-    }
-
-    // Get user's current total DAOVault weight
-    function getMemberWeight(address member) external view returns (uint256) {
-         return mapMember_weight[member];
     }
 
     // Get user's current balance of a chosen asset
     function getMemberPoolBalance(address pool, address member)  external view returns (uint256){
         return mapMemberPool_balance[member][pool];
-    }
-
-    // Get user's current DAOVault weight from a chosen asset
-    function getMemberPoolWeight(address pool, address member) external view returns (uint256){
-        return mapMemberPool_weight[member][pool];
     }
 }

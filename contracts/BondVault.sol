@@ -12,7 +12,6 @@ import "./iUTILS.sol";
 contract BondVault {
     address public BASE;
     address public DEPLOYER;
-    uint256 public totalWeight;
     bool private bondRelease;
     address [] public arrayMembers;
 
@@ -31,10 +30,9 @@ contract BondVault {
         uint256 lastBlockTime;
     }
 
-    mapping(address => ListedAssets) public mapBondAsset_memberDetails;
+    mapping(address => ListedAssets) public mapBondedAmount_memberDetails;
     mapping(address => bool) public isBondMember;
-    mapping(address => uint256) public mapMember_weight; // Value of users weight (scope: user)
-    mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Value of users weight (scope: pool)
+    mapping(address => uint256) public mapTOTALPool_balance; // LP's locked in DAOVault
 
     constructor (address _base) {
         require(_base != address(0), '!ZERO');
@@ -59,70 +57,65 @@ contract BondVault {
         return iBASE(BASE).DAO();
     }
 
-    // Deposit LPs in the BondVault for a user (Called from DAO)
-    function depositForMember(address asset, address member, uint LPS) external onlyDAO returns(bool){
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get the pool address
-        if(!mapBondAsset_memberDetails[asset].isAssetMember[member]){
-            mapBondAsset_memberDetails[asset].isAssetMember[member] = true; // Register user as member (scope: user -> asset
-            mapBondAsset_memberDetails[asset].members.push(member); // Add user to member array (scope: user -> asset)
+    // Deposit amount in the BondVault for a user (Called from DAO)
+    function depositForMember(address _pool, address member, uint amount) external onlyDAO returns(bool){
+        if(!mapBondedAmount_memberDetails[_pool].isAssetMember[member]){
+            mapBondedAmount_memberDetails[_pool].isAssetMember[member] = true; // Register user as member (scope: user -> asset
+            mapBondedAmount_memberDetails[_pool].members.push(member); // Add user to member array (scope: user -> asset)
         }
         if(!isBondMember[member]){
             isBondMember[member] = true;
             arrayMembers.push(member); // Add user to member array (scope: vault)
         }
-        if(mapBondAsset_memberDetails[asset].bondedLP[member] != 0){
-            claimForMember(asset, member); // Force claim if member has an existing remainder
+        if(mapBondedAmount_memberDetails[_pool].bondedLP[member] != 0){
+            claimForMember(_pool, member); // Force claim if member has an existing remainder
         }
-        mapBondAsset_memberDetails[asset].bondedLP[member] += LPS; // Add new deposit to users remainder
-        mapBondAsset_memberDetails[asset].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
-        mapBondAsset_memberDetails[asset].claimRate[member] = mapBondAsset_memberDetails[asset].bondedLP[member] / iDAO(_DAO().DAO()).bondingPeriodSeconds(); // Set claim rate per second
-        updateWeight(asset, member, _pool); // Update user's weight
+        mapBondedAmount_memberDetails[_pool].bondedLP[member] += amount; // Add new deposit to users remainder
+        mapBondedAmount_memberDetails[_pool].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
+        mapBondedAmount_memberDetails[_pool].claimRate[member] = mapBondedAmount_memberDetails[_pool].bondedLP[member] / iDAO(_DAO().DAO()).bondingPeriodSeconds(); // Set claim rate per second
+        mapTOTALPool_balance[_pool] += amount;
         return true;
     }
 
 
     // Calculate the user's current available claim amount
-    function calcBondedLP(address member, address asset) public view returns (uint claimAmount){ 
-        if(mapBondAsset_memberDetails[asset].isAssetMember[member]){
-            uint256 _secondsSinceClaim = block.timestamp - mapBondAsset_memberDetails[asset].lastBlockTime[member]; // Get seconds passed since last claim
-            uint256 rate = mapBondAsset_memberDetails[asset].claimRate[member]; // Get user's claim rate
+    function calcBondedLP(address member, address _pool) public view returns (uint claimAmount){ 
+        if(mapBondedAmount_memberDetails[_pool].isAssetMember[member]){
+            uint256 _secondsSinceClaim = block.timestamp - mapBondedAmount_memberDetails[_pool].lastBlockTime[member]; // Get seconds passed since last claim
+            uint256 rate = mapBondedAmount_memberDetails[_pool].claimRate[member]; // Get user's claim rate
             claimAmount = _secondsSinceClaim * rate; // Set claim amount
-            if(claimAmount >= mapBondAsset_memberDetails[asset].bondedLP[member] || bondRelease){
-                claimAmount = mapBondAsset_memberDetails[asset].bondedLP[member]; // If final claim; set claimAmount as remainder
+            if(claimAmount >= mapBondedAmount_memberDetails[_pool].bondedLP[member] || bondRelease){
+                claimAmount = mapBondedAmount_memberDetails[_pool].bondedLP[member]; // If final claim; set claimAmount as remainder
             }
             return claimAmount;
         }
     }
 
     // Perform a claim of the users's current available claim amount (Called from DAO)
-    function claimForMember(address asset, address member) public onlyDAO returns (bool){
-        require(mapBondAsset_memberDetails[asset].bondedLP[member] > 0, '!bonded'); // They must have remaining unclaimed LPs
-        require(mapBondAsset_memberDetails[asset].isAssetMember[member], '!member'); // They must be a member (scope: user -> asset)
-        uint256 _claimable = calcBondedLP(member, asset); // Get the current claimable amount
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get the pool address
+    function claimForMember(address _pool, address member) public onlyDAO returns (bool){
+        require(mapBondedAmount_memberDetails[_pool].bondedLP[member] > 0, '!bonded'); // They must have remaining unclaimed LPs
+        require(mapBondedAmount_memberDetails[_pool].isAssetMember[member], '!member'); // They must be a member (scope: user -> asset)
+        uint256 _claimable = calcBondedLP(member, _pool); // Get the current claimable amount
         require(_pool != address(0), "!POOL"); // Must be a valid pool
-        mapBondAsset_memberDetails[asset].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
-        mapBondAsset_memberDetails[asset].bondedLP[member] -= _claimable; // Remove the claim amount from the user's remainder
-        if (mapBondAsset_memberDetails[asset].bondedLP[member] == 0){ // Equality enforced in calcBondedLP()
-            mapBondAsset_memberDetails[asset].claimRate[member] = 0; // If final claim; zero-out their claimRate
+        mapBondedAmount_memberDetails[_pool].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
+        mapBondedAmount_memberDetails[_pool].bondedLP[member] -= _claimable; // Remove the claim amount from the user's remainder
+        if (mapBondedAmount_memberDetails[_pool].bondedLP[member] == 0){ // Equality enforced in calcBondedLP()
+            mapBondedAmount_memberDetails[_pool].claimRate[member] = 0; // If final claim; zero-out their claimRate
         }
-        updateWeight(asset, member, _pool); // Update user's weight
+        mapTOTALPool_balance[_pool] -= _claimable;
         iBEP20(_pool).transfer(member, _claimable); // Send claim amount to user
         return true;
     }
 
-    // Update user's weight in the BondVault
-    function updateWeight(address asset, address member, address pool) internal{
+    // Update a member's weight in the DAOVault (scope: pool)
+    function getMemberLPWeight(address member) external onlyDAO returns (uint256 memberWeight, uint256 totalWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
-        require(pool != address(0), "!POOL"); // Must be a valid pool
-        if (mapMemberPool_weight[member][pool] > 0) {
-            totalWeight -= mapMemberPool_weight[member][pool]; // Remove user weight from totalWeight (scope: vault)
-            mapMember_weight[member] -= mapMemberPool_weight[member][pool]; // Remove user weight from totalWeight (scope: user)
+        address [] memory listedBondPools = iDAO(_DAO().DAO()).listedBondPools();
+        for(uint i = 0; i < listedBondPools.length; i++){
+            memberWeight = iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapBondedAmount_memberDetails[listedBondPools[i]].bondedLP[member]); // Get user's current weight
+            totalWeight = iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapTOTALPool_balance[listedBondPools[i]]); // Get user's current weight
         }
-        uint256 weight = iUTILS(_DAO().UTILS()).getPoolShareWeight(asset, mapBondAsset_memberDetails[asset].bondedLP[member]); // Calculate user's bonded weight
-        mapMemberPool_weight[member][pool] = weight; // Set new weight (scope: user -> pool)
-        mapMember_weight[member] += weight; // Add new weight to totalWeight (scope: user)
-        totalWeight += weight; // Add new weight to totalWeight (scope: vault)
+        return (memberWeight, totalWeight);
     }
 
     // Get the total count of all existing & past BondVault members
@@ -140,21 +133,16 @@ contract BondVault {
     }
 
     // Get a bond details (scope: user -> asset)
-    function getMemberDetails(address member, address asset) external view returns (MemberDetails memory memberDetails){
-        memberDetails.isMember = mapBondAsset_memberDetails[asset].isAssetMember[member];
-        memberDetails.bondedLP = mapBondAsset_memberDetails[asset].bondedLP[member];
-        memberDetails.claimRate = mapBondAsset_memberDetails[asset].claimRate[member];
-        memberDetails.lastBlockTime = mapBondAsset_memberDetails[asset].lastBlockTime[member];
+    function getMemberDetails(address member, address _pool) external view returns (MemberDetails memory memberDetails){
+        memberDetails.isMember = mapBondedAmount_memberDetails[_pool].isAssetMember[member];
+        memberDetails.bondedLP = mapBondedAmount_memberDetails[_pool].bondedLP[member];
+        memberDetails.claimRate = mapBondedAmount_memberDetails[_pool].claimRate[member];
+        memberDetails.lastBlockTime = mapBondedAmount_memberDetails[_pool].lastBlockTime[member];
         return memberDetails;
     }
 
-    // Get a users's totalWeight (scope: user)
-    function getMemberWeight(address member) external view returns (uint256) {
-            return mapMember_weight[member];
-    } 
-
-    // Get user's current DAOVault weight from a chosen asset
-    function getMemberPoolWeight(address pool, address member) external view returns (uint256){
-        return mapMemberPool_weight[member][pool];
+    // Get user's current balance of a chosen asset
+    function getMemberPoolBalance(address _pool, address member)  external view returns (uint256){
+        return mapBondedAmount_memberDetails[_pool].bondedLP[member];
     }
 }
