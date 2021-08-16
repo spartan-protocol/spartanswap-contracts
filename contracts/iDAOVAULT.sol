@@ -8,4 +8,5 @@ interface iDAOVAULT{
   function depositLP(address, uint, address) external;
   function withdraw(address, address) external returns (bool);
   function totalWeight() external view returns (uint);
+  function mapTotalPool_balance(address) external view returns (uint);
 }
