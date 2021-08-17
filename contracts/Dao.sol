@@ -333,8 +333,6 @@ contract Dao is ReentrancyGuard{
 
     // New DAO proposal: Simple action
     function newActionProposal(string memory typeStr) external returns(uint) {
-        bytes memory _type = bytes(typeStr); // Get the proposal type
-        require(isEqual(_type, 'FLIP_EMISSIONS') || isEqual(_type, 'GET_SPARTA'), '!TYPE');
         checkProposal(); // If no open proposal; construct new one
         payFee(daoFee * 10**18); // Pay SPARTA fee for new proposal
         mapPID_type[currentProposal] = typeStr; // Set the proposal type
@@ -345,8 +343,6 @@ contract Dao is ReentrancyGuard{
     // New DAO proposal: uint parameter
     function newParamProposal(uint256 param, string memory typeStr) external returns(uint) {
         require(param > 0, "!param"); // Param must be valid
-        bytes memory _type = bytes(typeStr); // Get the proposal type
-        require(isEqual(_type, 'COOL_OFF') || isEqual(_type, 'ERAS_TO_EARN'), '!TYPE');
         checkProposal(); // If no open proposal; construct new one
         payFee(daoFee * 10**18); // Pay SPARTA fee for new proposal
         mapPID_param[currentProposal] = param; // Set the proposed parameter
@@ -358,14 +354,8 @@ contract Dao is ReentrancyGuard{
     // New DAO proposal: Address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) external returns(uint) {
         bytes memory _type = bytes(typeStr); // Get the proposal type
-        address _pool = _POOLFACTORY.getPool(proposedAddress);
         if (isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE')) {
             require(proposedAddress != address(0), "!address"); // Proposed address must be valid
-        } else if (isEqual(_type, 'LIST_BOND') || isEqual(_type, 'REMOVE_CURATED_POOL')) {
-            require(_POOLFACTORY.isCuratedPool(_pool), '!CURATED');
-        } else {
-            require(isEqual(_type, 'DELIST_BOND') || isEqual(_type, 'ADD_CURATED_POOL'), '!TYPE');
-            require(_pool != address(0), '!CURATED');
         }
         checkProposal(); // If no open proposal; construct new one
         payFee(daoFee * 10**18); // Pay SPARTA fee for new proposal
@@ -598,7 +588,9 @@ contract Dao is ReentrancyGuard{
     // Add a pool as 'Curated' to enable synths, weight and incentives
     function _addCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
-        _POOLFACTORY.addCuratedPool(_proposedAddress); // Add the pool as Curated
+        if (!isListed[_proposedAddress]) {
+            _POOLFACTORY.addCuratedPool(_proposedAddress); // Add the pool as Curated
+        }
         completeProposal(_proposalID); // Finalise the proposal
     }
 
