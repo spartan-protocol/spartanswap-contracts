@@ -9,6 +9,7 @@ import "./iDAOVAULT.sol";
 import "./iROUTER.sol";
 import "./iSYNTH.sol"; 
 import "./iSYNTHFACTORY.sol"; 
+import "hardhat/console.sol";
 
 contract Pool is iBEP20, ReentrancyGuard {  
     address public BASE;
@@ -187,13 +188,15 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Contract removes liquidity for the user
     function removeForMember(address member) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
-        require(block.timestamp > (genesis + initiationPeriod), '!INITIATED');
+         require(block.timestamp > (genesis + initiationPeriod), '!INITIATED');
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS());
         outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
         outputToken = _utils.calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
         _decrementPoolBalances(outputBase, outputToken); // Update recorded BASE and TOKEN amounts
         _burn(address(this), _actualInputUnits); // Burn the LP tokens
+        console.log('BASE ', outputBase/10**18);
+        console.log('TKN ', outputToken/10**18);
         iBEP20(BASE).transfer(member, outputBase); // Transfer the SPARTA to user
         iBEP20(TOKEN).transfer(member, outputToken); // Transfer the TOKENs to user
         emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);

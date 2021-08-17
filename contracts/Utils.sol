@@ -2,6 +2,7 @@
 pragma solidity 0.8.3;
 import "./iBASE.sol";
 import "./iPOOLFACTORY.sol";
+import "./iSYNTHFACTORY.sol";
 import "./iPOOL.sol";
 import "./iSYNTH.sol";
 import "./iBEP20.sol";
@@ -51,6 +52,9 @@ contract Utils {
     function getPool(address token) public view returns(address pool){
         return iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
     }
+    function getSynth(address token) public view returns(address synth){
+        return iSYNTHFACTORY(_DAO().SYNTHFACTORY()).getSynth(token);
+    }
 
     //================================== CORE-MATH ==================================//
     
@@ -82,6 +86,7 @@ contract Utils {
             // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
             // P * (part1 + part2) / (part3) * slipAdjustment
             uint slipAdjustment = getSlipAdjustment(b, B, t, T);
+            require(slipAdjustment > (9.8 * 10**17));
             uint part1 = t * B;     // tokenInput * baseDepth
             uint part2 = T * b;     // tokenDepth * baseInput
             uint part3 = T * B * 2; // tokenDepth * baseDepth * 2
@@ -152,53 +157,39 @@ contract Utils {
 
     function calcSpotValueInBase(address token, uint amount) external view returns (uint value){
         address pool = getPool(token);
-        return calcSpotValueInBaseWithPool(pool, amount);
-    }
-
-    function calcSpotValueInToken(address token, uint amount) external view returns (uint value){
-        address pool = getPool(token);
-        return calcSpotValueInTokenWithPool(pool, amount);
+        address synth = getSynth(token);
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        uint _synthSupply;
+         if(synth != address(0)){ // Must be a valid Synth
+          _synthSupply = iBEP20(synth).totalSupply(); // Get the synth supply
+        } 
+        require(_tokenAmount > 0, '!DIVISION');
+        return (amount * _baseAmount) / (_tokenAmount - _synthSupply);
     }
 
     function calcSwapValueInBase(address token, uint amount) external view returns (uint _output){
         address pool = getPool(token);
-        return  calcSwapValueInBaseWithPool(pool, amount);
-    }
-
-    function calcSwapValueInBaseWithSYNTH(address synth, uint amount) external view returns (uint _output){
-        address pool = iSYNTH(synth).POOL();
-        return  calcSwapValueInBaseWithPool(pool, amount);
+        address synth = getSynth(token);
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        uint _synthSupply;
+        if(synth != address(0)){ // Must be a valid Synth
+          _synthSupply = iBEP20(synth).totalSupply(); // Get the synth supply
+        } 
+        return  calcSwapOutput(amount, (_tokenAmount - _synthSupply), _baseAmount);
     }
 
     function calcSwapValueInToken(address token, uint amount) external view returns (uint _output){
         address pool = getPool(token);
-        return  calcSwapValueInTokenWithPool(pool, amount);
-    }
-
-    function calcSpotValueInBaseWithPool(address pool, uint amount) public view returns (uint value){
+        address synth = getSynth(token);
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
-        require(_tokenAmount > 0, '!DIVISION');
-        return (amount * _baseAmount) / _tokenAmount;
-    }
-
-    function calcSpotValueInTokenWithPool(address pool, uint amount) public view returns (uint value){
-        uint _baseAmount = iPOOL(pool).baseAmount();
-        uint _tokenAmount = iPOOL(pool).tokenAmount();
-        require(_baseAmount > 0, '!DIVISION');
-        return (amount* _tokenAmount) / _baseAmount;
-    }
-
-    function calcSwapValueInBaseWithPool(address pool, uint amount) public view returns (uint _output){
-        uint _baseAmount = iPOOL(pool).baseAmount();
-        uint _tokenAmount = iPOOL(pool).tokenAmount();
-        return  calcSwapOutput(amount, _tokenAmount, _baseAmount);
-    }
-
-    function calcSwapValueInTokenWithPool(address pool, uint amount) public view returns (uint _output){
-        uint _baseAmount = iPOOL(pool).baseAmount();
-        uint _tokenAmount = iPOOL(pool).tokenAmount();
-        return  calcSwapOutput(amount, _baseAmount, _tokenAmount);
+        uint _synthSupply;
+        if(synth != address(0)){ // Must be a valid Synth
+          _synthSupply = iBEP20(synth).totalSupply(); // Get the synth supply
+        } 
+        return  calcSwapOutput(amount, _baseAmount, (_tokenAmount - _synthSupply));
     }
 
     function calcActualSynthUnits(uint amount, address synth) external view returns (uint _output) {

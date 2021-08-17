@@ -73,7 +73,7 @@ contract BondVault {
         mapBondedAmount_memberDetails[_pool].bondedLP[member] += amount; // Add new deposit to users remainder
         mapBondedAmount_memberDetails[_pool].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
         mapBondedAmount_memberDetails[_pool].claimRate[member] = mapBondedAmount_memberDetails[_pool].bondedLP[member] / iDAO(_DAO().DAO()).bondingPeriodSeconds(); // Set claim rate per second
-        mapTotaLPool_balance[_pool] += amount;
+        mapTotalPool_balance[_pool] += amount;
         return true;
     }
 
@@ -102,7 +102,7 @@ contract BondVault {
         if (mapBondedAmount_memberDetails[_pool].bondedLP[member] == 0){ // Equality enforced in calcBondedLP()
             mapBondedAmount_memberDetails[_pool].claimRate[member] = 0; // If final claim; zero-out their claimRate
         }
-        mapTotaLPool_balance[_pool] -= _claimable;
+        mapTotalPool_balance[_pool] -= _claimable;
         iBEP20(_pool).transfer(member, _claimable); // Send claim amount to user
         return true;
     }
@@ -113,7 +113,7 @@ contract BondVault {
         address [] memory listedBondPools = iDAO(_DAO().DAO()).listedBondPools();
         for(uint i = 0; i < listedBondPools.length; i++){
             memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapBondedAmount_memberDetails[listedBondPools[i]].bondedLP[member]); // Get user's current weight
-            totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapTotaLPool_balance[listedBondPools[i]]); // Get user's current weight
+            totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapTotalPool_balance[listedBondPools[i]]); // Get user's current weight
         }
         return (memberWeight, totalWeight);
     }

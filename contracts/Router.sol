@@ -43,20 +43,64 @@ contract Router is ReentrancyGuard {
     }
 
     // User adds liquidity
-    function addLiquidity(uint inputBase, uint inputToken, address token) external payable{
-        addLiquidityForMember(inputBase, inputToken, token, msg.sender);
+    function addLiquidity(uint inputToken, address token) external payable{
+        addLiquidityForMember(inputToken, token, msg.sender);
     }
 
     // Contract adds liquidity for user
-    function addLiquidityForMember(uint inputBase, uint inputToken, address token, address member) public payable{
+    function addLiquidityForMember(uint inputToken, address token, address member) public payable{
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);  // Get pool address
-        require(inputBase > 0 || inputToken > 0, '!VALID');
+        require(inputToken > 0, '!VALID');
         require(pool != address(0), "!POOL"); // Must be a valid pool
-        _handleTransferIn(BASE, inputBase, pool); // Transfer SPARTA to pool
+        uint256 baseAmount = iUTILS(_DAO().UTILS()).calcSwapValueInBase(token, inputToken);
+        _handleTransferIn(BASE, baseAmount, pool); // Transfer SPARTA to pool
         _handleTransferIn(token, inputToken, pool); // Transfer TOKEN to pool
         Pool(pool).addForMember(member); // Add liquidity to pool for user
         safetyTrigger(pool);
     }
+
+    function addLiquidityAsym(uint input, bool fromBase, address token) external payable{
+        addLiquidityAsymForMember(input, fromBase, token, msg.sender);
+    }
+
+    function addLiquidityAsymForMember(uint _input, bool _fromBase, address _token, address _member) public {
+        require(_input > 0, '!VALID');
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token); // Get pool address
+        require(_pool != address(0), "!POOL"); // Must be a valid pool
+        _handleTransferIn(_token, _input, address(this)); // Transfer SPARTA into pool
+        uint fee;
+        if(_fromBase){
+            _handleTransferOut(BASE, (_input / 2), _pool); // Transfer SPARTA into pool
+            if(_token != address(0)){
+                (, uint feey) = Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA to TOKEN 
+                fee = feey;
+                _handleTransferOut(_token, iBEP20(_token).balanceOf(address(this)), _pool);
+            } else {
+                (uint output, uint feez) = Pool(_pool).swapTo(WBNB, address(this)); // Swap SPARTA to WBNB
+                _handleTransferOut(WBNB, output, _pool); // Unwrap to BNB
+                fee = feez;
+            }
+            _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _pool);
+        } else {
+            _handleTransferOut(_token, (_input / 2), _pool); // Transfer TOKEN into pool
+             if(_token != address(0)){
+                 (, uint feex) = Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN to SPARTA 
+                 fee = feex;
+                 _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _pool);
+                 _handleTransferOut(_token, iBEP20(_token).balanceOf(address(this)), _pool);
+             } else {
+                 (, uint feez) = Pool(_pool).swapTo(BASE, address(this)); // Swap WBNB to Sparta
+                _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _pool); // Unwrap to BNB 
+                fee = feez;
+                _handleTransferOut(WBNB, iBEP20(WBNB).balanceOf(address(this)), _pool);
+             }
+        }
+
+        Pool(_pool).addForMember(_member); // Add liquidity and send LPs to user
+        safetyTrigger(_pool);
+        getsDividend(_pool, fee); // Check for dividend & tsf it to pool
+    }
+
 
     // Trade LP tokens for another type of LP tokens
     function zapLiquidity(uint unitsInput, address fromPool, address toPool) external {
@@ -74,25 +118,6 @@ contract Router is ReentrancyGuard {
         Pool(toPool).addForMember(_member); // Add liquidity and send the LPs to user
         safetyTrigger(fromPool);
         safetyTrigger(toPool);
-    }
-
-    // User adds liquidity asymetrically (one asset)
-    function addLiquiditySingle(uint inputToken, bool fromBase, address token) external payable{
-        addLiquiditySingleForMember(inputToken, fromBase, token, msg.sender);
-    }
-
-    // Contract adds liquidity asymetrically for user (one asset)
-    function addLiquiditySingleForMember(uint inputToken, bool fromBase, address token, address member) public payable{
-        require(inputToken > 0); // Must be valid input amount
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
-        require(_pool != address(0), "!POOL"); // Must be a valid pool
-        if(fromBase){
-            _handleTransferIn(BASE, inputToken, _pool); // Transfer SPARTA into pool
-        } else {
-            _handleTransferIn(token, inputToken, _pool); // Transfer TOKEN into pool
-        }
-        Pool(_pool).addForMember(member); // Add liquidity and send LPs to user
-        safetyTrigger(_pool);
     }
 
     // User removes liquidity - redeems a percentage of their balance
@@ -121,8 +146,7 @@ contract Router is ReentrancyGuard {
         safetyTrigger(_pool);
     }
 
-    // User removes liquidity asymetrically (one asset)
-    function removeLiquiditySingle(uint units, bool toBase, address token) external{
+    function removeLiquidityAsym(uint units, bool toBase, address token) external {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         require(_pool != address(0), "!POOL"); // Must be a valid pool
@@ -144,6 +168,7 @@ contract Router is ReentrancyGuard {
         safetyTrigger(_pool);
     }
 
+ 
     //============================== Swapping Functions ====================================//
     
     // Swap SPARTA for TOKEN

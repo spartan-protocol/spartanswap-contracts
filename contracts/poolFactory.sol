@@ -72,7 +72,6 @@ contract PoolFactory {
     // Can create pools initially with no liquidity (not public)
     function createPool(address token) external onlyDAO returns(address pool){
         require(getPool(token) == address(0), '!NEW'); // Must not have a valid pool address yet
-        require(token != BASE && iBEP20(token).decimals() == 18, '!DECIMALS'); // Token must not be SPARTA & it's decimals must be 18
         Pool newPool; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         newPool = new Pool(BASE, _token); // Deploy new pool

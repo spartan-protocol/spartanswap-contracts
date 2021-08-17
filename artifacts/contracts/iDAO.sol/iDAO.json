@@ -44,6 +44,19 @@
     },
     {
       "inputs": [],
+      "name": "LEND",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "POOLFACTORY",
       "outputs": [
         {
@@ -84,6 +97,19 @@
     {
       "inputs": [],
       "name": "SYNTHFACTORY",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "SYNTHVAULT",
       "outputs": [
         {
           "internalType": "address",
@@ -140,6 +166,19 @@
       ],
       "name": "depositForMember",
       "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "listedBondPools",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "",
+          "type": "address[]"
+        }
+      ],
       "stateMutability": "nonpayable",
       "type": "function"
     }

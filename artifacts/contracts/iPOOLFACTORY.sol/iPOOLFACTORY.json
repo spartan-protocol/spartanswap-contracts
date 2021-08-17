@@ -37,7 +37,7 @@
     },
     {
       "inputs": [],
-      "name": "getCuratedPoolsLength",
+      "name": "curatedPoolCount",
       "outputs": [
         {
           "internalType": "uint256",
@@ -57,25 +57,6 @@
         }
       ],
       "name": "getPool",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "getPoolArray",
       "outputs": [
         {
           "internalType": "address",
@@ -177,6 +158,19 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "vaultAssets",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "",
+          "type": "address[]"
         }
       ],
       "stateMutability": "view",

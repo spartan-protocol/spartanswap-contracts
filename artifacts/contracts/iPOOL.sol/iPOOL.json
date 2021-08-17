@@ -104,6 +104,13 @@
     },
     {
       "inputs": [],
+      "name": "sync",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "tokenAmount",
       "outputs": [
         {
