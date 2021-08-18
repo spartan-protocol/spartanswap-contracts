@@ -159,7 +159,6 @@ contract Utils {
         address pool = getPool(token);
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
-        
         require(_tokenAmount > 0, '!DIVISION');
         return (amount * _baseAmount) / _tokenAmount;
     }
@@ -168,7 +167,6 @@ contract Utils {
         address pool = getPool(token);
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
-      
         return  calcSwapOutput(amount, _tokenAmount, _baseAmount);
     }
 

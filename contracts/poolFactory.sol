@@ -54,33 +54,22 @@ contract PoolFactory {
         require(token != address(0), '!VALID'); // Must not be BNB; should already be listed (via createPool)
         require(getPool(token) == address(0), '!NEW'); // Must not have a valid pool address yet
         require((inputToken > 0 && inputBase >= (10000*10**18)), "!MIN"); // User must add at least 10,000 SPARTA liquidity & ratio must be finite
-        Pool newPool;
-        require(token != BASE && iBEP20(token).decimals() == 18, '!DECIMALS'); // Token must not be SPARTA & it's decimals must be 18
-        newPool = new Pool(BASE, token); // Deploy new pool
-        pool = address(newPool); // Get address of new pool
-        mapToken_Pool[token] = pool; // Record the new pool address in PoolFactory
-        _handleTransferIn(BASE, inputBase, pool); // Transfer SPARTA liquidity to new pool
-        _handleTransferIn(token, inputToken, pool); // Transfer TOKEN liquidity to new pool
-        arrayPools.push(pool); // Add pool address to the pool array
-        arrayTokens.push(token); // Add token to the listed array
-        isListedPool[pool] = true; // Record pool as currently listed
-        emit CreatePool(token, pool); // Emit CreatePool before the AddLiquidity event for cleaner subgraph code
-        Pool(pool).addForMember(msg.sender); // Perform the liquidity-add for the user
-        return pool;
-    }
-
-    // Can create pools initially with no liquidity (not public)
-    function createPool(address token) external onlyDAO returns(address pool){
-        require(getPool(token) == address(0), '!NEW'); // Must not have a valid pool address yet
         Pool newPool; address _token = token;
-        if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
+        if(token == address(0)){
+            _token = WBNB;// Handle BNB -> WBNB
+        }else {
+            require(token != BASE && iBEP20(token).decimals() == 18, '!DECIMALS');// Token must not be SPARTA & it's decimals must be 18
+        } 
         newPool = new Pool(BASE, _token); // Deploy new pool
         pool = address(newPool); // Get address of new pool
         mapToken_Pool[_token] = pool; // Record the new pool address in PoolFactory
+        _handleTransferIn(BASE, inputBase, pool); // Transfer SPARTA liquidity to new pool
+        _handleTransferIn(_token, inputToken, pool); // Transfer TOKEN liquidity to new pool
         arrayPools.push(pool); // Add pool address to the pool array
         arrayTokens.push(_token); // Add token to the listed array
         isListedPool[pool] = true; // Record pool as currently listed
-        emit CreatePool(_token, pool);
+        emit CreatePool(_token, pool); // Emit CreatePool before the AddLiquidity event for cleaner subgraph code
+        Pool(pool).addForMember(msg.sender); // Perform the liquidity-add for the user
         return pool;
     }
 

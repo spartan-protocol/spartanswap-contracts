@@ -312,8 +312,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint256 _X = baseAmount;
         uint256 _Y = tokenAmount;
         iUTILS _utils = iUTILS(_DAO().UTILS());
-        _y =  _utils.calcSwapOutput(_x, _X, _Y); // Calc TOKEN output (virtualised tokenDepth - synthSupply)
-        uint fee = _utils.calcSwapFee(_x, _X, _Y); // Calc TOKEN fee (virtualised tokenDepth - synthSupply)
+        _y =  _utils.calcSwapOutput(_x, _X, _Y); // Calc TOKEN output 
+        uint fee = _utils.calcSwapFee(_x, _X, _Y); // Calc TOKEN fee 
         _fee = _utils.calcSpotValueInBase(TOKEN, fee); // Convert TOKEN fee to SPARTA
         _setPoolAmounts(_X + _x, _Y - _y); // Update recorded BASE and TOKEN amounts
         _addPoolMetrics(_fee); // Add slip fee to the revenue metrics
@@ -325,8 +325,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint256 _X = tokenAmount;
         uint256 _Y = baseAmount;
         iUTILS _utils = iUTILS(_DAO().UTILS());
-        _y = _utils.calcSwapOutput(_x, _X, _Y); // Calc SPARTA output (virtualised tokenDepth - synthSupply)
-        _fee = _utils.calcSwapFee(_x, _X, _Y); // Calc SPARTA fee (virtualised tokenDepth - synthSupply)
+        _y = _utils.calcSwapOutput(_x, _X, _Y); // Calc SPARTA output 
+        _fee = _utils.calcSwapFee(_x, _X, _Y); // Calc SPARTA fee 
         _setPoolAmounts(_Y - _y, _X + _x); // Update recorded BASE and TOKEN amounts
         _addPoolMetrics(_fee); // Add slip fee to the revenue metrics
         return (_y, _fee);
