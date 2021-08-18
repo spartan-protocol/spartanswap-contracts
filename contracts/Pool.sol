@@ -232,18 +232,20 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint256 _synthSupply = iBEP20(synthOut).totalSupply();
         uint256 minDebt = minSynth * tokenAmount / 10000;
         uint256 minCollateral = minSynth * baseAmount / 10000;
+        uint256 _collateral = collateral;
         if(_synthSupply < minDebt){
             _synthSupply = minDebt;
         }
-        if(collateral < minCollateral){
-           collateral = minCollateral + _actualInputBase;
+        if(_collateral < minCollateral){
+           _collateral = minCollateral;
         }
-        outputAmount = _utils.calcSwapOutput(_actualInputBase, (baseAmount + collateral), (tokenAmount - _synthSupply)); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
+        outputAmount = _utils.calcSwapOutput(_actualInputBase, (baseAmount + _collateral), (tokenAmount - _synthSupply)); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
         uint256 synthsCap = tokenAmount * poolCAP / 10000; 
+        collateral += _actualInputBase;
         require((outputAmount + _synthSupply) < synthsCap, 'CAPPED');
         uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
-        uint _fee = _utils.calcSwapFee(_actualInputBase, (baseAmount + collateral), (tokenAmount - _synthSupply)); // Calc slip fee in TOKEN
+        uint _fee = _utils.calcSwapFee(_actualInputBase, (baseAmount + _collateral), (tokenAmount - _synthSupply)); // Calc slip fee in TOKEN
         fee = _utils.calcSpotValueInBase(TOKEN, _fee); // Convert TOKEN fee to SPARTA
         _mint(synthOut, _liquidityUnits); // Mint the LP tokens directly to the Synth contract to hold
         iSYNTH(synthOut).mintSynth(member, outputAmount); // Mint the Synth tokens directly to the user
@@ -261,15 +263,17 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
         uint256 minDebt = minSynth * tokenAmount / 10000;
         uint256 minCollateral = minSynth * baseAmount / 10000;
+        uint256 _collateral = collateral;
         if(_synthSupply < minDebt){
             _synthSupply = minDebt;
         }
-        collateral -= _actualInputSynth * collateral  / _synthSupply;
-        if(collateral < minCollateral){
-           collateral = minCollateral;
+        
+        if(_collateral < minCollateral){
+           _collateral = minCollateral;
         }
-        uint outputBase = _utils.calcSwapOutput(_actualInputSynth, (tokenAmount - _synthSupply), (baseAmount + collateral)); // Calculate value of swapping relevant underlying TOKEN to SPARTA
-        fee = _utils.calcSwapFee(_actualInputSynth, (tokenAmount - _synthSupply), (baseAmount + collateral)); // Calc slip fee in SPARTA
+        uint outputBase = _utils.calcSwapOutput(_actualInputSynth, (tokenAmount - _synthSupply), (baseAmount + _collateral)); // Calculate value of swapping relevant underlying TOKEN to SPARTA
+        fee = _utils.calcSwapFee(_actualInputSynth, (tokenAmount - _synthSupply), (baseAmount + _collateral)); // Calc slip fee in SPARTA
+        collateral -= _actualInputSynth * collateral  / _synthSupply;
         _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the SYNTH units 
