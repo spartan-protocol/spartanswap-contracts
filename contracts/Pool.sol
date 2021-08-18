@@ -198,8 +198,6 @@ contract Pool is iBEP20, ReentrancyGuard {
         outputToken = _utils.calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
         _decrementPoolBalances(outputBase, outputToken); // Update recorded BASE and TOKEN amounts
         _burn(address(this), _actualInputUnits); // Burn the LP tokens
-        console.log('BASE ', outputBase/10**18);
-        console.log('TKN ', outputToken/10**18);
         iBEP20(BASE).transfer(member, outputBase); // Transfer the SPARTA to user
         iBEP20(TOKEN).transfer(member, outputToken); // Transfer the TOKENs to user
         emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
@@ -417,8 +415,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         require(_newRTC <= (baseCAP * 2), '!MAX');
         baseCAP = _newRTC;
     }
-    function minSynth(uint256 _newMinimum) external onlyPROTOCOL {
-        require(_newMinimum >= 500, '!MAX');
+    function minimumSynth(uint256 _newMinimum) external onlyPROTOCOL {
+        require(_newMinimum >= 500|| _newMinimum <= 3000, '!VALID');
         minSynth = _newMinimum;
     }
 

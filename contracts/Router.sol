@@ -360,6 +360,9 @@ contract Router is ReentrancyGuard {
     function RTC(uint poolRTC, address _pool) external onlyDAO {
         Pool(_pool).RTC(poolRTC);
     }
+    function changeMinimumSynth(uint newMinimum, address _pool) external onlyDAO {
+         Pool(_pool).minimumSynth(newMinimum);
+    }
 
     function safetyTrigger(address _pool) internal {
         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool)){
