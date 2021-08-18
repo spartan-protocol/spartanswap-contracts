@@ -191,7 +191,7 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Contract removes liquidity for the user
     function removeForMember(address member) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
-         require(block.timestamp > (genesis + initiationPeriod), '!INITIATED');
+        require(block.timestamp > (genesis + initiationPeriod), '!INITIATED');
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS());
         outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units

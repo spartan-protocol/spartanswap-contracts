@@ -52,7 +52,7 @@ contract Router is ReentrancyGuard {
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);  // Get pool address
         require(inputToken > 0, '!VALID');
         require(pool != address(0), "!POOL"); // Must be a valid pool
-        uint256 baseAmount = iUTILS(_DAO().UTILS()).calcSwapValueInBase(token, inputToken); //Won't work for the first ADD
+        uint256 baseAmount = iUTILS(_DAO().UTILS()).calcSwapValueInBase(token, inputToken); 
         _handleTransferIn(BASE, baseAmount, pool); // Transfer SPARTA to pool
         _handleTransferIn(token, inputToken, pool); // Transfer TOKEN to pool
         Pool(pool).addForMember(member); // Add liquidity to pool for user
