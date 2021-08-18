@@ -157,39 +157,26 @@ contract Utils {
 
     function calcSpotValueInBase(address token, uint amount) external view returns (uint value){
         address pool = getPool(token);
-        address synth = getSynth(token);
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
-        uint _synthSupply;
-         if(synth != address(0)){ // Must be a valid Synth
-          _synthSupply = iBEP20(synth).totalSupply(); // Get the synth supply
-        } 
+        
         require(_tokenAmount > 0, '!DIVISION');
-        return (amount * _baseAmount) / (_tokenAmount - _synthSupply);
+        return (amount * _baseAmount) / _tokenAmount;
     }
 
     function calcSwapValueInBase(address token, uint amount) external view returns (uint _output){
         address pool = getPool(token);
-        address synth = getSynth(token);
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
-        uint _synthSupply;
-        if(synth != address(0)){ // Must be a valid Synth
-          _synthSupply = iBEP20(synth).totalSupply(); // Get the synth supply
-        } 
-        return  calcSwapOutput(amount, (_tokenAmount - _synthSupply), _baseAmount);
+      
+        return  calcSwapOutput(amount, _tokenAmount, _baseAmount);
     }
 
     function calcSwapValueInToken(address token, uint amount) external view returns (uint _output){
         address pool = getPool(token);
-        address synth = getSynth(token);
         uint _baseAmount = iPOOL(pool).baseAmount();
         uint _tokenAmount = iPOOL(pool).tokenAmount();
-        uint _synthSupply;
-        if(synth != address(0)){ // Must be a valid Synth
-          _synthSupply = iBEP20(synth).totalSupply(); // Get the synth supply
-        } 
-        return  calcSwapOutput(amount, _baseAmount, (_tokenAmount - _synthSupply));
+        return  calcSwapOutput(amount, _baseAmount, _tokenAmount);
     }
 
     function calcActualSynthUnits(uint amount, address synth) external view returns (uint _output) {
