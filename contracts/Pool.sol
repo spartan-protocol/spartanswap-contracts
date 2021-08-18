@@ -21,6 +21,8 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint256 private freezePoint;
     bool public freeze;
     uint256 public initiationPeriod;
+    uint256 public collateral;
+    uint public minSynth; 
 
     string _name; string _symbol;
     uint8 public override immutable decimals; uint256 public override totalSupply;
@@ -79,6 +81,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         baseCAP = 100000;
         period = block.timestamp;
         initiationPeriod = 604800;
+        minSynth = 500;
     }
 
     //========================================iBEP20=========================================//
@@ -229,12 +232,20 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
         require((baseAmount + _actualInputBase) < baseCAP, "RTC");
         uint256 _synthSupply = iBEP20(synthOut).totalSupply();
-        outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount - _synthSupply); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
+        uint256 minDebt = minSynth * tokenAmount / 10000;
+        uint256 minCollateral = minSynth * baseAmount / 10000;
+        if(_synthSupply < minDebt){
+            _synthSupply = minDebt;
+        }
+        if(collateral < minCollateral){
+           collateral = minCollateral + _actualInputBase;
+        }
+        outputAmount = _utils.calcSwapOutput(_actualInputBase, (baseAmount + collateral), (tokenAmount - _synthSupply)); // Calculate value of swapping SPARTA to the relevant underlying TOKEN
         uint256 synthsCap = tokenAmount * poolCAP / 10000; 
         require((outputAmount + _synthSupply) < synthsCap, 'CAPPED');
         uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
-        uint _fee = _utils.calcSwapFee(_actualInputBase, baseAmount, tokenAmount - _synthSupply); // Calc slip fee in TOKEN
+        uint _fee = _utils.calcSwapFee(_actualInputBase, (baseAmount + collateral), (tokenAmount - _synthSupply)); // Calc slip fee in TOKEN
         fee = _utils.calcSpotValueInBase(TOKEN, _fee); // Convert TOKEN fee to SPARTA
         _mint(synthOut, _liquidityUnits); // Mint the LP tokens directly to the Synth contract to hold
         iSYNTH(synthOut).mintSynth(member, outputAmount); // Mint the Synth tokens directly to the user
@@ -250,8 +261,17 @@ contract Pool is iBEP20, ReentrancyGuard {
         iUTILS _utils = iUTILS(_DAO().UTILS());
         uint256 _synthSupply = iBEP20(synthIN).totalSupply();
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
-        uint outputBase = _utils.calcSwapOutput(_actualInputSynth, tokenAmount - _synthSupply, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA
-        fee = _utils.calcSwapFee(_actualInputSynth, tokenAmount - _synthSupply, baseAmount); // Calc slip fee in SPARTA
+        uint256 minDebt = minSynth * tokenAmount / 10000;
+        uint256 minCollateral = minSynth * baseAmount / 10000;
+        if(_synthSupply < minDebt){
+            _synthSupply = minDebt;
+        }
+        collateral -= _actualInputSynth * collateral  / _synthSupply;
+        if(collateral < minCollateral){
+           collateral = minCollateral;
+        }
+        uint outputBase = _utils.calcSwapOutput(_actualInputSynth, (tokenAmount - _synthSupply), (baseAmount + collateral)); // Calculate value of swapping relevant underlying TOKEN to SPARTA
+        fee = _utils.calcSwapFee(_actualInputSynth, (tokenAmount - _synthSupply), (baseAmount + collateral)); // Calc slip fee in SPARTA
         _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the SYNTH units 
@@ -287,16 +307,11 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Calculate output of swapping SPARTA for TOKEN & update recorded amounts
     function _swapBaseToToken(uint256 _x) internal returns (uint256 _y, uint256 _fee){
-        address synth = _SYNTH(); // Get the synth address
-        uint256 _synthSupply = 0; 
         uint256 _X = baseAmount;
         uint256 _Y = tokenAmount;
-        if(synth != address(0)){ // Must be a valid Synth
-            _synthSupply = iBEP20(synth).totalSupply(); // Get the synth supply
-        } 
         iUTILS _utils = iUTILS(_DAO().UTILS());
-        _y =  _utils.calcSwapOutput(_x, _X, _Y - _synthSupply); // Calc TOKEN output (virtualised tokenDepth - synthSupply)
-        uint fee = _utils.calcSwapFee(_x, _X, _Y - _synthSupply); // Calc TOKEN fee (virtualised tokenDepth - synthSupply)
+        _y =  _utils.calcSwapOutput(_x, _X, _Y); // Calc TOKEN output (virtualised tokenDepth - synthSupply)
+        uint fee = _utils.calcSwapFee(_x, _X, _Y); // Calc TOKEN fee (virtualised tokenDepth - synthSupply)
         _fee = _utils.calcSpotValueInBase(TOKEN, fee); // Convert TOKEN fee to SPARTA
         _setPoolAmounts(_X + _x, _Y - _y); // Update recorded BASE and TOKEN amounts
         _addPoolMetrics(_fee); // Add slip fee to the revenue metrics
@@ -305,16 +320,11 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Calculate output of swapping TOKEN for SPARTA & update recorded amounts
     function _swapTokenToBase(uint256 _x) internal returns (uint256 _y, uint256 _fee){
-        address synth = _SYNTH(); // Get the synth address
-        uint256 _synthSupply = 0; 
         uint256 _X = tokenAmount;
         uint256 _Y = baseAmount;
-        if(synth != address(0)){ // Must be a valid Synth
-            _synthSupply = iBEP20(synth).totalSupply(); // Get the synth supply
-        } 
         iUTILS _utils = iUTILS(_DAO().UTILS());
-        _y = _utils.calcSwapOutput(_x, _X - _synthSupply, _Y); // Calc SPARTA output (virtualised tokenDepth - synthSupply)
-        _fee = _utils.calcSwapFee(_x, _X - _synthSupply, _Y); // Calc SPARTA fee (virtualised tokenDepth - synthSupply)
+        _y = _utils.calcSwapOutput(_x, _X, _Y); // Calc SPARTA output (virtualised tokenDepth - synthSupply)
+        _fee = _utils.calcSwapFee(_x, _X, _Y); // Calc SPARTA fee (virtualised tokenDepth - synthSupply)
         _setPoolAmounts(_Y - _y, _X + _x); // Update recorded BASE and TOKEN amounts
         _addPoolMetrics(_fee); // Add slip fee to the revenue metrics
         return (_y, _fee);
@@ -406,6 +416,10 @@ contract Pool is iBEP20, ReentrancyGuard {
     function RTC(uint256 _newRTC) external onlyPROTOCOL {
         require(_newRTC <= (baseCAP * 2), '!MAX');
         baseCAP = _newRTC;
+    }
+    function minSynth(uint256 _newMinimum) external onlyPROTOCOL {
+        require(_newMinimum >= 500, '!MAX');
+        minSynth = _newMinimum;
     }
 
     function setFreezePoint(uint256 _newFreezePoint) external onlyPROTOCOL {
