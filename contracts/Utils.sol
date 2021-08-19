@@ -163,6 +163,13 @@ contract Utils {
         return (amount * _baseAmount) / _tokenAmount;
     }
 
+     function calcSpotValueInBaseWithSynth(address synth, uint amount) external view returns (uint value){
+        address pool = iSYNTH(synth).POOL();
+        uint _baseAmount = iPOOL(pool).baseAmount();
+        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        require(_tokenAmount > 0, '!DIVISION');
+        return (amount * _baseAmount) / _tokenAmount;
+    }
     function calcSwapValueInBase(address token, uint amount) external view returns (uint _output){
         address pool = getPool(token);
         uint _baseAmount = iPOOL(pool).baseAmount();

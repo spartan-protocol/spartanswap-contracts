@@ -49,8 +49,8 @@ contract DaoVault {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         address [] memory vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).vaultAssets(); 
         for(uint i =0; i< vaultAssets.length; i++){
-            memberWeight = iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapMemberPool_balance[member][vaultAssets[i]]); // Get user's current weight
-            totalWeight = iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapTotalPool_balance[vaultAssets[i]]); // Get user's current weight
+            memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapMemberPool_balance[member][vaultAssets[i]]); // Get user's current weight
+            totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapTotalPool_balance[vaultAssets[i]]); // Get user's current weight
         }
         return (memberWeight, totalWeight);
     }
