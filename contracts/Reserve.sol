@@ -17,6 +17,7 @@ contract Reserve {
     }
 
     constructor (address _base) {
+        require(_base != address(0), '!ZERO');
         BASE = _base;
         DEPLOYER = msg.sender;
     }

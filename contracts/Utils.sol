@@ -12,6 +12,7 @@ contract Utils {
     uint private constant one = 10**18;
 
     constructor (address _base) {
+        require(_base != address(0), '!ZERO');
         BASE = _base;
     }
 

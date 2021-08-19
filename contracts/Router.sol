@@ -27,6 +27,8 @@ contract Router is ReentrancyGuard {
     }
 
     constructor (address _base, address _wbnb) {
+        require(_base != address(0), '!ZERO');
+        require(_wbnb != address(0), '!ZERO');
         BASE = _base;
         WBNB = _wbnb;
         feeAllocation = 100;
