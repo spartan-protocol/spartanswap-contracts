@@ -82,6 +82,7 @@ contract SynthVault {
 
     // Contract deposits Synths in the SynthVault for user
     function deposit(address synth, uint256 amount) external {
+        require(amount > 0, '!VALID'); // Must be a valid amount
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth');
         require(iBEP20(synth).transferFrom(msg.sender, address(this), amount)); // Must successfuly transfer in
         _deposit(synth, msg.sender, amount); // Assess and record the deposit

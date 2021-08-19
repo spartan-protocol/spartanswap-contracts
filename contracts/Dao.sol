@@ -190,6 +190,7 @@ contract Dao is ReentrancyGuard{
     // User withdraws all of their selected asset from the DAOVault
     function withdraw(address pool) external operational weightChange {
         uint256 amount = _DAOVAULT.mapMemberPool_balance(msg.sender, pool);
+        require(amount > 0, "!amount"); // Withdraw amount must be valid (for event reduction)
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // User receives their withdrawal
         emit MemberWithdraws(msg.sender, pool, amount);
     }
@@ -407,9 +408,11 @@ contract Dao is ReentrancyGuard{
         require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
         require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == false, "VOTED");
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
-        _addVotes(_currentProposal); // Add votes to current proposal
+        bool nonZero = _addVotes(_currentProposal); // Add votes to current proposal
         mapPIDMember_hasVoted[_currentProposal][msg.sender] = true;
-        emit NewVote(msg.sender, _currentProposal, string(_type));
+        if (nonZero) {
+            emit NewVote(msg.sender, _currentProposal, string(_type));
+        }
     }
 
     // Remove vote from a proposal
@@ -418,9 +421,11 @@ contract Dao is ReentrancyGuard{
         require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
         require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == true, "!VOTED");
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
-        _removeVotes(_currentProposal); // Remove votes from current proposal
+        bool nonZero = _removeVotes(_currentProposal); // Remove votes from current proposal
         mapPIDMember_hasVoted[_currentProposal][msg.sender] = false;
-        emit RemovedVote(msg.sender, _currentProposal, string(_type));
+        if (nonZero) {
+            emit RemovedVote(msg.sender, _currentProposal, string(_type));
+        }
     }
 
     // Poll vote weights and check if proposal is ready to go into finalisation stage
@@ -449,6 +454,7 @@ contract Dao is ReentrancyGuard{
     // Attempt to cancel the open proposal
     function cancelProposal() operational external {
         uint _currentProposal = currentProposal;
+        require(mapPID_open[_currentProposal], "!OPEN"); // Proposal must be open
         require(block.timestamp > (mapPID_startTime[_currentProposal] + 1296000), "!days"); // Proposal must not be new
         address [] memory votingAssets =  _POOLFACTORY.vaultAssets();
         for(uint i = 0; i < votingAssets.length; i++){
@@ -634,23 +640,25 @@ contract Dao is ReentrancyGuard{
     //============================== CONSENSUS ================================//
     
     // User stakes all their vault assets for a proposal
-    function _addVotes(uint _currentProposal) internal {
+    function _addVotes(uint _currentProposal) internal returns (bool nonZero) {
         address [] memory votingAssets = _POOLFACTORY.vaultAssets();
         for(uint i = 0; i < votingAssets.length; i++){
             uint unitsAdded = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender);
             if (unitsAdded > 0) {
                 mapPIDAsset_votes[_currentProposal][votingAssets[i]] += unitsAdded;
+                nonZero = true;
             }
         }
     }
 
     // User removes their vault staked assets from a proposal
-    function _removeVotes(uint _currentProposal) internal {
+    function _removeVotes(uint _currentProposal) internal returns (bool nonZero) {
         address [] memory votingAssets = _POOLFACTORY.vaultAssets();
         for(uint i = 0; i < votingAssets.length; i++){
             uint unitsRemoved = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender);
             if (unitsRemoved > 0) {
                 mapPIDAsset_votes[_currentProposal][votingAssets[i]] -= unitsRemoved;
+                nonZero = true;
             }
         }
     }

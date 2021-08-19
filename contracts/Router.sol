@@ -50,7 +50,6 @@ contract Router is ReentrancyGuard {
     // Contract adds liquidity for user
     function addLiquidityForMember(uint inputToken, address token, address member) public payable{
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);  // Get pool address
-        require(inputToken > 0, '!VALID');
         require(pool != address(0), "!POOL"); // Must be a valid pool
         uint256 baseAmount = iUTILS(_DAO().UTILS()).calcSwapValueInBase(token, inputToken); 
         _handleTransferIn(BASE, baseAmount, pool); // Transfer SPARTA to pool
@@ -64,7 +63,6 @@ contract Router is ReentrancyGuard {
     }
 
     function addLiquidityAsymForMember(uint _input, bool _fromBase, address _token, address _member) public {
-        require(_input > 0, '!VALID');
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token); // Get pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         _handleTransferIn(_token, _input, address(this)); // Transfer SPARTA into pool
@@ -103,13 +101,14 @@ contract Router is ReentrancyGuard {
 
     // User removes liquidity - redeems a percentage of their balance
     function removeLiquidity(uint basisPoints, address token) external{
-        require((basisPoints > 0)); // Must be valid basis points, calcPart() handles the upper-check
+        require(basisPoints > 0, '!VALID'); // Must be valid basis points, calcPart() handles the upper-check
         uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token)).balanceOf(msg.sender));
         removeLiquidityExact(_units, token);
     }
 
     // User removes liquidity - redeems exact qty of LP tokens
     function removeLiquidityExact(uint units, address token) public {
+        require(units > 0, '!VALID'); // Must be a valid amount
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get the pool address
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         require(_pool != address(0), "!POOL"); // Must be a valid pool
@@ -128,6 +127,7 @@ contract Router is ReentrancyGuard {
     }
 
     function removeLiquidityAsym(uint units, bool toBase, address token) external {
+        require(units > 0, '!VALID'); // Must be a valid amount
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         require(_pool != address(0), "!POOL"); // Must be a valid pool
@@ -215,6 +215,7 @@ contract Router is ReentrancyGuard {
     
     // Swap TOKEN to Synth
     function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) external payable {
+        require(inputAmount > 0, '!VALID'); // Must be a valid amount
         require(fromToken != toSynth); // Tokens must not be the same
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
@@ -232,6 +233,7 @@ contract Router is ReentrancyGuard {
    
     // Swap Synth to TOKEN
     function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external {
+        require(inputAmount > 0, '!VALID'); // Must be a valid amount
         require(fromSynth != toToken); // Tokens must not be the same
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         address _poolIN = iSYNTH(fromSynth).POOL(); // Get underlying pool address
@@ -263,15 +265,15 @@ contract Router is ReentrancyGuard {
     
     // Handle the transfer of assets into the pool
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal {
-      require(_amount > 0, '!GAS');
-            if(_token == address(0)){
-                require((_amount == msg.value));
-                (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
-                require(success, "!send");
-                iBEP20(WBNB).transfer(_pool, _amount); // Transfer WBNB from ROUTER to pool
-            } else {
-                iBEP20(_token).transferFrom(msg.sender, _pool, _amount); // Transfer TOKEN to pool
-            }
+        require(_amount > 0, '!GAS');
+        if(_token == address(0)){
+            require((_amount == msg.value));
+            (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
+            require(success, "!send");
+            iBEP20(WBNB).transfer(_pool, _amount); // Transfer WBNB from ROUTER to pool
+        } else {
+            iBEP20(_token).transferFrom(msg.sender, _pool, _amount); // Transfer TOKEN to pool
+        }
     }
 
     // Handle the transfer of assets out of the ROUTER
