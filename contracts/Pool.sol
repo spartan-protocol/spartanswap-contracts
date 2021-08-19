@@ -144,7 +144,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         require(recipient != address(0), '!BURN');
         uint256 senderBalance = _balances[sender];
         require(senderBalance >= amount, "!balance");
-        _balances[sender] -= amount;
+        _balances[sender] = senderBalance - amount;
         _balances[recipient] += amount;
         emit Transfer(sender, recipient, amount);
     }
@@ -162,8 +162,9 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     function _burn(address account, uint256 amount) internal virtual {
         require(account != address(0), "!account");
-        require(_balances[account] >= amount, "!balance");
-        _balances[account] -= amount;
+        uint256 accountBalance = _balances[account];
+        require(accountBalance >= amount, "!balance");
+        _balances[account] = accountBalance - amount;
         totalSupply -= amount;
         emit Transfer(account, address(0), amount);
     }
