@@ -56,7 +56,7 @@ contract Router is ReentrancyGuard {
         _handleTransferIn(BASE, baseAmount, pool); // Transfer SPARTA to pool
         _handleTransferIn(token, inputToken, pool); // Transfer TOKEN to pool
         Pool(pool).addForMember(member); // Add liquidity to pool for user
-        safetyTrigger(pool);
+        _safetyTrigger(pool);
     }
 
     function addLiquidityAsym(uint input, bool fromBase, address token) external payable{
@@ -79,7 +79,7 @@ contract Router is ReentrancyGuard {
              _handleTransferOut(_token, iBEP20(_token).balanceOf(address(this)), _pool);
         }
         Pool(_pool).addForMember(_member); // Add liquidity and send LPs to user
-        safetyTrigger(_pool);
+        _safetyTrigger(_pool);
     }
 
 
@@ -97,8 +97,8 @@ contract Router is ReentrancyGuard {
         Pool(fromPool).swapTo(BASE, toPool); // Swap the received TOKENs for SPARTA then transfer to the toPool
         iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to toPool
         Pool(toPool).addForMember(_member); // Add liquidity and send the LPs to user
-        safetyTrigger(fromPool);
-        safetyTrigger(toPool);
+        _safetyTrigger(fromPool);
+        _safetyTrigger(toPool);
     }
 
     // User removes liquidity - redeems a percentage of their balance
@@ -124,7 +124,7 @@ contract Router is ReentrancyGuard {
             _handleTransferOut(token, outputToken, _member); // Unwrap to BNB & tsf it to user
             _handleTransferOut(BASE, outputBase, _member); // Transfer SPARTA to user
         }
-        safetyTrigger(_pool);
+        _safetyTrigger(_pool);
     }
 
     function removeLiquidityAsym(uint units, bool toBase, address token) external {
@@ -146,7 +146,7 @@ contract Router is ReentrancyGuard {
             Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA for TOKEN & transfer to ROUTER
             _handleTransferOut(token, iBEP20(_token).balanceOf(address(this)), _member); // Send TOKEN to user
         } 
-        safetyTrigger(_pool);
+        _safetyTrigger(_pool);
     }
 
  
@@ -168,8 +168,8 @@ contract Router is ReentrancyGuard {
             _handleTransferOut(token, output, member); // Unwrap to BNB & tsf to user
             fee = feez;
         }
-        safetyTrigger(_pool);
-        getsDividend(_pool, fee); // Check for dividend & tsf it to pool
+        _safetyTrigger(_pool);
+        _getsDividend(_pool, fee); // Check for dividend & tsf it to pool
     }
 
     // Swap TOKEN for SPARTA
@@ -179,8 +179,8 @@ contract Router is ReentrancyGuard {
         _handleTransferIn(token, amount, _pool); // Transfer TOKEN to pool
         (uint output, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA & transfer to user
         require(output > minAmount, '!RATE');
-        safetyTrigger(_pool);
-        getsDividend(_pool, fee); // Check for dividend & tsf it to pool
+        _safetyTrigger(_pool);
+        _getsDividend(_pool, fee); // Check for dividend & tsf it to pool
         return fee;
     }
 
@@ -205,8 +205,8 @@ contract Router is ReentrancyGuard {
             (uint _zz, uint _feez) = Pool(_poolTo).swapTo(_toToken, address(this)); // Swap SPARTA to TOKEN & tsf to ROUTER
             require(_zz > minAmount, '!RATE');
             uint fee = feey + _feez; // Get total slip fees
-            safetyTrigger(_poolTo);
-            getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
+            _safetyTrigger(_poolTo);
+            _getsDividend(_poolTo, fee); // Check for dividend & tsf it to pool
             _handleTransferOut(toToken, iBEP20(_toToken).balanceOf(address(this)), member); // Transfer TOKEN to user
         }
     }
@@ -226,8 +226,8 @@ contract Router is ReentrancyGuard {
             iBEP20(BASE).transferFrom(msg.sender, _pool, inputAmount); // Transfer SPARTA from ROUTER to pool
         }
         (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Mint synths & tsf to user
-        safetyTrigger(_pool);
-        getsDividend(_pool, fee); // Check and tsf dividend to pool
+        _safetyTrigger(_pool);
+        _getsDividend(_pool, fee); // Check and tsf dividend to pool
     }
    
     // Swap Synth to TOKEN
@@ -253,9 +253,9 @@ contract Router is ReentrancyGuard {
                 fee = feez + fee;
             }
         }
-        safetyTrigger(_poolIN);
-        safetyTrigger(_pool);
-        getsDividend(_pool, fee); // Check and tsf dividend to pool
+        _safetyTrigger(_poolIN);
+        _safetyTrigger(_pool);
+        _getsDividend(_pool, fee); // Check and tsf dividend to pool
     }
     
 
@@ -290,26 +290,26 @@ contract Router is ReentrancyGuard {
     
     //============================= Token Dividends / Curated Pools =================================//
     // Check if fee should generate a dividend & send it to the pool
-    function getsDividend(address _pool, uint fee) internal {
+    function _getsDividend(address _pool, uint fee) internal {
         if(fee > 10**18 && iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
-            addDividend(_pool, fee); // Check and tsf dividend to pool
+            _addDividend(_pool, fee); // Check and tsf dividend to pool
         }
     }
 
     // Calculate the Dividend and transfer it to the pool
-    function addDividend(address _pool, uint256 _fees) internal {
+    function _addDividend(address _pool, uint256 _fees) internal {
         uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
             if(reserve > 0){
                 uint256 _dividendReward = (reserve * diviClaim)/curatedPoolsCount/10000; // Get the dividend share 
                 if((mapAddress_30DayDividends[_pool] + _fees) < _dividendReward){
-                    revenueDetails(_fees, _pool); // Add to revenue metrics
+                    _revenueDetails(_fees, _pool); // Add to revenue metrics
                     iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Transfer dividend from RESERVE to POOL
                     Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
                 }
             }
     }
 
-    function revenueDetails(uint _fees, address _pool) internal {
+    function _revenueDetails(uint _fees, address _pool) internal {
         if(lastMonth == 0){
             lastMonth = block.timestamp;
         }
@@ -345,7 +345,7 @@ contract Router is ReentrancyGuard {
          Pool(_pool).minimumSynth(newMinimum);
     }
 
-    function safetyTrigger(address _pool) internal {
+    function _safetyTrigger(address _pool) internal {
         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool)){
             if(Pool(_pool).freeze()){
                 iRESERVE(_DAO().RESERVE()).setGlobalFreeze(true);   

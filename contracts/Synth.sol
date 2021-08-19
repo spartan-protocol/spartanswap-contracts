@@ -10,7 +10,8 @@ contract Synth is iBEP20 {
     uint public immutable genesis;
     uint256 public collateral;
 
-    string _name; string _symbol;
+    string private _name;
+    string private _symbol;
     uint8 public override decimals;
     uint256 public override totalSupply;
 

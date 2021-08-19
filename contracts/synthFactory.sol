@@ -30,13 +30,13 @@ contract SynthFactory {
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         newSynth = new Synth(BASE, _token, _pool); // Deploy synth asset contract
         synth = address(newSynth); // Get new synth's address
-        addSynth(_token, synth); // Record new synth contract with the SynthFactory
+        _addSynth(_token, synth); // Record new synth contract with the SynthFactory
         emit CreateSynth(_token, _pool, synth);
         return synth;
     }
 
     // Record synth with the SynthFactory
-    function addSynth(address _token, address _synth) internal {
+    function _addSynth(address _token, address _synth) internal {
         require(_token != BASE); // Must not be SPARTA
         mapToken_Synth[_token] = _synth; // Record synth address
         arraySynths.push(_synth); // Add synth address to the array

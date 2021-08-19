@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Dao is ReentrancyGuard{
     address public DEPLOYER;
-    address public BASE;
+    address public immutable BASE;
     bool public retire;
     bool public running;
 
@@ -112,11 +112,11 @@ contract Dao is ReentrancyGuard{
         uint _currentProposal = currentProposal; // Get current proposal ID
         bool _recount = mapPID_open[_currentProposal] && mapPIDMember_hasVoted[_currentProposal][msg.sender]; // Check proposal is open and user has already voted
         if (_recount) {
-            removeVotes(_currentProposal); // Remove user's votes from proposal
+            _removeVotes(_currentProposal); // Remove user's votes from proposal
         }
         _;
         if (_recount) {
-            addVotes(_currentProposal); // Add user's new votes to proposal
+            _addVotes(_currentProposal); // Add user's new votes to proposal
         }
     }
 
@@ -129,7 +129,7 @@ contract Dao is ReentrancyGuard{
         majorityFactor = 6666;
         daoClaim = 1000;
         daoFee = 100;
-        secondsPerEra = iBASE(BASE).secondsPerEra();
+        secondsPerEra = iBASE(_base).secondsPerEra();
         running = false;
     }
 
@@ -306,13 +306,13 @@ contract Dao is ReentrancyGuard{
     // User claims all of their unlocked Bonded LPs
     function claimAll(address [] memory bondAssets) external operational weightChange returns (bool){
         for(uint i = 0; i < bondAssets.length; i++){
-            claim(bondAssets[i]);
+            _claim(bondAssets[i]);
         }
         return true;
     }
 
     // User claims unlocked Bond units of a selected asset (keep internal; otherwise add weightChange modifier)
-    function claim(address asset) internal operational returns (bool){
+    function _claim(address asset) internal operational returns (bool){
         uint claimA = calcClaimBondedLP(msg.sender, asset); // Check user's unlocked Bonded LPs
         if(claimA > 0){
             _BONDVAULT.claimForMember(asset, msg.sender); // Claim LPs if any unlocked
@@ -335,8 +335,8 @@ contract Dao is ReentrancyGuard{
 
     // New DAO proposal: Simple action
     function newActionProposal(string memory typeStr) external {
-        uint _currentProposal = checkProposal(); // If no open proposal; construct new one
-        payFee(); // Pay SPARTA fee for new proposal
+        uint _currentProposal = _checkProposal(); // If no open proposal; construct new one
+        _payFee(); // Pay SPARTA fee for new proposal
         mapPID_type[_currentProposal] = typeStr; // Set the proposal type
         emit NewProposal(msg.sender, _currentProposal, typeStr);
     }
@@ -344,8 +344,8 @@ contract Dao is ReentrancyGuard{
     // New DAO proposal: uint parameter
     function newParamProposal(uint256 param, string memory typeStr) external {
         require(param > 0, "!param"); // Param must be valid
-        uint _currentProposal = checkProposal(); // If no open proposal; construct new one
-        payFee(); // Pay SPARTA fee for new proposal
+        uint _currentProposal = _checkProposal(); // If no open proposal; construct new one
+        _payFee(); // Pay SPARTA fee for new proposal
         mapPID_param[_currentProposal] = param; // Set the proposed parameter
         mapPID_type[_currentProposal] = typeStr; // Set the proposal type
         emit NewProposal(msg.sender, _currentProposal, typeStr);
@@ -357,8 +357,8 @@ contract Dao is ReentrancyGuard{
         if (isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE')) {
             require(proposedAddress != address(0), "!address"); // Proposed address must be valid
         }
-        uint _currentProposal = checkProposal(); // If no open proposal; construct new one
-        payFee(); // Pay SPARTA fee for new proposal
+        uint _currentProposal = _checkProposal(); // If no open proposal; construct new one
+        _payFee(); // Pay SPARTA fee for new proposal
         mapPID_address[_currentProposal] = proposedAddress; // Set the proposed new address
         mapPID_type[_currentProposal] = typeStr; // Set the proposal type
         emit NewProposal(msg.sender, _currentProposal, typeStr);
@@ -370,8 +370,8 @@ contract Dao is ReentrancyGuard{
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)); // Get total BASE balance of RESERVE
         uint daoReward = (reserve * daoClaim) / 10000; // Get DAO's share of BASE balance of RESERVE (max user claim amount)
         require((amount > 0) && (amount < daoReward), "!AMOUNT"); // Proposed grant amount must be valid
-        uint _currentProposal = checkProposal(); // If no open proposal; construct new one
-        payFee(); // Pay SPARTA fee for new proposal
+        uint _currentProposal = _checkProposal(); // If no open proposal; construct new one
+        _payFee(); // Pay SPARTA fee for new proposal
         string memory typeStr = "GRANT";
         mapPID_type[_currentProposal] = typeStr; // Set the proposal type
         mapPID_address[_currentProposal] = recipient; // Set the proposed grant recipient
@@ -380,7 +380,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // If no existing open DAO proposal; register a new one
-    function checkProposal() internal operational isRunning returns(uint) {
+    function _checkProposal() internal operational isRunning returns(uint) {
         require(_RESERVE.globalFreeze() != true, '');
         uint _currentProposal = currentProposal;
         require(mapPID_open[_currentProposal] == false, '!open'); // There must not be an existing open proposal
@@ -393,7 +393,7 @@ contract Dao is ReentrancyGuard{
     }
     
     // Pay a DAO fee
-    function payFee() internal returns(bool){
+    function _payFee() internal returns(bool){
         require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), daoFee * 10**18), '!fee'); // User pays the DAO fee
         return true;
     } 
@@ -407,7 +407,7 @@ contract Dao is ReentrancyGuard{
         require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
         require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == false, "VOTED");
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
-        addVotes(_currentProposal); // Add votes to current proposal
+        _addVotes(_currentProposal); // Add votes to current proposal
         mapPIDMember_hasVoted[_currentProposal][msg.sender] = true;
         emit NewVote(msg.sender, _currentProposal, string(_type));
     }
@@ -418,7 +418,7 @@ contract Dao is ReentrancyGuard{
         require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
         require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == true, "!VOTED");
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
-        removeVotes(_currentProposal); // Remove votes from current proposal
+        _removeVotes(_currentProposal); // Remove votes from current proposal
         mapPIDMember_hasVoted[_currentProposal][msg.sender] = false;
         emit RemovedVote(msg.sender, _currentProposal, string(_type));
     }
@@ -471,21 +471,21 @@ contract Dao is ReentrancyGuard{
         } else {
             bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
             if(isEqual(_type, 'DAO')){
-                moveDao(_currentProposal);
+                _moveDao(_currentProposal);
             } else if (isEqual(_type, 'ROUTER')) {
-                moveRouter(_currentProposal);
+                _moveRouter(_currentProposal);
             } else if (isEqual(_type, 'UTILS')){
-                moveUtils(_currentProposal);
+                _moveUtils(_currentProposal);
             } else if (isEqual(_type, 'RESERVE')){
-                moveReserve(_currentProposal);
+                _moveReserve(_currentProposal);
             } else if (isEqual(_type, 'FLIP_EMISSIONS')){
-                flipEmissions(_currentProposal);
+                _flipEmissions(_currentProposal);
             } else if (isEqual(_type, 'COOL_OFF')){
-                changeCooloff(_currentProposal);
+                _changeCooloff(_currentProposal);
             } else if (isEqual(_type, 'ERAS_TO_EARN')){
-                changeEras(_currentProposal);
+                _changeEras(_currentProposal);
             } else if (isEqual(_type, 'GRANT')){
-                grantFunds(_currentProposal);
+                _grantFunds(_currentProposal);
             } else if (isEqual(_type, 'GET_SPARTA')){
                 _increaseSpartaAllocation(_currentProposal);
             } else if (isEqual(_type, 'LIST_BOND')){
@@ -497,74 +497,74 @@ contract Dao is ReentrancyGuard{
             } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
                 _removeCuratedPool(_currentProposal);
             } else {
-                completeProposal(_currentProposal); // If no match; close proposal
+                _completeProposal(_currentProposal); // If no match; close proposal
             }
         }
     }
 
     // Change the DAO to a new contract address
-    function moveDao(uint _proposalID) internal {
+    function _moveDao(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
         DAO = _proposedAddress; // Change the DAO to point to the new DAO address
         iBASE(BASE).changeDAO(_proposedAddress); // Change the BASE contract to point to the new DAO address
         daoHasMoved = true; // Set status of this old DAO
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change the ROUTER to a new contract address
-    function moveRouter(uint _proposalID) internal {
+    function _moveRouter(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
         _ROUTER = iROUTER(_proposedAddress); // Change the DAO to point to the new ROUTER address
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change the UTILS to a new contract address
-    function moveUtils(uint _proposalID) internal {
+    function _moveUtils(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
         _UTILS = iUTILS(_proposedAddress); // Change the DAO to point to the new UTILS address
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change the RESERVE to a new contract address
-    function moveReserve(uint _proposalID) internal {
+    function _moveReserve(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
         _RESERVE = iRESERVE(_proposedAddress); // Change the DAO to point to the new RESERVE address
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Flip the BASE emissions on/off
-    function flipEmissions(uint _proposalID) internal {
+    function _flipEmissions(uint _proposalID) internal {
         iBASE(BASE).flipEmissions(); // Toggle emissions on the BASE contract
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change cool off period (Period of time until a finalising proposal can be finalised)
-    function changeCooloff(uint _proposalID) internal {
+    function _changeCooloff(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID]; // Get the proposed new param
         coolOffPeriod = _proposedParam; // Change coolOffPeriod
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change erasToEarn (Used to regulate the incentives flow)
-    function changeEras(uint _proposalID) internal {
+    function _changeEras(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID]; // Get the proposed new param
         erasToEarn = _proposedParam; // Change erasToEarn
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Grant SPARTA to the proposed recipient
-    function grantFunds(uint _proposalID) internal {
+    function _grantFunds(uint _proposalID) internal {
         uint256 _proposedAmount = mapPID_param[_proposalID]; // Get the proposed SPARTA grant amount
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed SPARTA grant recipient
         _RESERVE.grantFunds(_proposedAmount, _proposedAddress); // Grant the funds to the recipient
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Mint a 2.5M SPARTA allocation for the Bond program
     function _increaseSpartaAllocation(uint _proposalID) internal {
         uint256 _2point5m = 2.5*10**6*10**18; //_2.5m
         iBASE(BASE).mintFromDAO(_2point5m, address(this)); // Mint SPARTA and send to DAO to hold
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // List an asset to be enabled for Bonding
@@ -574,7 +574,7 @@ contract Dao is ReentrancyGuard{
             isListed[_proposedAddress] = true; // Register asset as listed for Bond
             listedBondPools.push(_proposedAddress); // Add asset to array of listed Bond assets
         }
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
         emit ListedAsset(msg.sender, _proposedAddress);
         
     }
@@ -591,7 +591,7 @@ contract Dao is ReentrancyGuard{
                 }
             }
         }
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
         emit DelistedAsset(msg.sender, _proposedAddress);
     }
 
@@ -599,7 +599,7 @@ contract Dao is ReentrancyGuard{
     function _addCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
         _POOLFACTORY.addCuratedPool(_proposedAddress); // Add the pool as Curated
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Remove a pool from Curated status
@@ -615,11 +615,11 @@ contract Dao is ReentrancyGuard{
                 }
             }
         }
-        completeProposal(_proposalID); // Finalise the proposal
+        _completeProposal(_proposalID); // Finalise the proposal
     }
     
     // After completing the proposal's action; close it
-    function completeProposal(uint _proposalID) internal {
+    function _completeProposal(uint _proposalID) internal {
         string memory _typeStr = mapPID_type[_proposalID]; // Get proposal type
         address [] memory votingAssets =  _POOLFACTORY.vaultAssets();
         for(uint i = 0; i < votingAssets.length; i++){
@@ -634,7 +634,7 @@ contract Dao is ReentrancyGuard{
     //============================== CONSENSUS ================================//
     
     // User stakes all their vault assets for a proposal
-    function addVotes(uint _currentProposal) internal {
+    function _addVotes(uint _currentProposal) internal {
         address [] memory votingAssets = _POOLFACTORY.vaultAssets();
         for(uint i = 0; i < votingAssets.length; i++){
             uint unitsAdded = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender);
@@ -645,7 +645,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // User removes their vault staked assets from a proposal
-    function removeVotes(uint _currentProposal) internal {
+    function _removeVotes(uint _currentProposal) internal {
         address [] memory votingAssets = _POOLFACTORY.vaultAssets();
         for(uint i = 0; i < votingAssets.length; i++){
             uint unitsRemoved = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender);

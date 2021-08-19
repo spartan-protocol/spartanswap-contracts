@@ -24,7 +24,8 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint256 public collateral;
     uint public minSynth; 
 
-    string _name; string _symbol;
+    string private _name;
+    string private _symbol;
     uint8 public override immutable decimals;
     uint256 public override totalSupply;
     mapping(address => uint) private _balances;
@@ -346,24 +347,24 @@ contract Pool is iBEP20, ReentrancyGuard {
     function _setPoolAmounts(uint256 _baseAmount, uint256 _tokenAmount) internal  {
         baseAmount = _baseAmount;
         tokenAmount = _tokenAmount; 
-        safetyCheck();
+        _safetyCheck();
     }
 
     // Increment internal balances
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount += _baseAmount;
         tokenAmount += _tokenAmount;
-        safetyCheck();
+        _safetyCheck();
     }
 
     // Decrement internal balances
     function _decrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal  {
         baseAmount -= _baseAmount;
         tokenAmount -= _tokenAmount; 
-        safetyCheck();
+        _safetyCheck();
     }
 
-    function safetyCheck() internal {
+    function _safetyCheck() internal {
         if(!freeze){
             uint currentRate = (baseAmount * baseAmount) / tokenAmount;
             uint rateDiff;
@@ -394,12 +395,12 @@ contract Pool is iBEP20, ReentrancyGuard {
         } else {
             lastMonth = block.timestamp;
             mapPast30DPoolRevenue = map30DPoolRevenue;
-            archiveRevenue(mapPast30DPoolRevenue);
+            _archiveRevenue(mapPast30DPoolRevenue);
             map30DPoolRevenue = _fee;
         }
     }
 
-    function archiveRevenue(uint _totalRev) internal {
+    function _archiveRevenue(uint _totalRev) internal {
         uint[] memory _revenueArray = revenueArray; // store in memory to save gas
         if (_revenueArray.length == 2) {
             _revenueArray[0] = _revenueArray[1]; // Shift previous value to start of array

@@ -199,20 +199,20 @@ contract SynthVault {
         } else {
             lastMonth = block.timestamp;
             mapPast30DVaultRevenue = map30DVaultRevenue;
-            addRevenue(mapPast30DVaultRevenue);
+            _addRevenue(mapPast30DVaultRevenue);
             map30DVaultRevenue = _fee;
         }
     }
 
-    function addRevenue(uint _totalRev) internal {
+    function _addRevenue(uint _totalRev) internal {
         if(!(revenueArray.length == 2)){
             revenueArray.push(_totalRev);
         } else {
-            addFee(_totalRev);
+            _addFee(_totalRev);
         }
     }
 
-    function addFee(uint _rev) internal {
+    function _addFee(uint _rev) internal {
         uint [] memory _revArray = revenueArray;
         uint _n = _revArray.length; // 2
         for (uint i = _n - 1; i > 0; i--) {
