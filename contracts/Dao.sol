@@ -88,7 +88,7 @@ contract Dao is ReentrancyGuard{
     event RemovedVote(address indexed member, uint indexed proposalID, string proposalType);
     event ProposalFinalising(address indexed member, uint indexed proposalID, uint timeFinalised, string proposalType);
     event CancelProposal(address indexed member, uint indexed proposalID);
-    event FinalisedProposal(address indexed member, uint indexed proposalID, uint votesCast, uint totalWeight, string proposalType);
+    event FinalisedProposal(address indexed member, uint indexed proposalID, string proposalType);
     event ListedAsset(address indexed DAO, address indexed asset);
     event DelistedAsset(address indexed DAO, address indexed asset);
     event DepositAsset(address indexed owner, uint256 depositAmount, uint256 bondedLP);
@@ -184,13 +184,13 @@ contract Dao is ReentrancyGuard{
         }
         require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!funds"); // Send user's deposit to the DAOVault
         _DAOVAULT.depositLP(pool, amount, msg.sender); // Update user's deposit balance & weight
-        mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
+        mapMember_lastTime[msg.sender] = block.timestamp + 60; // Reset user's last harvest time
         emit MemberDeposits(msg.sender, pool, amount);
     }
     
     // User withdraws all of their selected asset from the DAOVault
     function withdraw(address pool) external operational weightChange {
-        uint256 amount = _DAOVAULT.mapMemberPool_balance(msg.sender, pool); 
+        uint256 amount = _DAOVAULT.mapMemberPool_balance(msg.sender, pool);
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // User receives their withdrawal
         emit MemberWithdraws(msg.sender, pool, amount);
     }
@@ -198,7 +198,7 @@ contract Dao is ReentrancyGuard{
     //============================== REWARDS ================================//
     
     // User claims their DAOVault incentives
-    function harvest() public operational {
+    function harvest() external operational {
         require(_RESERVE.emissions(), "!emissions"); // Reserve must have emissions turned on
         uint reward = calcCurrentReward(msg.sender); // Calculate the user's claimable incentive
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
@@ -277,7 +277,7 @@ contract Dao is ReentrancyGuard{
             isMember[msg.sender] = true; // Register user as a member
         }
         uint256 liquidityUnits = _handleTransferIn(asset, amount); // Add liquidity and calculate LP units
-        mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
+        mapMember_lastTime[msg.sender] = block.timestamp + 60; // Reset user's last harvest time
         _BONDVAULT.depositForMember(_pool, msg.sender, liquidityUnits); // Deposit the Bonded LP units in the BondVault
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
@@ -623,13 +623,13 @@ contract Dao is ReentrancyGuard{
     function completeProposal(uint _proposalID) internal {
         string memory _typeStr = mapPID_type[_proposalID]; // Get proposal type
         address [] memory votingAssets =  _POOLFACTORY.vaultAssets();
-        for(uint i =0; i < votingAssets.length; i++){
+        for(uint i = 0; i < votingAssets.length; i++){
            mapPIDAsset_votes[_proposalID][votingAssets[i]] = 0;
         }
         mapPID_finalised[_proposalID] = true; // Finalise the proposal
         mapPID_finalising[_proposalID] = false; // Remove proposal from 'finalising' stage
         mapPID_open[_proposalID] = false; // Close the proposal
-        // emit FinalisedProposal(msg.sender, _proposalID, mapPID_votes[_proposalID], _DAOVAULT.totalWeight() + _BONDVAULT.totalWeight(), _typeStr);
+        emit FinalisedProposal(msg.sender, _proposalID, _typeStr);
     }
 
     //============================== CONSENSUS ================================//
