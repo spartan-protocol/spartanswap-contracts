@@ -68,37 +68,18 @@ contract Router is ReentrancyGuard {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token); // Get pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         _handleTransferIn(_token, _input, address(this)); // Transfer SPARTA into pool
-        uint fee;
         if(_fromBase){
-            _handleTransferOut(BASE, (_input / 2), _pool); // Transfer SPARTA into pool
-            if(_token != address(0)){
-                (, uint feey) = Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA to TOKEN 
-                fee = feey;
-                _handleTransferOut(_token, iBEP20(_token).balanceOf(address(this)), _pool);
-            } else {
-                (uint output, uint feez) = Pool(_pool).swapTo(WBNB, address(this)); // Swap SPARTA to WBNB
-                _handleTransferOut(WBNB, output, _pool); // Unwrap to BNB
-                fee = feez;
-            }
-            _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _pool);
+            swapTo((_input / 2), BASE, _token, address(this), 0);
         } else {
-            _handleTransferOut(_token, (_input / 2), _pool); // Transfer TOKEN into pool
-             if(_token != address(0)){
-                 (, uint feex) = Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN to SPARTA 
-                 fee = feex;
-                 _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _pool);
-                 _handleTransferOut(_token, iBEP20(_token).balanceOf(address(this)), _pool);
-             } else {
-                 (, uint feez) = Pool(_pool).swapTo(BASE, address(this)); // Swap WBNB to Sparta
-                _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _pool); // Unwrap to BNB 
-                fee = feez;
-                _handleTransferOut(WBNB, iBEP20(WBNB).balanceOf(address(this)), _pool);
-             }
+            swapTo((_input / 2), _token, BASE, address(this), 0);
         }
-
+        if(_token == address(0)){
+             _handleTransferOut(WBNB, iBEP20(WBNB).balanceOf(address(this)), _pool);
+        }else{
+             _handleTransferOut(_token, iBEP20(_token).balanceOf(address(this)), _pool);
+        }
         Pool(_pool).addForMember(_member); // Add liquidity and send LPs to user
         safetyTrigger(_pool);
-        getsDividend(_pool, fee); // Check for dividend & tsf it to pool
     }
 
 
