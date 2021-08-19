@@ -8,8 +8,8 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Router is ReentrancyGuard {
-    address public BASE;
-    address public WBNB;
+    address public immutable BASE;
+    address public immutable WBNB;
     address public DEPLOYER;
     uint256 public diviClaim;
     uint256 public globalCAP;

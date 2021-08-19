@@ -4,19 +4,19 @@ import "./Pool.sol";
 import "./iPOOLFACTORY.sol";
 
 contract Synth is iBEP20 {
-    address public BASE;
-    address public TOKEN; // Underlying relevant layer1 token address
-    address public POOL; // Underlying pool address
-    uint public genesis;
+    address public immutable BASE;
+    address public immutable TOKEN; // Underlying relevant layer1 token address
+    address public immutable POOL; // Underlying pool address
+    uint public immutable genesis;
     uint256 public collateral;
 
     string _name; string _symbol;
-    uint8 public override decimals; uint256 public override totalSupply;
+    uint8 public override decimals;
+    uint256 public override totalSupply;
 
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 
-   
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
     }
@@ -35,7 +35,6 @@ contract Synth is iBEP20 {
         require(msg.sender == _DAO().DAO());
         _;
     }
-    
     
     constructor (address _base, address _token, address _pool) {
         BASE = _base;

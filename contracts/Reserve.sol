@@ -5,7 +5,7 @@ import "./iBASE.sol";
 import "./iDAO.sol";
 
 contract Reserve {
-    address public BASE;
+    address public immutable BASE;
     address public DEPLOYER;
     bool public emissions;
     bool public globalFreeze;

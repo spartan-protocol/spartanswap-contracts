@@ -11,14 +11,14 @@ import "./iSYNTHFACTORY.sol";
 import "./iPOOLFACTORY.sol";
 
 contract SynthVault {
-    address public BASE;
+    address public immutable BASE;
     address public DEPLOYER;
 
     uint256 public minimumDepositTime;  // Withdrawal & Harvest lockout period; intended to be 1 hour
     uint256 public erasToEarn;          // Amount of eras that make up the targeted RESERVE depletion; regulates incentives
     uint256 public vaultClaim;          // The SynthVaults's portion of rewards; intended to be ~10% initially
     uint private lastMonth;             // Timestamp of the start of current metric period (For UI)
-    uint public genesis;                // Timestamp from when the synth was first deployed (For UI)
+    uint public immutable genesis;      // Timestamp from when the synth was first deployed (For UI)
 
     uint256 public map30DVaultRevenue; // Tally of revenue during current incomplete metric period (for UI)
     uint256 public mapPast30DVaultRevenue; // Tally of revenue from last full metric period (for UI)

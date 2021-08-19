@@ -3,8 +3,8 @@ pragma solidity 0.8.3;
 import "./Synth.sol";  
 
 contract SynthFactory { 
-    address public BASE;
-    address public WBNB;
+    address public immutable BASE;
+    address public immutable WBNB;
 
     address[] public arraySynths; // Array of all deployed synths
     mapping(address => address) private mapToken_Synth;

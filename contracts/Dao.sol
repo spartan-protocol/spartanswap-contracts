@@ -61,9 +61,8 @@ contract Dao is ReentrancyGuard{
     iLEND private _LEND;
 
     address[] public arrayMembers;
-    address [] listedBondPools; // Only used in UI; is intended to be a historical array of all past Bond listed assets
+    address[] public listedBondPools; // Current list of bond enabled assets
     uint256 public bondingPeriodSeconds = 15552000; // Vesting period for bonders (6 months)
-    address [] public votingAddresses;
     
     mapping(address => bool) public isMember;
     mapping(address => bool) public isListed; // Used internally to get CURRENT listed Bond assets
@@ -175,7 +174,7 @@ contract Dao is ReentrancyGuard{
     //============================== USER - DEPOSIT/WITHDRAW ================================//
 
     // Contract deposits LP tokens for member
-    function deposit(address pool, uint256 amount) public operational weightChange {
+    function deposit(address pool, uint256 amount) external operational weightChange {
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!curated"); // Pool must be Curated
         require(amount > 0, "!amount"); // Deposit amount must be valid
         if (isMember[msg.sender] != true) {
@@ -249,7 +248,7 @@ contract Dao is ReentrancyGuard{
         address _pool = _POOLFACTORY.getPool(asset);
         require(!isListed[_pool], 'listed'); // Asset must not be listed for Bond
         isListed[_pool] = true; // Register as a bond-enabled asset
-        listedBondPools.push(_pool); // Add to historical record of past Bond assets
+        listedBondPools.push(_pool); // Add to record of current Bond assets
         emit ListedAsset(msg.sender, asset);
     }
 
@@ -414,7 +413,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // Remove vote from a proposal
-    function unvoteProposal() public operational {
+    function unvoteProposal() external operational {
         uint _currentProposal = currentProposal;
         require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
         require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == true, "!VOTED");
@@ -584,7 +583,7 @@ contract Dao is ReentrancyGuard{
     function _delistBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
         if(isListed[_proposedAddress]){
-            isListed[_proposedAddress] = false; // Unregister asset as listed for Bond (Keep it in the array though; as this is used in the UI)
+            isListed[_proposedAddress] = false; // Unregister asset as listed for Bond
             for(uint i = 0; i < listedBondPools.length; i++){
                 if(listedBondPools[i] == _proposedAddress){
                     listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
@@ -608,7 +607,7 @@ contract Dao is ReentrancyGuard{
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed asset for removal
         _POOLFACTORY.removeCuratedPool(_proposedAddress); // Remove pool as Curated
         if(isListed[_proposedAddress]){
-            isListed[_proposedAddress] = false; // Unregister asset as listed for Bond (Keep it in the array though; as this is used in the UI)
+            isListed[_proposedAddress] = false; // Unregister asset as listed for Bond
             for(uint i = 0; i < listedBondPools.length; i++){
                 if(listedBondPools[i] == _proposedAddress){
                     listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
@@ -685,7 +684,7 @@ contract Dao is ReentrancyGuard{
     //======================================PROTOCOL CONTRACTs GETTER=================================//
     
     // Get the ROUTER address that the DAO currently points to
-    function ROUTER() public view returns(iROUTER){
+    function ROUTER() external view returns(iROUTER){
         if(daoHasMoved){
             return Dao(DAO).ROUTER();
         } else {
@@ -694,7 +693,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // Get the UTILS address that the DAO currently points to
-    function UTILS() public view returns(iUTILS){
+    function UTILS() external view returns(iUTILS){
         if(daoHasMoved){
             return Dao(DAO).UTILS();
         } else {
@@ -703,7 +702,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // Get the BONDVAULT address that the DAO currently points to
-    function BONDVAULT() public view returns(iBONDVAULT){
+    function BONDVAULT() external view returns(iBONDVAULT){
         if(daoHasMoved){
             return Dao(DAO).BONDVAULT();
         } else {
@@ -712,7 +711,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // Get the DAOVAULT address that the DAO currently points to
-    function DAOVAULT() public view returns(iDAOVAULT){
+    function DAOVAULT() external view returns(iDAOVAULT){
         if(daoHasMoved){
             return Dao(DAO).DAOVAULT();
         } else {
@@ -721,7 +720,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // Get the POOLFACTORY address that the DAO currently points to
-    function POOLFACTORY() public view returns(iPOOLFACTORY){
+    function POOLFACTORY() external view returns(iPOOLFACTORY){
         if(daoHasMoved){
             return Dao(DAO).POOLFACTORY();
         } else {
@@ -730,7 +729,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // Get the SYNTHFACTORY address that the DAO currently points to
-    function SYNTHFACTORY() public view returns(iSYNTHFACTORY){
+    function SYNTHFACTORY() external view returns(iSYNTHFACTORY){
         if(daoHasMoved){
             return Dao(DAO).SYNTHFACTORY();
         } else {
@@ -739,7 +738,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // Get the RESERVE address that the DAO currently points to
-    function RESERVE() public view returns(iRESERVE){
+    function RESERVE() external view returns(iRESERVE){
         if(daoHasMoved){
             return Dao(DAO).RESERVE();
         } else {
@@ -748,7 +747,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // Get the SYNTHVAULT address that the DAO currently points to
-    function SYNTHVAULT() public view returns(iSYNTHVAULT){
+    function SYNTHVAULT() external view returns(iSYNTHVAULT){
         if(daoHasMoved){
             return Dao(DAO).SYNTHVAULT();
         } else {
@@ -756,7 +755,7 @@ contract Dao is ReentrancyGuard{
         }
     }
     // Get the LEND address that the DAO currently points to
-    function LEND() public view returns(iLEND){
+    function LEND() external view returns(iLEND){
         if(daoHasMoved){
             return Dao(DAO).LEND();
         } else {

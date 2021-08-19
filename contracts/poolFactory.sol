@@ -4,8 +4,8 @@ import "./iDAO.sol";
 import "./Pool.sol";  
 
 contract PoolFactory { 
-    address public BASE;
-    address public WBNB;
+    address public immutable BASE;
+    address public immutable WBNB;
     address public DEPLOYER;
     uint public curatedPoolSize;    // Max amount of pools that can be curated status
     uint public curatedPoolCount;   // Current count of pools that are curated status

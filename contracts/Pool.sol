@@ -12,8 +12,8 @@ import "./iSYNTHFACTORY.sol";
 import "hardhat/console.sol";
 
 contract Pool is iBEP20, ReentrancyGuard {  
-    address public BASE;
-    address public TOKEN;
+    address public immutable BASE;
+    address public immutable TOKEN;
     uint256 public poolCAP;
     uint256 public baseCAP;
     uint256 private oldRate;
@@ -25,7 +25,8 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint public minSynth; 
 
     string _name; string _symbol;
-    uint8 public override immutable decimals; uint256 public override totalSupply;
+    uint8 public override immutable decimals;
+    uint256 public override totalSupply;
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
 

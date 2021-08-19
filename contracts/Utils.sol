@@ -8,8 +8,8 @@ import "./iSYNTH.sol";
 import "./iBEP20.sol";
 
 contract Utils {
-    address public BASE;
-    uint public one = 10**18;
+    address public immutable BASE;
+    uint private constant one = 10**18;
 
     constructor (address _base) {
         BASE = _base;
@@ -52,7 +52,7 @@ contract Utils {
     function getPool(address token) public view returns(address pool){
         return iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
     }
-    function getSynth(address token) public view returns(address synth){
+    function getSynth(address token) external view returns(address synth){
         return iSYNTHFACTORY(_DAO().SYNTHFACTORY()).getSynth(token);
     }
 
@@ -79,7 +79,7 @@ contract Utils {
     }
 
     // Calculate liquidity units
-    function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) external view returns (uint units){
+    function calcLiquidityUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units){
         if(P == 0){
             return b; // If pool is empty; use b as initial units
         } else {
@@ -97,7 +97,7 @@ contract Utils {
     }
 
     // Get slip adjustment (Protects capital erosion from asymAdds)
-    function getSlipAdjustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
+    function getSlipAdjustment(uint b, uint B, uint t, uint T) public pure returns (uint slipAdjustment){
         // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
         // 1 - ABS(part1 - part2)/(part3 * part4))
         uint part1 = B * t;     // baseDepth * tokenInput

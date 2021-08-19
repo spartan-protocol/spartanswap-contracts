@@ -48,7 +48,7 @@ contract BondVault {
     }
 
     // Can purge deployer once DAO is stable and final
-    function purgeDeployer() public onlyDAO {
+    function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
     }
 
@@ -142,7 +142,7 @@ contract BondVault {
     }
 
     // Get user's current balance of a chosen asset
-    function getMemberPoolBalance(address _pool, address member)  external view returns (uint256){
+    function getMemberPoolBalance(address _pool, address member) external view returns (uint256){
         return mapBondedAmount_memberDetails[_pool].bondedLP[member];
     }
 }
