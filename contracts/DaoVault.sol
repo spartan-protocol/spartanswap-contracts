@@ -10,7 +10,7 @@ import "./iRESERVE.sol";
 import "./iPOOLFACTORY.sol";
 
 contract DaoVault {
-    address public BASE;
+    address public immutable BASE;
     address public DEPLOYER;
 
     constructor(address _base) {

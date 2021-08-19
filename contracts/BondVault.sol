@@ -10,7 +10,7 @@ import "./iROUTER.sol";
 import "./iUTILS.sol";
 
 contract BondVault {
-    address public BASE;
+    address public immutable BASE;
     address public DEPLOYER;
     bool private bondRelease;
     address [] public arrayMembers;

@@ -19,7 +19,6 @@ contract Dao is ReentrancyGuard{
     bool public retire;
     bool public running;
 
-    uint256 public secondsPerEra;   // Amount of seconds per era (Inherited from BASE contract; intended to be ~1 day)
     uint256 public coolOffPeriod;   // Amount of time a proposal will need to be in finalising stage before it can be finalised
     uint256 public proposalCount;   // Count of proposals
     uint256 public majorityFactor;  // Number used to calculate majority; intended to be 6666bp === 2/3
@@ -130,7 +129,6 @@ contract Dao is ReentrancyGuard{
         majorityFactor = 6666;
         daoClaim = 1000;
         daoFee = 100;
-        secondsPerEra = iBASE(_base).secondsPerEra();
         running = false;
     }
 
@@ -215,7 +213,7 @@ contract Dao is ReentrancyGuard{
     function calcCurrentReward(address member) public view operational returns(uint){
         uint secondsSinceClaim = block.timestamp - mapMember_lastTime[member]; // Get seconds passed since last claim
         uint share = calcReward(member); // Get share of rewards for user
-        uint reward = (share * secondsSinceClaim) / secondsPerEra; // User's share times eras since they last claimed
+        uint reward = (share * secondsSinceClaim) / iBASE(BASE).secondsPerEra(); // User's share times eras since they last claimed
         return reward;
     }
 
