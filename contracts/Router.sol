@@ -50,7 +50,7 @@ contract Router is ReentrancyGuard {
     }
 
     // Contract adds liquidity for user
-    function addLiquidityForMember(uint inputToken, address token, address member) public payable{
+    function addLiquidityForMember(uint inputToken, address token, address member) public payable {
         address pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);  // Get pool address
         require(pool != address(0), "!POOL"); // Must be a valid pool
         uint256 baseAmount = iUTILS(_DAO().UTILS()).calcSwapValueInBase(token, inputToken); 
@@ -60,14 +60,14 @@ contract Router is ReentrancyGuard {
         _safetyTrigger(pool);
     }
 
-    function addLiquidityAsym(uint input, bool fromBase, address token) external payable{
+    function addLiquidityAsym(uint input, bool fromBase, address token) external payable {
         addLiquidityAsymForMember(input, fromBase, token, msg.sender);
     }
 
-    function addLiquidityAsymForMember(uint _input, bool _fromBase, address _token, address _member) public {
+    function addLiquidityAsymForMember(uint _input, bool _fromBase, address _token, address _member) public payable {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(_token); // Get pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
-        _handleTransferIn(_token, _input, address(this)); // Transfer SPARTA into pool
+        _handleTransferIn(_token, _input, address(this)); // Transfer TOKEN / BNB into pool
         if(_fromBase){
             swapTo((_input / 2), BASE, _token, address(this), 0);
         } else {
@@ -266,7 +266,7 @@ contract Router is ReentrancyGuard {
     //============================== Token Transfer Functions ======================================//
     
     // Handle the transfer of assets into the pool
-    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal {
+    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal nonReentrant {
         require(_amount > 0, '!GAS');
         if(_token == address(0)){
             require((_amount == msg.value));
@@ -279,7 +279,7 @@ contract Router is ReentrancyGuard {
     }
 
     // Handle the transfer of assets out of the ROUTER
-    function _handleTransferOut(address _token, uint256 _amount, address _recipient) nonReentrant internal {
+    function _handleTransferOut(address _token, uint256 _amount, address _recipient) internal nonReentrant {
         if(_amount > 0) {
             if (_token == address(0)) {
                 iWBNB(WBNB).withdraw(_amount); // Unwrap WBNB to BNB
@@ -346,7 +346,7 @@ contract Router is ReentrancyGuard {
         Pool(_pool).RTC(poolRTC);
     }
     function changeMinimumSynth(uint newMinimum, address _pool) external onlyDAO {
-         Pool(_pool).minimumSynth(newMinimum);
+        Pool(_pool).minimumSynth(newMinimum);
     }
 
     function _safetyTrigger(address _pool) internal {
@@ -355,7 +355,6 @@ contract Router is ReentrancyGuard {
                 iRESERVE(_DAO().RESERVE()).setGlobalFreeze(true);   
             } 
         }
-        
     }
 
     //================================== Helpers =================================//

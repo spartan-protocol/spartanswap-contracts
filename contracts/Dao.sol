@@ -267,7 +267,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // User deposits assets to be Bonded
-    function bond(address asset, uint256 amount) external payable operational nonReentrant weightChange returns (bool success) {
+    function bond(address asset, uint256 amount) external payable operational weightChange returns (bool success) {
         require(amount > 0, '!amount'); // Amount must be valid
         require(isListed[asset], '!listed'); // Asset must be listed for Bond
         address _pool = _POOLFACTORY.getPool(asset); // Get the pool address
@@ -283,7 +283,7 @@ contract Dao is ReentrancyGuard{
     }
 
     // Add Bonded assets as liquidity and calculate LP units
-    function _handleTransferIn(address _token, uint _amount) internal returns (uint LPunits){
+    function _handleTransferIn(address _token, uint _amount) internal nonReentrant returns (uint LPunits){
         if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < 2.5 * 10**6 * 10**18){
             iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply()); // Increase SPARTA allowance if required
         }

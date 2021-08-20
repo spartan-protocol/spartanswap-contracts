@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 import "./iDAO.sol";
-import "./Pool.sol";  
+import "./Pool.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract PoolFactory { 
+contract PoolFactory is ReentrancyGuard { 
     address public immutable BASE;
     address public immutable WBNB;
     address public DEPLOYER;
@@ -11,7 +12,7 @@ contract PoolFactory {
     uint public curatedPoolCount;   // Current count of pools that are curated status
     address[] public arrayPools;    // Array of all deployed pools
     address[] public arrayTokens;   // Array of all listed tokens
-    address [] public vaultAssets;
+    address[] public vaultAssets;
 
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isListedPool;
@@ -58,15 +59,15 @@ contract PoolFactory {
         require((inputToken > 0 && inputBase >= (10000*10**18)), "!MIN"); // User must add at least 10,000 SPARTA liquidity & ratio must be finite
         Pool newPool; address _token = token;
         if(token == address(0)){
-            _token = WBNB;// Handle BNB -> WBNB
-        }else {
-            require(token != BASE && iBEP20(token).decimals() == 18, '!DECIMALS');// Token must not be SPARTA & it's decimals must be 18
-        } 
+            _token = WBNB; // Handle BNB -> WBNB
+        } else {
+            require(token != BASE && iBEP20(token).decimals() == 18, '!DECIMALS'); // Token must not be SPARTA & it's decimals must be 18
+        }
         newPool = new Pool(BASE, _token); // Deploy new pool
         pool = address(newPool); // Get address of new pool
         mapToken_Pool[_token] = pool; // Record the new pool address in PoolFactory
         _handleTransferIn(BASE, inputBase, pool); // Transfer SPARTA liquidity to new pool
-        _handleTransferIn(_token, inputToken, pool); // Transfer TOKEN liquidity to new pool
+        _handleTransferIn(token, inputToken, pool); // Transfer TOKEN / BNB (not WBNB) liquidity to new pool
         arrayPools.push(pool); // Add pool address to the pool array
         arrayTokens.push(_token); // Add token to the listed array
         isListedPool[pool] = true; // Record pool as currently listed
@@ -108,10 +109,16 @@ contract PoolFactory {
     }
 
     // Transfer assets into new pool
-    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal {
+    function _handleTransferIn(address _token, uint256 _amount, address _pool) internal nonReentrant {
         require(_amount > 0, '!GAS');
-        iBEP20(_token).transferFrom(msg.sender, _pool, _amount); 
-        
+         if(_token == address(0)){
+            require(_amount == msg.value);
+            (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
+            require(success, "!send");
+            iBEP20(WBNB).transfer(_pool, _amount); // Transfer WBNB from PoolFactory to pool
+        } else {
+            iBEP20(_token).transferFrom(msg.sender, _pool, _amount); // Transfer TOKEN to pool
+        }
     }
 
     //======================================HELPERS========================================//
