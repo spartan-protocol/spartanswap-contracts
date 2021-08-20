@@ -91,11 +91,11 @@ contract Router is ReentrancyGuard {
         require(_poolFactory.isPool(toPool) == true); // ToPool must be a valid pool
         address _fromToken = Pool(fromPool).TOKEN(); // Get token underlying the fromPool
         address _member = msg.sender; // Get user's address
-        iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput); // Transfer LPs from user to the pool
+        require(iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput), '!transfer'); // Transfer LPs from user to the pool
         Pool(fromPool).removeForMember(address(this)); // Remove liquidity to ROUTER
-        iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))); // Transfer TOKENs from ROUTER to fromPool
+        require(iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))), '!transfer'); // Transfer TOKENs from ROUTER to fromPool
         Pool(fromPool).swapTo(BASE, toPool); // Swap the received TOKENs for SPARTA then transfer to the toPool
-        iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to toPool
+        require(iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Transfer SPARTA from ROUTER to toPool
         Pool(toPool).addForMember(_member); // Add liquidity and send the LPs to user
         _safetyTrigger(fromPool);
         _safetyTrigger(toPool);
@@ -115,7 +115,7 @@ contract Router is ReentrancyGuard {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         address _member = msg.sender; // The the user's address
-        iBEP20(_pool).transferFrom(_member, _pool, units); // Transfer LPs to the pool
+        require(iBEP20(_pool).transferFrom(_member, _pool, units), '!transfer'); // Transfer LPs to the pool
         if(token != address(0)){
             Pool(_pool).removeForMember(_member); // Remove liquidity and send assets directly to user
         } else {
@@ -135,16 +135,16 @@ contract Router is ReentrancyGuard {
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true); // Pool must be valid
         address _member = msg.sender; // Get user's address
-        iBEP20(_pool).transferFrom(_member, _pool, units); // Transfer LPs to pool
+        require(iBEP20(_pool).transferFrom(_member, _pool, units), '!transfer'); // Transfer LPs to pool
         Pool(_pool).removeForMember(address(this)); // Remove liquidity & tsf to ROUTER
         address _token = token; // Get token address
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         if(toBase){
-            iBEP20(_token).transfer(_pool, iBEP20(_token).balanceOf(address(this))); // Transfer TOKEN to pool
+            require(iBEP20(_token).transfer(_pool, iBEP20(_token).balanceOf(address(this))), '!transfer'); // Transfer TOKEN to pool
             Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN for SPARTA & tsf to ROUTER
-            iBEP20(BASE).transfer(_member, iBEP20(BASE).balanceOf(address(this))); // Transfer all SPARTA from ROUTER to user
+            require(iBEP20(BASE).transfer(_member, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Transfer all SPARTA from ROUTER to user
         } else {
-            iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA to pool
+            require(iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Transfer SPARTA to pool
             Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA for TOKEN & transfer to ROUTER
             _handleTransferOut(token, iBEP20(_token).balanceOf(address(this)), _member); // Send TOKEN to user
         } 
@@ -224,9 +224,9 @@ contract Router is ReentrancyGuard {
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         if(fromToken != BASE){
             sellTo(inputAmount, fromToken, address(this), 0); // Swap TOKEN to SPARTA & tsf to ROUTER
-            iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Transfer SPARTA from ROUTER to pool
+            require(iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Transfer SPARTA from ROUTER to pool
         } else {
-            iBEP20(BASE).transferFrom(msg.sender, _pool, inputAmount); // Transfer SPARTA from ROUTER to pool
+            require(iBEP20(BASE).transferFrom(msg.sender, _pool, inputAmount), '!transfer'); // Transfer SPARTA from ROUTER to pool
         }
         (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Mint synths & tsf to user
         _safetyTrigger(_pool);
@@ -241,7 +241,7 @@ contract Router is ReentrancyGuard {
         address _poolIN = iSYNTH(fromSynth).POOL(); // Get underlying pool address
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken); // Get TOKEN's relevant pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
-        iBEP20(fromSynth).transferFrom(msg.sender, _poolIN, inputAmount); // Transfer synth from user to pool
+        require(iBEP20(fromSynth).transferFrom(msg.sender, _poolIN, inputAmount), '!transfer'); // Transfer synth from user to pool
         uint outputAmount;
         uint fee;
         if(toToken == BASE){
@@ -272,9 +272,9 @@ contract Router is ReentrancyGuard {
             require((_amount == msg.value));
             (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
             require(success, "!send");
-            iBEP20(WBNB).transfer(_pool, _amount); // Transfer WBNB from ROUTER to pool
+            require(iBEP20(WBNB).transfer(_pool, _amount), '!transfer'); // Transfer WBNB from ROUTER to pool
         } else {
-            iBEP20(_token).transferFrom(msg.sender, _pool, _amount); // Transfer TOKEN to pool
+            require(iBEP20(_token).transferFrom(msg.sender, _pool, _amount), '!transfer'); // Transfer TOKEN to pool
         }
     }
 
@@ -286,7 +286,7 @@ contract Router is ReentrancyGuard {
                 (bool success, ) = payable(_recipient).call{value:_amount}("");  // Send BNB to recipient
                 require(success, "!send");
             } else {
-                iBEP20(_token).transfer(_recipient, _amount); // Transfer TOKEN to recipient
+                require(iBEP20(_token).transfer(_recipient, _amount), '!transfer'); // Transfer TOKEN to recipient
             }
         }
     }

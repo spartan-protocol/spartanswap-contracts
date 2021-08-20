@@ -201,8 +201,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         outputToken = _utils.calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
         _decrementPoolBalances(outputBase, outputToken); // Update recorded BASE and TOKEN amounts
         _burn(address(this), _actualInputUnits); // Burn the LP tokens
-        iBEP20(BASE).transfer(member, outputBase); // Transfer the SPARTA to user
-        iBEP20(TOKEN).transfer(member, outputToken); // Transfer the TOKENs to user
+        require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Transfer the SPARTA to user
+        require(iBEP20(TOKEN).transfer(member, outputToken), '!transfer'); // Transfer the TOKENs to user
         emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
@@ -221,7 +221,7 @@ contract Pool is iBEP20, ReentrancyGuard {
             (outputAmount, fee) = _swapBaseToToken(_amount); // Calculate the TOKEN output from the swap
         }
         emit Swapped(_fromToken, token, member, _amount, outputAmount, fee);
-        iBEP20(token).transfer(member, outputAmount); // Transfer the swap output to the selected user
+        require(iBEP20(token).transfer(member, outputAmount), '!transfer'); // Transfer the swap output to the selected user
         return (outputAmount, fee);
     }
 
@@ -280,7 +280,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the SYNTH units 
         _burn(synthIN, liqUnits);
-        iBEP20(BASE).transfer(member, outputBase); // Transfer SPARTA to user
+        require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Transfer SPARTA to user
         emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
         return (outputBase, fee);
     }

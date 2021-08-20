@@ -32,9 +32,9 @@ contract Reserve {
         if(amount > 0){ // Skip if amount is not valid
             if(emissions){ // Skip if emissions are off
                 if(amount > reserve){
-                    iBEP20(BASE).transfer(to, reserve); // Send remainder
+                    require(iBEP20(BASE).transfer(to, reserve), '!transfer'); // Send remainder
                 } else {
-                    iBEP20(BASE).transfer(to, amount); // Send requested amount
+                    require(iBEP20(BASE).transfer(to, amount), '!transfer'); // Send requested amount
                 }
             }
         }

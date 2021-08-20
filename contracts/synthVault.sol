@@ -85,7 +85,7 @@ contract SynthVault {
     function deposit(address synth, uint256 amount) external {
         require(amount > 0, '!VALID'); // Must be a valid amount
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth');
-        require(iBEP20(synth).transferFrom(msg.sender, address(this), amount)); // Must successfuly transfer in
+        require(iBEP20(synth).transferFrom(msg.sender, address(this), amount), '!transfer'); // Must successfuly transfer in
         _deposit(synth, msg.sender, amount); // Assess and record the deposit
     }
 
@@ -163,7 +163,7 @@ contract SynthVault {
         uint256 redeemedAmount = iUTILS(_DAO().UTILS()).calcPart(basisPoints, mapMemberSynth_deposit[msg.sender][synth]); // Calc amount to withdraw
         mapMemberSynth_deposit[msg.sender][synth] -= redeemedAmount; // Remove from user's recorded vault holdings
         mapTotalSynth_balance[synth] -= redeemedAmount;
-        require(iBEP20(synth).transfer(msg.sender, redeemedAmount)); // Transfer from SynthVault to user
+        require(iBEP20(synth).transfer(msg.sender, redeemedAmount), '!transfer'); // Transfer from SynthVault to user
         emit MemberWithdraws(synth, msg.sender, redeemedAmount);
     }
 

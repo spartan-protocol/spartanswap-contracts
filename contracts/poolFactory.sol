@@ -115,9 +115,9 @@ contract PoolFactory is ReentrancyGuard {
             require(_amount == msg.value);
             (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
             require(success, "!send");
-            iBEP20(WBNB).transfer(_pool, _amount); // Transfer WBNB from PoolFactory to pool
+            require(iBEP20(WBNB).transfer(_pool, _amount), '!transfer'); // Transfer WBNB from PoolFactory to pool
         } else {
-            iBEP20(_token).transferFrom(msg.sender, _pool, _amount); // Transfer TOKEN to pool
+            require(iBEP20(_token).transferFrom(msg.sender, _pool, _amount), '!transfer'); // Transfer TOKEN to pool
         }
     }
 
