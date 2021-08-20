@@ -49,16 +49,19 @@ contract SynthFactory {
         arraySynths.push(_synth); // Add synth address to the array
         isSynth[_synth] = true; // Record synth as valid
     }
+
     // Remove Synth with SynthFactory
     function removeSynth(address _token) external onlyDAO {
-        address _synth = getSynth(_token); 
-        for(uint i = 0 ; i < arraySynths.length; i++){
-            if(arraySynths[i] == _synth){
-                arraySynths[i] = arraySynths[arraySynths.length - 1]; // Move the last element into the place to delete
-                arraySynths.pop();// Remove the last element
+        address _synth = getSynth(_token);
+        if (_synth != address(0)) {
+            for(uint i = 0; i < arraySynths.length; i++){
+                if(arraySynths[i] == _synth){
+                    arraySynths[i] = arraySynths[arraySynths.length - 1]; // Move the last element into the place to delete
+                    arraySynths.pop(); // Remove the last element
+                }
             }
+            isSynth[_synth] = false; // Record synth as inValid
         }
-        isSynth[_synth] = false; // Record synth as inValid
     }
 
     //================================ Helper Functions ==================================//

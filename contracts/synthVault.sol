@@ -141,15 +141,15 @@ contract SynthVault {
         (uint256 weight, uint256 totalWeight) = getMemberSynthWeight(_synth, member);
         uint256 _reserve = reserveBASE() / erasToEarn; // Aim to deplete reserve over a number of days
         uint256 synthCount = iSYNTHFACTORY(_DAO().SYNTHFACTORY()).synthCount(); 
-        uint256 _vaultReward = (_reserve * vaultClaim)/ synthCount / 10000; // Get the SynthVault's share of that
+        uint256 _vaultReward = (_reserve * vaultClaim) / synthCount / 10000; // Get the SynthVault's share of that
         return iUTILS(_DAO().UTILS()).calcShare(weight, totalWeight, _vaultReward); // Get member's share of that
     }
 
     // Update a member's weight 
     function getMemberSynthWeight(address _synth, address member) public returns (uint256 memberSynthWeight, uint256 totalSynthWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
-        totalSynthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapTotalSynth_balance[_synth]); // Get user's current weight
-        memberSynthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapMemberSynth_deposit[member][_synth]); // Get user's current weight
+        totalSynthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapTotalSynth_balance[_synth]); // Get vault's total current weight by asset
+        memberSynthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapMemberSynth_deposit[member][_synth]); // Get user's current weight by asset
         return (memberSynthWeight, totalSynthWeight);
     }
 
