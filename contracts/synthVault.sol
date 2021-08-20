@@ -130,19 +130,22 @@ contract SynthVault {
     function calcCurrentReward(address synth, address member) public returns (uint256 reward){
         if (block.timestamp > mapMemberSynth_lastTime[member][synth]) {
             uint256 _secondsSinceClaim = block.timestamp - mapMemberSynth_lastTime[member][synth]; // Get seconds passed since last claim
-            uint256 _share = calcReward(synth,member); // Get member's share of RESERVE incentives
+            (uint256 _share, uint256 _vaultReward) = calcReward(synth,member); // Get member's share of RESERVE incentives
             reward = (_share * _secondsSinceClaim) / iBASE(BASE).secondsPerEra(); // User's share times eras since they last claimed
+            if(reward > _vaultReward){
+                reward = _vaultReward; // User cannot claim more than the vaultClaim limit
+            }
         }
         return reward;
     }
 
     // Calculate the user's current total claimable incentive
-    function calcReward(address _synth, address member) public returns (uint256) {
+    function calcReward(address _synth, address member) public returns (uint256 _share, uint256 _vaultReward) {
         (uint256 weight, uint256 totalWeight) = getMemberSynthWeight(_synth, member);
         uint256 _reserve = reserveBASE() / erasToEarn; // Aim to deplete reserve over a number of days
         uint256 synthCount = iSYNTHFACTORY(_DAO().SYNTHFACTORY()).synthCount(); 
-        uint256 _vaultReward = (_reserve * vaultClaim) / synthCount / 10000; // Get the SynthVault's share of that
-        return iUTILS(_DAO().UTILS()).calcShare(weight, totalWeight, _vaultReward); // Get member's share of that
+        _vaultReward = (_reserve * vaultClaim) / synthCount / 10000; // Get the SynthVault's share of that
+        _share = iUTILS(_DAO().UTILS()).calcShare(weight, totalWeight, _vaultReward); // Get member's share of that
     }
 
     // Update a member's weight 
