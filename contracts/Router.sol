@@ -112,7 +112,7 @@ contract Router is ReentrancyGuard {
     function removeLiquidityExact(uint units, address token) public {
         require(units > 0, '!VALID'); // Must be a valid amount
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get the pool address
-        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         address _member = msg.sender; // The the user's address
         require(iBEP20(_pool).transferFrom(_member, _pool, units), '!transfer'); // Transfer LPs to the pool
@@ -131,7 +131,7 @@ contract Router is ReentrancyGuard {
     function removeLiquidityAsym(uint units, bool toBase, address token) external {
         require(units > 0, '!VALID'); // Must be a valid amount
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
-        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true); // Pool must be valid
         address _member = msg.sender; // Get user's address
@@ -219,7 +219,7 @@ contract Router is ReentrancyGuard {
     function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) external payable {
         require(inputAmount > 0, '!VALID'); // Must be a valid amount
         require(fromToken != toSynth); // Tokens must not be the same
-        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
         address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         if(fromToken != BASE){
@@ -237,7 +237,7 @@ contract Router is ReentrancyGuard {
     function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external {
         require(inputAmount > 0, '!VALID'); // Must be a valid amount
         require(fromSynth != toToken); // Tokens must not be the same
-        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
         address _poolIN = iSYNTH(fromSynth).POOL(); // Get underlying pool address
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(toToken); // Get TOKEN's relevant pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool

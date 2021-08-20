@@ -80,7 +80,7 @@ contract PoolFactory is ReentrancyGuard {
     function addCuratedPool(address token) external onlyDAO {
         require(token != BASE, '!VALID'); // Token must not be SPARTA
         uint _currentProposal = iDAO(_DAO().DAO()).currentProposal(); // Get current proposal ID
-        require(iDAO(_DAO().DAO()).mapPID_open(_currentProposal) == false, "OPEN"); // Must not be an open proposal
+        require(iDAO(_DAO().DAO()).mapPID_open(_currentProposal) == false, "OPEN"); // Must not be an open proposal (de-sync proposal votes)
         address _pool = getPool(token); // Get pool address
         require(isListedPool[_pool] == true, '!POOL'); // Pool must be valid
         require(isCuratedPool[_pool] == false, 'isCurated'); // Pool must not be curated already

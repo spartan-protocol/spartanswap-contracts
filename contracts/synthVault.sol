@@ -151,7 +151,7 @@ contract SynthVault {
 
     // Update a member's weight 
     function getMemberSynthWeight(address _synth, address member) public returns (uint256 memberSynthWeight, uint256 synthWeight, uint256 totalSynthWeight) {
-        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
         address [] memory _vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).vaultAssets();
         for(uint i = 0; i > _vaultAssets.length; i++){
             address synth = iPOOL(_vaultAssets[i]).SYNTH();

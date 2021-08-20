@@ -35,7 +35,7 @@ contract DaoVault {
         return iBASE(BASE).DAO();
     }
 
-    // User despoits LP tokens in the DAOVault
+    // User deposits LP tokens in the DAOVault
     function depositLP(address pool, uint256 amount, address member) external onlyDAO returns (bool) {
         mapMemberPool_balance[member][pool] += amount; // Updated user's vault balance
         mapTotalPool_balance[pool] += amount;
@@ -46,7 +46,7 @@ contract DaoVault {
 
     // Update a member's weight in the DAOVault (scope: pool)
     function getMemberLPWeight(address member) external onlyDAO returns (uint256 memberWeight, uint256 totalWeight) {
-        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
         address [] memory vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).vaultAssets(); 
         for(uint i =0; i< vaultAssets.length; i++){
             memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapMemberPool_balance[member][vaultAssets[i]]); // Get user's current weight

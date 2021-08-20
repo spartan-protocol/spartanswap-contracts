@@ -14,18 +14,17 @@ import "./iSYNTHVAULT.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Dao is ReentrancyGuard{
-    address public DEPLOYER;
-    address public immutable BASE;
-    bool public retire;
-    bool public running;
+    address public DEPLOYER;        // Address that deployed contract | can be purged to address(0)
+    address public immutable BASE;  // SPARTA base contract address
+    bool public retire;             // If DAO retired/upgraded
+    bool public running;            // DAO proposals running | default to false
 
     uint256 public coolOffPeriod;   // Amount of time a proposal will need to be in finalising stage before it can be finalised
-    uint256 public proposalCount;   // Count of proposals
-    uint256 public majorityFactor;  // Number used to calculate majority; intended to be 6666bp === 2/3
+    uint256 public majorityFactor;  // Number used to calculate majority; intended to be 6666bp (2/3)
     uint256 public erasToEarn;      // Amount of eras that make up the targeted RESERVE depletion; regulates incentives
     uint256 public daoClaim;        // The DAOVault's portion of rewards; intended to be ~10% initially
-    uint256 public daoFee;          // The SPARTA fee for a user to create a new proposal, intended to be 100 SPARTA initially
-    uint256 public currentProposal; // The most recent proposal; should be === proposalCount
+    uint256 public daoFee;          // The SPARTA fee for a user to create a new proposal, intended to be > $200
+    uint256 public currentProposal; // The most recent proposal; also acts as a count of all proposals
     
     struct MemberDetails {
         bool isMember;
@@ -59,24 +58,24 @@ contract Dao is ReentrancyGuard{
     iSYNTHVAULT private _SYNTHVAULT;
     iLEND private _LEND;
 
-    address[] public arrayMembers;
+    address[] public arrayMembers; // History array of all members
     address[] public listedBondPools; // Current list of bond enabled assets
     uint256 public bondingPeriodSeconds = 15552000; // Vesting period for bonders (6 months)
     
-    mapping(address => bool) public isMember;
-    mapping(address => bool) public isListed; // Used internally to get CURRENT listed Bond assets
-    mapping(address => uint256) public mapMember_lastTime;
-    mapping(uint256 => uint256) public mapPID_param;
-    mapping(uint256 => address) public mapPID_address;
-    mapping(uint256 => string) public mapPID_type;
-    mapping(uint256 => uint256) public mapPID_coolOffTime;
-    mapping(uint256 => bool) public mapPID_finalising;
-    mapping(uint256 => bool) public mapPID_finalised;
-    mapping(uint256 => bool) public mapPID_open;
-    mapping(uint256 => uint256) public mapPID_startTime;
+    mapping(address => bool) public isMember;   // Used to prevent duplicates in arrayMembers[]
+    mapping(address => bool) public isListed;   // Current list of bond enabled assets
+    mapping(address => uint256) public mapMember_lastTime; // Member's last harvest time
+    mapping(uint256 => uint256) public mapPID_param;    // Parameter mapped to the proposal
+    mapping(uint256 => address) public mapPID_address;  // Address mapped to the proposal
+    mapping(uint256 => string) public mapPID_type;      // String of the proposal type
+    mapping(uint256 => uint256) public mapPID_coolOffTime; // Cooloff ending timestamp to be able to check if finalising proposal can be actioned
+    mapping(uint256 => bool) public mapPID_finalising;  // Is proposal in the finalizing stage
+    mapping(uint256 => bool) public mapPID_finalised;   // Has the proposal already be finalised / completed
+    mapping(uint256 => bool) public mapPID_open;        // Is the proposal open or closed
+    mapping(uint256 => uint256) public mapPID_startTime; // Timestamp of proposal creation
 
-    mapping(uint256 => mapping(address => uint256)) public mapPIDAsset_votes;
-    mapping(uint256 => mapping(address => bool)) public mapPIDMember_hasVoted;
+    mapping(uint256 => mapping(address => uint256)) public mapPIDAsset_votes; // Balance of assets staked in favour of a proposal
+    mapping(uint256 => mapping(address => bool)) public mapPIDMember_hasVoted; // Whether member has signaled their support of a proposal
     
     event MemberDeposits(address indexed member, address indexed pool, uint256 amount);
     event MemberWithdraws(address indexed member, address indexed pool, uint256 balance);
@@ -96,12 +95,12 @@ contract Dao is ReentrancyGuard{
         require(msg.sender == DEPLOYER);
         _;
     }
-    // Let the DAO Sleep
+    // Prevent state-changing functions after DAO is retired
     modifier operational() {
         require(!retire, 'RETIRED');
         _;
     }
-    // Pause proposals
+    // Pause proposals until running is true
     modifier isRunning() {
         require(running, 'INACTIVE');
         _;
@@ -109,13 +108,13 @@ contract Dao is ReentrancyGuard{
     // Is a weight changing function (Check if voter; update votes if true)
     modifier weightChange() {
         uint _currentProposal = currentProposal; // Get current proposal ID
-        bool _recount = mapPID_open[_currentProposal] && mapPIDMember_hasVoted[_currentProposal][msg.sender]; // Check proposal is open and user has already voted
+        bool _recount = mapPID_open[_currentProposal] && mapPIDMember_hasVoted[_currentProposal][msg.sender]; // Check proposal is open and that user has already voted
         if (_recount) {
-            _removeVotes(_currentProposal); // Remove user's votes from proposal
+            _removeVotes(_currentProposal); // Remove user's votes from proposal before the function
         }
         _;
         if (_recount) {
-            _addVotes(_currentProposal); // Add user's new votes to proposal
+            _addVotes(_currentProposal); // Add user's new votes to proposal after the function
         }
     }
 
@@ -124,12 +123,12 @@ contract Dao is ReentrancyGuard{
         BASE = _base;
         DEPLOYER = msg.sender;
         DAO = address(this);
-        coolOffPeriod = 259200;
-        erasToEarn = 30;
-        majorityFactor = 6666;
-        daoClaim = 1000;
-        daoFee = 100;
-        running = false;
+        coolOffPeriod = 259200; // 3 days
+        erasToEarn = 30;        // 30 days
+        majorityFactor = 6666;  // 66.66%
+        daoClaim = 1000;        // 10%
+        running = false;        // Proposals off by default
+        daoFee = 400;
     }
 
     //==================================== PROTOCOL CONTRACTs SETTER =================================//
@@ -175,22 +174,21 @@ contract Dao is ReentrancyGuard{
     // Contract deposits LP tokens for member
     function deposit(address pool, uint256 amount) external operational weightChange {
         require(_POOLFACTORY.isCuratedPool(pool) == true, "!curated"); // Pool must be Curated
-        require(amount > 0, "!amount"); // Deposit amount must be valid
+        require(amount > 0, "!amount");     // Deposit amount must be valid
         if (isMember[msg.sender] != true) {
-            arrayMembers.push(msg.sender); // If not a member; add user to member array
-            isMember[msg.sender] = true; // If not a member; register the user as member
+            arrayMembers.push(msg.sender);  // If not a member; add user to member array
+            isMember[msg.sender] = true;    // If not a member; register the user as member
         }
         require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!transfer"); // Send user's deposit to the DAOVault
-        _DAOVAULT.depositLP(pool, amount, msg.sender); // Update user's deposit balance & weight
-        mapMember_lastTime[msg.sender] = block.timestamp + 60; // Reset user's last harvest time
+        _DAOVAULT.depositLP(pool, amount, msg.sender); // Update user's deposit balance
+        mapMember_lastTime[msg.sender] = block.timestamp + 60; // Reset user's last harvest time + blockShift
         emit MemberDeposits(msg.sender, pool, amount);
     }
     
     // User withdraws all of their selected asset from the DAOVault
     function withdraw(address pool) external operational weightChange {
-        uint256 amount = _DAOVAULT.mapMemberPool_balance(msg.sender, pool);
-        require(amount > 0, "!amount"); // Withdraw amount must be valid (for event reduction)
-        require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // User receives their withdrawal
+        uint256 amount = _DAOVAULT.mapMemberPool_balance(msg.sender, pool); // Get the members available vault balance
+        require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Withdraw assets from vault and tsf to user
         emit MemberWithdraws(msg.sender, pool, amount);
     }
 
@@ -219,10 +217,10 @@ contract Dao is ReentrancyGuard{
 
     // Calculate the user's current total claimable incentive
     function calcReward(address member) public view operational returns(uint){
-        (uint256 weightDAO, uint256 totalDAOWeight) = _DAOVAULT.getMemberLPWeight(member);
-        (uint256 weightBOND, uint256 totalBONDWeight) = _BONDVAULT.getMemberLPWeight(member);
-        uint256 memberWeight = weightDAO + weightBOND;
-        uint256 totalWeight = totalDAOWeight + totalBONDWeight;
+        (uint256 weightDAO, uint256 totalDAOWeight) = _DAOVAULT.getMemberLPWeight(member); // Get the DAOVault weights
+        (uint256 weightBOND, uint256 totalBONDWeight) = _BONDVAULT.getMemberLPWeight(member); // Get the BondVault weights
+        uint256 memberWeight = weightDAO + weightBOND; // Get user's combined vault weight
+        uint256 totalWeight = totalDAOWeight + totalBONDWeight; // Get vault's combined total weight
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)) / erasToEarn; // Aim to deplete reserve over a number of days
         uint daoReward = (reserve * daoClaim) / 10000; // Get the DAO's share of that
         return _UTILS.calcShare(memberWeight, totalWeight, daoReward); // Get users's share of that (1 era worth)
@@ -245,7 +243,8 @@ contract Dao is ReentrancyGuard{
 
     // List an asset to be enabled for Bonding
     function listBondAsset(address asset) external onlyDAO {
-        address _pool = _POOLFACTORY.getPool(asset);
+        require(mapPID_open[currentProposal] == false, "OPEN"); // Must not be an open proposal (de-sync proposal votes)
+        address _pool = _POOLFACTORY.getPool(asset); // Get the relevant pool address
         require(!isListed[_pool], 'listed'); // Asset must not be listed for Bond
         isListed[_pool] = true; // Register as a bond-enabled asset
         listedBondPools.push(_pool); // Add to record of current Bond assets
@@ -254,7 +253,7 @@ contract Dao is ReentrancyGuard{
 
     // Delist an asset from the Bond program
     function delistBondAsset(address asset) external onlyDAO {
-        address _pool = _POOLFACTORY.getPool(asset);
+        address _pool = _POOLFACTORY.getPool(asset); // Get the relevant pool address
         require(isListed[_pool], '!listed'); // Asset must be listed for Bond
         isListed[_pool] = false; // Unregister as a currently enabled asset
         for (uint i = 0; i < listedBondPools.length; i++) {
@@ -276,34 +275,34 @@ contract Dao is ReentrancyGuard{
             isMember[msg.sender] = true; // Register user as a member
         }
         uint256 liquidityUnits = _handleTransferIn(asset, amount); // Add liquidity and calculate LP units
-        mapMember_lastTime[msg.sender] = block.timestamp + 60; // Reset user's last harvest time
+        mapMember_lastTime[msg.sender] = block.timestamp + 60; // Reset user's last harvest time + blockShift
         _BONDVAULT.depositForMember(_pool, msg.sender, liquidityUnits); // Deposit the Bonded LP units in the BondVault
         emit DepositAsset(msg.sender, amount, liquidityUnits);
         return true;
     }
 
-    // Add Bonded assets as liquidity and calculate LP units
+    // Add bonded assets as liquidity and calculate LP units
     function _handleTransferIn(address _token, uint _amount) internal nonReentrant returns (uint LPunits){
         if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < 2.5 * 10**6 * 10**18){
             iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply()); // Increase SPARTA allowance if required
         }
         if(_token == address(0)){
-            require((_amount == msg.value), "!amount");
+            require((_amount == msg.value), "!amount"); // Ensure BNB value matching
             uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); // Get the SPARTA swap value of the bonded assets
-            LPunits = _ROUTER.addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, address(_BONDVAULT)); // Add spartaAllocation & BNB as liquidity to mint LP tokens
+            LPunits = _ROUTER.addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, address(_BONDVAULT)); // Add SPARTA & BNB liquidity, mint LP tokens to BondVault
         } else {
-            require(iBEP20(_token).transferFrom(msg.sender, address(this), _amount), '!transfer'); // Transfer user's assets to Dao contract
-            uint _actualAmount = iBEP20(_token).balanceOf(address(this)); // Get actual received token amount
+            require(iBEP20(_token).transferFrom(msg.sender, address(this), _amount), '!transfer'); // Transfer TOKEN to Dao contract
+            uint _actualAmount = iBEP20(_token).balanceOf(address(this)); // Get actual received TOKEN amount
             uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _actualAmount); // Get the SPARTA swap value of the bonded assets
             if(iBEP20(_token).allowance(address(this), address(_ROUTER)) < _actualAmount){
                 uint256 approvalTNK = iBEP20(_token).totalSupply();
                 iBEP20(_token).approve(address(_ROUTER), approvalTNK); // Increase allowance if required
             }
-            LPunits = _ROUTER.addLiquidityForMember(spartaAllocation, _actualAmount, _token, address(_BONDVAULT)); // Add spartaAllocation & assets as liquidity to mint LP tokens
+            LPunits = _ROUTER.addLiquidityForMember(spartaAllocation, _actualAmount, _token, address(_BONDVAULT)); // Add SPARTA & TOKEN liquidity, mint LP tokens to BondVault
         }
     }
 
-    // User claims all of their unlocked Bonded LPs
+    // User claims a selection of their unlocked Bonded LPs
     function claimAll(address [] memory bondAssets) external operational weightChange returns (bool){
         for(uint i = 0; i < bondAssets.length; i++){
             _claim(bondAssets[i]);
@@ -311,9 +310,9 @@ contract Dao is ReentrancyGuard{
         return true;
     }
 
-    // User claims unlocked Bond units of a selected asset (keep internal; otherwise add weightChange modifier)
+    // User claims unlocked bonded units of a selected asset (keep internal; otherwise add weightChange modifier)
     function _claim(address asset) internal operational returns (bool){
-        uint claimA = calcClaimBondedLP(msg.sender, asset); // Check user's unlocked Bonded LPs
+        uint claimA = calcClaimBondedLP(msg.sender, asset); // Check user's unlocked bonded LPs
         if(claimA > 0){
             _BONDVAULT.claimForMember(asset, msg.sender); // Claim LPs if any unlocked
         }
@@ -322,7 +321,7 @@ contract Dao is ReentrancyGuard{
     
     // Calculate user's unlocked Bond units of a selected asset
     function calcClaimBondedLP(address bondedMember, address asset) public view returns (uint){
-        uint claimAmount = _BONDVAULT.calcBondedLP(bondedMember, asset); // Check user's unlocked Bonded LPs
+        uint claimAmount = _BONDVAULT.calcBondedLP(bondedMember, asset); // Check user's unlocked bonded LPs
         return claimAmount;
     }
 
@@ -381,11 +380,10 @@ contract Dao is ReentrancyGuard{
 
     // If no existing open DAO proposal; register a new one
     function _checkProposal() internal operational isRunning returns(uint) {
-        require(_RESERVE.globalFreeze() != true, '');
-        uint _currentProposal = currentProposal;
+        require(_RESERVE.globalFreeze() != true, '!SAFE'); // There must not be a global freeze in place
+        uint _currentProposal = currentProposal; // Get the current proposal ID
         require(mapPID_open[_currentProposal] == false, '!open'); // There must not be an existing open proposal
         _currentProposal += 1; // Increment to the new PID
-        proposalCount = _currentProposal; // Update proposal count
         currentProposal = _currentProposal; // Set current proposal to the new count
         mapPID_open[_currentProposal] = true; // Set new proposal as open status
         mapPID_startTime[_currentProposal] = block.timestamp; // Set the start time of the proposal to now
@@ -402,34 +400,34 @@ contract Dao is ReentrancyGuard{
 
     // Vote for a proposal
     function voteProposal() external operational {
-        require(_RESERVE.globalFreeze() != true, '');
-        uint _currentProposal = currentProposal;
+        require(_RESERVE.globalFreeze() != true, '!SAFE'); // There must not be a global freeze in place
+        uint _currentProposal = currentProposal; // Get the current proposal ID
         require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
-        require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == false, "VOTED");
+        require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == false, "VOTED"); // User must not have already signaled their support
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
         bool nonZero = _addVotes(_currentProposal); // Add votes to current proposal
-        mapPIDMember_hasVoted[_currentProposal][msg.sender] = true;
+        mapPIDMember_hasVoted[_currentProposal][msg.sender] = true; // Signal user's support for the proposal
         if (nonZero) {
-            emit NewVote(msg.sender, _currentProposal, string(_type));
+            emit NewVote(msg.sender, _currentProposal, string(_type)); // Emit event if vote has nonZero weight
         }
     }
 
     // Remove vote from a proposal
     function unvoteProposal() external operational {
-        uint _currentProposal = currentProposal;
+        uint _currentProposal = currentProposal; // Get the current proposal ID
         require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
-        require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == true, "!VOTED");
+        require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == true, "!VOTED"); // User must have already signaled their support
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
         bool nonZero = _removeVotes(_currentProposal); // Remove votes from current proposal
-        mapPIDMember_hasVoted[_currentProposal][msg.sender] = false;
+        mapPIDMember_hasVoted[_currentProposal][msg.sender] = false; // Remove user's signal of support for the proposal
         if (nonZero) {
-            emit RemovedVote(msg.sender, _currentProposal, string(_type));
+            emit RemovedVote(msg.sender, _currentProposal, string(_type)); // Emit event if removed votes had a nonZero weight
         }
     }
 
     // Poll vote weights and check if proposal is ready to go into finalisation stage
     function pollVotes() external operational {
-        uint _currentProposal = currentProposal;
+        uint _currentProposal = currentProposal; // Get the current proposal ID
         require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
         if(hasQuorum(_currentProposal) && mapPID_finalising[_currentProposal] == false){
@@ -452,12 +450,12 @@ contract Dao is ReentrancyGuard{
 
     // Attempt to cancel the open proposal
     function cancelProposal() operational external {
-        uint _currentProposal = currentProposal;
+        uint _currentProposal = currentProposal; // Get the current proposal ID
         require(mapPID_open[_currentProposal], "!OPEN"); // Proposal must be open
         require(block.timestamp > (mapPID_startTime[_currentProposal] + 1296000), "!days"); // Proposal must not be new
-        address [] memory votingAssets =  _POOLFACTORY.vaultAssets();
+        address [] memory votingAssets =  _POOLFACTORY.vaultAssets(); // Get array of vault-enabled pools
         for(uint i = 0; i < votingAssets.length; i++){
-           mapPIDAsset_votes[_currentProposal][votingAssets[i]] = 0;
+           mapPIDAsset_votes[_currentProposal][votingAssets[i]] = 0; // Reset votes to 0
         }
         mapPID_open[_currentProposal] = false; // Set the proposal as not open (closed status)
         emit CancelProposal(msg.sender, _currentProposal);
@@ -465,12 +463,12 @@ contract Dao is ReentrancyGuard{
 
     // A finalising-stage proposal can be finalised after the cool off period
     function finaliseProposal() external operational isRunning {
-        require(_RESERVE.globalFreeze() != true, '');
-        uint _currentProposal = currentProposal;
+        require(_RESERVE.globalFreeze() != true, '!SAFE'); // There must not be a global freeze in place
+        uint _currentProposal = currentProposal; // Get the current proposal ID
         require((block.timestamp - mapPID_coolOffTime[_currentProposal]) > coolOffPeriod, "!cooloff"); // Must be past cooloff period
         require(mapPID_finalising[_currentProposal] == true, "!finalising"); // Must be in finalising stage
-        require(mapPID_open[_currentProposal] == true);
-        require(mapPID_finalised[_currentProposal] == false);
+        require(mapPID_open[_currentProposal] == true); // Proposal must be open
+        require(mapPID_finalised[_currentProposal] == false); // Proposal must not already be finalised
         if(!hasQuorum(_currentProposal)){
             mapPID_finalising[_currentProposal] = false; // If proposal has lost quorum consensus; kick it out of the finalising stage
         } else {
@@ -626,9 +624,9 @@ contract Dao is ReentrancyGuard{
     // After completing the proposal's action; close it
     function _completeProposal(uint _proposalID) internal {
         string memory _typeStr = mapPID_type[_proposalID]; // Get proposal type
-        address [] memory votingAssets =  _POOLFACTORY.vaultAssets();
+        address [] memory votingAssets =  _POOLFACTORY.vaultAssets(); // Get array of current vault assets
         for(uint i = 0; i < votingAssets.length; i++){
-           mapPIDAsset_votes[_proposalID][votingAssets[i]] = 0;
+           mapPIDAsset_votes[_proposalID][votingAssets[i]] = 0; // Reset votes to 0
         }
         mapPID_finalised[_proposalID] = true; // Finalise the proposal
         mapPID_finalising[_proposalID] = false; // Remove proposal from 'finalising' stage
@@ -640,11 +638,11 @@ contract Dao is ReentrancyGuard{
     
     // User stakes all their vault assets for a proposal
     function _addVotes(uint _currentProposal) internal returns (bool nonZero) {
-        address [] memory votingAssets = _POOLFACTORY.vaultAssets();
+        address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
         for(uint i = 0; i < votingAssets.length; i++){
-            uint unitsAdded = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender);
+            uint unitsAdded = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender); // Get user's combined vault balance per asset
             if (unitsAdded > 0) {
-                mapPIDAsset_votes[_currentProposal][votingAssets[i]] += unitsAdded;
+                mapPIDAsset_votes[_currentProposal][votingAssets[i]] += unitsAdded; // Add user's votes for the current proposal
                 nonZero = true;
             }
         }
@@ -652,11 +650,11 @@ contract Dao is ReentrancyGuard{
 
     // User removes their vault staked assets from a proposal
     function _removeVotes(uint _currentProposal) internal returns (bool nonZero) {
-        address [] memory votingAssets = _POOLFACTORY.vaultAssets();
+        address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
         for(uint i = 0; i < votingAssets.length; i++){
-            uint unitsRemoved = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender);
+            uint unitsRemoved = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender); // Get user's combined vault balance per asset
             if (unitsRemoved > 0) {
-                mapPIDAsset_votes[_currentProposal][votingAssets[i]] -= unitsRemoved;
+                mapPIDAsset_votes[_currentProposal][votingAssets[i]] -= unitsRemoved; // Remove user's votes from the current proposal
                 nonZero = true;
             }
         }
@@ -664,12 +662,12 @@ contract Dao is ReentrancyGuard{
 
     // Check if a proposal has Majority consensus
     function hasMajority(uint _proposalID) public view returns(bool){
-        address [] memory votingAssets = _POOLFACTORY.vaultAssets();
+        address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
         uint256 _votedWeight; uint _totalWeight;
         for(uint i = 0; i < votingAssets.length; i++){
-            uint256 lpTotal = _DAOVAULT.mapTotalPool_balance(votingAssets[i]) + _BONDVAULT.mapTotalPool_balance(votingAssets[i]);
+            uint256 lpTotal = _DAOVAULT.mapTotalPool_balance(votingAssets[i]) + _BONDVAULT.mapTotalPool_balance(votingAssets[i]); // Get total balance of asset in the combined vaults
             _votedWeight += _UTILS.getPoolShareWeight(votingAssets[i], mapPIDAsset_votes[_proposalID][votingAssets[i]]); // Get proposal's current weight
-            _totalWeight += _UTILS.getPoolShareWeight(votingAssets[i], lpTotal); // Get DAO's current total weight
+            _totalWeight += _UTILS.getPoolShareWeight(votingAssets[i], lpTotal); // Get combined vault's current total weight
         }
         uint consensus = _totalWeight * majorityFactor / 10000; // Majority > 66.6%
         return (_votedWeight > consensus);
@@ -677,12 +675,12 @@ contract Dao is ReentrancyGuard{
 
     // Check if a proposal has Quorum consensus
     function hasQuorum(uint _proposalID) public view returns(bool){
-        address [] memory votingAssets = _POOLFACTORY.vaultAssets();
+        address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
         uint256 _votedWeight; uint _totalWeight;
         for(uint i = 0; i < votingAssets.length; i++){
-            uint256 lpTotal = _DAOVAULT.mapTotalPool_balance(votingAssets[i]) + _BONDVAULT.mapTotalPool_balance(votingAssets[i]);
-            _votedWeight += _UTILS.getPoolShareWeight(votingAssets[i], mapPIDAsset_votes[_proposalID][votingAssets[i]]); // Get user's current weight
-            _totalWeight += _UTILS.getPoolShareWeight(votingAssets[i], lpTotal); // Get user's current weight
+            uint256 lpTotal = _DAOVAULT.mapTotalPool_balance(votingAssets[i]) + _BONDVAULT.mapTotalPool_balance(votingAssets[i]); // Get total balance of asset in the combined vaults
+            _votedWeight += _UTILS.getPoolShareWeight(votingAssets[i], mapPIDAsset_votes[_proposalID][votingAssets[i]]); // Get proposal's current weight
+            _totalWeight += _UTILS.getPoolShareWeight(votingAssets[i], lpTotal); // Get combined vault's current total weight
         }
         uint consensus = _totalWeight / 2; // Quorum > 50%
         return (_votedWeight > consensus);
