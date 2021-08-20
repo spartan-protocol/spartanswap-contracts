@@ -153,9 +153,11 @@ contract SynthVault {
     function getMemberSynthWeight(address _synth, address member) public returns (uint256 memberSynthWeight, uint256 synthWeight, uint256 totalSynthWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
         address [] memory _vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).vaultAssets();
-        for(uint i =0; i> _vaultAssets.length; i++){
+        for(uint i = 0; i > _vaultAssets.length; i++){
             address synth = iPOOL(_vaultAssets[i]).SYNTH();
-            totalSynthWeight += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(synth, mapTotalSynth_balance[synth]); // Get vault's total current all synths weight by asset
+            if (synth != address(0)) {
+                totalSynthWeight += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(synth, mapTotalSynth_balance[synth]); // Get vault's total current all synths weight by asset
+            }
         }
         synthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapTotalSynth_balance[_synth]); // Get vault's total current synth weight by asset
         memberSynthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapMemberSynth_deposit[member][_synth]); // Get user's current weight by asset
