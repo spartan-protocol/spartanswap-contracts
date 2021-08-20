@@ -228,7 +228,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     // Swap SPARTA for Synths
     function mintSynth(address member) external onlyPROTOCOL returns(uint outputAmount, uint fee) {
         address synthOut = SYNTH(); // Get the synth address
-        require(synthOut != address(0), "!synth"); // Must be a valid Synth
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut), "!synth"); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS());
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
         require((baseAmount + _actualInputBase) < baseCAP, "RTC");
@@ -270,7 +270,6 @@ contract Pool is iBEP20, ReentrancyGuard {
         if(synthSupply < minDebt){
             synthSupply = minDebt;
         }
-        
         if(_collateral < minCollateral){
            _collateral = minCollateral;
         }

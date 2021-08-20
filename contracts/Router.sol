@@ -304,7 +304,7 @@ contract Router is ReentrancyGuard {
     function _addDividend(address _pool, uint256 _fees) internal {
         uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
             if(reserve > 0){
-                uint256 _dividendReward = (reserve * diviClaim)/curatedPoolsCount/10000; // Get the dividend share 
+                uint256 _dividendReward = (reserve * diviClaim) / curatedPoolsCount / 10000; // Get the dividend share 
                 if((mapAddress_30DayDividends[_pool] + _fees) < _dividendReward){
                     _revenueDetails(_fees, _pool); // Add to revenue metrics
                     iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Transfer dividend from RESERVE to POOL

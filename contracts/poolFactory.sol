@@ -103,6 +103,7 @@ contract PoolFactory {
                 vaultAssets.pop();// Remove the last element
             }
         }
+        iSYNTHFACTORY(_DAO().SYNTHFACTORY()).removeSynth(token); 
         emit RemoveCuratePool(_pool);
     }
 

@@ -5,10 +5,11 @@ import "./Synth.sol";
 contract SynthFactory { 
     address public immutable BASE;
     address public immutable WBNB;
+    address public DEPLOYER;
 
-    address[] public arraySynths; // Array of all deployed synths
-    mapping(address => address) private mapToken_Synth;
-    mapping(address => bool) public isSynth;
+    address[] public arraySynths; // Array of all valid synths
+    mapping(address => address) private mapToken_Synth; // All Synths
+    mapping(address => bool) public isSynth; // Point of truth
     event CreateSynth(address indexed token, address indexed pool, address indexed synth);
 
     constructor (address _base, address _wbnb) {
@@ -16,10 +17,15 @@ contract SynthFactory {
         require(_wbnb != address(0), '!ZERO');
         BASE = _base;
         WBNB = _wbnb;
+        DEPLOYER = msg.sender;
     }
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
+    }
+    modifier onlyDAO() {
+        require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER || msg.sender == _DAO().POOLFACTORY());
+        _;
     }
 
     // Anyone can create a synth if it's pool is curated
@@ -32,17 +38,27 @@ contract SynthFactory {
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         newSynth = new Synth(BASE, _token, _pool); // Deploy synth asset contract
         synth = address(newSynth); // Get new synth's address
-        _addSynth(_token, synth); // Record new synth contract with the SynthFactory
+        mapToken_Synth[_token] = synth; // Record synth address
+        _addSynth(synth); // Record new synth contract with the SynthFactory
         emit CreateSynth(_token, _pool, synth);
         return synth;
     }
 
     // Record synth with the SynthFactory
-    function _addSynth(address _token, address _synth) internal {
-        require(_token != BASE); // Must not be SPARTA
-        mapToken_Synth[_token] = _synth; // Record synth address
+    function _addSynth(address _synth) public onlyDAO {
         arraySynths.push(_synth); // Add synth address to the array
         isSynth[_synth] = true; // Record synth as valid
+    }
+    // Remove Synth with SynthFactory
+    function removeSynth(address _token) external onlyDAO {
+        address _synth = getSynth(_token); 
+        for(uint i = 0 ; i < arraySynths.length; i++){
+            if(arraySynths[i] == _synth){
+                arraySynths[i] = arraySynths[arraySynths.length - 1]; // Move the last element into the place to delete
+                arraySynths.pop();// Remove the last element
+            }
+        }
+        isSynth[_synth] = false; // Record synth as inValid
     }
 
     //================================ Helper Functions ==================================//

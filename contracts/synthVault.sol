@@ -140,15 +140,16 @@ contract SynthVault {
     function calcReward(address _synth, address member) public returns (uint256) {
         (uint256 weight, uint256 totalWeight) = getMemberSynthWeight(_synth, member);
         uint256 _reserve = reserveBASE() / erasToEarn; // Aim to deplete reserve over a number of days
-        uint256 _vaultReward = (_reserve * vaultClaim) / 10000; // Get the SynthVault's share of that
+        uint256 synthCount = iSYNTHFACTORY(_DAO().SYNTHFACTORY()).synthCount(); 
+        uint256 _vaultReward = (_reserve * vaultClaim)/ synthCount / 10000; // Get the SynthVault's share of that
         return iUTILS(_DAO().UTILS()).calcShare(weight, totalWeight, _vaultReward); // Get member's share of that
     }
 
     // Update a member's weight 
     function getMemberSynthWeight(address _synth, address member) public returns (uint256 memberSynthWeight, uint256 totalSynthWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '');
-        totalSynthWeight += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapTotalSynth_balance[_synth]); // Get user's current weight
-        memberSynthWeight += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapMemberSynth_deposit[member][_synth]); // Get user's current weight
+        totalSynthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapTotalSynth_balance[_synth]); // Get user's current weight
+        memberSynthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapMemberSynth_deposit[member][_synth]); // Get user's current weight
         return (memberSynthWeight, totalSynthWeight);
     }
 
@@ -157,7 +158,6 @@ contract SynthVault {
 
     // User withdraws a percentage of their synths from the vault
     function withdraw(address synth, uint256 basisPoints) external {
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth');
         require(basisPoints > 0, '!VALID');
         require((block.timestamp > mapMember_depositTime[msg.sender]), "lockout"); // Must not withdraw before lockup period passed
         uint256 redeemedAmount = iUTILS(_DAO().UTILS()).calcPart(basisPoints, mapMemberSynth_deposit[msg.sender][synth]); // Calc amount to withdraw
