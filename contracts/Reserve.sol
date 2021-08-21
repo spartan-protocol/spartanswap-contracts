@@ -5,10 +5,10 @@ import "./iBASE.sol";
 import "./iDAO.sol";
 
 contract Reserve {
-    address public immutable BASE;
-    address public DEPLOYER;
-    bool public emissions;
-    bool public globalFreeze;
+    address public immutable BASE;  // Address of SPARTA base token contract
+    address public DEPLOYER;        // Address that deployed the contract | can be purged to address(0)
+    bool public emissions;          // Is SPARTA emitting from RESERVE -> incentive addresses
+    bool public globalFreeze;       // Is there a global pause in place
 
     // Restrict access
     modifier onlyGrantor() {

@@ -5,14 +5,14 @@ import "./Pool.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract PoolFactory is ReentrancyGuard { 
-    address public immutable BASE;
-    address public immutable WBNB;
-    address public DEPLOYER;
+    address public immutable BASE;  // Address of SPARTA base token contract
+    address public immutable WBNB;  // Address of WBNB
+    address public DEPLOYER;        // Address that deployed the contract | can be purged to address(0)
     uint public curatedPoolSize;    // Max amount of pools that can be curated status
     uint public curatedPoolCount;   // Current count of pools that are curated status
     address[] public arrayPools;    // Array of all deployed pools
     address[] public arrayTokens;   // Array of all listed tokens
-    address[] public vaultAssets;
+    address[] public vaultAssets;   // Array of all vault-enabled assets (curated pools)
 
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isListedPool;
@@ -54,7 +54,6 @@ contract PoolFactory is ReentrancyGuard {
 
     // Anyone can create a pool and add liquidity at the same time
     function createPoolADD(uint256 inputBase, uint256 inputToken, address token) external payable returns(address pool){
-        require(token != address(0), '!VALID'); // Must not be BNB; should already be listed (via createPool)
         require(getPool(token) == address(0), '!NEW'); // Must not have a valid pool address yet
         require((inputToken > 0 && inputBase >= (10000*10**18)), "!MIN"); // User must add at least 10,000 SPARTA liquidity & ratio must be finite
         Pool newPool; address _token = token;
@@ -76,18 +75,18 @@ contract PoolFactory is ReentrancyGuard {
         return pool;
     }
 
-    // Add pool to the Curated list, enabling it's synths & dividends & dao/vault weight
+    // Add pool to the Curated list, enabling it's synths, dividends & dao/vault weight
     function addCuratedPool(address token) external onlyDAO {
         require(token != BASE, '!VALID'); // Token must not be SPARTA
         uint _currentProposal = iDAO(_DAO().DAO()).currentProposal(); // Get current proposal ID
-        require(iDAO(_DAO().DAO()).mapPID_open(_currentProposal) == false, "OPEN"); // Must not be an open proposal (de-sync proposal votes)
+        require(iDAO(_DAO().DAO()).mapPID_open(_currentProposal) == false, "OPEN"); // Must not be an open proposal (de-syncs proposal votes)
         address _pool = getPool(token); // Get pool address
         require(isListedPool[_pool] == true, '!POOL'); // Pool must be valid
-        require(isCuratedPool[_pool] == false, 'isCurated'); // Pool must not be curated already
+        require(isCuratedPool[_pool] == false, 'isCurated'); // Pool must not be curated yet
         require(curatedPoolCount < curatedPoolSize, 'maxCurated'); // Must be room in the Curated list
         isCuratedPool[_pool] = true; // Record pool as Curated
         curatedPoolCount = curatedPoolCount + 1; // Increase the curated pool count
-        vaultAssets.push(_pool);
+        vaultAssets.push(_pool); // Push pool address into the curated array
         emit AddCuratePool(_pool);
     }
 
@@ -101,17 +100,17 @@ contract PoolFactory is ReentrancyGuard {
         for(uint i = 0 ; i < vaultAssets.length; i++){
             if(vaultAssets[i] == _pool){
                 vaultAssets[i] = vaultAssets[vaultAssets.length - 1]; // Move the last element into the place to delete
-                vaultAssets.pop();// Remove the last element
+                vaultAssets.pop(); // Remove the last element
             }
         }
-        iSYNTHFACTORY(_DAO().SYNTHFACTORY()).removeSynth(token); 
+        iSYNTHFACTORY(_DAO().SYNTHFACTORY()).removeSynth(token); // Remove synth from 'isSynth'
         emit RemoveCuratePool(_pool);
     }
 
     // Transfer assets into new pool
     function _handleTransferIn(address _token, uint256 _amount, address _pool) internal nonReentrant {
         require(_amount > 0, '!GAS');
-         if(_token == address(0)){
+        if(_token == address(0)){
             require(_amount == msg.value);
             (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB
             require(success, "!send");
@@ -136,7 +135,7 @@ contract PoolFactory is ReentrancyGuard {
         if(isListedPool[pool] == true){
             return true;
         }
-        return  false;
+        return false;
     }
 
     function poolCount() external view returns(uint256){
