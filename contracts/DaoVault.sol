@@ -73,7 +73,7 @@ contract DaoVault {
         return mapMemberPool_balance[member][pool];
     }
 
-    // Get user's last deposit time
+    // Get user's last deposit time of a chosen asset
     function getMemberPoolDepositTime(address pool, address member) external view returns (uint256){
         return mapMemberPool_balance[member][pool];
     }
