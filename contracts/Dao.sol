@@ -566,10 +566,11 @@ contract Dao is ReentrancyGuard{
         iBASE(BASE).mintFromDAO(_2point5m, address(this)); // Mint SPARTA and send to DAO to hold
         _completeProposal(_proposalID); // Finalise the proposal
     }
-    //Realise value out of a synth's collateral
+
+    // Realise value out of a synth's collateral
     function _realise(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed SYNTH address for realise
-        iSYNTH(_proposedAddress).realise();
+        iSYNTH(_proposedAddress).realise(); // Calculate value of LPs vs synthSupply; burn the premium
         _completeProposal(_proposalID); // Finalise the proposal
     }
 

@@ -83,22 +83,28 @@ contract Router is ReentrancyGuard {
         _safetyTrigger(_pool); // Check pool ratios
     }
 
-    // Trade LP tokens for another type of LP tokens
+    // Swap LP tokens for a different pool's LP tokens
     function zapLiquidity(uint unitsInput, address fromPool, address toPool) external {
         require(fromPool != toPool && unitsInput > 0, '!VALID'); // Pools must be different and input must be valid
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         require(_poolFactory.isPool(fromPool) == true, '!POOL'); // FromPool must be a valid pool
         require(_poolFactory.isPool(toPool) == true, '!POOL'); // ToPool must be a valid pool
         address _fromToken = Pool(fromPool).TOKEN(); // Get token underlying the fromPool
+        address _toToken = Pool(toPool).TOKEN(); // Get token underlying the toPool
         address _member = msg.sender; // Get user's address
         require(iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput), '!transfer'); // Tsf LP units (User -> FromPool)
         Pool(fromPool).removeForMember(address(this)); // Remove liquidity; tsf SPARTA and fromTOKEN (Pool -> Router)
-        require(iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))), '!transfer'); // Tsf fromTOKEN (Wrapped) (Router -> FromPool)
-        Pool(fromPool).swapTo(BASE, toPool); // Swap fromTOKEN (Wrapped) for SPARTA (Router -> fromPool -> toPool)
+        require(iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))), '!transfer'); // Tsf fromTOKEN (Router -> FromPool)
+        (, uint feez) = Pool(fromPool).swapTo(BASE, address(this)); // Swap fromTOKEN for SPARTA (FromPool -> Router)
+        require(iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this)) / 2), '!transfer'); // Tsf half of SPARTA (Router -> toPool)
+        (, uint feey) = Pool(toPool).swapTo(_toToken, address(this)); // Swap SPARTA for toTOKEN (ToPool -> Router)
         require(iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Tsf SPARTA (Router -> toPool)
+        require(iBEP20(_toToken).transfer(toPool, iBEP20(_toToken).balanceOf(address(this))), '!transfer'); // Tsf ToTOKEN (Router -> toPool)
         Pool(toPool).addForMember(_member); // Add liquidity; tsf LPs (Pool -> User)
         _safetyTrigger(fromPool); // Check fromPool ratios
         _safetyTrigger(toPool); // Check toPool ratios
+        _getsDividend(fromPool, feez); // Check for dividend & tsf (Reserve -> fromPool)
+        _getsDividend(toPool, feey); // Check for dividend & tsf (Reserve -> toPool)
     }
 
     // User removes liquidity - redeems a percentage of their balance
