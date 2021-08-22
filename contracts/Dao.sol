@@ -2,6 +2,7 @@
 pragma solidity 0.8.3;
 import "./iUTILS.sol";
 import "./iLEND.sol"; 
+import "./iSYNTH.sol"; 
 import "./iRESERVE.sol";
 import "./iDAOVAULT.sol";
 import "./iROUTER.sol";
@@ -353,7 +354,7 @@ contract Dao is ReentrancyGuard{
     // New DAO proposal: Address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) external {
         bytes memory _type = bytes(typeStr); // Get the proposal type
-        if (isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE')) {
+        if (isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE') || isEqual(_type, 'REALISE')) {
             require(proposedAddress != address(0), "!address"); // Proposed address must be valid
         }
         uint _currentProposal = _checkProposal(); // If no open proposal; construct new one
@@ -499,6 +500,8 @@ contract Dao is ReentrancyGuard{
                 _addCuratedPool(_currentProposal);
             } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
                 _removeCuratedPool(_currentProposal);
+            } else if (isEqual(_type, 'REALISE')){
+                _realise(_currentProposal);
             } else {
                 _completeProposal(_currentProposal); // If no match; close proposal
             }
@@ -567,6 +570,12 @@ contract Dao is ReentrancyGuard{
     function _increaseSpartaAllocation(uint _proposalID) internal {
         uint256 _2point5m = 2.5*10**6*10**18; //_2.5m
         iBASE(BASE).mintFromDAO(_2point5m, address(this)); // Mint SPARTA and send to DAO to hold
+        _completeProposal(_proposalID); // Finalise the proposal
+    }
+    //Realise value out of a synth's collateral
+    function _realise(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed SYNTH address for realise
+        iSYNTH(_proposedAddress).realise();
         _completeProposal(_proposalID); // Finalise the proposal
     }
 
