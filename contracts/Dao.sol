@@ -27,12 +27,6 @@ contract Dao is ReentrancyGuard{
     uint256 public daoFee;          // The SPARTA fee for a user to create a new proposal, intended to be > $200
     uint256 public currentProposal; // The most recent proposal; also acts as a count of all proposals
     
-    struct MemberDetails {
-        bool isMember;
-        uint weight;
-        uint lastBlock;
-        uint poolCount;
-    }
     struct ProposalDetails {
         uint id;
         string proposalType;
