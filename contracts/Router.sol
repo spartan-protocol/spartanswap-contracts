@@ -146,16 +146,18 @@ contract Router is ReentrancyGuard {
         Pool(_pool).removeForMember(address(this)); // Remove liquidity; tsf SPARTA and TOKEN (Wrapped) (Pool -> Router)
         address _token = token; // Get token address
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
+        uint fee;
         if(toBase){
             require(iBEP20(_token).transfer(_pool, iBEP20(_token).balanceOf(address(this))), '!transfer'); // Tsf TOKEN (Wrapped) (Router -> Pool)
-            Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN (Wrapped) to SPARTA (Pool -> Router)
+            (, fee) = Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN (Wrapped) to SPARTA (Pool -> Router)
             require(iBEP20(BASE).transfer(_member, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Tsf total SPARTA (Router -> User)
         } else {
             require(iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Tsf SPARTA (Router -> Pool)
-            Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA to TOKEN (Pool -> Router)
+            (, fee) = Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA to TOKEN (Pool -> Router)
             _handleTransferOut(token, iBEP20(_token).balanceOf(address(this)), _member); // Tsf total TOKEN (Router -> User)
         } 
         _safetyTrigger(_pool); // Check pool ratios
+        _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
     }
  
     //============================== Swapping Functions ====================================//
