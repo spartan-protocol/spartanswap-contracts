@@ -8,7 +8,7 @@ import "./iSYNTH.sol";
 import "./iBEP20.sol";
 
 contract Utils {
-    address public immutable BASE;
+    address public immutable BASE; // SPARTA base contract address
     uint private constant one = 10**18;
 
     constructor (address _base) {
@@ -22,9 +22,6 @@ contract Utils {
         uint genesis;
         uint baseAmount;
         uint tokenAmount;
-        uint fees;
-        uint volume;
-        uint txCount;
         uint poolUnits;
     }
 
@@ -36,8 +33,8 @@ contract Utils {
 
     function getPoolData(address token) external view returns(PoolDataStruct memory poolData){
         address pool = getPool(token);
-        poolData.poolAddress = pool;
         poolData.tokenAddress = token;
+        poolData.poolAddress = pool;
         poolData.genesis = iPOOL(pool).genesis();
         poolData.baseAmount = iPOOL(pool).baseAmount();
         poolData.tokenAmount = iPOOL(pool).tokenAmount();
@@ -53,6 +50,7 @@ contract Utils {
     function getPool(address token) public view returns(address pool){
         return iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
     }
+
     function getSynth(address token) external view returns(address synth){
         return iSYNTHFACTORY(_DAO().SYNTHFACTORY()).getSynth(token);
     }
@@ -87,7 +85,7 @@ contract Utils {
             // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
             // P * (part1 + part2) / (part3) * slipAdjustment
             uint slipAdjustment = getSlipAdjustment(b, B, t, T);
-            require(slipAdjustment > (9.8 * 10**17));
+            require(slipAdjustment > (9.8 * 10**17)); // Resist asym liqAdds
             uint part1 = t * B;     // tokenInput * baseDepth
             uint part2 = T * b;     // tokenDepth * baseInput
             uint part3 = T * B * 2; // tokenDepth * baseDepth * 2
@@ -122,11 +120,11 @@ contract Utils {
         // address pool = getPool(token);
         uint amount;
         if(token == BASE){
-            amount = iPOOL(pool).baseAmount();
+            amount = iPOOL(pool).baseAmount(); // Get SPARTA depth of pool
         } else {
-            amount = iPOOL(pool).tokenAmount();
+            amount = iPOOL(pool).tokenAmount(); // Get TOKEN depth of pool
         }
-        uint totalSupply = iBEP20(pool).totalSupply();
+        uint totalSupply = iBEP20(pool).totalSupply(); // Get total supply of LPs
         require(totalSupply > 0, '!DIVISION');
         return (amount * units) / totalSupply;
     }
@@ -149,46 +147,46 @@ contract Utils {
 
     function calcLiquidityUnitsAsym(uint amount, address pool) external view returns (uint units){
         // synthUnits += (P b)/(2 (b + B))
-        uint baseAmount = iPOOL(pool).baseAmount();
-        uint totalSupply = iBEP20(pool).totalSupply();
+        uint baseAmount = iPOOL(pool).baseAmount(); // Get SPARTA depth of pool
+        uint totalSupply = iBEP20(pool).totalSupply(); // Get total supply of LPs
         return (totalSupply * amount) / ((amount + baseAmount) * 2);
     }
 
     //==================================== PRICING ====================================//
 
     function calcSpotValueInBase(address token, uint amount) external view returns (uint value){
-        address pool = getPool(token);
-        uint _baseAmount = iPOOL(pool).baseAmount();
-        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        address pool = getPool(token); // Get pool address
+        uint _baseAmount = iPOOL(pool).baseAmount(); // Get SPARTA depth of pool
+        uint _tokenAmount = iPOOL(pool).tokenAmount(); // Get TOKEN depth of pool
         require(_tokenAmount > 0, '!DIVISION');
         return (amount * _baseAmount) / _tokenAmount;
     }
 
      function calcSpotValueInBaseWithSynth(address synth, uint amount) external view returns (uint value){
-        address pool = iSYNTH(synth).POOL();
-        uint _baseAmount = iPOOL(pool).baseAmount();
-        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        address pool = iSYNTH(synth).POOL(); // Get pool address
+        uint _baseAmount = iPOOL(pool).baseAmount(); // Get SPARTA depth of pool
+        uint _tokenAmount = iPOOL(pool).tokenAmount(); // Get TOKEN depth of pool
         require(_tokenAmount > 0, '!DIVISION');
         return (amount * _baseAmount) / _tokenAmount;
     }
     function calcSwapValueInBase(address token, uint amount) external view returns (uint _output){
-        address pool = getPool(token);
-        uint _baseAmount = iPOOL(pool).baseAmount();
-        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        address pool = getPool(token); // Get pool address
+        uint _baseAmount = iPOOL(pool).baseAmount(); // Get SPARTA depth of pool
+        uint _tokenAmount = iPOOL(pool).tokenAmount(); // Get TOKEN depth of pool
         return  calcSwapOutput(amount, _tokenAmount, _baseAmount);
     }
 
     function calcSwapValueInToken(address token, uint amount) external view returns (uint _output){
-        address pool = getPool(token);
-        uint _baseAmount = iPOOL(pool).baseAmount();
-        uint _tokenAmount = iPOOL(pool).tokenAmount();
+        address pool = getPool(token); // Get pool address
+        uint _baseAmount = iPOOL(pool).baseAmount(); // Get SPARTA depth of pool
+        uint _tokenAmount = iPOOL(pool).tokenAmount(); // Get TOKEN depth of pool
         return  calcSwapOutput(amount, _baseAmount, _tokenAmount);
     }
 
-    function calcActualSynthUnits(uint amount, address synth) external view returns (uint _output) {
-        address pool = iSYNTH(synth).POOL();
-        uint _baseAmount = iPOOL(pool).baseAmount();
-        uint _tokenAmount = iPOOL(pool).tokenAmount();
+    function calcActualSynthUnits(address synth, uint amount) external view returns (uint _output) {
+        address pool = iSYNTH(synth).POOL(); // Get pool address
+        uint _baseAmount = iPOOL(pool).baseAmount(); // Get SPARTA depth of pool
+        uint _tokenAmount = iPOOL(pool).tokenAmount(); // Get TOKEN depth of pool
         require(_tokenAmount > 0, '!DIVISION');
         return ((amount * _baseAmount) / (2 * _tokenAmount));
     }

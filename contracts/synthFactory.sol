@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
-import "./Synth.sol";  
+import "./Synth.sol";
+import "./iPOOLFACTORY.sol";
 
 contract SynthFactory { 
     address public immutable BASE;
@@ -30,10 +31,11 @@ contract SynthFactory {
 
     // Anyone can create a synth if it's pool is curated
     function createSynth(address token) external returns(address synth){
+        iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         require(getSynth(token) == address(0), "exists"); // Synth must not already exist
-        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token); // Get pool address
+        address _pool = _poolFactory.getPool(token); // Get pool address
         require(_pool != address(0), "!POOL"); // Must be a valid pool
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true, "!curated"); // Pool must be Curated
+        require(_poolFactory.isCuratedPool(_pool) == true, "!curated"); // Pool must be Curated
         Synth newSynth; address _token = token;
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         newSynth = new Synth(BASE, _token, _pool); // Deploy synth asset contract

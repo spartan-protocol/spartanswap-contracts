@@ -282,7 +282,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the input SYNTH units 
-        _burn(synthIN, liqUnits); // Burn the synth-help LP units
+        _burn(synthIN, liqUnits); // Burn the synth-held LP units
         require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Transfer SPARTA to user
         emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
         return (outputBase, fee);

@@ -11,18 +11,18 @@ import "./iSYNTHFACTORY.sol";
 import "./iPOOLFACTORY.sol";
 
 contract SynthVault {
-    address public immutable BASE;
-    address public DEPLOYER;
+    address public immutable BASE;      // Address of SPARTA base token contract
+    address public DEPLOYER;            // Address that deployed the contract | can be purged to address(0)
 
     uint256 public minimumDepositTime;  // Withdrawal & Harvest lockout period; intended to be 1 hour
     uint256 public erasToEarn;          // Amount of eras that make up the targeted RESERVE depletion; regulates incentives
     uint256 public vaultClaim;          // The SynthVaults's portion of rewards; intended to be ~10% initially
-    uint private lastMonth;             // Timestamp of the start of current metric period (For UI)
+    uint public lastMonth;              // Timestamp of the start of current metric period (For UI)
     uint public immutable genesis;      // Timestamp from when the synth was first deployed (For UI)
 
-    uint256 public map30DVaultRevenue; // Tally of revenue during current incomplete metric period (for UI)
+    uint256 public map30DVaultRevenue;  // Tally of revenue during current incomplete metric period (for UI)
     uint256 public mapPast30DVaultRevenue; // Tally of revenue from last full metric period (for UI)
-    uint256 [] public revenueArray; // Array of the last two metric periods (For UI)
+    uint256 [] public revenueArray;     // Array of the last two metric periods (For UI)
 
     // Restrict access
     modifier onlyDAO() {
@@ -42,7 +42,7 @@ contract SynthVault {
     }
 
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        return iBASE(BASE).DAO(); // Get the DAO address reported by Sparta base contract
     }
 
     mapping(address => mapping(address => uint256)) private mapMemberSynth_deposit;
@@ -84,8 +84,8 @@ contract SynthVault {
     // Contract deposits Synths in the SynthVault for user
     function deposit(address synth, uint256 amount) external {
         require(amount > 0, '!VALID'); // Must be a valid amount
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth');
-        require(iBEP20(synth).transferFrom(msg.sender, address(this), amount), '!transfer'); // Must successfuly transfer in
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth'); // Must be a valid & active synth
+        require(iBEP20(synth).transferFrom(msg.sender, address(this), amount), '!transfer'); // Tsf SYNTH (User -> SynthVault)
         _deposit(synth, msg.sender, amount); // Assess and record the deposit
     }
 
@@ -93,14 +93,14 @@ contract SynthVault {
     function _deposit(address _synth, address _member, uint256 _amount) internal {
         mapMemberSynth_lastTime[_member][_synth] = block.timestamp + minimumDepositTime; // Record deposit time (scope: member -> synth)
         mapMember_depositTime[_member] = block.timestamp + minimumDepositTime; // Record deposit time (scope: member)
-        mapMemberSynth_deposit[_member][_synth] += _amount; // Record balance for member
-        mapTotalSynth_balance[_synth] +=_amount;
+        mapMemberSynth_deposit[_member][_synth] += _amount; // Update vault balance (scope: member -> synth)
+        mapTotalSynth_balance[_synth] +=_amount; // Update vault balance (scope: vault -> synth)
         emit MemberDeposits(_synth, _member, _amount);
     }
 
     //====================================== HARVEST ========================================//
 
-    // User harvests all of their available rewards
+    // User batch harvests synths via array of synth addresses
     function harvestAll(address [] memory synthAssets) external returns (bool) {
         for(uint i = 0; i < synthAssets.length; i++){
             harvestSingle(synthAssets[i]);
@@ -110,16 +110,16 @@ contract SynthVault {
 
     // User harvests available rewards of the chosen asset
     function harvestSingle(address synth) public returns (bool) {
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth');
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth'); // Must be a valid & active synth
         uint256 reward = calcCurrentReward(synth, msg.sender); // Calc user's current SPARTA reward
         if(reward > 0){
             require((block.timestamp > mapMemberSynth_lastTime[msg.sender][synth]), 'LOCKED');  // Must not harvest before lockup period passed
             mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp; // Set last harvest time as now
             address _poolOUT = iSYNTH(synth).POOL(); // Get pool address
             iPOOL(_poolOUT).sync(); // Sync here to prevent using SYNTH.transfer() to bypass lockup
-            iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT); // Send the SPARTA from RESERVE to POOL
-            (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this)); // Mint synths & tsf to SynthVault
-            mapMemberSynth_deposit[msg.sender][synth] += synthReward;
+            iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT); // Tsf SPARTA (Reserve -> Pool)
+            (uint synthReward,) = iPOOL(_poolOUT).mintSynth(synth, address(this)); // Mint SYNTH (Pool -> Synth -> SynthVault)
+            mapMemberSynth_deposit[msg.sender][synth] += synthReward; // Update vault balance (scope: member -> synth)
             _addVaultMetrics(reward); // Add to the revenue metrics (for UI)
             emit MemberHarvests(synth, msg.sender, reward);
         }
@@ -143,25 +143,25 @@ contract SynthVault {
     function calcReward(address _synth, address member) public returns (uint256 _share, uint256 _vaultReward) {
         (uint256 weight, uint256 synthWeight, uint256 totalSynthWeight) = getMemberSynthWeight(_synth, member);
         uint256 _reserve = reserveBASE() / erasToEarn; // Aim to deplete reserve over a number of days
-        uint256 synthCount = iSYNTHFACTORY(_DAO().SYNTHFACTORY()).synthCount(); 
-        _vaultReward = (_reserve * vaultClaim) / synthCount / 10000; // Get the SynthVault's share of that
-        uint256 synthRewardShare = iUTILS(_DAO().UTILS()).calcShare(synthWeight, totalSynthWeight, _vaultReward); 
-        _share = iUTILS(_DAO().UTILS()).calcShare(weight, synthWeight, synthRewardShare); // Get member's share of that
+        uint256 synthCount = iSYNTHFACTORY(_DAO().SYNTHFACTORY()).synthCount(); // Get count of valid synth assets
+        _vaultReward = (_reserve * vaultClaim) / synthCount / 10000; // Get the vaults's total share of the reserve
+        uint256 synthRewardShare = iUTILS(_DAO().UTILS()).calcShare(synthWeight, totalSynthWeight, _vaultReward); // Get the synth's total share of the reward
+        _share = iUTILS(_DAO().UTILS()).calcShare(weight, synthWeight, synthRewardShare); // Get member's current claimable reward
     }
 
     // Update a member's weight 
     function getMemberSynthWeight(address _synth, address member) public returns (uint256 memberSynthWeight, uint256 synthWeight, uint256 totalSynthWeight) {
-        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
-        address [] memory _vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).vaultAssets();
+        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
+        address [] memory _vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).vaultAssets(); // Get list of vault enabled assets
         for(uint i = 0; i > _vaultAssets.length; i++){
-            address synth = iPOOL(_vaultAssets[i]).SYNTH();
+            address synth = iPOOL(_vaultAssets[i]).SYNTH(); // Get the relevant syntyh address for each vault asset
             if (synth != address(0)) {
-                totalSynthWeight += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(synth, mapTotalSynth_balance[synth]); // Get vault's total current all synths weight by asset
+                totalSynthWeight += iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(synth, mapTotalSynth_balance[synth]); // Get the cumulative weight (scope: synthVault)
             }
         }
-        synthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapTotalSynth_balance[_synth]); // Get vault's total current synth weight by asset
-        memberSynthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapMemberSynth_deposit[member][_synth]); // Get user's current weight by asset
-        return (memberSynthWeight,synthWeight, totalSynthWeight);
+        synthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapTotalSynth_balance[_synth]); // Get current weight (scope: vault -> synth)
+        memberSynthWeight = iUTILS(_DAO().UTILS()).calcSpotValueInBaseWithSynth(_synth, mapMemberSynth_deposit[member][_synth]); // Get current weight (scope: member -> synth)
+        return (memberSynthWeight, synthWeight, totalSynthWeight);
     }
 
 
@@ -169,12 +169,12 @@ contract SynthVault {
 
     // User withdraws a percentage of their synths from the vault
     function withdraw(address synth, uint256 basisPoints) external {
-        require(basisPoints > 0, '!VALID');
+        require(basisPoints > 0, '!VALID'); // Basis points must be valid
         require((block.timestamp > mapMember_depositTime[msg.sender]), "lockout"); // Must not withdraw before lockup period passed
         uint256 redeemedAmount = iUTILS(_DAO().UTILS()).calcPart(basisPoints, mapMemberSynth_deposit[msg.sender][synth]); // Calc amount to withdraw
-        mapMemberSynth_deposit[msg.sender][synth] -= redeemedAmount; // Remove from user's recorded vault holdings
-        mapTotalSynth_balance[synth] -= redeemedAmount;
-        require(iBEP20(synth).transfer(msg.sender, redeemedAmount), '!transfer'); // Transfer from SynthVault to user
+        mapMemberSynth_deposit[msg.sender][synth] -= redeemedAmount; // Update vault balance (scope: member -> synth)
+        mapTotalSynth_balance[synth] -= redeemedAmount; // Update vault balance (scope: vault -> synth)
+        require(iBEP20(synth).transfer(msg.sender, redeemedAmount), '!transfer'); // Tsf SYNTH (SynthVault -> User)
         emit MemberWithdraws(synth, msg.sender, redeemedAmount);
     }
 

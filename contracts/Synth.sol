@@ -4,11 +4,11 @@ import "./Pool.sol";
 import "./iPOOLFACTORY.sol";
 
 contract Synth is iBEP20 {
-    address public immutable BASE;
+    address public immutable BASE;  // Address of SPARTA base token contract
     address public immutable TOKEN; // Underlying relevant layer1 token address
-    address public immutable POOL; // Underlying pool address
-    uint public immutable genesis;
-    uint256 public collateral;
+    address public immutable POOL;  // Underlying pool address
+    uint public immutable genesis;  // Timestamp from when the synth was first deployed
+    uint256 public collateral;      // LP units held on synth contract
 
     string private _name;
     string private _symbol;
@@ -19,9 +19,10 @@ contract Synth is iBEP20 {
     mapping(address => mapping(address => uint)) private _allowances;
 
     function _DAO() internal view returns(iDAO) {
-        return iBASE(BASE).DAO();
+        return iBASE(BASE).DAO(); // Get the DAO address from the Sparta base contract
     }
     
+    // Restrict access
     modifier onlyCuratedPool() {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true, "!CURATED");
         _;
@@ -31,13 +32,15 @@ contract Synth is iBEP20 {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(POOL),'!POOL');
         _;
     }
-    // Restrict access
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO());
         _;
     }
     
     constructor (address _base, address _token, address _pool) {
+        require(_base != address(0), '!ZERO');
+        require(_token != address(0), '!ZERO');
+        require(_pool != address(0), '!ZERO');
         BASE = _base;
         TOKEN = _token;
         POOL = _pool;
@@ -144,7 +147,7 @@ contract Synth is iBEP20 {
         return amount;
     }
     
-    // Handle received Synths and burn the LPs and Synths
+    // Confirm and burn the received Synths
     function burnSynth(uint _syntheticAmount) external onlyPool returns (uint){
         require(_syntheticAmount > 0, '!AMOUNT'); // Input must not be zero
         uint _amountUnits = (_syntheticAmount * collateral) / totalSupply; // share = amount * part/total
@@ -153,10 +156,10 @@ contract Synth is iBEP20 {
         return _amountUnits;
     }
 
-    // Burn LPs to if their value outweights the synths supply value (Ensures incentives are funnelled to existing LPers)
+    // Burn LPs if their value outweights the synths supply value (Ensures incentives are funnelled to existing LPers)
     function realise() external onlyDAO {
         uint baseValueLP = iUTILS(_DAO().UTILS()).calcLiquidityHoldings(collateral, BASE, POOL); // Get the SPARTA value of the LP tokens
-        uint baseValueSynth = iUTILS(_DAO().UTILS()).calcActualSynthUnits(totalSupply, address(this)); // Get the SPARTA value of the synths
+        uint baseValueSynth = iUTILS(_DAO().UTILS()).calcActualSynthUnits(address(this), totalSupply); // Get the SPARTA value of the synths
         if(baseValueLP > baseValueSynth){
             uint premium = baseValueLP - baseValueSynth; // Get the premium between the two values
             if(premium > 10**18){
