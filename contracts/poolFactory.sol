@@ -70,7 +70,7 @@ contract PoolFactory is ReentrancyGuard {
         arrayPools.push(pool); // Add pool address to the pool array
         arrayTokens.push(_token); // Add token to the listed array
         isListedPool[pool] = true; // Record pool as currently listed
-        emit CreatePool(_token, pool); // Emit CreatePool before the AddLiquidity event for subgraph
+        emit CreatePool(token, pool); // Emit CreatePool before the AddLiquidity event for subgraph
         Pool(pool).addForMember(msg.sender); // Perform the liquidity-add for the user
         return pool;
     }

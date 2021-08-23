@@ -57,7 +57,7 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Restrict access
     modifier onlyPROTOCOL() {
-        require(msg.sender == _DAO().ROUTER() || msg.sender == _DAO().SYNTHVAULT()); 
+        require(msg.sender == _DAO().ROUTER() || msg.sender == _DAO().SYNTHVAULT() || msg.sender == _DAO().POOLFACTORY()); 
         _;
     }
     modifier onlyDAO() {
@@ -83,9 +83,9 @@ contract Pool is iBEP20, ReentrancyGuard {
         genesis = block.timestamp;
         synthCap = 3000;
         freezePoint = 3000;
-        baseCap = 100000;
+        baseCap = 100000*10**18;
         period = block.timestamp;
-        initiationPeriod = 604800;
+        initiationPeriod = 1;//604800
         minSynth = 500;
     }
 
