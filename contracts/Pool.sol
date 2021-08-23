@@ -204,8 +204,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         outputToken = _utils.calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
         _decrementPoolBalances(outputBase, outputToken); // Update recorded SPARTA and TOKEN amounts
         _burn(address(this), _actualInputUnits); // Burn the LP tokens
-        require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Transfer the SPARTA to user
-        require(iBEP20(TOKEN).transfer(member, outputToken), '!transfer'); // Transfer the TOKEN to user
+        require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Tsf SPARTA (Pool -> User)
+        require(iBEP20(TOKEN).transfer(member, outputToken), '!transfer'); // Tsf TOKEN (Pool -> User)
         emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
@@ -224,7 +224,7 @@ contract Pool is iBEP20, ReentrancyGuard {
             (outputAmount, fee) = _swapBaseToToken(_amount); // Calculate the TOKEN output from the swap
         }
         emit Swapped(_fromToken, token, member, _amount, outputAmount, fee);
-        require(iBEP20(token).transfer(member, outputAmount), '!transfer'); // Transfer the swap output to the selected user
+        require(iBEP20(token).transfer(member, outputAmount), '!transfer'); // Tsf swapped assets (Pool -> User)
         return (outputAmount, fee);
     }
 
@@ -283,7 +283,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the input SYNTH units 
         _burn(synthIN, liqUnits); // Burn the synth-held LP units
-        require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Transfer SPARTA to user
+        require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Tsf SPARTA (Pool -> User)
         emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
         return (outputBase, fee);
     }

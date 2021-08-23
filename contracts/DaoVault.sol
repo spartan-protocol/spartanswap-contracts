@@ -19,18 +19,19 @@ contract DaoVault {
         DEPLOYER = msg.sender;
     }
 
-    // OLD MAPPINGS
-    // mapping(address => uint256) public mapMember_weight; // Member's total weight in DAOVault
-    // mapping(address => mapping(address => uint256)) public mapMemberPool_weight; // Member's total weight in DOAVault (scope: pool)
-
-    mapping(address => mapping(address => uint256)) private mapMemberPool_balance; // Member's LPs locked in DAOVault (Member)
     mapping(address => uint256) public mapTotalPool_balance; // LP's locked in DAOVault (Global)
+    mapping(address => mapping(address => uint256)) private mapMemberPool_balance; // Member's LPs locked in DAOVault (Member)
     mapping(address => mapping(address => uint256)) private mapMember_depositTime; // Timestamp when user last deposited
 
     // Restrict access
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER, "!DAO");
         _;
+    }
+
+    // Can purge deployer once DAO is stable and final
+    function purgeDeployer() external onlyDAO {
+        DEPLOYER = address(0);
     }
 
     // Get DAO address from the Sparta base contract
@@ -43,7 +44,6 @@ contract DaoVault {
         mapMemberPool_balance[member][pool] += amount; // Updated user's vault balance
         mapTotalPool_balance[pool] += amount; // Update total vault balance (global)
         mapMember_depositTime[member][pool] = block.timestamp; // Set user's new last-deposit-time
-        // increaseLPWeight(pool, member); // Recalculate user's DAOVault weights
         return true;
     }
 
@@ -64,7 +64,7 @@ contract DaoVault {
         uint256 _balance = mapMemberPool_balance[member][pool]; // Get user's whole DAOVault balance of the selected asset
         require(_balance > 0, "!balance"); // Withdraw amount must be valid
         mapMemberPool_balance[member][pool] = 0; // Zero out user's DAOVault balance of the selected asset
-        require(iBEP20(pool).transfer(member, _balance), "!transfer"); // Transfer user's balance to their wallet
+        require(iBEP20(pool).transfer(member, _balance), "!transfer"); // Tsf LPs (DaoVault -> User)
         return true;
     }
 
@@ -75,6 +75,6 @@ contract DaoVault {
 
     // Get user's last deposit time of a chosen asset
     function getMemberPoolDepositTime(address pool, address member) external view returns (uint256){
-        return mapMemberPool_balance[member][pool];
+        return mapMember_depositTime[member][pool];
     }
 }

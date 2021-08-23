@@ -13,7 +13,6 @@ contract Router is ReentrancyGuard {
     address public DEPLOYER;        // Address that deployed the contract
     uint256 public diviClaim;       // Basis points vs RESERVE holdings max dividend per month
     uint256 public globalCap;       // 
-    uint private feeAllocation;     // Amount of dividend events per era
     uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
     uint256 public curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
 
@@ -26,12 +25,16 @@ contract Router is ReentrancyGuard {
         _;
     }
 
+    // Can purge deployer once DAO is stable and final
+    function purgeDeployer() external onlyDAO {
+        DEPLOYER = address(0);
+    }
+
     constructor (address _base, address _wbnb) {
         require(_base != address(0), '!ZERO');
         require(_wbnb != address(0), '!ZERO');
         BASE = _base;
         WBNB = _wbnb;
-        feeAllocation = 100;
         globalCap = 2000;
         diviClaim = 100;
         DEPLOYER = msg.sender;
@@ -94,17 +97,15 @@ contract Router is ReentrancyGuard {
         address _member = msg.sender; // Get user's address
         require(iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput), '!transfer'); // Tsf LP units (User -> FromPool)
         Pool(fromPool).removeForMember(address(this)); // Remove liquidity; tsf SPARTA and fromTOKEN (Pool -> Router)
-        require(iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))), '!transfer'); // Tsf fromTOKEN (Router -> FromPool)
-        (, uint feez) = Pool(fromPool).swapTo(BASE, address(this)); // Swap fromTOKEN for SPARTA (FromPool -> Router)
-        require(iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this)) / 2), '!transfer'); // Tsf half of SPARTA (Router -> toPool)
-        (, uint feey) = Pool(toPool).swapTo(_toToken, address(this)); // Swap SPARTA for toTOKEN (ToPool -> Router)
-        require(iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Tsf SPARTA (Router -> toPool)
-        require(iBEP20(_toToken).transfer(toPool, iBEP20(_toToken).balanceOf(address(this))), '!transfer'); // Tsf ToTOKEN (Router -> toPool)
+        iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))); // Tsf fromTOKEN (Router -> FromPool)
+        Pool(fromPool).swapTo(BASE, address(this)); // Swap fromTOKEN for SPARTA (FromPool -> Router)
+        iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this)) / 2); // Tsf half of SPARTA (Router -> toPool)
+        Pool(toPool).swapTo(_toToken, address(this)); // Swap SPARTA for toTOKEN (ToPool -> Router)
+        iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // Tsf SPARTA (Router -> toPool)
+        iBEP20(_toToken).transfer(toPool, iBEP20(_toToken).balanceOf(address(this))); // Tsf ToTOKEN (Router -> toPool)
         Pool(toPool).addForMember(_member); // Add liquidity; tsf LPs (Pool -> User)
         _safetyTrigger(fromPool); // Check fromPool ratios
         _safetyTrigger(toPool); // Check toPool ratios
-        _getsDividend(fromPool, feez); // Check for dividend & tsf (Reserve -> fromPool)
-        _getsDividend(toPool, feey); // Check for dividend & tsf (Reserve -> toPool)
     }
 
     // User removes liquidity - redeems a percentage of their balance
@@ -148,11 +149,11 @@ contract Router is ReentrancyGuard {
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         uint fee;
         if(toBase){
-            require(iBEP20(_token).transfer(_pool, iBEP20(_token).balanceOf(address(this))), '!transfer'); // Tsf TOKEN (Wrapped) (Router -> Pool)
+            iBEP20(_token).transfer(_pool, iBEP20(_token).balanceOf(address(this))); // Tsf TOKEN (Wrapped) (Router -> Pool)
             (, fee) = Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN (Wrapped) to SPARTA (Pool -> Router)
             require(iBEP20(BASE).transfer(_member, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Tsf total SPARTA (Router -> User)
         } else {
-            require(iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Tsf SPARTA (Router -> Pool)
+            iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Tsf SPARTA (Router -> Pool)
             (, fee) = Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA to TOKEN (Pool -> Router)
             _handleTransferOut(token, iBEP20(_token).balanceOf(address(this)), _member); // Tsf total TOKEN (Router -> User)
         } 
@@ -234,7 +235,7 @@ contract Router is ReentrancyGuard {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true, '!POOL'); // Pool must be valid
         if(fromToken != BASE){
             sellTo(inputAmount, fromToken, address(this), 0); // Swap TOKEN to SPARTA (User -> Pool -> Router)
-            require(iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Tsf SPARTA (Router -> Pool)
+            iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Tsf SPARTA (Router -> Pool)
         } else {
             require(iBEP20(BASE).transferFrom(msg.sender, _pool, inputAmount), '!transfer'); // Tsf SPARTA (User -> Pool)
         }
@@ -282,9 +283,9 @@ contract Router is ReentrancyGuard {
         require(_amount > 0, '!GAS'); // Amount must be valid
         if(_token == address(0)){
             require((_amount == msg.value)); // Amount must be == msg.value
-            (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB (User ->)
+            (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB (User -> Router)
             require(success, "!send"); // BNB <> WBNB must be successful
-            require(iBEP20(WBNB).transfer(_pool, _amount), '!transfer'); // Tsf WBNB (-> Pool)
+            iBEP20(WBNB).transfer(_pool, _amount); // Tsf WBNB (Router -> Pool)
         } else {
             require(iBEP20(_token).transferFrom(msg.sender, _pool, _amount), '!transfer'); // Tsf TOKEN (User -> Pool)
         }
@@ -294,8 +295,8 @@ contract Router is ReentrancyGuard {
     function _handleTransferOut(address _token, uint256 _amount, address _recipient) internal nonReentrant {
         if(_amount > 0) {
             if (_token == address(0)) {
-                iWBNB(WBNB).withdraw(_amount); // Unwrap WBNB to BNB (Router ->)
-                (bool success, ) = payable(_recipient).call{value:_amount}("");  // Tsf BNB (-> Recipient)
+                iWBNB(WBNB).withdraw(_amount); // Unwrap WBNB to BNB (Router -> Router)
+                (bool success, ) = payable(_recipient).call{value:_amount}("");  // Tsf BNB (Router -> Recipient)
                 require(success, "!send");
             } else {
                 require(iBEP20(_token).transfer(_recipient, _amount), '!transfer'); // Tsf TOKEN (Router -> Recipient)
@@ -370,13 +371,4 @@ contract Router is ReentrancyGuard {
         }
     }
 
-    //================================== Helpers =================================//
-
-    function currentPoolRevenue(address pool) external view returns(uint256) {
-        return mapAddress_30DayDividends[pool];
-    }
-
-    function pastPoolRevenue(address pool) external view returns(uint256) {
-        return mapAddress_Past30DayPoolDividends[pool];
-    }
 }

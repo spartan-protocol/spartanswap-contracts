@@ -46,10 +46,10 @@ contract SynthVault {
     }
 
     mapping(address => mapping(address => uint256)) private mapMemberSynth_deposit;
-    mapping(address => uint256) private mapTotalSynth_balance;
+    mapping(address => uint256) public mapTotalSynth_balance;
 
     mapping(address => mapping(address => uint256)) private mapMemberSynth_lastTime;
-    mapping(address => uint256) private mapMember_depositTime;
+    mapping(address => uint256) public mapMember_depositTime;
     mapping(address => uint256) public lastBlock;
 
     event MemberDeposits(
@@ -187,10 +187,6 @@ contract SynthVault {
 
     function getMemberDeposit(address synth, address member) external view returns (uint256){
         return mapMemberSynth_deposit[member][synth];
-    }
-
-    function getMemberLastTime(address member) external view returns (uint256) {
-        return mapMember_depositTime[member];
     }
 
     function getMemberLastSynthTime(address synth, address member) external view returns (uint256){

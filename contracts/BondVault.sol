@@ -103,7 +103,7 @@ contract BondVault {
             mapBondedAmount_memberDetails[_pool].claimRate[member] = 0; // If final claim; zero-out their claimRate
         }
         mapTotalPool_balance[_pool] -= _claimable; // Remove the claim amount from vault's total remainder
-        require(iBEP20(_pool).transfer(member, _claimable), '!transfer'); // Send claim amount to user
+        require(iBEP20(_pool).transfer(member, _claimable), '!transfer'); // Tsf LPs (BondVault -> User)
         return true;
     }
 

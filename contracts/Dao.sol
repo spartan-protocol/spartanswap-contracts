@@ -69,8 +69,8 @@ contract Dao is ReentrancyGuard{
     mapping(uint256 => bool) public mapPID_open;        // Is the proposal open or closed
     mapping(uint256 => uint256) public mapPID_startTime; // Timestamp of proposal creation
 
-    mapping(uint256 => mapping(address => uint256)) public mapPIDAsset_votes; // Balance of assets staked in favour of a proposal
-    mapping(uint256 => mapping(address => bool)) public mapPIDMember_hasVoted; // Whether member has signaled their support of a proposal
+    mapping(uint256 => mapping(address => uint256)) private mapPIDAsset_votes; // Balance of assets staked in favour of a proposal
+    mapping(uint256 => mapping(address => bool)) private mapPIDMember_hasVoted; // Whether member has signaled their support of a proposal
     
     event MemberDeposits(address indexed member, address indexed pool, uint256 amount);
     event MemberWithdraws(address indexed member, address indexed pool, uint256 balance);
@@ -174,7 +174,7 @@ contract Dao is ReentrancyGuard{
             arrayMembers.push(msg.sender);  // If not a member; add user to member array
             isMember[msg.sender] = true;    // If not a member; register the user as member
         }
-        require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!transfer"); // Send user's deposit to the DAOVault
+        require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!transfer"); // Tsf LPs (User -> DaoVault)
         _DAOVAULT.depositLP(pool, amount, msg.sender); // Update user's deposit balance
         mapMember_lastTime[msg.sender] = block.timestamp + 60; // Reset user's last harvest time + blockShift
         emit MemberDeposits(msg.sender, pool, amount);
@@ -182,7 +182,7 @@ contract Dao is ReentrancyGuard{
     
     // User withdraws all of their selected asset from the DAOVault
     function withdraw(address pool) external operational weightChange {
-        uint256 amount = _DAOVAULT.mapMemberPool_balance(msg.sender, pool); // Get the members available vault balance
+        uint256 amount = _DAOVAULT.getMemberPoolBalance(msg.sender, pool); // Get the members available vault balance
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Withdraw assets from vault and tsf to user
         emit MemberWithdraws(msg.sender, pool, amount);
     }
@@ -233,7 +233,7 @@ contract Dao is ReentrancyGuard{
     // Can transfer the SPARTA remaining in this contract to a new DAO (If DAO is upgraded)
     function moveBASEBalance(address newDAO) external onlyDAO {
         uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
-        require(iBEP20(BASE).transfer(newDAO, baseBal), '!transfer');
+        iBEP20(BASE).transfer(newDAO, baseBal); // Tsf SPARTA (oldDao -> newDao)
     }
 
     // List an asset to be enabled for Bonding
@@ -286,7 +286,7 @@ contract Dao is ReentrancyGuard{
             uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); // Get the SPARTA swap value of the bonded assets
             LPunits = _ROUTER.addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, address(_BONDVAULT)); // Add SPARTA & BNB liquidity, mint LP tokens to BondVault
         } else {
-            require(iBEP20(_token).transferFrom(msg.sender, address(this), _amount), '!transfer'); // Transfer TOKEN to Dao contract
+            require(iBEP20(_token).transferFrom(msg.sender, address(this), _amount), '!transfer'); // Tsf TOKEN to (User -> Dao)
             uint _actualAmount = iBEP20(_token).balanceOf(address(this)); // Get actual received TOKEN amount
             uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _actualAmount); // Get the SPARTA swap value of the bonded assets
             if(iBEP20(_token).allowance(address(this), address(_ROUTER)) < _actualAmount){
@@ -387,7 +387,7 @@ contract Dao is ReentrancyGuard{
     
     // Pay a DAO fee
     function _payFee() internal returns(bool){
-        require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), daoFee * 10**18), '!transfer'); // User pays the DAO fee
+        require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), daoFee * 10**18), '!transfer'); // Tsf SPARTA DAO fee (User -> Reserve)
         return true;
     } 
 
@@ -644,7 +644,7 @@ contract Dao is ReentrancyGuard{
     function _addVotes(uint _currentProposal) internal returns (bool nonZero) {
         address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
         for(uint i = 0; i < votingAssets.length; i++){
-            uint unitsAdded = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender); // Get user's combined vault balance per asset
+            uint unitsAdded = _DAOVAULT.getMemberPoolBalance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender); // Get user's combined vault balance per asset
             if (unitsAdded > 0) {
                 mapPIDAsset_votes[_currentProposal][votingAssets[i]] += unitsAdded; // Add user's votes for the current proposal
                 nonZero = true;
@@ -656,7 +656,7 @@ contract Dao is ReentrancyGuard{
     function _removeVotes(uint _currentProposal) internal returns (bool nonZero) {
         address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
         for(uint i = 0; i < votingAssets.length; i++){
-            uint unitsRemoved = _DAOVAULT.mapMemberPool_balance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender); // Get user's combined vault balance per asset
+            uint unitsRemoved = _DAOVAULT.getMemberPoolBalance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender); // Get user's combined vault balance per asset
             if (unitsRemoved > 0) {
                 mapPIDAsset_votes[_currentProposal][votingAssets[i]] -= unitsRemoved; // Remove user's votes from the current proposal
                 nonZero = true;
@@ -789,6 +789,14 @@ contract Dao is ReentrancyGuard{
         proposalDetails.open = mapPID_open[proposalID];
         proposalDetails.startTime = mapPID_startTime[proposalID];
         return proposalDetails;
+    }
+
+    function getProposalAssetVotes(uint256 proposal, address asset) public view returns (uint256) {
+        return mapPIDAsset_votes[proposal][asset];
+    }
+
+    function memberVoted(uint256 proposal, address member) public view returns (bool) {
+        return mapPIDMember_hasVoted[proposal][member];
     }
 
     function assetListedCount() external view returns (uint256 count){
