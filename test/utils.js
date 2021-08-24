@@ -6,11 +6,12 @@ Such as Bignumbers
 */
 
 var BigNumber = require('bignumber.js');
-
+BigNumber.config({ DECIMAL_PLACES: 0 })
+BigNumber.config({ ROUNDING_MODE: 1 })
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
 
-const one = 1 * 10 ** 18;
+const one = 10 ** 18;
 const oneBN = new BigNumber(1 * 10 ** 18)
 const dot1BN = new BigNumber(1 * 10 ** 17)
 const dot01BN = new BigNumber(1 * 10 ** 16)
@@ -20,7 +21,7 @@ function getBN(BN) { return (new BigNumber(BN))}
 
 function BN2Int(BN) { return +(new BigNumber(BN)).toFixed() }
 
-function BN2Str(BN) { return (new BigNumber(BN)).decimalPlaces(0, 1).toFixed()   }
+function BN2Str(BN) { return (new BigNumber(BN)).toFixed()   }
 
 function BN2Token(BN) { return ((new BigNumber(BN)).dividedBy(one)).toFixed(2) }
 

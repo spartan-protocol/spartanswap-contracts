@@ -74,13 +74,17 @@ contract Router is ReentrancyGuard {
         address _token = token; // Get token address
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         if(_fromBase){
-            swapTo((_input / 2), BASE, token, address(this), 0); // Swap half of SPARTA to TOKEN (Not wrapped) (User -> Pool -> Router)
-            _handleTransferOut(_token, iBEP20(_token).balanceOf(address(this)), _pool); // Tsf swapped TOKEN (Wrapped) (Router -> Pool)
-            _handleTransferIn(BASE, (_input / 2), _pool); // Tsf other half of SPARTA (User -> Pool)
-        } else {
-            swapTo((_input / 2), token, BASE, address(this), 0); // Swap half of TOKEN (Not wrapped) to SPARTA (User -> Pool -> Router)
+            _handleTransferIn(BASE, _input, address(this));
+            _handleTransferOut(BASE, (_input / 2), _pool);
+            Pool(_pool).swapTo(_token, address(this)); // Swap TOKEN to SPARTA (Pool -> router)
             _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _pool); // Tsf swapped SPARTA (Router -> Pool)
-            _handleTransferIn(token, (_input / 2), _pool); // Tsf other half of TOKEN (Not wrapped) (User -> Pool)
+            _handleTransferOut(_token, iBEP20(_token).balanceOf(address(this)), _pool); // Tsf remaining BNB (Router -> Pool)
+        } else {
+            _handleTransferIn(token, _input, address(this));
+            _handleTransferOut(_token, (_input / 2), _pool);
+            Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN to SPARTA (Pool -> router)
+            _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _pool); // Tsf swapped SPARTA (Router -> Pool)
+            _handleTransferOut(_token, iBEP20(_token).balanceOf(address(this)), _pool); // Tsf remaining BNB (Router -> Pool)
         }
         Pool(_pool).addForMember(_member); // Add liquidity; tsf LPs (Pool -> User)
         _safetyTrigger(_pool); // Check pool ratios
@@ -135,8 +139,14 @@ contract Router is ReentrancyGuard {
         }
         _safetyTrigger(_pool); // Check pool ratios
     }
+    
+    function removeLiquidityAsym(uint basisPoints, bool toBase, address token) external{
+        require(basisPoints > 0, '!VALID'); // Must be valid basis points, calcPart() handles the upper-check
+        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token)).balanceOf(msg.sender)); // Calc units based on input basisPoints
+        removeLiquidityExactAsym(_units, toBase, token);
+    }
 
-    function removeLiquidityAsym(uint units, bool toBase, address token) external {
+    function removeLiquidityExactAsym(uint units, bool toBase, address token) public {
         require(units > 0, '!VALID'); // Must be a valid amount
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory

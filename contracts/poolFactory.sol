@@ -54,6 +54,7 @@ contract PoolFactory is ReentrancyGuard {
 
     // Anyone can create a pool and add liquidity at the same time
     function createPoolADD(uint256 inputBase, uint256 inputToken, address token) external payable returns(address pool){
+        require(token != BASE, '!VALID'); // Token must not be SPARTA
         require(getPool(token) == address(0), '!NEW'); // Must not have a valid pool address yet
         require((inputToken > 0 && inputBase >= (10000*10**18)), "!MIN"); // User must add at least 10,000 SPARTA liquidity & ratio must be finite
         Pool newPool; address _token = token;
