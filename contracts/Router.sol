@@ -201,7 +201,7 @@ contract Router is ReentrancyGuard {
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid
         _handleTransferIn(token, amount, _pool); // Tsf TOKEN (Not wrapped) (User -> Pool)
         (uint output, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA (Pool -> User)
-        require(output > minAmount, '!RATE'); // Revert if output is too low
+        require(output >= minAmount, '!RATE'); // Revert if output is too low
         _safetyTrigger(_pool); // Check pool ratios
         _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
         return fee;
