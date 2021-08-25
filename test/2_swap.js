@@ -36,9 +36,9 @@ contract('SWAP + ZAP + MINT + BURN', function (accounts) {
     createPoolBUSD(acc0, 10000, 10000)
     addLiquidityBNB(acc1, 9)
     addLiquidityBUSD(acc1, 1231)
-    BNBPoolBalanceCheck()
+    // BNBPoolBalanceCheck()
     swapSPARTAForBNB(acc1, 1000)
-    BNBPoolBalanceCheck()
+    // BNBPoolBalanceCheck()
     swapBNBForSparta(acc2, 1)
     swapSPARTAForBUSD(acc1, 5000)
     swapBUSDForSparta(acc1, 300)
@@ -233,7 +233,7 @@ async function swapSPARTAForBUSD(acc, xx){
     })
 }
 async function swapBNBForSparta(acc, xx){
-    it(`It should swap sparta for BNB`, async () =>{
+    it(`It should swap BNB for sparta`, async () =>{
         let x = _.getBN(xx * _.oneBN)
         let toToken = sparta.address
         let fromToken = _.BNB
@@ -258,7 +258,7 @@ async function swapBNBForSparta(acc, xx){
     })
 }
 async function swapBUSDForSparta(acc, xx){
-    it(`It should swap sparta for BNB`, async () =>{
+    it(`It should swap BUSD for Sparta`, async () =>{
         let x = _.getBN(xx * _.oneBN)
         let toToken = sparta.address
         let fromToken = token1.address
