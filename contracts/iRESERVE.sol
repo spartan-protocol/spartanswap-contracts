@@ -6,5 +6,6 @@ interface iRESERVE {
     function setGlobalFreeze(bool) external; 
     function setIncentiveAddresses(address, address, address, address) external;
     function globalFreeze() external returns(bool); 
+    function freezeTime() external returns(uint256); 
 
 }

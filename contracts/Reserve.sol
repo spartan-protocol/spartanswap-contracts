@@ -9,6 +9,7 @@ contract Reserve {
     address public DEPLOYER;        // Address that deployed the contract | can be purged to address(0)
     bool public emissions;          // Is SPARTA emitting from RESERVE -> incentive addresses
     bool public globalFreeze;       // Is there a global pause in place
+    uint256 public freezeTime;
 
     // Restrict access
     modifier onlyGrantor() {
@@ -46,6 +47,11 @@ contract Reserve {
 
     function setGlobalFreeze(bool freeze) external onlyGrantor {
         globalFreeze = freeze;
+        if(freeze){
+            freezeTime = block.timestamp;
+        }else{
+            freezeTime = 0;
+        }
         emissions = !freeze;
     }
    

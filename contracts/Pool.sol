@@ -248,7 +248,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         outputAmount = _utils.calcSwapOutput(_actualInputBase, (baseAmount + _collateral), (tokenAmount - synthSupply)); // Calculate value of swapping SPARTA to the relevant underlying TOKEN (virtualised)
         uint256 synthsCap = tokenAmount * synthCap / 10000; // Calculate the synth cap based on token depth
         collateral += _actualInputBase; // Increase collateral mapping by SPARTA input
-        require((outputAmount + synthSupply) < synthsCap, 'CAPPED'); // SYNTH output must not push SynthSupply over the cap
+        require((outputAmount + iBEP20(synthOut).totalSupply()) < synthsCap, 'CAPPED'); // SYNTH output must not push SynthSupply over the cap
         uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
         uint _fee = _utils.calcSwapFee(_actualInputBase, (baseAmount + _collateral), (tokenAmount - synthSupply)); // Calc slip fee in TOKEN (virtualised)
@@ -367,7 +367,6 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     function _safetyCheck() internal {
-        if(!freeze){
             uint currentRate = (baseAmount * baseAmount) / tokenAmount; // Get current rate
             uint rateDiff;
             if (currentRate > oldRate) {
@@ -378,12 +377,20 @@ contract Pool is iBEP20, ReentrancyGuard {
             rateDiff = rateDiff * 10000 / currentRate; // Get basispoints difference
             if (rateDiff >= freezePoint) {
                 freeze = true; // If exceeding; flip freeze to true
-            }
-            if (block.timestamp > period) {
+            } else if (block.timestamp > period) {
                 period = block.timestamp + 3600; // Set new period
                 oldRate = currentRate; // Update the stored ratio
             }
-        }
+            if(freeze){
+                if(rateDiff <= freezePoint){
+                    freeze = false; // If exceeding; flip freeze to false
+                }
+                if (block.timestamp > period) {
+                    period = block.timestamp + 3600; // Set new period
+                    uint256 avgRate = (currentRate + (oldRate * 3) ) / 4; //increase rate by 25%
+                    oldRate = avgRate; // Update the stored ratio
+                }
+            }  
     }
   
     //===========================================POOL FEE ROI=================================//
