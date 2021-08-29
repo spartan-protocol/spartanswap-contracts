@@ -37,20 +37,24 @@ contract('SWAP + ZAP + MINT + BURN', function (accounts) {
     curatePools()
     addLiquidityBNB(acc1, 9)
     addLiquidityBUSD(acc1, 100)
-     BNBPoolBalanceCheck()
+    //  BNBPoolBalanceCheck()
     swapSPARTAForBNB(acc1, 1000)
     swapBNBForSparta(acc2, 1)
     swapSPARTAForBUSD(acc1, 500)
     swapBUSDForSparta(acc1, 300)
     swapBNBForBUSD(acc2, 2)
     swapBUSDForBNB(acc1, 500)
-    BNBPoolBalanceCheck()
+    // BNBPoolBalanceCheck()
     zapLiquidity(acc1, 20)
     createSyntheticBNB()
     createSyntheticBUSD()
-    BNBPoolBalanceCheck()
-     swapSpartaToSynth(acc1, 300)
-      swapSynthBNBToSparta(acc1, 0.1)
+    
+    swapSpartaToSynth(acc1, 300)
+    swapBNBToSynthBNB(acc2, 1)
+     swapSynthBNBToSparta(acc1, 0.1)
+    //  TokenPoolBalanceCheck()
+     swapBUSDToSynthBUSD(acc1, 10)
+     swapSynthBUSDToBUSD(acc1, 1)
 
 })
 
@@ -470,6 +474,56 @@ async function swapSpartaToSynth(acc, xx) {
         
     })
 }
+async function swapBNBToSynthBNB(acc, xx) {
+    it("Swap BNB to Synthetic BNB", async () => {
+        let x = _.getBN(xx * _.oneBN)
+        let fromToken = _.BNB;
+        let toSynth = synthBNB.address
+        let token = _.BNB;
+        let synBal = _.getBN(await synthBNB.balanceOf(acc));
+        let basBal = _.getBN(await sparta.balanceOf(acc));
+        let basBalPool = _.getBN(await sparta.balanceOf(poolBNB.address));
+        let bAA =_.getBN( await poolBNB.baseAmount());
+        let poolData = await utils.getPoolData(token);
+        let lpBalance = _.getBN(await synthBNB.collateral());
+        let lpDebt =_.getBN( await synthBNB.totalSupply());
+        let totalS = _.getBN(await poolBNB.totalSupply())
+        const X = _.getBN(poolData.baseAmount)
+        const Y = _.getBN(poolData.tokenAmount)
+        let baseIN = math.calcSwapOutput(x, Y, X)
+        let asymAdd = totalS.times(baseIN).div((X).times("2"))
+        let poolSynBal = _.getBN(await poolBNB.balanceOf(synthBNB.address));
+        let totalSynth = _.getBN(await synthBNB.totalSupply());
+        let totalSynths = _.getBN(await synthBNB.totalSupply());
+        await router.swapAssetToSynth(x, fromToken, toSynth, {from:acc, value:x});
+        let minDebt = _.getBN(500).times(Y.plus(x)).div(10000); // Get a min SPARTA virtualisation amount
+        let minCollateral = _.getBN(500).times(X.minus(baseIN)).div(10000); // Get a min TOKEN virtualisation amount
+        let _collateral = _.getBN(await poolBNB.collateral());
+        if(totalSynth.isLessThan(minDebt)){
+            totalSynth = minDebt;
+        }
+        if(_collateral.isLessThan(minCollateral)){
+           _collateral = minCollateral; 
+        }
+        let synthMint = math.calcSwapOutput(baseIN, X.minus(baseIN).plus(_collateral), Y.plus(x).minus(totalSynth))
+        poolData = await utils.getPoolData(token);
+        let lpBalanceA = _.getBN(await synthBNB.collateral());
+        let lpDebtA =_.getBN( await synthBNB.totalSupply());
+        let bA =_.getBN( await poolBNB.baseAmount());
+        let basBalPooll = _.getBN(await sparta.balanceOf(poolBNB.address));
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(X))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(Y.plus(x)))
+        assert.equal(_.BN2Str(lpBalanceA), _.BN2Str(lpBalance.plus(asymAdd)))
+        assert.equal(_.BN2Str(lpDebtA), _.BN2Str(lpDebt.plus(synthMint)))
+        assert.equal(_.BN2Str(await poolBNB.balanceOf(synthBNB.address)), _.BN2Str(poolSynBal.plus(asymAdd)))
+        assert.equal(_.BN2Str(await synthBNB.totalSupply()), _.BN2Str(totalSynths.plus(synthMint)))
+        assert.equal(_.BN2Str(await synthBNB.balanceOf(acc)), _.BN2Str(synBal.plus(synthMint)))
+        // assert.equal(_.BN2Str(await sparta.balanceOf(acc)), _.BN2Str(basBal.minus(x)))
+        assert.equal(_.BN2Str(await sparta.balanceOf(poolBNB.address)), _.BN2Str(X), 'bnb balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolBNB.address)), _.BN2Str(Y.plus(x)), 'sparta balance')
+        
+    })
+}
 async function swapSynthBNBToSparta(acc, xx) {
     it("Swap Synthetic BNB To Sparta", async () => {
         let x = _.getBN(xx * _.oneBN)
@@ -503,7 +557,6 @@ async function swapSynthBNBToSparta(acc, xx) {
         poolData = await utils.getPoolData(token);
         let lpBalanceA = _.getBN(await synthBNB.collateral());
         let lpDebtA =_.getBN( await synthBNB.totalSupply());
-
         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y.minus(baseSwapped)))
         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X))
         assert.equal(_.BN2Str(lpBalanceA), _.BN2Str(lpBalance.minus(lpShare)))
@@ -517,59 +570,104 @@ async function swapSynthBNBToSparta(acc, xx) {
         
     })
 }
-
-async function swapSynthToLayer1(acc, x) {
-    it("Swap Synthetic BNB To BASE", async () => {
-        let input = _.BN2Str(await synthBNB.balanceOf(acc));
-        // console.log("Synth Balance",input);
-        // console.log("x",x);
-        
-        // console.log("synBal",_.BN2Str(input)/_.one);
-
-        let synthIN = synthBNB.address;
-        let synBal = _.getBN(await synthBNB.balanceOf(acc));
-        let basBal = _.getBN(await sparta.balanceOf(acc));
-
-        let lpBalance = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
-        let lpDebt =_.getBN( await synthBNB.mapSynth_LPDebt(poolWBNB.address));
-        let token = _.BNB
+async function swapBUSDToSynthBUSD(acc, xx) {
+    it("Swap BUSD to Synthetic BUSD", async () => {
+        let x = _.getBN(xx * _.oneBN)
+        let fromToken = token1.address;
+        let toSynth = synthBUSD.address
+        let token = token1.address;
+        let synBal = _.getBN(await synthBUSD.balanceOf(acc));
+        let basBal = _.getBN(await token1.balanceOf(acc));
+        let basBalPool = _.getBN(await sparta.balanceOf(poolBUSD.address));
+        let bAA =_.getBN( await poolBUSD.baseAmount());
         let poolData = await utils.getPoolData(token);
-        const X = _.getBN(poolData.tokenAmount)
-        const Y = _.getBN(poolData.baseAmount)
-        // await help.logPool(utils, token, 'WBNB')
-        // console.log('start data', _.BN2Str(X), _.BN2Str(Y))
-
-        let baseSwapped = math.calcSwapOutput(x, X, Y)
-        //  console.log("Swa", _.BN2Str(baseSwapped));
-
-        let poolSynBal = _.getBN(await poolWBNB.balanceOf(synthBNB.address));
-        let totalSynth = _.getBN(await synthBNB.totalSupply());
-
-        let amountSynths = _.BN2Str((_.getBN(x).times(lpBalance)).div(lpDebt));
-
-        await router.swapSynthToAsset(x,synthIN,sparta.address,{from:acc});
-        
-       
+        let lpBalance = _.getBN(await synthBUSD.collateral());
+        let lpDebt =_.getBN( await synthBUSD.totalSupply());
+        let totalS = _.getBN(await poolBUSD.totalSupply())
+        const X = _.getBN(poolData.baseAmount)
+        const Y = _.getBN(poolData.tokenAmount)
+        let baseIN = math.calcSwapOutput(x, Y, X)
+        let asymAdd = totalS.times(baseIN).div((X).times("2"))
+        let poolSynBal = _.getBN(await poolBUSD.balanceOf(synthBUSD.address));
+        let totalSynth = _.getBN(await synthBUSD.totalSupply());
+        let totalSynths = _.getBN(await synthBUSD.totalSupply());
+        await router.swapAssetToSynth(x, fromToken, toSynth, {from:acc});
+        let minDebt = _.getBN(500).times(Y.plus(x)).div(10000); // Get a min SPARTA virtualisation amount
+        let minCollateral = _.getBN(500).times(X.minus(baseIN)).div(10000); // Get a min TOKEN virtualisation amount
+        let _collateral = _.getBN(await poolBUSD.collateral());
+        if(totalSynth.isLessThan(minDebt)){
+            totalSynth = minDebt;
+        }
+        if(_collateral.isLessThan(minCollateral)){
+           _collateral = minCollateral; 
+        }
+        let synthMint = math.calcSwapOutput(baseIN, X.minus(baseIN).plus(_collateral), Y.plus(x).minus(totalSynth))
         poolData = await utils.getPoolData(token);
-
-        let lpBalanceA = _.getBN(await synthBNB.mapSynth_LPBalance(poolWBNB.address));
-        let lpDebtA =_.getBN( await synthBNB.mapSynth_LPDebt(poolWBNB.address));
-
-        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y.minus(baseSwapped)))
-        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X))
-        assert.equal(_.BN2Str(lpBalanceA), _.BN2Str(lpBalance.minus(amountSynths)))
-        assert.equal(_.BN2Str(lpDebtA), _.BN2Str(lpDebt.minus(x)))
-        assert.equal(_.BN2Str(await poolWBNB.balanceOf(synthBNB.address)), _.BN2Str(poolSynBal.minus(amountSynths)))
-        assert.equal(_.BN2Str(await synthBNB.totalSupply()), _.BN2Str(totalSynth.minus(x)))
-        assert.equal(_.BN2Str(await synthBNB.balanceOf(acc)), _.BN2Str(synBal.minus(x)))
-        assert.equal(_.BN2Str(await sparta.balanceOf(acc)), _.BN2Str(basBal.plus(baseSwapped)))
-        assert.equal(_.BN2Str(await sparta.balanceOf(poolWBNB.address)), _.BN2Str(Y.minus(baseSwapped)), 'wbnb balance')
-        assert.equal(_.BN2Str(await wbnb.balanceOf(poolWBNB.address)), _.BN2Str(X), 'sparta balance')
+        let lpBalanceA = _.getBN(await synthBUSD.collateral());
+        let lpDebtA =_.getBN( await synthBUSD.totalSupply());
+        let bA =_.getBN( await poolBUSD.baseAmount());
+        let basBalPooll = _.getBN(await sparta.balanceOf(poolBUSD.address));
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(X))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(Y.plus(x)))
+        assert.equal(_.BN2Str(lpBalanceA), _.BN2Str(lpBalance.plus(asymAdd)))
+        assert.equal(_.BN2Str(lpDebtA), _.BN2Str(lpDebt.plus(synthMint)))
+        assert.equal(_.BN2Str(await poolBUSD.balanceOf(synthBUSD.address)), _.BN2Str(poolSynBal.plus(asymAdd)))
+        assert.equal(_.BN2Str(await synthBUSD.totalSupply()), _.BN2Str(totalSynths.plus(synthMint)))
+        assert.equal(_.BN2Str(await synthBUSD.balanceOf(acc)), _.BN2Str(synBal.plus(synthMint)))
+        assert.equal(_.BN2Str(await token1.balanceOf(acc)), _.BN2Str(basBal.minus(x)))
+        assert.equal(_.BN2Str(await sparta.balanceOf(poolBUSD.address)), _.BN2Str(X), 'bnb balance')
+        assert.equal(_.BN2Str(await token1.balanceOf(poolBUSD.address)), _.BN2Str(Y.plus(x)), 'sparta balance')
         
     })
 }
-
-
+async function swapSynthBUSDToBUSD(acc, xx) {
+    it("Swap Synthetic BUSD To BUSD", async () => {
+        let x = _.getBN(xx * _.oneBN)
+        let toToken = token1.address 
+        let fromSynth = synthBUSD.address
+        let token = token1.address;
+        let input = _.getBN(await token1.balanceOf(acc));
+        let synBal = _.getBN(await synthBUSD.balanceOf(acc));
+        let basBal = _.getBN(await sparta.balanceOf(acc));
+        let lpBalance = _.getBN(await synthBUSD.collateral());
+        let lpDebt =_.getBN( await synthBUSD.totalSupply());
+        let poolData = await utils.getPoolData(token);
+        const X = _.getBN(poolData.tokenAmount)
+        const Y = _.getBN(poolData.baseAmount)
+        let poolSynBal = _.getBN(await poolBUSD.balanceOf(synthBUSD.address));
+        let totalSynth = _.getBN(await synthBUSD.totalSupply())
+        let totalSynths = _.getBN(await synthBUSD.totalSupply())
+        let lpShare = _.BN2Str((_.getBN(x).times(lpBalance)).div(lpDebt));
+        let minDebt = _.getBN(500).times(X).div(10000); // Get a min SPARTA virtualisation amount
+        let minCollateral = _.getBN(500).times(Y).div(10000); // Get a min TOKEN virtualisation amount
+        let _collateral = _.getBN(await poolBUSD.collateral());
+        if(totalSynth.isLessThan(minDebt)){
+            totalSynth = minDebt; // Make sure TOKEN virtualisation is at least the min amount
+        }
+        if(_collateral.isLessThan(minCollateral)){
+           _collateral = minCollateral; // Make sure SPARTA virtualisation is at least the min amount
+        }
+        let baseSwapped = math.calcSwapOutput(x, X.minus(totalSynth), Y.plus(_collateral))
+        let tokenOut = math.calcSwapOutput(baseSwapped,Y.minus(baseSwapped), X)
+        await router.swapSynthToAsset(x,fromSynth,toToken,{from:acc})
+        poolData = await utils.getPoolData(token);
+        let lpBalanceA = _.getBN(await synthBUSD.collateral());
+        let lpDebtA =_.getBN( await synthBUSD.totalSupply());
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(Y))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(X.minus(tokenOut)))
+        assert.equal(_.BN2Str(lpBalanceA), _.BN2Str(lpBalance.minus(lpShare)))
+        assert.equal(_.BN2Str(lpDebtA), _.BN2Str(lpDebt.minus(x)))
+        assert.equal(_.BN2Str(await poolBUSD.balanceOf(synthBUSD.address)), _.BN2Str(poolSynBal.minus(lpShare)))
+        assert.equal(_.BN2Str(await synthBUSD.totalSupply()), _.BN2Str(totalSynths.minus(x)))
+        assert.equal(_.BN2Str(await synthBUSD.balanceOf(acc)), _.BN2Str(synBal.minus(x)))
+        assert.equal(_.BN2Str(await sparta.balanceOf(acc)), _.BN2Str(basBal))
+        assert.equal(_.BN2Str(await token1.balanceOf(acc)), _.BN2Str(input.plus(tokenOut)))
+        assert.equal(_.BN2Str(await sparta.balanceOf(poolBUSD.address)), _.BN2Str(Y), 'wbnb balance')
+        assert.equal(_.BN2Str(await token1.balanceOf(poolBUSD.address)), _.BN2Str(X.minus(tokenOut)), 'sparta balance')
+        assert.equal(_.BN2Str(await synthBUSD.collateral()), _.BN2Str(await poolBUSD.balanceOf(synthBUSD.address)))
+        
+    })
+}
 async function BNBPoolBalanceCheck() {
     it("", async () => {
         let poolSB = _.BN2Str(await sparta.balanceOf(poolBNB.address))
