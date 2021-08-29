@@ -329,7 +329,9 @@ contract Router is ReentrancyGuard {
     // Calculate the Dividend and transfer it to the pool
     function _addDividend(address _pool, uint256 _fees) internal {
         uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
-        if(reserve > 0){
+        bool emissions = iRESERVE(_DAO().RESERVE()).emissions();
+        if(reserve > 0 && emissions){
+            curatedPoolsCount = iPOOLFACTORY(_DAO().POOLFACTORY()).curatedPoolCount(); 
             uint256 _dividendReward = (reserve * diviClaim) / curatedPoolsCount / 10000; // Get the dividend share 
             if((mapAddress_30DayDividends[_pool] + _fees) < _dividendReward){
                 _revenueDetails(_fees, _pool); // Add to revenue metrics
@@ -349,7 +351,6 @@ contract Router is ReentrancyGuard {
             lastMonth = block.timestamp;
             mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
             mapAddress_30DayDividends[_pool] = _fees;
-            curatedPoolsCount = iPOOLFACTORY(_DAO().POOLFACTORY()).curatedPoolCount(); 
         }
     }
     

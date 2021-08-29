@@ -87,6 +87,7 @@ function constructor(accounts) {
 
         await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await sparta.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
+       
 
         await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await token1.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))

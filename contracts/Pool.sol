@@ -61,7 +61,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         _;
     }
     modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO());
+        require(msg.sender == _DAO().DAO() || msg.sender == _DAO().ROUTER());
         _;
     }
      modifier onlySYNTH() {

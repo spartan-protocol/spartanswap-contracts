@@ -34,27 +34,27 @@ contract('SWAP + ZAP + MINT + BURN', function (accounts) {
     constructor(accounts)
     createPoolBNB(acc0, 10000, 30)
     createPoolBUSD(acc0, 10000, 10000)
-    curatePools()
     addLiquidityBNB(acc1, 9)
     addLiquidityBUSD(acc1, 100)
-    //  BNBPoolBalanceCheck()
+     BNBPoolBalanceCheck()
     swapSPARTAForBNB(acc1, 1000)
     swapBNBForSparta(acc2, 1)
     swapSPARTAForBUSD(acc1, 500)
     swapBUSDForSparta(acc1, 300)
     swapBNBForBUSD(acc2, 2)
     swapBUSDForBNB(acc1, 500)
-    // BNBPoolBalanceCheck()
-    zapLiquidity(acc1, 20)
-    createSyntheticBNB()
-    createSyntheticBUSD()
-    
-    swapSpartaToSynth(acc1, 300)
-    swapBNBToSynthBNB(acc2, 1)
-     swapSynthBNBToSparta(acc1, 0.1)
-    //  TokenPoolBalanceCheck()
-     swapBUSDToSynthBUSD(acc1, 10)
-     swapSynthBUSDToBUSD(acc1, 1)
+    curatePools()
+    swapSPARTA(acc1, 1000)
+    // // BNBPoolBalanceCheck()
+    // zapLiquidity(acc1, 20)
+    // createSyntheticBNB()
+    // createSyntheticBUSD()
+    // swapSpartaToSynth(acc1, 300)
+    // swapBNBToSynthBNB(acc2, 1)
+    //  swapSynthBNBToSparta(acc1, 0.1)
+    // //  TokenPoolBalanceCheck()
+    //  swapBUSDToSynthBUSD(acc1, 10)
+    //  swapSynthBUSDToBUSD(acc1, 1)
 
 })
 
@@ -79,12 +79,12 @@ function constructor(accounts) {
         await Dao.setFactoryAddresses(poolFactory.address,synthFactory.address);
         await sparta.changeDAO(Dao.address)
      
-        // await reserve.flipEmissions();    
+          await reserve.flipEmissions();    
         // await sparta.flipEmissions();  
         // await sparta.flipMinting();
 
         await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
-        // await sparta.transfer(reserve.address, _.getBN(_.BN2Str(100000 * _.one)))
+        await sparta.transfer(reserve.address, _.getBN(_.BN2Str(100000 * _.one)))
         await sparta.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
 
         await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
@@ -213,6 +213,7 @@ async function swapSPARTAForBNB(acc, xx){
         const X = _.getBN(poolData.baseAmount)
         const Y = _.getBN(poolData.tokenAmount)
         let y = math.calcSwapOutput(x, X, Y)
+        let fee = math.calcSwapOutput(x, X, Y)
         let minAmount = _.getBN(1*_.oneBN)
         let tx = await router.swap(x, fromToken, toToken, minAmount,{from:acc})
         poolData = await utils.getPoolData(toToken);
@@ -363,6 +364,33 @@ async function swapBUSDForBNB(acc, xx) {
         assert.equal(_.BN2Str(await token1.balanceOf(poolBUSD.address)), _.BN2Str(Z.plus(x)), 'token1 balance')
         assert.isAtMost(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(tokenStart.plus(z)), 'bnb balance')
         assert.equal(_.BN2Str(await token1.balanceOf(acc)), _.BN2Str(busdStart.minus(x)), 'token1 balance')
+    })
+}
+async function swapSPARTA(acc, xx){
+    it(`It should swap sparta for BNB gets Dividend`, async () =>{
+        let x = _.getBN(xx * _.oneBN)
+        let toToken = _.BNB
+        let fromToken = sparta.address
+        let baseStart = _.getBN(await sparta.balanceOf(acc))
+        let tokenStart = _.getBN(await web3.eth.getBalance(acc))
+        let feeOnTransfer = _.getBN(await sparta.feeOnTransfer())
+        let totalSupply = _.BN2Str(await sparta.totalSupply())
+        let poolData = await utils.getPoolData(toToken);
+        const X = _.getBN(poolData.baseAmount)
+        const Y = _.getBN(poolData.tokenAmount)
+        let y = math.calcSwapOutput(x, X, Y)
+        let fe = math.calcSwapFee(x, X, Y)
+        let fee = fe.times(X).div(Y)
+        let minAmount = _.getBN(1*_.oneBN)
+        let tx = await router.swap(x, fromToken, toToken, minAmount,{from:acc})
+        poolData = await utils.getPoolData(toToken);
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(X.plus(x).plus(fee)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(Y.minus(y)))
+        assert.equal(_.BN2Str(await sparta.balanceOf(poolBNB.address)), _.BN2Str(X.plus(x).plus(fee)), 'sparta balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolBNB.address)), _.BN2Str(Y.minus(y)), 'wbnb balance')
+        assert.equal(_.BN2Str(await sparta.balanceOf(acc)), _.BN2Str(baseStart.minus(x)), 'sparta balance')
+        assert.isAtMost(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(tokenStart.plus(y)), 'wbnb balance')
+       
     })
 }
 async function zapLiquidity(acc, xx) {
