@@ -12,7 +12,7 @@ contract PoolFactory is ReentrancyGuard {
     uint public curatedPoolCount;   // Current count of pools that are curated status
     address[] public arrayPools;    // Array of all deployed pools
     address[] public arrayTokens;   // Array of all listed tokens
-    address[] public vaultAssets;   // Array of all vault-enabled assets (curated pools)
+    address[] private vaultAssets;   // Array of all vault-enabled assets (curated pools)
 
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isListedPool;
@@ -141,6 +141,9 @@ contract PoolFactory is ReentrancyGuard {
 
     function poolCount() external view returns(uint256){
         return arrayPools.length;
+    }
+    function getVaultAssets() external view returns(address [] memory assets){
+        return vaultAssets;
     }
 
     function tokenCount() external view returns(uint256){

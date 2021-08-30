@@ -50,7 +50,7 @@ contract DaoVault {
     // Get a member's and the vault's total weight (Just DAOVault)
     function getMemberLPWeight(address member) external onlyDAO returns (uint256 memberWeight, uint256 totalWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
-        address [] memory vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).vaultAssets(); // Get list of vault-enabled assets
+        address [] memory vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).getVaultAssets(); // Get list of vault-enabled assets
         for(uint i =0; i< vaultAssets.length; i++){
             memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapMemberPool_balance[member][vaultAssets[i]]); // Get member's current total DAOVault weight
             totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(vaultAssets[i], mapTotalPool_balance[vaultAssets[i]]); // Get DaoVault's current total weight
@@ -63,6 +63,7 @@ contract DaoVault {
         require(block.timestamp > (mapMember_depositTime[member][pool] + 86400), '!unlocked'); // 1 day must have passed since last deposit (lockup period)
         uint256 _balance = mapMemberPool_balance[member][pool]; // Get user's whole DAOVault balance of the selected asset
         require(_balance > 0, "!balance"); // Withdraw amount must be valid
+        mapTotalPool_balance[pool] -=_balance;//remove from total
         mapMemberPool_balance[member][pool] = 0; // Zero out user's DAOVault balance of the selected asset
         require(iBEP20(pool).transfer(member, _balance), "!transfer"); // Tsf LPs (DaoVault -> User)
         return true;

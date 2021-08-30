@@ -41,8 +41,15 @@ contract('DAO', function (accounts) {
     addLiquidityBUSD(acc2, 1000)
     curatePools()
     RemCuratePools()
-  
-
+    curatePools()
+    depositBNBSPP(acc0, 5)
+    depositBNBSPP(acc1, 3)
+    depositBNBSPP(acc2, 2)
+    paramProposal(acc0)
+    // withdrawBNBSPP(acc1) 
+    // withdrawBNBSPP(acc2) 
+    // depositBUSDSPP(acc1, 5)
+    // withdrawBUSDSPP(acc1) 
 })
 
 
@@ -56,12 +63,14 @@ function constructor(accounts) {
         token1 = await TOKEN.new()   
         reserve = await RESERVE.new(sparta.address) // deploy reserve 
         daoVault = await DAOVAULT.new(sparta.address); // deploy daoVault
+        bondVault = await BONDVAULT.new(sparta.address); // deploy daoVault
         router = await ROUTER.new(sparta.address, wbnb.address,); // deploy router
         poolFactory = await POOLFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
         synthFactory = await SYNTHFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
         await Dao.setGenesisAddresses(router.address,utils.address,reserve.address, utils.address);
-        await Dao.setVaultAddresses(daoVault.address,daoVault.address, daoVault.address);
+        await Dao.setVaultAddresses(daoVault.address,bondVault.address, daoVault.address);
         await Dao.setFactoryAddresses(poolFactory.address,synthFactory.address);
+        await Dao.setGenesisFactors(259200, 30,6666,1000,400,true);
         await sparta.changeDAO(Dao.address)
      
         //   await reserve.flipEmissions();    
@@ -200,130 +209,111 @@ async function curatePools() {
         assert.equal(_.BN2Str(await poolFactory.curatedPoolCount()),'2','Length correct')
     })
 }
-
-
-
-
-
-
-
-
-async function lockTKN(acc, amount) {
-    it("It should deposit", async () => {
-        await poolTKN1.approve(Dao.address, _.BN2Str(1000000*_.one), {from:acc} )
-        await Dao.deposit(poolTKN1.address, amount, { from: acc })
-        let balancee = await poolWBNB.balanceOf(acc)
-        // console.log(`balanceA: ${balancee}`)
-        // console.log(`isMember: ${await Dao.isMember(acc)}`)
-        // console.log(`mapMemberPool_balance: ${await daoVault.getMemberPoolBalance(acc, poolTKN1.address)}`)
-        // console.log(`totalWeight: ${await daoVault.totalWeight()}`)
-        // console.log(`getMemberWeight: ${await daoVault.getMemberWeight(acc)}`)
-        // console.log(`rate: ${_.getBN(await daoVault.getMemberWeight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
-    })
-}
-async function lockWBNB(acc, amount) {
-    it("It should deposit", async () => {
-         let balance = await poolWBNB.balanceOf(acc)
-        // await poolWBNB.approve(Dao.address, balance, { from: acc })
-        await poolWBNB.approve(Dao.address, _.BN2Str(1000000*_.one), {from:acc} )
-        await Dao.deposit(poolWBNB.address, amount, { from: acc })
-        // console.log(`balanceA: ${balance}`)
-        // console.log(`isMember: ${await Dao.isMember(acc)}`)
-        // console.log(`mapMemberPool_balance: ${await daoVault.getMemberPoolBalance(acc, poolWBNB.address)}`)
-        // console.log(`totalWeight: ${await daoVault.totalWeight()}`)
-        // console.log(`getMemberWeight: ${await daoVault.getMemberWeight(acc)}`)
-        // console.log(`rate: ${_.getBN(await daoVault.getMemberWeight(acc)).div(_.getBN(await daoVault.totalWeight()))}`)
+async function depositBNBSPP(acc, x){
+    it(`It should deposit BNB-SPP`, async () => {
+        let asset = poolBNB.address
+        let amount = _.getBN(x * _.one)
+        let balanceB = _.getBN(await poolBNB.balanceOf(acc))
+        let balanceDAOB = _.getBN(await poolBNB.balanceOf(daoVault.address))
+        let totalPoolBal = _.getBN(await daoVault.mapTotalPool_balance(poolBNB.address))
+        let poolBalMem = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
+        await poolBNB.approve(Dao.address, _.BN2Str(1000000*_.one), {from:acc} )
+        await Dao.deposit(asset, amount, { from: acc })
+        let balanceA = _.getBN(await poolBNB.balanceOf(acc))
+        let balanceDAOA = _.getBN(await poolBNB.balanceOf(daoVault.address))
+        assert.equal(_.BN2Str(balanceA), _.BN2Str(balanceB.minus(amount)))
+        assert.equal(_.BN2Str(balanceDAOA), _.BN2Str(balanceDAOB.plus(amount)))
+        assert.equal(await Dao.isMember(acc), true)
+        assert.equal(_.BN2Str(await daoVault.mapTotalPool_balance(poolBNB.address)), _.BN2Str(totalPoolBal.plus(amount)))
+        assert.equal(_.BN2Str(await daoVault.getMemberPoolBalance(poolBNB.address, acc)), _.BN2Str(poolBalMem.plus(amount)))
        
     })
 }
-async function bondBNB(acc, amount){
-    it(`It should bond  `, async () => {
-        let asset = _.BNB
-        console.log(_.BN2Str(await sparta.feeOnTransfer()))
-        let poolData = await utils.getPoolData(asset);
-        let spartaAllocation = await utils.calcSwapValueInBase(asset,amount)
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        poolUnits = _.getBN((await poolWBNB.totalSupply()))
-        let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
-        DEPOTime = _.getBN((new Date())/1000)
-       await Dao.bond(asset, amount,{from:acc, value:amount})
-       let memberDetails = await bondVault.getMemberDetails(acc, asset);
-        // console.log("bondedLPBefore ",_.BN2Str(memberDetails.bondedLP)); 
-       assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(units), 'bonded LP')
-        assert.equal(_.BN2Str((await poolWBNB.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
+async function depositBUSDSPP(acc, x){
+    it(`It should deposit BUSD-SPP`, async () => {
+        let asset = poolBUSD.address
+        let amount = _.getBN(x * _.one)
+        let balanceB = _.getBN(await poolBUSD.balanceOf(acc))
+        let balanceDAOB = _.getBN(await poolBUSD.balanceOf(daoVault.address))
+        let totalPoolBal = _.getBN(await daoVault.mapTotalPool_balance(poolBUSD.address))
+        let poolBalMem = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+        await poolBUSD.approve(Dao.address, _.BN2Str(1000000*_.one), {from:acc} )
+        await Dao.deposit(asset, amount, { from: acc })
+        let balanceA = _.getBN(await poolBUSD.balanceOf(acc))
+        let balanceDAOA = _.getBN(await poolBUSD.balanceOf(daoVault.address))
+        assert.equal(_.BN2Str(balanceA), _.BN2Str(balanceB.minus(amount)))
+        assert.equal(_.BN2Str(balanceDAOA), _.BN2Str(balanceDAOB.plus(amount)))
+        assert.equal(await Dao.isMember(acc), true)
+        assert.equal(_.BN2Str(await daoVault.mapTotalPool_balance(poolBUSD.address)), _.BN2Str(totalPoolBal.plus(amount)))
+        assert.equal(_.BN2Str(await daoVault.getMemberPoolBalance(poolBUSD.address, acc)), _.BN2Str(poolBalMem.plus(amount)))
+       
     })
 }
-async function depositTKN(acc, amount){
-    it(`It should deposit tkn`, async () => {
-        let asset = token1.address
-        let poolData = await utils.getPoolData(asset);
-        let spartaAllocation = await utils.calcSwapValueInBase(asset,amount)
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        poolUnits = _.getBN((await poolTKN1.totalSupply()))
-        let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
-        DEPOTime = _.getBN((new Date())/1000)
-        let lockLPBalB =  _.getBN(await poolTKN1.balanceOf(bondVault.address))
-        await token1.approve(Dao.address, _.BN2Str(10000*_.one), {from:acc})
-        await Dao.deposit(asset, amount,{from:acc})
-        let memberDetails = await bondVault.getMemberDetails(acc, asset);
-        let lockLPBal =  _.BN2Str(await poolTKN1.balanceOf(bondVault.address))
-        assert.equal(lockLPBal, _.BN2Str(lockLPBalB.plus(units)), 'got LP')
-        assert.equal(_.BN2Str((await poolTKN1.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
-        assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(units.plus(lockLPBalB)), 'bonded LP')
+async function withdrawBNBSPP(acc) {
+    it("It should withdraw from dao Vault", async () => {
+        let balBefore = _.getBN(await poolBNB.balanceOf(acc))
+        let balBeforeD = _.getBN(await poolBNB.balanceOf(daoVault.address))
+        let amountWithdraw = _.BN2Str(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
+        let total = _.getBN(await daoVault.mapTotalPool_balance(poolBNB.address))
+        await Dao.withdraw(poolBNB.address,{from:acc});
+        assert.equal(_.BN2Str(await poolBNB.balanceOf(acc)), _.BN2Str(balBefore.plus(amountWithdraw)))
+        assert.equal(_.BN2Str(await poolBNB.balanceOf(daoVault.address)), _.BN2Str(balBeforeD.minus(amountWithdraw)))
+        assert.equal(_.BN2Str(await daoVault.getMemberPoolBalance(poolBNB.address, acc)), _.BN2Str(0))
+        assert.equal(_.BN2Str(await daoVault.mapTotalPool_balance(poolBNB.address)), _.BN2Str(total.minus(amountWithdraw)))
+    })
+}
+async function withdrawBUSDSPP(acc) {
+    it("It should withdraw BUSD-SPP from dao Vault", async () => {
+        let balBefore = _.getBN(await poolBUSD.balanceOf(acc))
+        let balBeforeD = _.getBN(await poolBUSD.balanceOf(daoVault.address))
+        let amountWithdraw = _.BN2Str(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+        let total = _.getBN(await daoVault.mapTotalPool_balance(poolBUSD.address))
+        await Dao.withdraw(poolBUSD.address,{from:acc});
+        assert.equal(_.BN2Str(await poolBUSD.balanceOf(acc)), _.BN2Str(balBefore.plus(amountWithdraw)))
+        assert.equal(_.BN2Str(await poolBUSD.balanceOf(daoVault.address)), _.BN2Str(balBeforeD.minus(amountWithdraw)))
+        assert.equal(_.BN2Str(await daoVault.getMemberPoolBalance(poolBUSD.address, acc)), _.BN2Str(0))
+        assert.equal(_.BN2Str(await daoVault.mapTotalPool_balance(poolBUSD.address)), _.BN2Str(total.minus(amountWithdraw)))
+    })
+}
 
-    })
-}
-async function withdrawBNB(acc) {
-    it("It should unlock", async () => {
-        let balBefore = _.getBN(await poolWBNB.balanceOf(acc))
-        let balBeforeD = _.getBN(await poolWBNB.balanceOf(daoVault.address))
-        console.log(_.BN2Str(balBeforeD));
-        await Dao.withdraw(poolWBNB.address,{from:acc});
-        let balAfter = _.getBN(await poolWBNB.balanceOf(acc))
-        assert.isAbove(_.BN2Int(balAfter), _.BN2Int(balBefore))
-        console.log(_.BN2Str(balAfter));
-    })
-}
-async function withdrawTKN1(acc) {
-    it("It should unlock", async () => {
-        let balBefore = _.getBN(await poolTKN1.balanceOf(acc))
-        let balBeforeD = _.getBN(await poolTKN1.balanceOf(daoVault.address))
-        console.log(_.BN2Str(balBeforeD));
-        await Dao.withdraw(poolTKN1.address, {from:acc});
-        let balAfter = _.getBN(await poolTKN1.balanceOf(acc))
-        assert.isAbove(_.BN2Int(balAfter), _.BN2Int(balBefore))
-        console.log(_.BN2Str(balAfter));
-    })
-}
-async function rate() {
-    it("It should check rates", async () => {
-        let memberCombinedWeight0 = _.getBN(await daoVault.getMemberWeight(acc0)).plus(await bondVault.getMemberWeight(acc0));
-        let memberCombinedWeight1 = _.getBN(await daoVault.getMemberWeight(acc1)).plus(await bondVault.getMemberWeight(acc1));
-        let memberCombinedWeight2 = _.getBN(await daoVault.getMemberWeight(acc2)).plus(await bondVault.getMemberWeight(acc2));
+async function paramProposal(acc) {
+    it("It should vote, finalise COOL_OFF", async () => {
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc})
+        await Dao.newParamProposal('2', 'COOL_OFF', { from: acc})
+        let currentProposal = _.BN2Str(await Dao.currentProposal())
+        await Dao.voteProposal( { from: acc0 })
 
-        let memberCombinedTotal0 = _.getBN(await daoVault.totalWeight()).plus(await bondVault.totalWeight());
-        let memberCombinedTotal1 = _.getBN(await daoVault.totalWeight()).plus(await bondVault.totalWeight());
-        let memberCombinedTotal2 = _.getBN(await daoVault.totalWeight()).plus(await bondVault.totalWeight());
-        
-    
-        console.log(`acc0 rate: ${memberCombinedWeight0} ${memberCombinedWeight0.div(memberCombinedTotal0)}`)
-        console.log(`acc1 rate: ${memberCombinedWeight1} ${memberCombinedWeight1.div(memberCombinedTotal1)}`)
-        console.log(`acc2 rate: ${memberCombinedWeight2} ${memberCombinedWeight2.div(memberCombinedTotal2)}`)
-        //console.log(`acc3 rate: ${await Dao.getMemberWeight(acc3)} ${_.getBN(await Dao.getMemberWeight(acc3)).div(_.getBN(await Dao.totalWeight()))}`)
+        let bnbUnits = _.BN2Str(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
 
+        let busdUnits = _.BN2Str(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),bnbUnits)
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),busdUnits)
+        await Dao.voteProposal( { from: acc1 })
+        // assert.equal(await Dao.hasQuorum(proposalCount), true)
+        // assert.equal(await Dao.mapPID_finalising(proposalCount), true)
+        // await truffleAssert.reverts(Dao.finaliseProposal(), "!cool off");
+        // await sleep(3100)
+        // await Dao.finaliseProposal()
+        // assert.equal(await Dao.coolOffPeriod(), '2')
+        // assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), '0')
+        // assert.equal(await Dao.mapPID_finalising(proposalCount), false)
+        // assert.equal(await Dao.mapPID_finalised(proposalCount), true)
     })
+    // it("It should vote, finalise ERAS_TO_EARN", async () => {
+    //     let bal = _.getBN(await sparta.balanceOf(router.address));
+    //     console.log(_.BN2Str(bal)/_.one);
+    //     await Dao.newParamProposal('10', 'ERAS_TO_EARN', { from: acc0 })
+    //     let balA = _.getBN(await sparta.balanceOf(router.address));
+    //     await Dao.voteProposal( { from: acc1 })
+    //     await Dao.voteProposal( { from: acc2 })
+    //     await sleep(3100)
+    //     await Dao.finaliseProposal()
+    //     assert.equal(_.BN2Str(await Dao.erasToEarn()), '10')
+    // })
 }
-async function rateBond() {
-    it("It should check BOnd rates", async () => {
-        console.log(`acc0 rate: ${await bondVault.getMemberWeight(acc0)} ${_.getBN(await bondVault.getMemberWeight(acc0)).div(_.getBN(await bondVault.totalWeight()))}`)
-        console.log(`acc1 rate: ${await bondVault.getMemberWeight(acc1)} ${_.getBN(await bondVault.getMemberWeight(acc1)).div(_.getBN(await bondVault.totalWeight()))}`)
-        console.log(`acc2 rate: ${await bondVault.getMemberWeight(acc2)} ${_.getBN(await bondVault.getMemberWeight(acc2)).div(_.getBN(await bondVault.totalWeight()))}`)
-        //console.log(`acc3 rate: ${await Dao.getMemberWeight(acc3)} ${_.getBN(await Dao.getMemberWeight(acc3)).div(_.getBN(await Dao.totalWeight()))}`)
 
-    })
-}
+
 
 async function voteParam() {
     it("It should vote, finalise curve", async () => {
@@ -632,6 +622,45 @@ async function deployerChangeSecondsPerYear(seconds){
         await Dao.changeBondingPeriod(seconds, {from:acc0});
         let secondsPerYearA = _.BN2Str(await Dao.bondingPeriodSeconds());
         assert.equal(secondsPerYearA, seconds, 'deployer change bond period in seconds')
+    })
+}
+async function bondBNB(acc, amount){
+    it(`It should bond  `, async () => {
+        let asset = _.BNB
+        console.log(_.BN2Str(await sparta.feeOnTransfer()))
+        let poolData = await utils.getPoolData(asset);
+        let spartaAllocation = await utils.calcSwapValueInBase(asset,amount)
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+        poolUnits = _.getBN((await poolWBNB.totalSupply()))
+        let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
+        DEPOTime = _.getBN((new Date())/1000)
+       await Dao.bond(asset, amount,{from:acc, value:amount})
+       let memberDetails = await bondVault.getMemberDetails(acc, asset);
+        // console.log("bondedLPBefore ",_.BN2Str(memberDetails.bondedLP)); 
+       assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(units), 'bonded LP')
+        assert.equal(_.BN2Str((await poolWBNB.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
+    })
+}
+async function depositTKN(acc, amount){
+    it(`It should deposit tkn`, async () => {
+        let asset = token1.address
+        let poolData = await utils.getPoolData(asset);
+        let spartaAllocation = await utils.calcSwapValueInBase(asset,amount)
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+        poolUnits = _.getBN((await poolTKN1.totalSupply()))
+        let units = _.getBN(await utils.calcLiquidityUnits(spartaAllocation, B, amount, T, poolUnits))
+        DEPOTime = _.getBN((new Date())/1000)
+        let lockLPBalB =  _.getBN(await poolTKN1.balanceOf(bondVault.address))
+        await token1.approve(Dao.address, _.BN2Str(10000*_.one), {from:acc})
+        await Dao.deposit(asset, amount,{from:acc})
+        let memberDetails = await bondVault.getMemberDetails(acc, asset);
+        let lockLPBal =  _.BN2Str(await poolTKN1.balanceOf(bondVault.address))
+        assert.equal(lockLPBal, _.BN2Str(lockLPBalB.plus(units)), 'got LP')
+        assert.equal(_.BN2Str((await poolTKN1.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
+        assert.equal(_.BN2Str(memberDetails.bondedLP), _.BN2Str(units.plus(lockLPBalB)), 'bonded LP')
+
     })
 }
 

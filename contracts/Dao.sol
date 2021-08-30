@@ -13,7 +13,7 @@ import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iSYNTHVAULT.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
+import "hardhat/console.sol";
 contract Dao is ReentrancyGuard{
     address public DEPLOYER;        // Address that deployed contract | can be purged to address(0)
     address public immutable BASE;  // SPARTA base contract address
@@ -146,12 +146,13 @@ contract Dao is ReentrancyGuard{
         _SYNTHFACTORY = iSYNTHFACTORY(_synthFactory);
     }
 
-    function setGenesisFactors(uint256 _coolOff, uint256 _erasToEarn, uint256 _majorityFactor, uint256 _daoClaim, uint256 _daoFee) external onlyDAO {
+    function setGenesisFactors(uint256 _coolOff, uint256 _erasToEarn, uint256 _majorityFactor, uint256 _daoClaim, uint256 _daoFee, bool _running) external onlyDAO {
         coolOffPeriod = _coolOff;
         erasToEarn = _erasToEarn;
         majorityFactor = _majorityFactor;
         daoClaim = _daoClaim;
         daoFee = _daoFee;
+        running = _running;
     }
 
     // Can purge deployer once DAO is stable and final
@@ -448,7 +449,7 @@ contract Dao is ReentrancyGuard{
         uint _currentProposal = currentProposal; // Get the current proposal ID
         require(mapPID_open[_currentProposal], "!OPEN"); // Proposal must be open
         require(block.timestamp > (mapPID_startTime[_currentProposal] + 1296000), "!days"); // Proposal must not be new
-        address [] memory votingAssets =  _POOLFACTORY.vaultAssets(); // Get array of vault-enabled pools
+        address [] memory votingAssets =  _POOLFACTORY.getVaultAssets(); // Get array of vault-enabled pools
         for(uint i = 0; i < votingAssets.length; i++){
            mapPIDAsset_votes[_currentProposal][votingAssets[i]] = 0; // Reset votes to 0
         }
@@ -470,32 +471,32 @@ contract Dao is ReentrancyGuard{
             bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
             if(isEqual(_type, 'DAO')){
                 _moveDao(_currentProposal);
-            } else if (isEqual(_type, 'ROUTER')) {
+            } else if (isEqual(_type, 'ROUTER')) { // address
                 _moveRouter(_currentProposal);
-            } else if (isEqual(_type, 'UTILS')){
+            } else if (isEqual(_type, 'UTILS')){ // address
                 _moveUtils(_currentProposal);
-            } else if (isEqual(_type, 'RESERVE')){
+            } else if (isEqual(_type, 'RESERVE')){ // address
                 _moveReserve(_currentProposal);
-            } else if (isEqual(_type, 'FLIP_EMISSIONS')){
+            } else if (isEqual(_type, 'FLIP_EMISSIONS')){ // action
                 _flipEmissions(_currentProposal);
-            } else if (isEqual(_type, 'COOL_OFF')){
+            } else if (isEqual(_type, 'COOL_OFF')){ // param
                 _changeCooloff(_currentProposal);
-            } else if (isEqual(_type, 'ERAS_TO_EARN')){
+            } else if (isEqual(_type, 'ERAS_TO_EARN')){ // param
                 _changeEras(_currentProposal);
-            } else if (isEqual(_type, 'GRANT')){
+            } else if (isEqual(_type, 'GRANT')){ // grant
                 _grantFunds(_currentProposal);
             } else if (isEqual(_type, 'GET_SPARTA')){
-                _increaseSpartaAllocation(_currentProposal);
+                _increaseSpartaAllocation(_currentProposal); // param
             } else if (isEqual(_type, 'LIST_BOND')){
-                _listBondingAsset(_currentProposal);
+                _listBondingAsset(_currentProposal);   // address
             } else if (isEqual(_type, 'DELIST_BOND')){
-                _delistBondingAsset(_currentProposal);
+                _delistBondingAsset(_currentProposal);  // address
             } else if (isEqual(_type, 'ADD_CURATED_POOL')){
-                _addCuratedPool(_currentProposal);
+                _addCuratedPool(_currentProposal);   // address
             } else if (isEqual(_type, 'REMOVE_CURATED_POOL')){
-                _removeCuratedPool(_currentProposal);
+                _removeCuratedPool(_currentProposal); // address
             } else if (isEqual(_type, 'REALISE')){
-                _realise(_currentProposal);
+                _realise(_currentProposal);  // address
             } else {
                 _completeProposal(_currentProposal); // If no match; close proposal
             }
@@ -628,7 +629,7 @@ contract Dao is ReentrancyGuard{
     // After completing the proposal's action; close it
     function _completeProposal(uint _proposalID) internal {
         string memory _typeStr = mapPID_type[_proposalID]; // Get proposal type
-        address [] memory votingAssets =  _POOLFACTORY.vaultAssets(); // Get array of current vault assets
+        address [] memory votingAssets =  _POOLFACTORY.getVaultAssets(); // Get array of current vault assets
         for(uint i = 0; i < votingAssets.length; i++){
            mapPIDAsset_votes[_proposalID][votingAssets[i]] = 0; // Reset votes to 0
         }
@@ -642,7 +643,7 @@ contract Dao is ReentrancyGuard{
     
     // User stakes all their vault assets for a proposal
     function _addVotes(uint _currentProposal) internal returns (bool nonZero) {
-        address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
+        address [] memory votingAssets = _POOLFACTORY.getVaultAssets(); // Get array of current vault assets
         for(uint i = 0; i < votingAssets.length; i++){
             uint unitsAdded = _DAOVAULT.getMemberPoolBalance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender); // Get user's combined vault balance per asset
             if (unitsAdded > 0) {
@@ -654,7 +655,7 @@ contract Dao is ReentrancyGuard{
 
     // User removes their vault staked assets from a proposal
     function _removeVotes(uint _currentProposal) internal returns (bool nonZero) {
-        address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
+        address [] memory votingAssets = _POOLFACTORY.getVaultAssets(); // Get array of current vault assets
         for(uint i = 0; i < votingAssets.length; i++){
             uint unitsRemoved = _DAOVAULT.getMemberPoolBalance(votingAssets[i], msg.sender) + _BONDVAULT.getMemberPoolBalance(votingAssets[i], msg.sender); // Get user's combined vault balance per asset
             if (unitsRemoved > 0) {
@@ -666,7 +667,7 @@ contract Dao is ReentrancyGuard{
 
     // Check if a proposal has Majority consensus
     function hasMajority(uint _proposalID) public view returns(bool){
-        address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
+        address [] memory votingAssets = _POOLFACTORY.getVaultAssets(); // Get array of current vault assets
         uint256 _votedWeight; uint _totalWeight;
         for(uint i = 0; i < votingAssets.length; i++){
             uint256 lpTotal = _DAOVAULT.mapTotalPool_balance(votingAssets[i]) + _BONDVAULT.mapTotalPool_balance(votingAssets[i]); // Get total balance of asset in the combined vaults
@@ -679,7 +680,7 @@ contract Dao is ReentrancyGuard{
 
     // Check if a proposal has Quorum consensus
     function hasQuorum(uint _proposalID) public view returns(bool){
-        address [] memory votingAssets = _POOLFACTORY.vaultAssets(); // Get array of current vault assets
+        address [] memory votingAssets = _POOLFACTORY.getVaultAssets(); // Get array of current vault assets
         uint256 _votedWeight; uint _totalWeight;
         for(uint i = 0; i < votingAssets.length; i++){
             uint256 lpTotal = _DAOVAULT.mapTotalPool_balance(votingAssets[i]) + _BONDVAULT.mapTotalPool_balance(votingAssets[i]); // Get total balance of asset in the combined vaults
