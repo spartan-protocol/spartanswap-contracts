@@ -45,7 +45,10 @@ contract('DAO', function (accounts) {
     depositBNBSPP(acc0, 5)
     depositBNBSPP(acc1, 3)
     depositBNBSPP(acc2, 2)
-    paramProposal(acc0)
+    paramProposal(acc1)
+    actionProposal(acc2)
+    grantProposal(acc1)
+    voteUtils()
     // withdrawBNBSPP(acc1) 
     // withdrawBNBSPP(acc2) 
     // depositBUSDSPP(acc1, 5)
@@ -70,12 +73,11 @@ function constructor(accounts) {
         await Dao.setGenesisAddresses(router.address,utils.address,reserve.address, utils.address);
         await Dao.setVaultAddresses(daoVault.address,bondVault.address, daoVault.address);
         await Dao.setFactoryAddresses(poolFactory.address,synthFactory.address);
-        await Dao.setGenesisFactors(259200, 30,6666,1000,400,true);
+        await Dao.setGenesisFactors(2, 30,6666,1000,400,true);
         await sparta.changeDAO(Dao.address)
      
-        //   await reserve.flipEmissions();    
+        // await reserve.flipEmissions();    
         // await sparta.flipEmissions();  
-        // await sparta.flipMinting();
 
         await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await sparta.transfer(reserve.address, _.getBN(_.BN2Str(100000 * _.one)))
@@ -275,167 +277,175 @@ async function withdrawBUSDSPP(acc) {
         assert.equal(_.BN2Str(await daoVault.mapTotalPool_balance(poolBUSD.address)), _.BN2Str(total.minus(amountWithdraw)))
     })
 }
-
 async function paramProposal(acc) {
     it("It should vote, finalise COOL_OFF", async () => {
         await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc})
         await Dao.newParamProposal('2', 'COOL_OFF', { from: acc})
         let currentProposal = _.BN2Str(await Dao.currentProposal())
         await Dao.voteProposal( { from: acc0 })
-
-        let bnbUnits = _.BN2Str(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
-
-        let busdUnits = _.BN2Str(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+        let bnbUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc0))
+        let busdUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc0))
         await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
-        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),bnbUnits)
-        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),busdUnits)
-        await Dao.voteProposal( { from: acc1 })
-        // assert.equal(await Dao.hasQuorum(proposalCount), true)
-        // assert.equal(await Dao.mapPID_finalising(proposalCount), true)
-        // await truffleAssert.reverts(Dao.finaliseProposal(), "!cool off");
-        // await sleep(3100)
-        // await Dao.finaliseProposal()
-        // assert.equal(await Dao.coolOffPeriod(), '2')
-        // assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), '0')
-        // assert.equal(await Dao.mapPID_finalising(proposalCount), false)
-        // assert.equal(await Dao.mapPID_finalised(proposalCount), true)
-    })
-    // it("It should vote, finalise ERAS_TO_EARN", async () => {
-    //     let bal = _.getBN(await sparta.balanceOf(router.address));
-    //     console.log(_.BN2Str(bal)/_.one);
-    //     await Dao.newParamProposal('10', 'ERAS_TO_EARN', { from: acc0 })
-    //     let balA = _.getBN(await sparta.balanceOf(router.address));
-    //     await Dao.voteProposal( { from: acc1 })
-    //     await Dao.voteProposal( { from: acc2 })
-    //     await sleep(3100)
-    //     await Dao.finaliseProposal()
-    //     assert.equal(_.BN2Str(await Dao.erasToEarn()), '10')
-    // })
-}
-
-
-
-async function voteParam() {
-    it("It should vote, finalise curve", async () => {
-        await Dao.newParamProposal('1012', 'CURVE', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.currentProposal())
-        await Dao.voteProposal( { from: acc0 })
-        assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), _.BN2Str(await Dao.mapPIDMember_votes(proposalCount, acc0)))
-        assert.equal(await Dao.mapPID_param(proposalCount), '1012')
-        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
-        await Dao.voteProposal( { from: acc1 })
-        assert.equal(await Dao.hasQuorum(proposalCount), true)
-        assert.equal(await Dao.mapPID_finalising(proposalCount), true)
-        await truffleAssert.reverts(Dao.finaliseProposal(), "!cool off");
-        await sleep(3100)
-        await Dao.finaliseProposal()
-        assert.equal(await sparta.emissionCurve(), '1012')
-        assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), '0')
-        assert.equal(await Dao.mapPID_finalising(proposalCount), false)
-        assert.equal(await Dao.mapPID_finalised(proposalCount), true)
-    })
-    it("It should vote, cancel, then revote DURATION", async () => {
-        await Dao.newParamProposal('86000', 'DURATION', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.currentProposal())
-        await Dao.voteProposal( { from: acc0 })
-        assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), _.BN2Str(await Dao.mapPIDMember_votes(proposalCount, acc0)))
-        assert.equal(await Dao.mapPID_param(proposalCount), '86000')
-        await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!finalising");
-        await Dao.voteProposal({ from: acc1 })
-        assert.equal(await Dao.hasQuorum(proposalCount), true)
-        assert.equal(await Dao.mapPID_finalising(proposalCount), true)
-        await truffleAssert.reverts(Dao.finaliseProposal(proposalCount), "!cool off");
-        await sleep(3100)
-        await Dao.newParamProposal('2500', 'DURATION', { from: acc0 })
-        let proposalID2 = _.BN2Str(await Dao.proposalCount())
-        await Dao.voteProposal({ from: acc0 })
-        await truffleAssert.reverts(Dao.cancelProposal({ from: acc0 }), "!minority");
-        await Dao.voteProposal({ from: acc1 })
-        await Dao.cancelProposal({ from: acc1 })
-        await sleep(3100)
-        await Dao.finaliseProposal(proposalID2)
-        assert.equal(await sparta.secondsPerEra(), '2500')
-        assert.equal(await Dao.secondsPerEra(), '2500')
-        assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalID2)), '0')
-        assert.equal(await Dao.mapPID_finalising(proposalID2), false)
-        assert.equal(await Dao.mapPID_finalised(proposalID2), true)
-    })
-    it("It should vote, finalise COOL_OFF", async () => {
-        await Dao.newParamProposal('2', 'COOL_OFF', { from: acc0 })
-        let proposalCount = _.BN2Str(await Dao.currentProposal())
-        await Dao.voteProposal( { from: acc0 })
-        assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), _.BN2Str(await Dao.mapPIDMember_votes(proposalCount, acc0)))
-        assert.equal(await Dao.mapPID_param(proposalCount), '2')
-        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
-        await Dao.voteProposal( { from: acc1 })
-        assert.equal(await Dao.hasQuorum(proposalCount), true)
-        assert.equal(await Dao.mapPID_finalising(proposalCount), true)
-        await truffleAssert.reverts(Dao.finaliseProposal(), "!cool off");
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits))
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits))
+        let bnbUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
+        let busdUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+        await Dao.voteProposal( { from: acc })
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits.plus(bnbUnitss)))
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits.plus(busdUnitss)))
+        assert.equal(await Dao.hasQuorum(currentProposal), true)
+        assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+        await Dao.pollVotes({from:acc0})
+        assert.equal(await Dao.mapPID_finalising(currentProposal), true)
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!cooloff");
         await sleep(3100)
         await Dao.finaliseProposal()
         assert.equal(await Dao.coolOffPeriod(), '2')
-        assert.equal(_.BN2Str(await Dao.mapPID_votes(proposalCount)), '0')
-        assert.equal(await Dao.mapPID_finalising(proposalCount), false)
-        assert.equal(await Dao.mapPID_finalised(proposalCount), true)
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)), '0')
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBUSD.address)), '0')
+        assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+        assert.equal(await Dao.mapPID_finalised(currentProposal), true)
+        assert.equal(await Dao.mapPID_open(currentProposal), false)
     })
     it("It should vote, finalise ERAS_TO_EARN", async () => {
-        let bal = _.getBN(await sparta.balanceOf(router.address));
-        console.log(_.BN2Str(bal)/_.one);
-        await Dao.newParamProposal('10', 'ERAS_TO_EARN', { from: acc0 })
-        let balA = _.getBN(await sparta.balanceOf(router.address));
-        await Dao.voteProposal( { from: acc1 })
-        await Dao.voteProposal( { from: acc2 })
+        await Dao.newParamProposal('10', 'ERAS_TO_EARN', { from: acc })
+        let currentProposal = _.BN2Str(await Dao.currentProposal())
+        await Dao.voteProposal( { from: acc0 })
+        let bnbUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc0))
+        let busdUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc0))
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits))
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits))
+        let bnbUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
+        let busdUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+        await Dao.voteProposal( { from: acc })
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits.plus(bnbUnitss)))
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits.plus(busdUnitss)))
+        assert.equal(await Dao.hasQuorum(currentProposal), true)
+        assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+        await Dao.pollVotes({from:acc0})
+        assert.equal(await Dao.mapPID_finalising(currentProposal), true)
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!cooloff");
         await sleep(3100)
         await Dao.finaliseProposal()
         assert.equal(_.BN2Str(await Dao.erasToEarn()), '10')
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)), '0')
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBUSD.address)), '0')
+        assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+        assert.equal(await Dao.mapPID_finalised(currentProposal), true)
+        assert.equal(await Dao.mapPID_open(currentProposal), false)
     })
 }
-
-async function voteAction() {
-    it("It should vote, get sparta", async () => {
-        let bondSpartaBaLb = _.BN2Str(await sparta.balanceOf(Dao.address));
-         console.log(bondSpartaBaLb/_.one);
-        await Dao.newActionProposal('GET_SPARTA', { from: acc0 })
-        await Dao.voteProposal({ from: acc0 })
-        await Dao.removeVote()
-        await sleep(3100)
-        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+async function actionProposal(acc) {
+    it("It should vote, finalise GET_SPARTA", async () => {
+            await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc})
+            await Dao.newActionProposal('GET_SPARTA', { from: acc })
+            let currentProposal = _.BN2Str(await Dao.currentProposal())
+            await Dao.voteProposal( { from: acc0 })
+            let bnbUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc0))
+            let busdUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc0))
+            await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits))
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits))
+            let bnbUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
+            let busdUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+            await Dao.voteProposal( { from: acc })
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits.plus(bnbUnitss)))
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits.plus(busdUnitss)))
+            assert.equal(await Dao.hasQuorum(currentProposal), true)
+            assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+            await sparta.flipMinting();
+            await Dao.pollVotes({from:acc0})
+            assert.equal(await Dao.mapPID_finalising(currentProposal), true)
+            await truffleAssert.reverts(Dao.finaliseProposal(), "!cooloff");
+            await sleep(3100)
+            await Dao.finaliseProposal()
+            assert.equal(_.BN2Str(await sparta.balanceOf(Dao.address)), _.BN2Str(_.oneBN.times(2500000)))
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)), '0')
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBUSD.address)), '0')
+            assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+            assert.equal(await Dao.mapPID_finalised(currentProposal), true)
+            assert.equal(await Dao.mapPID_open(currentProposal), false)
+    })
+    it("It should vote, finalise FLIP_EMISSIONS", async () => {
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc})
+        await Dao.newActionProposal('FLIP_EMISSIONS', { from: acc })
+        let currentProposal = _.BN2Str(await Dao.currentProposal())
         await Dao.voteProposal( { from: acc0 })
-        await Dao.voteProposal( { from: acc1 })
+        let bnbUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc0))
+        let busdUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc0))
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits))
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits))
+        let bnbUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
+        let busdUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+        await Dao.voteProposal( { from: acc })
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits.plus(bnbUnitss)))
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits.plus(busdUnitss)))
+        assert.equal(await Dao.hasQuorum(currentProposal), true)
+        assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+        await sparta.flipMinting();
+        await Dao.pollVotes({from:acc0})
+        assert.equal(await Dao.mapPID_finalising(currentProposal), true)
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!cooloff");
         await sleep(3100)
         await Dao.finaliseProposal()
-        // await sparta.mintFromDAO(_.BN2Str(1000*_.one), Dao.address)
-        let bondSpartaBaL = _.BN2Str(await sparta.balanceOf(Dao.address));
-        // console.log(bondSpartaBaL/_.one);
-
+        assert.equal(await sparta.emitting(), true)
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)), '0')
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBUSD.address)), '0')
+        assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+        assert.equal(await Dao.mapPID_finalised(currentProposal), true)
+        assert.equal(await Dao.mapPID_open(currentProposal), false)
+})
+}
+async function grantProposal(acc) {
+    it("It should vote and GRANT", async () => {
+           await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc})
+           await Dao.newGrantProposal(acc0, '1000', { from: acc1 })
+            let currentProposal = _.BN2Str(await Dao.currentProposal())
+            await Dao.voteProposal( { from: acc0 })
+            let bnbUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc0))
+            let busdUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc0))
+            await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits))
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits))
+            let bnbUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
+            let busdUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+            await Dao.voteProposal( { from: acc })
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits.plus(bnbUnitss)))
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits.plus(busdUnitss)))
+            assert.equal(await Dao.hasQuorum(currentProposal), true)
+            assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+            await reserve.flipEmissions(); 
+            await Dao.pollVotes({from:acc0})
+            assert.equal(await Dao.mapPID_finalising(currentProposal), true)
+            await truffleAssert.reverts(Dao.finaliseProposal(), "!cooloff");
+            await sleep(3100)
+            let balanceBefore = _.getBN(await sparta.balanceOf(acc0))
+            await Dao.finaliseProposal()
+            let balanceAfter = _.getBN(await sparta.balanceOf(acc0))
+            assert.equal(_.BN2Str(balanceAfter.minus(balanceBefore)), '1000')
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)), '0')
+            assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBUSD.address)), '0')
+            assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+            assert.equal(await Dao.mapPID_finalised(currentProposal), true)
+            assert.equal(await Dao.mapPID_open(currentProposal), false)
     })
 }
-
-async function voteGrant() {
-    it("It should GRANT", async () => {
-        await Dao.newGrantProposal(acc0, '1000', { from: acc1 })
-        await Dao.voteProposal({ from: acc1 })
-        await Dao.voteProposal({ from: acc2 })
-        // await Dao.getProposalDetails(proposalCount)
-        await sleep(3100)
-        let balanceBefore = _.getBN(await sparta.balanceOf(acc0))
-        await Dao.finaliseProposal()
-        let balanceAfter = _.getBN(await sparta.balanceOf(acc0))
-        assert.equal(_.BN2Str(balanceAfter.minus(balanceBefore)), '1000')
-    })
-}
-
 async function voteUtils() {
     it("It should vote UTILS", async () => {
-        utils2 = await UTILS.new(sparta.address, router.address, Dao.address)
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc0})
+        utils2 = await UTILS.new(sparta.address)
         await Dao.newAddressProposal(utils2.address, 'UTILS', { from: acc0 })
         await Dao.voteProposal({ from: acc2 })
-        await Dao.voteProposal({ from: acc1 })
+        await Dao.voteProposal({ from: acc0 })git
+        await Dao.pollVotes({from:acc0})
         await sleep(4100)
         await Dao.finaliseProposal();
         assert.equal(await Dao.UTILS(), utils2.address)
     })
 }
+
 
 async function voteRouter() {
     it("It should vote ROUTER", async () => {

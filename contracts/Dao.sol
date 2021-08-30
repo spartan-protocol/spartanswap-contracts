@@ -486,7 +486,7 @@ contract Dao is ReentrancyGuard{
             } else if (isEqual(_type, 'GRANT')){ // grant
                 _grantFunds(_currentProposal);
             } else if (isEqual(_type, 'GET_SPARTA')){
-                _increaseSpartaAllocation(_currentProposal); // param
+                _increaseSpartaAllocation(_currentProposal); // action
             } else if (isEqual(_type, 'LIST_BOND')){
                 _listBondingAsset(_currentProposal);   // address
             } else if (isEqual(_type, 'DELIST_BOND')){
