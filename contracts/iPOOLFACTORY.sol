@@ -8,6 +8,7 @@ interface iPOOLFACTORY {
     function getPool(address) external view returns(address);
     function createPool(address) external view returns(address);
     function vaultAssets() external view returns(address [] memory);
+    function vaultAssetsLength() external view returns (uint);
     function poolCount() external view returns(uint);
     function getToken(uint) external view returns(address);
     function tokenCount() external view returns(uint);

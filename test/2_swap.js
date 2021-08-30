@@ -36,7 +36,7 @@ contract('SWAP + ZAP + MINT + BURN', function (accounts) {
     createPoolBUSD(acc0, 10000, 10000)
     addLiquidityBNB(acc1, 9)
     addLiquidityBUSD(acc1, 100)
-     BNBPoolBalanceCheck()
+    BNBPoolBalanceCheck()
     swapSPARTAForBNB(acc1, 1000)
     swapBNBForSparta(acc2, 1)
     swapSPARTAForBUSD(acc1, 500)
@@ -44,17 +44,22 @@ contract('SWAP + ZAP + MINT + BURN', function (accounts) {
     swapBNBForBUSD(acc2, 2)
     swapBUSDForBNB(acc1, 500)
     curatePools()
-    swapSPARTA(acc1, 1000)
-    // // BNBPoolBalanceCheck()
-    // zapLiquidity(acc1, 20)
-    // createSyntheticBNB()
-    // createSyntheticBUSD()
-    // swapSpartaToSynth(acc1, 300)
-    // swapBNBToSynthBNB(acc2, 1)
-    //  swapSynthBNBToSparta(acc1, 0.1)
-    // //  TokenPoolBalanceCheck()
-    //  swapBUSDToSynthBUSD(acc1, 10)
-    //  swapSynthBUSDToBUSD(acc1, 1)
+    // swapSPARTA(acc1, 1000)
+    // swapBNB(acc2, 1)
+    // BNBPoolBalanceCheck()
+    zapLiquidity(acc1, 20)
+    createSyntheticBNB()
+    createSyntheticBUSD()
+    removeSynths()
+    addSynths()
+    swapSpartaToSynth(acc1, 300)
+    swapBNBToSynthBNB(acc2, 1)
+    //  TokenPoolBalanceCheck()
+     swapBUSDToSynthBUSD(acc1, 10)
+     removeCuratePools()
+     swapSynthBNBToSparta(acc1, 0.1)
+     swapSynthBUSDToBUSD(acc1, 1)
+     
 
 })
 
@@ -79,7 +84,7 @@ function constructor(accounts) {
         await Dao.setFactoryAddresses(poolFactory.address,synthFactory.address);
         await sparta.changeDAO(Dao.address)
      
-          await reserve.flipEmissions();    
+        //   await reserve.flipEmissions();    
         // await sparta.flipEmissions();  
         // await sparta.flipMinting();
 
@@ -393,6 +398,33 @@ async function swapSPARTA(acc, xx){
        
     })
 }
+async function swapBNB(acc, xx){
+    it(`It should swap BNB for sparta gets dividend`, async () =>{
+        let x = _.getBN(xx * _.oneBN)
+        let toToken = sparta.address
+        let fromToken = _.BNB
+        let baseStart = _.getBN(await sparta.balanceOf(acc))
+        let tokenStart = _.getBN(await web3.eth.getBalance(acc))
+        let feeOnTransfer = _.getBN(await sparta.feeOnTransfer())
+        let totalSupply = _.BN2Str(await sparta.totalSupply())
+        let poolData = await utils.getPoolData(fromToken);
+        const X = _.getBN(poolData.baseAmount)
+        const Y = _.getBN(poolData.tokenAmount)
+        let y = math.calcSwapOutput(x, Y, X)
+        let fee = math.calcSwapFee(x, Y, X)
+        let minAmount = _.getBN(1*_.oneBN)
+        let tx = await router.swap(x, fromToken, toToken, minAmount,{from:acc, value:x})
+        poolData = await utils.getPoolData(fromToken);
+        assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(X.minus(y).plus(fee)))
+        assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(Y.plus(x)))
+        assert.equal(_.BN2Str(await sparta.balanceOf(poolBNB.address)), _.BN2Str(X.minus(y).plus(fee)), 'sparta balance')
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolBNB.address)), _.BN2Str(Y.plus(x)), 'wbnb balance')
+        assert.equal(_.BN2Str(await sparta.balanceOf(acc)), _.BN2Str(baseStart.plus(y)), 'sparta balance')
+        assert.isAtMost(_.BN2Int(await web3.eth.getBalance(acc)), _.BN2Int(tokenStart.minus(x)), 'wbnb balance')
+       
+    })
+}
+
 async function zapLiquidity(acc, xx) {
     it("It should zap liquidity from BNB to BUSD pool", async () => {
         let x = _.getBN(xx * _.oneBN)
@@ -437,6 +469,7 @@ async function createSyntheticBNB() {
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
         await synthBNB.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        assert.equal(_.BN2Str(await synthFactory.synthCount()), 1, 'length')
         // console.log("Symbol: ",await synthBNB.symbol());
         //  console.log("Name: ",await synthBNB.name());
     })
@@ -450,10 +483,50 @@ async function createSyntheticBUSD() {
         await synthBUSD.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
         await synthBUSD.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 });
         await synthBUSD.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        assert.equal(_.BN2Str(await synthFactory.synthCount()), 2, 'length')
         // console.log("Symbol: ",await synthBUSD.symbol());
         //  console.log("Name: ",await synthBUSD.name());
     })
 }
+async function removeSynths() {
+    it("Remove Synths ", async () => {
+        await synthFactory.removeSynth(_.BNB);
+        await synthFactory.removeSynth(token1.address);
+        assert.equal(await synthFactory.isSynth(synthBNB.address), false, 'Removed')
+        assert.equal(await synthFactory.isSynth(synthBUSD.address), false, 'Removed')
+        assert.equal(await synthFactory.getSynth(_.BNB), synthBNB.address, 'Remains In Mapping')
+        assert.equal(await synthFactory.getSynth(token1.address), synthBUSD.address, 'Remains In Mapping')
+        assert.equal(_.BN2Str(await synthFactory.synthCount()), 0, 'length')
+    })
+}
+async function addSynths() {
+    it("Add Synths ", async () => {
+        await synthFactory._addSynth(synthBNB.address);
+        await synthFactory._addSynth(synthBUSD.address);
+        assert.equal(await synthFactory.isSynth(synthBNB.address), true, 'Added')
+        assert.equal(await synthFactory.isSynth(synthBUSD.address), true, 'Added')
+        assert.equal(_.BN2Str(await synthFactory.synthCount()), 2, 'length')
+    })
+}
+async function removeCuratePools() {
+    it("Remove Curated POOls", async () => {
+        await poolFactory.removeCuratedPool(_.BNB);
+        await poolFactory.removeCuratedPool(token1.address);
+        assert.equal(await poolFactory.isCuratedPool(poolBNB.address), false, 'Removed')
+        assert.equal(await poolFactory.isCuratedPool(poolBUSD.address), false, 'Removed')
+        assert.equal(_.BN2Str(await poolFactory.curatedPoolCount()), 0, 'Removed')
+        assert.equal(_.BN2Str(await poolFactory.vaultAssetsLength()), 0, 'Removed')
+
+        assert.equal(await synthFactory.isSynth(synthBUSD.address), false, 'Removed')
+        assert.equal(await synthFactory.isSynth(synthBNB.address), false, 'Removed')
+        assert.equal(await synthFactory.getSynth(_.BNB), synthBNB.address, 'Remains In Mapping')
+        assert.equal(await synthFactory.getSynth(token1.address), synthBUSD.address, 'Remains In Mapping')
+        assert.equal(_.BN2Str(await synthFactory.synthCount()), 0, 'length')
+
+    })
+}
+
+
 async function swapSpartaToSynth(acc, xx) {
     it("Swap BASE to Synthetic BNB", async () => {
         let x = _.getBN(xx * _.oneBN)

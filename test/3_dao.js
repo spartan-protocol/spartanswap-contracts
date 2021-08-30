@@ -32,58 +32,16 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 contract('DAO', function (accounts) {
-
     constructor(accounts)
-    wrapBNB()
-    createPoolWBNB()
-    createPoolTKN1()
-    addLiquidityTKN1(acc1,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityTKN1(acc0,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityBNB(acc1,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityBNB(acc0,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityBNB(acc2,  _.BN2Str(40*_.one),  _.BN2Str(20*_.one))
-    addLiquidityTKN1(acc2,  _.BN2Str(20*_.one),  _.BN2Str(10*_.one))
+    createPoolBNB(acc0, 10000, 30)
+    createPoolBUSD(acc0, 10000, 10000)
+    addLiquidityBNB(acc1, 9)
+    addLiquidityBUSD(acc1, 100)
+    addLiquidityBNB(acc2, 10)
+    addLiquidityBUSD(acc2, 1000)
     curatePools()
-    lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
-    lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
-    lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-    rate()
-    //  voteParam()
-    voteAction()
-
-    withdrawBNB(acc0)
-    withdrawTKN1(acc1)
-    withdrawTKN1(acc2)
-    rate()
-    //  voteRouter()
-    //  voteDao() 
-    deployerListBNB()
-    deployerChangeSecondsPerYear(40)
-    bondBNB(acc0,  _.BN2Str(_.one * 1))
-    bondBNB(acc1, _.BN2Str(_.one * 3))
-    bondBNB(acc2, _.BN2Str(_.one * 2))
-    rateBond() 
-    claimLP(acc0, 2000) 
-    claimLP(acc1, 2000)
-    claimLP(acc2, 20) 
-    rate()
-    lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
-    lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
-    lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-    rate()
-    voteGrant()
     RemCuratePools()
-    withdrawBNB(acc0)
-    withdrawTKN1(acc1)
-    withdrawTKN1(acc2)
-    rate()
-    rateBond()
-    curatePools()
-    lockWBNB(acc0, _.BN2Str(_.one * 1)) // 16% 
-    lockTKN(acc0, _.BN2Str(_.one * 0.5)) // 16% 
-    lockTKN(acc1, _.BN2Str(_.one * 3)) // 50% 
-    lockTKN(acc2, _.BN2Str(_.one * 2)) // 33% 
-    harvest()
+  
 
 })
 
@@ -91,115 +49,165 @@ contract('DAO', function (accounts) {
 function constructor(accounts) {
     acc0 = accounts[0]; acc1 = accounts[1]; acc2 = accounts[2]; acc3 = accounts[3]
     it("constructor events", async () => {
-       //SPARTANPROTOCOLv2
-       sparta = await SPARTA.new(acc0) // deploy sparta v2
-       wbnb = await WBNB.new() // deploy wBNB 
-       Dao = await DAO.new(sparta.address)     // deploy daoV2
-       utils = await UTILS.new(sparta.address) // deploy utilsV2
-       token1 = await TOKEN.new()   
-       reserve = await RESERVE.new(sparta.address) // deploy reserve 
-       daoVault = await DAOVAULT.new(sparta.address); // deploy daoVault
-       bondVault = await BONDVAULT.new(sparta.address); // deploy bondVault
-       router = await ROUTER.new(sparta.address, wbnb.address); // deploy router
-       poolFactory = await POOLFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
-       synthFactory = await SYNTHFACTORY.new(sparta.address,  wbnb.address) // deploy synthFactory
+        sparta = await SPARTA.new(acc0)         // deploy sparta v2
+        Dao = await DAO.new(sparta.address)     // deploy daoV2
+        wbnb = await WBNB.new()                 // deploy wBNB 
+        utils = await UTILS.new(sparta.address) // deploy utilsV2
+        token1 = await TOKEN.new()   
+        reserve = await RESERVE.new(sparta.address) // deploy reserve 
+        daoVault = await DAOVAULT.new(sparta.address); // deploy daoVault
+        router = await ROUTER.new(sparta.address, wbnb.address,); // deploy router
+        poolFactory = await POOLFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
+        synthFactory = await SYNTHFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
+        await Dao.setGenesisAddresses(router.address,utils.address,reserve.address, utils.address);
+        await Dao.setVaultAddresses(daoVault.address,daoVault.address, daoVault.address);
+        await Dao.setFactoryAddresses(poolFactory.address,synthFactory.address);
+        await sparta.changeDAO(Dao.address)
+     
+        //   await reserve.flipEmissions();    
+        // await sparta.flipEmissions();  
+        // await sparta.flipMinting();
 
-       await Dao.setGenesisAddresses(router.address,utils.address,reserve.address);
-       await Dao.setVaultAddresses(daoVault.address,bondVault.address, utils.address);
-       await Dao.setFactoryAddresses(poolFactory.address,synthFactory.address);
-       await sparta.changeDAO(Dao.address)
+        await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+        await sparta.transfer(reserve.address, _.getBN(_.BN2Str(100000 * _.one)))
+        await sparta.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
 
-       await reserve.setIncentiveAddresses(router.address, utils.address,utils.address,Dao.address );
-       await reserve.flipEmissions();    
-       await sparta.flipEmissions();  
-       await sparta.flipMinting();
+        await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+        await token1.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
 
-       await sparta.transfer(acc1, _.getBN(_.BN2Str(10000 * _.one)))
-       await sparta.transfer(acc2, _.getBN(_.BN2Str(10000 * _.one)))
+        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
-       await token1.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
-       await token1.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
+        await sparta.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await sparta.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await sparta.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
-       await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
-       await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
-       await token1.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await sparta.approve(poolFactory.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await sparta.approve(poolFactory.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await sparta.approve(poolFactory.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
-       await sparta.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
-       await sparta.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
-       await sparta.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-
-       await sparta.approve(Dao.address, _.BN2Str(500000 * _.one), { from: acc0 })
-       await sparta.approve(Dao.address, _.BN2Str(500000 * _.one), { from: acc1 })
-       await sparta.approve(Dao.address, _.BN2Str(500000 * _.one), { from: acc2 })
+        await token1.approve(poolFactory.address, _.BN2Str(500000 * _.one), { from: acc0 })
+        await token1.approve(poolFactory.address, _.BN2Str(500000 * _.one), { from: acc1 })
+        await token1.approve(poolFactory.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
 
     });
 }
-
-async function wrapBNB() {
-    it("It should wrap", async () => {
-        await web3.eth.sendTransaction({to: wbnb.address, value:_.BN2Str(_.one*100), from:acc0});
-        await wbnb.transfer(acc0, _.getBN(_.BN2Int(_.one * 30)))
-        await wbnb.transfer(acc1, _.getBN(_.BN2Int(_.one * 30)))
-         await wbnb.transfer(acc2, _.getBN(_.BN2Int(_.one * 30)))
-        await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc0 })
-        await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc1 })
-        await wbnb.approve(router.address, _.BN2Str(500000 * _.one), { from: acc2 })
-    })
-}
-async function createPoolWBNB(SPT, token) {
+async function createPoolBNB(acc, inputB, inputT) {
     it("It should deploy BNB Pool", async () => {
-        var _pool = await poolFactory.createPool.call( wbnb.address)
-        await poolFactory.createPool(wbnb.address)
-        poolWBNB = await POOL.at(_pool)
+        let inputBase = _.getBN(inputB * _.one)
+        let inputToken = _.getBN(inputT * _.one)
+        let token = _.BNB
+        var _pool = await poolFactory.createPoolADD.call(inputBase, inputToken, token, {value: inputToken})
+        await poolFactory.createPoolADD(inputBase, inputToken, token, {value: inputToken})
+        poolBNB = await POOL.at(_pool)
+        //console.log(`Pools: ${poolBNB.address}`)
+        const baseAddr = await poolBNB.BASE()
+        assert.equal(baseAddr, sparta.address, "address is correct")
+        let supply = await sparta.totalSupply()
+        await sparta.approve(router.address, supply, { from: acc0 })
+        await sparta.approve(router.address, supply, { from: acc1 })
+
+        assert.equal(_.BN2Str(await wbnb.balanceOf(poolBNB.address)), _.BN2Str(inputToken), 'wbnb balance')
+        assert.equal(_.BN2Str(await sparta.balanceOf(poolBNB.address)), _.BN2Str(inputBase), 'sparta balance')
+        assert.equal(_.BN2Str(await poolBNB.balanceOf(acc0)), _.BN2Str(inputBase.minus(100*10**18)), 'Correct LPS')
 
     })
 }
-async function createPoolTKN1(SPT, token) {
-    it("It should deploy TKN1 Pool", async () => {
-        var _pool = await poolFactory.createPool.call(token1.address)
-        await poolFactory.createPool(token1.address)
-        poolTKN1 = await POOL.at(_pool)
-
-
-    })
-}
-async function addLiquidityBNB(acc, b, t) {
-    it(`It should addLiquidity BNB from ${acc}`, async () => {
-        let token = wbnb.address
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        poolUnits = _.getBN((await poolWBNB.totalSupply()))
-        let units = math.calcLiquidityUnits(b, B, t, T, poolUnits)
-        let tx = await router.addLiquidity(b, t, token, { from: acc})
-    })
-}
-async function addLiquidityTKN1(acc, b, t) {
-    it(`It should addLiquidity TKN from ${acc}`, async () => {
+async function createPoolBUSD(acc, inputB, inputT) {
+    it("It should deploy BUSD Pool", async () => {
+        let inputBase = _.getBN(inputB * _.one)
+        let inputToken = _.getBN(inputT * _.one)
         let token = token1.address
-        let poolData = await utils.getPoolData(token);
-        var B = _.getBN(poolData.baseAmount)
-        var T = _.getBN(poolData.tokenAmount)
-        poolUnits = _.getBN((await poolTKN1.totalSupply()))
-        let units = math.calcLiquidityUnits(b, B, t, T, poolUnits)
-        let tx = await router.addLiquidity(b, t, token, { from: acc})
+        var _pool = await poolFactory.createPoolADD.call(inputBase, inputToken, token,{from:acc})
+        await poolFactory.createPoolADD(inputBase, inputToken, token,{from:acc})
+        poolBUSD = await POOL.at(_pool)
+
+        const baseAddr = await poolBUSD.BASE()
+        assert.equal(baseAddr, sparta.address, "address is correct")
+
+        let supply = await sparta.totalSupply()
+        await sparta.approve(poolBUSD.address, supply, { from: acc0 })
+        await sparta.approve(poolBUSD.address, supply, { from: acc1 })
+
+        assert.equal(_.BN2Str(await token1.balanceOf(poolBUSD.address)), _.BN2Str(inputToken), 'BUSD balance')
+        assert.equal(_.BN2Str(await sparta.balanceOf(poolBUSD.address)), _.BN2Str(inputBase), 'sparta balance')
+        assert.equal(_.BN2Str(await poolBUSD.balanceOf(acc)), _.BN2Str(inputBase.minus(100*10**18)), 'Correct LPS')
+
     })
 }
 async function curatePools() {
     it("Curate POOls", async () => {
-        await poolFactory.addCuratedPool(wbnb.address);
+        await poolFactory.addCuratedPool(_.BNB);
         await poolFactory.addCuratedPool(token1.address);
-       
+        assert.equal(_.BN2Str(await poolFactory.curatedPoolCount()),'2','Length correct')
+    })
+}
+async function addLiquidityBNB(acc, t) {
+    it(`It should addLiquidity BNB`, async () => {
+        let token = _.BNB
+        let inputToken = _.getBN(t * _.one)
+        let poolData = await utils.getPoolData(token);
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+        let b = inputToken.times(B).div(T);
+        poolUnits = _.getBN((await poolBNB.totalSupply()))
+        let before = _.getBN(await poolBNB.balanceOf(acc))
+        let units = math.calcLiquidityUnits(b, B, inputToken, T, poolUnits)
+        let tx = await router.addLiquidity(inputToken, token, {from: acc, value:inputToken})
+         poolData = await utils.getPoolData(token);
+         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.plus(b)))
+         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.plus(inputToken)))
+         assert.equal(_.BN2Str((await poolBNB.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
+         assert.equal(_.BN2Str(await poolBNB.balanceOf(acc)), _.BN2Str(before.plus(units)), 'units')
+         assert.equal(_.BN2Str(await sparta.balanceOf(poolBNB.address)), _.BN2Str(B.plus(b)), 'sparta balance')
+         assert.equal(_.BN2Str(await wbnb.balanceOf(poolBNB.address)), _.BN2Str(T.plus(inputToken)), 'wbnb balance')
+    })
+}
+async function addLiquidityBUSD(acc, t) {
+    it(`It should addLiquidity BUSD `, async () => {
+        let token = token1.address
+        let inputToken = _.getBN(t * _.one)
+        let poolData = await utils.getPoolData(token);
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+        let b = inputToken.times(B).div(T);
+        poolUnits = _.getBN((await poolBUSD.totalSupply()))
+        let before = _.getBN(await poolBUSD.balanceOf(acc))
+        let units = math.calcLiquidityUnits(b, B, inputToken, T, poolUnits)
+        let tx = await router.addLiquidity(inputToken, token, {from: acc})
+         poolData = await utils.getPoolData(token);
+         assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.plus(b)))
+         assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.plus(inputToken)))
+         assert.equal(_.BN2Str((await poolBUSD.totalSupply())), _.BN2Str(poolUnits.plus(units)), 'poolUnits')
+         assert.equal(_.BN2Str(await poolBUSD.balanceOf(acc)), _.BN2Str(before.plus(units)), 'units')
+         assert.equal(_.BN2Str(await sparta.balanceOf(poolBUSD.address)), _.BN2Str(B.plus(b)), 'sparta balance')
+         assert.equal(_.BN2Str(await token1.balanceOf(poolBUSD.address)), _.BN2Str(T.plus(inputToken)), 'wbnb balance')
     })
 }
 async function RemCuratePools() {
     it("Remove Curated POOls", async () => {
-        await poolFactory.removeCuratedPool(wbnb.address);
+        await poolFactory.removeCuratedPool(_.BNB);
         await poolFactory.removeCuratedPool(token1.address);
-       
+        assert.equal(_.BN2Str(await poolFactory.curatedPoolCount()),'0','Length correct')
     })
 }
+async function curatePools() {
+    it("Curate POOls", async () => {
+        await poolFactory.addCuratedPool(_.BNB);
+        await poolFactory.addCuratedPool(token1.address);
+        assert.equal(_.BN2Str(await poolFactory.curatedPoolCount()),'2','Length correct')
+    })
+}
+
+
+
+
+
+
+
+
 async function lockTKN(acc, amount) {
     it("It should deposit", async () => {
         await poolTKN1.approve(Dao.address, _.BN2Str(1000000*_.one), {from:acc} )
@@ -267,7 +275,6 @@ async function depositTKN(acc, amount){
 
     })
 }
-
 async function withdrawBNB(acc) {
     it("It should unlock", async () => {
         let balBefore = _.getBN(await poolWBNB.balanceOf(acc))
@@ -290,8 +297,6 @@ async function withdrawTKN1(acc) {
         console.log(_.BN2Str(balAfter));
     })
 }
-
-
 async function rate() {
     it("It should check rates", async () => {
         let memberCombinedWeight0 = _.getBN(await daoVault.getMemberWeight(acc0)).plus(await bondVault.getMemberWeight(acc0));
