@@ -49,6 +49,13 @@ contract('DAO', function (accounts) {
     actionProposal(acc2)
     grantProposal(acc1)
     voteUtils()
+    voteRouter()
+    voteReserve()
+    voteRemoveCurated()
+    voteAddCurated()
+    voteListBond()
+    voteDeListBond()
+    // voteDAO()
     // withdrawBNBSPP(acc1) 
     // withdrawBNBSPP(acc2) 
     // depositBUSDSPP(acc1, 5)
@@ -438,39 +445,117 @@ async function voteUtils() {
         utils2 = await UTILS.new(sparta.address)
         await Dao.newAddressProposal(utils2.address, 'UTILS', { from: acc0 })
         await Dao.voteProposal({ from: acc2 })
-        await Dao.voteProposal({ from: acc0 })git
+        await Dao.voteProposal({ from: acc0 })
         await Dao.pollVotes({from:acc0})
         await sleep(4100)
         await Dao.finaliseProposal();
         assert.equal(await Dao.UTILS(), utils2.address)
     })
 }
-
-
 async function voteRouter() {
     it("It should vote ROUTER", async () => {
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc0})
         router2 = await ROUTER.new(sparta.address, wbnb.address)
         await Dao.newAddressProposal(router2.address, 'ROUTER', { from: acc0 })
-        await Dao.voteProposal({ from: acc1 })
         await Dao.voteProposal({ from: acc2 })
+        await Dao.voteProposal({ from: acc0 })
+        await Dao.pollVotes({from:acc0})
         await sleep(3100)
         await Dao.finaliseProposal();
         assert.equal(await Dao.ROUTER(), router2.address)
     })
 }
+async function voteReserve() {
+    it("It should vote RESERVE", async () => {
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc0})
+        reserve2 = await RESERVE.new(sparta.address)
+        await Dao.newAddressProposal(reserve2.address, 'RESERVE', { from: acc0 })
+        await Dao.voteProposal({ from: acc2 })
+        await Dao.voteProposal({ from: acc0 })
+        await Dao.pollVotes({from:acc0})
+        await sleep(3100)
+        let reserveBal = _.getBN(await sparta.balanceOf(reserve.address))
+        await Dao.finaliseProposal();
+        assert.equal(await Dao.RESERVE(), reserve2.address)
+        assert.equal(_.BN2Str(await sparta.balanceOf(reserve2.address)),_.BN2Str(reserveBal))
 
-async function voteDao() {
-    it("It should vote", async () => {
+    })
+}
+async function voteDAO() {
+    it("It should vote DAO", async () => {
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc0})
         Dao2 = await DAO.new(sparta.address)
         await Dao.newAddressProposal(Dao2.address, 'DAO', { from: acc0 })
-        await Dao.voteProposal( { from: acc2 })
-        await Dao.voteProposal( { from: acc1 })
-        await sleep(4100)
+        await Dao.voteProposal({ from: acc2 })
+        await Dao.voteProposal({ from: acc0 })
+        await Dao.pollVotes({from:acc0})
+        await sleep(3100)
         await Dao.finaliseProposal();
+        await Dao2.setGenesisAddresses(router.address,utils.address,reserve.address, utils.address);
+        await Dao2.setVaultAddresses(daoVault.address,bondVault.address, daoVault.address);
+        await Dao2.setFactoryAddresses(poolFactory.address,synthFactory.address);
+        await Dao2.setGenesisFactors(2, 30,6666,1000,400,true);
         assert.equal(await Dao.DAO(), Dao2.address)
         assert.equal(await Dao.daoHasMoved(), true)
     })
 }
+async function voteRemoveCurated() {
+    it("It should vote to REMOVE_CURATED_POOL", async () => {
+        let token = token1.address
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc0})
+        Dao2 = await DAO.new(sparta.address)
+        await Dao.newAddressProposal(token, 'REMOVE_CURATED_POOL', { from: acc0 })
+        await Dao.voteProposal({ from: acc2 })
+        await Dao.voteProposal({ from: acc0 })
+        await Dao.pollVotes({from:acc0})
+        await sleep(3100)
+        await Dao.finaliseProposal();
+        assert.equal(await poolFactory.isCuratedPool(poolBUSD.address), false)
+    })
+}
+async function voteAddCurated() {
+    it("It should vote to ADD_CURATED_POOL", async () => {
+        let token = token1.address
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc0})
+        Dao2 = await DAO.new(sparta.address)
+        await Dao.newAddressProposal(token, 'ADD_CURATED_POOL', { from: acc0 })
+        await Dao.voteProposal({ from: acc2 })
+        await Dao.voteProposal({ from: acc0 })
+        await Dao.pollVotes({from:acc0})
+        await sleep(3100)
+        await Dao.finaliseProposal();
+        assert.equal(await poolFactory.isCuratedPool(poolBUSD.address), true)
+    })
+}
+async function voteListBond() {
+    it("It should vote to LIST_BOND", async () => {
+        let token = _.BNB
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc0})
+        Dao2 = await DAO.new(sparta.address)
+        await Dao.newAddressProposal(token, 'LIST_BOND', { from: acc0 })
+        await Dao.voteProposal({ from: acc2 })
+        await Dao.voteProposal({ from: acc0 })
+        await Dao.pollVotes({from:acc0})
+        await sleep(3100)
+        await Dao.finaliseProposal();
+        assert.equal(await Dao.isListed(token), true)
+    })
+}
+async function voteDeListBond() {
+    it("It should vote to DELIST_BOND", async () => {
+        let token = _.BNB
+        await sparta.approve(Dao.address, _.BN2Str(100000*_.one), {from:acc0})
+        Dao2 = await DAO.new(sparta.address)
+        await Dao.newAddressProposal(token, 'DELIST_BOND', { from: acc0 })
+        await Dao.voteProposal({ from: acc2 })
+        await Dao.voteProposal({ from: acc0 })
+        await Dao.pollVotes({from:acc0})
+        await sleep(3100)
+        await Dao.finaliseProposal();
+        assert.equal(await Dao.isListed(token), false)
+    })
+}
+
 
 
 async function harvest() {
@@ -627,13 +712,6 @@ async function deployerListBNB(){
     })
 }
 
-async function deployerChangeSecondsPerYear(seconds){
-    it(`Deployer change bond period to ${seconds} seconds`, async () => {
-        await Dao.changeBondingPeriod(seconds, {from:acc0});
-        let secondsPerYearA = _.BN2Str(await Dao.bondingPeriodSeconds());
-        assert.equal(secondsPerYearA, seconds, 'deployer change bond period in seconds')
-    })
-}
 async function bondBNB(acc, amount){
     it(`It should bond  `, async () => {
         let asset = _.BNB

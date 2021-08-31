@@ -529,6 +529,8 @@ contract Dao is ReentrancyGuard{
     // Change the RESERVE to a new contract address
     function _moveReserve(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
+        uint256 balance = iBEP20(BASE).balanceOf(address(_RESERVE));
+        _RESERVE.grantFunds(balance, _proposedAddress); // Grant the funds to the recipient
         _RESERVE = iRESERVE(_proposedAddress); // Change the DAO to point to the new RESERVE address
         _completeProposal(_proposalID); // Finalise the proposal
     }
@@ -606,8 +608,8 @@ contract Dao is ReentrancyGuard{
     // Add a pool as 'Curated' to enable synths, weight and incentives
     function _addCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
+        _completeProposal(_proposalID); // Finalise the proposal - fire and forget
         _POOLFACTORY.addCuratedPool(_proposedAddress); // Add the pool as Curated
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Remove a pool from Curated status

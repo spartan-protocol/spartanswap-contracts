@@ -60,7 +60,7 @@ contract DaoVault {
 
     // Withdraw 100% of user's LPs from the DAOVault (1 asset type)
     function withdraw(address pool, address member) external onlyDAO returns (bool){
-        require(block.timestamp > (mapMember_depositTime[member][pool] + 86400), '!unlocked'); // 1 day must have passed since last deposit (lockup period)
+        require(block.timestamp > (mapMember_depositTime[member][pool] + 0), '!unlocked'); // 1 day must have passed since last deposit (lockup period)
         uint256 _balance = mapMemberPool_balance[member][pool]; // Get user's whole DAOVault balance of the selected asset
         require(_balance > 0, "!balance"); // Withdraw amount must be valid
         mapTotalPool_balance[pool] -=_balance;//remove from total
