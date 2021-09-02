@@ -165,7 +165,7 @@ async function addLiquidityBNB(acc, t) {
         poolUnits = _.getBN((await poolBNB.totalSupply()))
         let before = _.getBN(await poolBNB.balanceOf(acc))
         let units = math.calcLiquidityUnits(b, B, inputToken, T, poolUnits)
-        let tx = await router.addLiquidity(inputToken, token, {from: acc, value:inputToken})
+        let tx = await router.addLiquidity(inputToken,b, token, {from: acc, value:inputToken})
          poolData = await utils.getPoolData(token);
          assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.plus(b)))
          assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.plus(inputToken)))
@@ -186,7 +186,7 @@ async function addLiquidityBUSD(acc, t) {
         poolUnits = _.getBN((await poolBUSD.totalSupply()))
         let before = _.getBN(await poolBUSD.balanceOf(acc))
         let units = math.calcLiquidityUnits(b, B, inputToken, T, poolUnits)
-        let tx = await router.addLiquidity(inputToken, token, {from: acc})
+        let tx = await router.addLiquidity(inputToken,b, token, {from: acc})
          poolData = await utils.getPoolData(token);
          assert.equal(_.BN2Str(poolData.baseAmount), _.BN2Str(B.plus(b)))
          assert.equal(_.BN2Str(poolData.tokenAmount), _.BN2Str(T.plus(inputToken)))

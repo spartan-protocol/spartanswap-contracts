@@ -47,19 +47,18 @@ contract Router is ReentrancyGuard {
     }
 
     // User adds liquidity
-    function addLiquidity(uint inputToken, address token) external payable{
-        addLiquidityForMember(inputToken, token, msg.sender);
+    function addLiquidity(uint inputToken, uint baseAmount, address token) external payable{
+        addLiquidityForMember(inputToken, baseAmount, token, msg.sender);
     }
 
     // Contract adds liquidity for user
-    function addLiquidityForMember(uint inputToken, address token, address member) public payable {
+    function addLiquidityForMember(uint inputToken, uint baseAmount, address token, address member) public payable returns (uint256 LPsMinted) {
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         address pool = _poolFactory.getPool(token); // Get pool address
         require(_poolFactory.isPool(pool) == true, '!POOL'); // Pool must be valid
-        uint256 baseAmount = iUTILS(_DAO().UTILS()).calcSpotValueInBase(token, inputToken); // The the SPARTA spot value of the token input
         _handleTransferIn(BASE, baseAmount, pool); // Transfer SPARTA (User -> Pool)
         _handleTransferIn(token, inputToken, pool); // Transfer TOKEN (User -> Pool)
-        Pool(pool).addForMember(member); // Add liquidity; tsf LPs (Pool -> User)
+        LPsMinted = Pool(pool).addForMember(member); // Add liquidity; tsf LPs (Pool -> User)
         _safetyTrigger(pool); // Check pool ratios
     }
 

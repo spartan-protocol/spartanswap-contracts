@@ -8,6 +8,7 @@ import "./iPOOLFACTORY.sol";
 import "./iRESERVE.sol";
 import "./iROUTER.sol";
 import "./iUTILS.sol";
+import "hardhat/console.sol";
 
 contract BondVault {
     address public immutable BASE;  // Sparta address
@@ -77,20 +78,6 @@ contract BondVault {
         return true;
     }
 
-
-    // Calculate the user's current available claim amount
-    function calcBondedLP(address member, address _pool) public view returns (uint claimAmount){ 
-        if(mapBondedAmount_memberDetails[_pool].isAssetMember[member]){
-            uint256 _secondsSinceClaim = block.timestamp - mapBondedAmount_memberDetails[_pool].lastBlockTime[member]; // Get seconds passed since last claim
-            uint256 rate = mapBondedAmount_memberDetails[_pool].claimRate[member]; // Get user's claim rate
-            claimAmount = _secondsSinceClaim * rate; // Set claim amount
-            if(claimAmount >= mapBondedAmount_memberDetails[_pool].bondedLP[member] || bondRelease){
-                claimAmount = mapBondedAmount_memberDetails[_pool].bondedLP[member]; // If final claim; set claimAmount as remainder
-            }
-            return claimAmount;
-        }
-    }
-
     // Perform a claim of the users's current available claim amount (Called from DAO)
     function claimForMember(address _pool, address member) public onlyDAO returns (bool){
         require(_pool != address(0), "!POOL"); // Must be a valid pool
@@ -107,11 +94,26 @@ contract BondVault {
         return true;
     }
 
+     // Calculate the user's current available claim amount
+    function calcBondedLP(address member, address _pool) public view returns (uint claimAmount){ 
+        if(mapBondedAmount_memberDetails[_pool].isAssetMember[member]){
+            uint256 _secondsSinceClaim = block.timestamp - mapBondedAmount_memberDetails[_pool].lastBlockTime[member]; // Get seconds passed since last claim
+            uint256 rate = mapBondedAmount_memberDetails[_pool].claimRate[member]; // Get user's claim rate
+            claimAmount = _secondsSinceClaim * rate; // Set claim amount
+            if(claimAmount >= mapBondedAmount_memberDetails[_pool].bondedLP[member] || bondRelease){
+                claimAmount = mapBondedAmount_memberDetails[_pool].bondedLP[member]; // If final claim; set claimAmount as remainder
+            }
+            return claimAmount;
+        }
+    }
+
+
     // Update a member's weight in the DAOVault (scope: pool)
     function getMemberLPWeight(address member) external onlyDAO returns (uint256 memberWeight, uint256 totalWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
-        address [] memory listedBondPools = iDAO(_DAO().DAO()).listedBondPools(); // Get all listed bond assets
+        address [] memory listedBondPools = iDAO(_DAO().DAO()).allListedAssets(); // Get all listed bond assets
         for(uint i = 0; i < listedBondPools.length; i++){
+            console.log(listedBondPools[i]);
             memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapBondedAmount_memberDetails[listedBondPools[i]].bondedLP[member]); // Get user's cumulative weight
             totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapTotalPool_balance[listedBondPools[i]]); // Get vault's cumulative total weight
         }

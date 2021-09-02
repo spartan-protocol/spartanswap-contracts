@@ -13,7 +13,7 @@ interface iDAO {
     function POOLFACTORY() external view returns(address);
     function depositForMember(address pool, uint256 amount, address member) external;
     function bondingPeriodSeconds() external returns (uint256);
-    function listedBondPools() external returns (address [] memory);
+    function allListedAssets() external returns (address [] memory);
     function currentProposal() external view returns (uint);
     function mapPID_open(uint) external view returns (bool);
 }

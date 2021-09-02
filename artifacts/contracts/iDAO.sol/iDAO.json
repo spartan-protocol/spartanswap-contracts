@@ -135,6 +135,19 @@
     },
     {
       "inputs": [],
+      "name": "allListedAssets",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "",
+          "type": "address[]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "bondingPeriodSeconds",
       "outputs": [
         {
@@ -179,19 +192,6 @@
       ],
       "name": "depositForMember",
       "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "listedBondPools",
-      "outputs": [
-        {
-          "internalType": "address[]",
-          "name": "",
-          "type": "address[]"
-        }
-      ],
       "stateMutability": "nonpayable",
       "type": "function"
     },

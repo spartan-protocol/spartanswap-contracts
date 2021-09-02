@@ -26,6 +26,7 @@ contract Dao is ReentrancyGuard{
     uint256 public daoClaim;        // The DAOVault's portion of rewards; intended to be ~10% initially
     uint256 public daoFee;          // The SPARTA fee for a user to create a new proposal, intended to be > $200
     uint256 public currentProposal; // The most recent proposal; also acts as a count of all proposals
+    uint256 public cancelPeriod;
     
     struct ProposalDetails {
         uint id;
@@ -124,6 +125,7 @@ contract Dao is ReentrancyGuard{
         daoClaim = 1000;        // 10%
         running = false;        // Proposals off by default
         daoFee = 400;
+        cancelPeriod = 5; //15 days
     }
 
     //==================================== PROTOCOL CONTRACTs SETTER =================================//
@@ -146,13 +148,17 @@ contract Dao is ReentrancyGuard{
         _SYNTHFACTORY = iSYNTHFACTORY(_synthFactory);
     }
 
-    function setGenesisFactors(uint256 _coolOff, uint256 _erasToEarn, uint256 _majorityFactor, uint256 _daoClaim, uint256 _daoFee, bool _running) external onlyDAO {
+    function setGenesisFactors(uint256 _coolOff, uint256 _erasToEarn, uint256 _majorityFactor) external onlyDAO {
         coolOffPeriod = _coolOff;
         erasToEarn = _erasToEarn;
         majorityFactor = _majorityFactor;
+    }
+
+    function setDaoFactors(uint256 _daoClaim, uint256 _daoFee, bool _running, uint256 _cancelPeriod) external onlyDAO {
         daoClaim = _daoClaim;
         daoFee = _daoFee;
         running = _running;
+        cancelPeriod = _cancelPeriod;
     }
 
     // Can purge deployer once DAO is stable and final
@@ -264,8 +270,8 @@ contract Dao is ReentrancyGuard{
     // User deposits assets to be Bonded
     function bond(address asset, uint256 amount) external payable operational weightChange returns (bool success) {
         require(amount > 0, '!amount'); // Amount must be valid
-        require(isListed[asset], '!listed'); // Asset must be listed for Bond
         address _pool = _POOLFACTORY.getPool(asset); // Get the pool address
+        require(isListed[_pool], '!listed'); // Asset must be listed for Bond
         if (isMember[msg.sender] != true) {
             arrayMembers.push(msg.sender); // If user is not a member; add them to the member array
             isMember[msg.sender] = true; // Register user as a member
@@ -285,7 +291,7 @@ contract Dao is ReentrancyGuard{
         if(_token == address(0)){
             require((_amount == msg.value), "!amount"); // Ensure BNB value matching
             uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); // Get the SPARTA swap value of the bonded assets
-            LPunits = _ROUTER.addLiquidityForMember{value:_amount}(spartaAllocation, _amount, _token, address(_BONDVAULT)); // Add SPARTA & BNB liquidity, mint LP tokens to BondVault
+            LPunits = _ROUTER.addLiquidityForMember{value:_amount}(_amount, spartaAllocation, _token, address(_BONDVAULT)); // Add SPARTA & BNB liquidity, mint LP tokens to BondVault
         } else {
             require(iBEP20(_token).transferFrom(msg.sender, address(this), _amount), '!transfer'); // Tsf TOKEN to (User -> Dao)
             uint _actualAmount = iBEP20(_token).balanceOf(address(this)); // Get actual received TOKEN amount
@@ -294,7 +300,7 @@ contract Dao is ReentrancyGuard{
                 uint256 approvalTNK = iBEP20(_token).totalSupply();
                 iBEP20(_token).approve(address(_ROUTER), approvalTNK); // Increase allowance if required
             }
-            LPunits = _ROUTER.addLiquidityForMember(spartaAllocation, _actualAmount, _token, address(_BONDVAULT)); // Add SPARTA & TOKEN liquidity, mint LP tokens to BondVault
+            LPunits = _ROUTER.addLiquidityForMember(_actualAmount, spartaAllocation, _token, address(_BONDVAULT)); // Add SPARTA & TOKEN liquidity, mint LP tokens to BondVault
         }
     }
 
@@ -307,20 +313,15 @@ contract Dao is ReentrancyGuard{
     }
 
     // User claims unlocked bonded units of a selected asset (keep internal; otherwise add weightChange modifier)
-    function _claim(address asset) internal operational returns (bool){
-        uint claimA = calcClaimBondedLP(msg.sender, asset); // Check user's unlocked bonded LPs
-        if(claimA > 0){
-            _BONDVAULT.claimForMember(asset, msg.sender); // Claim LPs if any unlocked
+    function _claim(address asset) public operational returns (bool){
+        address _pool = _POOLFACTORY.getPool(asset); // Get the pool address
+        uint claimAmount = _BONDVAULT.calcBondedLP(msg.sender, _pool); // Check user's unlocked bonded LPs
+        if(claimAmount > 0){
+            _BONDVAULT.claimForMember(_pool, msg.sender); // Claim LPs if any unlocked
         }
         return true;
     }
     
-    // Calculate user's unlocked Bond units of a selected asset
-    function calcClaimBondedLP(address bondedMember, address asset) public view returns (uint){
-        uint claimAmount = _BONDVAULT.calcBondedLP(bondedMember, asset); // Check user's unlocked bonded LPs
-        return claimAmount;
-    }
-
     //============================== CREATE PROPOSALS ================================//
 
     // New ID, but specify type, one type for each function call
@@ -448,12 +449,14 @@ contract Dao is ReentrancyGuard{
     function cancelProposal() operational external {
         uint _currentProposal = currentProposal; // Get the current proposal ID
         require(mapPID_open[_currentProposal], "!OPEN"); // Proposal must be open
-        require(block.timestamp > (mapPID_startTime[_currentProposal] + 1296000), "!days"); // Proposal must not be new
+        require(block.timestamp > (mapPID_startTime[_currentProposal] + cancelPeriod), "!days"); // Proposal must not be new
         address [] memory votingAssets =  _POOLFACTORY.getVaultAssets(); // Get array of vault-enabled pools
         for(uint i = 0; i < votingAssets.length; i++){
            mapPIDAsset_votes[_currentProposal][votingAssets[i]] = 0; // Reset votes to 0
         }
-        mapPID_open[_currentProposal] = false; // Set the proposal as not open (closed status)
+        mapPID_finalised[_currentProposal] = true; // Finalise the proposal
+        mapPID_finalising[_currentProposal] = false; // Remove proposal from 'finalising' stage
+        mapPID_open[_currentProposal] = false; // Close the proposal
         emit CancelProposal(msg.sender, _currentProposal);
     }
 
@@ -580,9 +583,10 @@ contract Dao is ReentrancyGuard{
     // List an asset to be enabled for Bonding
     function _listBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
-        if(!isListed[_proposedAddress]){
-            isListed[_proposedAddress] = true; // Register asset as listed for Bond
-            listedBondPools.push(_proposedAddress); // Add asset to array of listed Bond assets
+        address _pool = _POOLFACTORY.getPool(_proposedAddress); // Get the pool address
+        if(!isListed[_pool]){
+            isListed[_pool] = true; // Register asset as listed for Bond
+            listedBondPools.push(_pool); // Add asset to array of listed Bond assets
         }
         _completeProposal(_proposalID); // Finalise the proposal
         emit ListedAsset(msg.sender, _proposedAddress);
@@ -592,10 +596,11 @@ contract Dao is ReentrancyGuard{
     // Delist an asset from being allowed to Bond
     function _delistBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
-        if(isListed[_proposedAddress]){
-            isListed[_proposedAddress] = false; // Unregister asset as listed for Bond
+        address _pool = _POOLFACTORY.getPool(_proposedAddress); // Get the pool address
+        if(isListed[_pool]){
+            isListed[_pool] = false; // Unregister asset as listed for Bond
             for(uint i = 0; i < listedBondPools.length; i++){
-                if(listedBondPools[i] == _proposedAddress){
+                if(listedBondPools[i] == _pool){
                     listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
                     listedBondPools.pop(); // Remove the last element
                 }
