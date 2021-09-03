@@ -113,7 +113,6 @@ contract BondVault {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
         address [] memory listedBondPools = iDAO(_DAO().DAO()).allListedAssets(); // Get all listed bond assets
         for(uint i = 0; i < listedBondPools.length; i++){
-            console.log(listedBondPools[i]);
             memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapBondedAmount_memberDetails[listedBondPools[i]].bondedLP[member]); // Get user's cumulative weight
             totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapTotalPool_balance[listedBondPools[i]]); // Get vault's cumulative total weight
         }

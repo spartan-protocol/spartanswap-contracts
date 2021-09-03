@@ -9,6 +9,7 @@ interface iUTILS {
     function calcSwapOutput(uint, uint, uint) external pure returns (uint);
     function calcSwapFee(uint, uint, uint) external pure returns (uint);
     function calcSwapValueInBase(address, uint) external view returns (uint);
+    function calcSwapValueInToken(address, uint) external view returns (uint);
     function calcSpotValueInBaseWithSynth(address, uint) external view returns (uint);
     function calcSpotValueInBase(address, uint) external view returns (uint);
     function calcSpotValueIn(address, uint) external view returns (uint);

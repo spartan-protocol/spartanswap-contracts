@@ -11,5 +11,6 @@ interface iPOOL {
     function txCount() external view returns(uint);
     function sync() external;
     function SYNTH() external returns (address);
+    function stirCauldron(address) external returns (uint); 
     function mintSynth(address, address) external returns (uint256, uint256);
 }

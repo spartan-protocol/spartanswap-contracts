@@ -21,8 +21,9 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint256 private freezePoint; // Basis points change to trigger a freeze
     bool public freeze;         // Freeze status of the pool
     uint256 public initiationPeriod; // Lockup period of pool from genesis (no liqRemove)
-    uint256 public collateral;  // Sparta value to virtualise mint/burn synths
+
     uint public minSynth;       // Basis points for minimum virtualisation derived from base/token depths
+    uint public lastStirred;
 
     string private _name;
     string private _symbol;
@@ -87,6 +88,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         period = block.timestamp;
         initiationPeriod = 1;//604800
         minSynth = 500;
+        lastStirred = 0;
     }
 
     //========================================iBEP20=========================================//
@@ -235,23 +237,13 @@ contract Pool is iBEP20, ReentrancyGuard {
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
         require((baseAmount + _actualInputBase) < baseCap, "RTC"); // SPARTA input must not push TVL over the cap
-        uint256 synthSupply = iBEP20(synthOut).totalSupply(); // Get the synth's total supply
-        uint256 minDebt = minSynth * tokenAmount / 10000; // Get a min SPARTA virtualisation amount
-        uint256 minCollateral = minSynth * baseAmount / 10000; // Get a min TOKEN virtualisation amount
-        uint256 _collateral = collateral; // Get the mapped SPARTA synth collateral
-        if(synthSupply < minDebt){
-            synthSupply = minDebt; // Make sure TOKEN virtualisation is at least the min amount
-        }
-        if(_collateral < minCollateral){
-           _collateral = minCollateral; // Make sure SPARTA virtualisation is at least the min amount
-        }
-        outputAmount = _utils.calcSwapOutput(_actualInputBase, (baseAmount + _collateral), (tokenAmount - synthSupply)); // Calculate value of swapping SPARTA to the relevant underlying TOKEN (virtualised)
-        uint256 synthsCap = tokenAmount * synthCap / 10000; // Calculate the synth cap based on token depth
-        collateral += _actualInputBase; // Increase collateral mapping by SPARTA input
-        require((outputAmount + iBEP20(synthOut).totalSupply()) < synthsCap, 'CAPPED'); // SYNTH output must not push SynthSupply over the cap
+        uint256 steamedSynths = stirCauldron(synthOut);
+        outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN (virtualised)
+        require(outputAmount <= steamedSynths,'!stirred'); //steam synths
+        lastStirred = block.timestamp; //Record new stir time
         uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
-        uint _fee = _utils.calcSwapFee(_actualInputBase, (baseAmount + _collateral), (tokenAmount - synthSupply)); // Calc slip fee in TOKEN (virtualised)
+        uint _fee = _utils.calcSwapFee(_actualInputBase, baseAmount, tokenAmount); // Calc slip fee in TOKEN (virtualised)
         fee = _utils.calcSpotValueInBase(TOKEN, _fee); // Convert TOKEN fee to SPARTA
         _mint(synthOut, _liquidityUnits); // Mint the LP tokens directly to the Synth contract to hold
         iSYNTH(synthOut).mintSynth(member, outputAmount); // Mint the Synth tokens directly to the user
@@ -265,20 +257,10 @@ contract Pool is iBEP20, ReentrancyGuard {
         address synthIN = SYNTH(); // Get the synth address
         require(synthIN != address(0), "!synth"); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
-        uint256 synthSupply = iBEP20(synthIN).totalSupply(); // Get the synth's total supply
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
-        uint256 minDebt = minSynth * tokenAmount / 10000; // Get a min SPARTA virtualisation amount
-        uint256 minCollateral = minSynth * baseAmount / 10000; // Get a min TOKEN virtualisation amount
-        uint256 _collateral = collateral; // Get the mapped SPARTA synth collateral
-        if(synthSupply < minDebt){
-            synthSupply = minDebt; // Make sure TOKEN virtualisation is at least the min amount
-        }
-        if(_collateral < minCollateral){
-           _collateral = minCollateral; // Make sure SPARTA virtualisation is at least the min amount
-        }
-        uint outputBase = _utils.calcSwapOutput(_actualInputSynth, (tokenAmount - synthSupply), (baseAmount + _collateral)); // Calculate value of swapping relevant underlying TOKEN to SPARTA (virtualised)
-        fee = _utils.calcSwapFee(_actualInputSynth, (tokenAmount - synthSupply), (baseAmount + _collateral)); // Calc slip fee in SPARTA (virtualised)
-        collateral -= _actualInputSynth * collateral / synthSupply; // Decrease collateral mapping by share of removed supply
+        uint output = _utils.calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA (virtualised)
+        uint outputBase = output * 9500 / 10000; 
+        fee = _utils.calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA (virtualised)
         _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the input SYNTH units 
@@ -286,6 +268,18 @@ contract Pool is iBEP20, ReentrancyGuard {
         require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Tsf SPARTA (Pool -> User)
         emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
         return (outputBase, fee);
+    }
+
+    function stirCauldron(address synth) public returns (uint256 steam){ 
+        uint256 synthsCap = (tokenAmount * synthCap / 10000) / 30; // Calculate the synth cap based on token depth / 30days 
+        uint256 liquidSynths = synthsCap - iBEP20(synth).totalSupply(); 
+        if(lastStirred == 0){ // first minted synths
+            lastStirred = iSYNTH(synth).genesis(); 
+            steam = (liquidSynths * 86400) / iBASE(BASE).secondsPerEra(); // One day synths steamed for the first time 
+        }else{  
+            uint secondsSinceStirred = block.timestamp - lastStirred; //Get last time since stirred
+            steam = (liquidSynths * secondsSinceStirred) / iBASE(BASE).secondsPerEra(); // capture synths released
+        }
     }
 
     //=======================================INTERNAL MATHS======================================//
