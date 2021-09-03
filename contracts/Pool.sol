@@ -21,9 +21,12 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint256 private freezePoint; // Basis points change to trigger a freeze
     bool public freeze;         // Freeze status of the pool
     uint256 public initiationPeriod; // Lockup period of pool from genesis (no liqRemove)
+    uint256 public oneWeek;
+    uint256 public stirRate;
 
     uint public minSynth;       // Basis points for minimum virtualisation derived from base/token depths
     uint public lastStirred;
+    uint public initialPeriod;
 
     string private _name;
     string private _symbol;
@@ -89,6 +92,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         initiationPeriod = 1;//604800
         minSynth = 500;
         lastStirred = 0;
+        oneWeek = 604800;
+        initialPeriod = 3600;
     }
 
     //========================================iBEP20=========================================//
@@ -240,7 +245,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint256 steamedSynths = stirCauldron(synthOut);
         outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN (virtualised)
         require(outputAmount <= steamedSynths,'!stirred'); //steam synths
-        lastStirred = block.timestamp; //Record new stir time
+        lastStirred = block.timestamp;
         uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
         uint _fee = _utils.calcSwapFee(_actualInputBase, baseAmount, tokenAmount); // Calc slip fee in TOKEN (virtualised)
@@ -270,16 +275,22 @@ contract Pool is iBEP20, ReentrancyGuard {
         return (outputBase, fee);
     }
 
-    function stirCauldron(address synth) public returns (uint256 steam){ 
-        uint256 synthsCap = (tokenAmount * synthCap / 10000) / 30; // Calculate the synth cap based on token depth / 30days 
-        uint256 liquidSynths = synthsCap - iBEP20(synth).totalSupply(); 
-        if(lastStirred == 0){ // first minted synths
-            lastStirred = iSYNTH(synth).genesis(); 
-            steam = (liquidSynths * 86400) / iBASE(BASE).secondsPerEra(); // One day synths steamed for the first time 
-        }else{  
-            uint secondsSinceStirred = block.timestamp - lastStirred; //Get last time since stirred
-            steam = (liquidSynths * secondsSinceStirred) / iBASE(BASE).secondsPerEra(); // capture synths released
+    function stirCauldron(address synth) public returns (uint256 steamedSynths){ 
+         uint256 synthsCap = (tokenAmount * synthCap / 10000) / 30; // Calculate the synth cap based on token depth / 30days 
+         uint256 liquidSynths = synthsCap - iBEP20(synth).totalSupply(); 
+        if(lastStirred == 0){ 
+            lastStirred = block.timestamp;
+            stirRate = liquidSynths / oneWeek;
+            steamedSynths = initialPeriod * stirRate; // default 1hr
+        }else{
+             uint secondsSinceStirred = block.timestamp - lastStirred; //Get last time since stirred
+             steamedSynths = secondsSinceStirred * stirRate; //time since last minted
         }
+        if(block.timestamp > (lastStirred + oneWeek)){
+            stirRate = liquidSynths / oneWeek;
+            lastStirred = block.timestamp;
+        }
+       
     }
 
     //=======================================INTERNAL MATHS======================================//
