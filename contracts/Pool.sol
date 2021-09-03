@@ -92,8 +92,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         initiationPeriod = 1;//604800
         minSynth = 500;
         lastStirred = 0;
-        oneWeek = 604800;
-        initialPeriod = 3600;
+        oneWeek = 60;//604800
+        initialPeriod = 14400;//4hr
     }
 
     //========================================iBEP20=========================================//
@@ -276,20 +276,25 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     function stirCauldron(address synth) public returns (uint256 steamedSynths){ 
-         uint256 synthsCap = (tokenAmount * synthCap / 10000) / 30; // Calculate the synth cap based on token depth / 30days 
-         uint256 liquidSynths = synthsCap - iBEP20(synth).totalSupply(); 
-        if(lastStirred == 0){ 
+          uint256 synthsCap = tokenAmount * synthCap / 10000;
+          uint256 liquidSynths;
+         if(iBEP20(synth).totalSupply() >= synthsCap){
+             steamedSynths = 0;
+         }else{
+             liquidSynths = synthsCap - iBEP20(synth).totalSupply(); 
+         }
+         if(lastStirred == 0){ 
             lastStirred = block.timestamp;
             stirRate = liquidSynths / oneWeek;
-            steamedSynths = initialPeriod * stirRate; // default 1hr
-        }else{
+            steamedSynths = initialPeriod * stirRate;  //4hrs
+         }else{
              uint secondsSinceStirred = block.timestamp - lastStirred; //Get last time since stirred
              steamedSynths = secondsSinceStirred * stirRate; //time since last minted
-        }
-        if(block.timestamp > (lastStirred + oneWeek)){
+         }
+         if(block.timestamp > (lastStirred + oneWeek)){
             stirRate = liquidSynths / oneWeek;
             lastStirred = block.timestamp;
-        }
+         }
        
     }
 
