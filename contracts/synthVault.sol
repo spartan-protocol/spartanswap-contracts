@@ -29,6 +29,11 @@ contract SynthVault {
         require(msg.sender == DEPLOYER);
         _;
     }
+    // Restrict access
+    modifier onlyPROTOCOL() {
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(msg.sender) == true); 
+        _;
+    }
 
     constructor(address _base) {
         require(_base != address(0), '!ZERO');
@@ -80,7 +85,7 @@ contract SynthVault {
     }
 
     //====================================== DEPOSIT ========================================//
-
+    
     // Contract deposits Synths in the SynthVault for user
     function deposit(address synth, uint256 amount) external {
         require(amount > 0, '!VALID'); // Must be a valid amount

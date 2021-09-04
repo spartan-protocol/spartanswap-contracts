@@ -27,6 +27,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint public minSynth;       // Basis points for minimum virtualisation derived from base/token depths
     uint public lastStirred;
     uint public initialPeriod;
+    uint public stirStamp;
 
     string private _name;
     string private _symbol;
@@ -89,10 +90,10 @@ contract Pool is iBEP20, ReentrancyGuard {
         freezePoint = 3000;
         baseCap = 100000*10**18;
         period = block.timestamp;
-        initiationPeriod = 1;//604800
+        initiationPeriod = 1;//604800 mainnet
         minSynth = 500;
         lastStirred = 0;
-        oneWeek = 60;//604800
+        oneWeek = 60;//604800 mainnet
         initialPeriod = 14400;//4hr
     }
 
@@ -285,17 +286,17 @@ contract Pool is iBEP20, ReentrancyGuard {
          }
          if(lastStirred == 0){ 
             lastStirred = block.timestamp;
+            stirStamp = block.timestamp;
             stirRate = liquidSynths / oneWeek;
             steamedSynths = initialPeriod * stirRate;  //4hrs
          }else{
              uint secondsSinceStirred = block.timestamp - lastStirred; //Get last time since stirred
              steamedSynths = secondsSinceStirred * stirRate; //time since last minted
          }
-         if(block.timestamp > (lastStirred + oneWeek)){
+         if(block.timestamp > (stirStamp + oneWeek)){
             stirRate = liquidSynths / oneWeek;
-            lastStirred = block.timestamp;
+            stirStamp = block.timestamp;
          }
-       
     }
 
     //=======================================INTERNAL MATHS======================================//

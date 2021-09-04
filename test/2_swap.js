@@ -57,8 +57,8 @@ contract('SWAP + ZAP + MINT + BURN', function (accounts) {
     //  TokenPoolBalanceCheck()
      swapBUSDToSynthBUSD(acc1, 10)
     //  removeCuratePools()
-      swapSynthBNBToSparta(acc1, 0.1)
-      swapSynthBUSDToBUSD(acc1, 1)
+    swapSynthBNBToSparta(acc1, 0.1)
+    swapSynthBUSDToBUSD(acc1, 1)
      
 
 })
