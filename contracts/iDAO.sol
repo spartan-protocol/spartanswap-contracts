@@ -16,4 +16,5 @@ interface iDAO {
     function allListedAssets() external returns (address [] memory);
     function currentProposal() external view returns (uint);
     function mapPID_open(uint) external view returns (bool);
+    function isListed(address) external view returns (bool);
 }

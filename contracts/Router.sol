@@ -12,7 +12,6 @@ contract Router is ReentrancyGuard {
     address public immutable WBNB;  // Address of WBNB
     address public DEPLOYER;        // Address that deployed the contract
     uint256 public diviClaim;       // Basis points vs RESERVE holdings max dividend per month
-    uint256 public globalCap;       // 
     uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
     uint256 public curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
 
@@ -35,7 +34,6 @@ contract Router is ReentrancyGuard {
         require(_wbnb != address(0), '!ZERO');
         BASE = _base;
         WBNB = _wbnb;
-        globalCap = 2000;
         diviClaim = 100;
         DEPLOYER = msg.sender;
     }
@@ -330,7 +328,10 @@ contract Router is ReentrancyGuard {
         uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
         bool emissions = iRESERVE(_DAO().RESERVE()).emissions();
         if(reserve > 0 && emissions){
-            curatedPoolsCount = iPOOLFACTORY(_DAO().POOLFACTORY()).curatedPoolCount(); 
+           uint256 _curatedPoolsCount = iPOOLFACTORY(_DAO().POOLFACTORY()).curatedPoolCount(); 
+           if(_curatedPoolsCount != curatedPoolsCount){
+               curatedPoolsCount = _curatedPoolsCount;
+           }
             uint256 _dividendReward = (reserve * diviClaim) / curatedPoolsCount / 10000; // Get the dividend share 
             if((mapAddress_30DayDividends[_pool] + _fees) < _dividendReward){
                 _revenueDetails(_fees, _pool); // Add to revenue metrics
@@ -360,10 +361,6 @@ contract Router is ReentrancyGuard {
         diviClaim = _newDiviClaim;
     }
 
-    function changeGlobalCap(uint _globalCap) external onlyDAO {	
-        globalCap = _globalCap;	
-    }
-
     function changeSynthCap(uint synthCap, address _pool) external onlyDAO {
         Pool(_pool).setSynthCap(synthCap);
     }
@@ -386,8 +383,23 @@ contract Router is ReentrancyGuard {
                 if(block.timestamp > freezeTime + 3600){
                    iRESERVE(_DAO().RESERVE()).setGlobalFreeze(false);   
                 }
-          }
+              }
         }
+    }
+
+    function updatePoolStatus() external {
+       if(iRESERVE(_DAO().RESERVE()).globalFreeze()){
+        address [] memory _vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).getVaultAssets(); // Get list of vault enabled assets
+        bool unfreeze;
+        for(uint i = 0; i < _vaultAssets.length; i++){
+            if(Pool(_vaultAssets[i]).freeze()){
+               unfreeze = false;
+            }
+        }
+        if(unfreeze){
+           iRESERVE(_DAO().RESERVE()).setGlobalFreeze(false);
+        }
+    }
     }
 
 }

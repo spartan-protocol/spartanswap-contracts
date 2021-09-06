@@ -2,6 +2,7 @@
 pragma solidity 0.8.3;
 import "./Pool.sol";  
 import "./iPOOLFACTORY.sol";
+import "./iRESERVE.sol";
 
 contract Synth is iBEP20 {
     address public immutable BASE;  // Address of SPARTA base token contract

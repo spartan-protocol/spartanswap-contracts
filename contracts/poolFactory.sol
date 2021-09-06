@@ -13,6 +13,7 @@ contract PoolFactory is ReentrancyGuard {
     address[] public arrayPools;    // Array of all deployed pools
     address[] public arrayTokens;   // Array of all listed tokens
     address[] private vaultAssets;   // Array of all vault-enabled assets (curated pools)
+    uint256 public minBASE;
 
     mapping(address=>address) private mapToken_Pool;
     mapping(address=>bool) public isListedPool;
@@ -34,6 +35,7 @@ contract PoolFactory is ReentrancyGuard {
         BASE = _base;
         WBNB = _wbnb;
         curatedPoolSize = 10;
+        minBASE = 10000*10**18;
         DEPLOYER = msg.sender;
     }
 
@@ -47,16 +49,17 @@ contract PoolFactory is ReentrancyGuard {
     }
 
     //Set Curated Pool Size
-    function setParams(uint256 newSize) external onlyDAO {
+    function setParams(uint256 newSize, uint256 _minBASE) external onlyDAO {
         require(newSize > 0, '!VALID');
         curatedPoolSize = newSize;
+        minBASE = _minBASE;
     }
 
     // Anyone can create a pool and add liquidity at the same time
     function createPoolADD(uint256 inputBase, uint256 inputToken, address token) external payable returns(address pool){
         require(token != BASE, '!VALID'); // Token must not be SPARTA
         require(getPool(token) == address(0), '!NEW'); // Must not have a valid pool address yet
-        require((inputToken > 0 && inputBase >= (10000*10**18)), "!MIN"); // User must add at least 10,000 SPARTA liquidity & ratio must be finite
+        require((inputToken > 0 && inputBase >= minBASE), "!MIN"); // User must add at least 10,000 SPARTA liquidity & ratio must be finite
         Pool newPool; address _token = token;
         if(token == address(0)){
             _token = WBNB; // Handle BNB -> WBNB
@@ -95,6 +98,7 @@ contract PoolFactory is ReentrancyGuard {
     function removeCuratedPool(address token) external onlyDAO {
         require(token != BASE, '!VALID'); // Token must not be SPARTA
         address _pool = getPool(token); // Get pool address
+        require(iDAO(_DAO().DAO()).isListed(_pool) == false, '!DELISTED'); 
         require(isCuratedPool[_pool] == true, '!CURATED'); // Pool must be Curated
         isCuratedPool[_pool] = false; // Record pool as not curated
         curatedPoolCount = curatedPoolCount - 1; // Decrease the curated pool count
@@ -120,6 +124,7 @@ contract PoolFactory is ReentrancyGuard {
             require(iBEP20(_token).transferFrom(msg.sender, _pool, _amount), '!transfer'); // Tsf TOKEN (User -> Pool)
         }
     }
+
 
     //======================================HELPERS========================================//
 

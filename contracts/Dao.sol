@@ -56,7 +56,7 @@ contract Dao is ReentrancyGuard{
 
     address[] public arrayMembers; // History array of all members
     address[] public listedBondPools; // Current list of bond enabled assets
-    uint256 public bondingPeriodSeconds = 15552000; // Vesting period for bonders (6 months)
+    uint256 public bondingPeriodSeconds; // Vesting period for bonders (6 months) 
     
     mapping(address => bool) public isMember;   // Used to prevent duplicates in arrayMembers[]
     mapping(address => bool) public isListed;   // Current list of bond enabled assets
@@ -125,7 +125,8 @@ contract Dao is ReentrancyGuard{
         daoClaim = 1000;        // 10%
         running = false;        // Proposals off by default
         daoFee = 400;
-        cancelPeriod = 5; //15 days
+        cancelPeriod = 86400; //1day testnet - 15 days mainnet
+        bondingPeriodSeconds = 1296000; // 15days testnet - 6months mainnet 15552000
     }
 
     //==================================== PROTOCOL CONTRACTs SETTER =================================//
@@ -619,16 +620,17 @@ contract Dao is ReentrancyGuard{
     // Remove a pool from Curated status
     function _removeCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed asset for removal
-        _POOLFACTORY.removeCuratedPool(_proposedAddress); // Remove pool as Curated
-        if(isListed[_proposedAddress]){
-            isListed[_proposedAddress] = false; // Unregister asset as listed for Bond
+        address _pool = _POOLFACTORY.getPool(_proposedAddress);
+         if(isListed[_pool]){
+            isListed[_pool] = false; // Unregister asset as listed for Bond
             for(uint i = 0; i < listedBondPools.length; i++){
-                if(listedBondPools[i] == _proposedAddress){
+                if(listedBondPools[i] == _pool){
                     listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
                     listedBondPools.pop(); // Remove the last element
                 }
             }
         }
+        _POOLFACTORY.removeCuratedPool(_proposedAddress); // Remove pool as Curated
         _completeProposal(_proposalID); // Finalise the proposal
     }
     

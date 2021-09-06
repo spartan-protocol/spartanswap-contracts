@@ -50,8 +50,10 @@ contract('DAO', function (accounts) {
     //  grantProposal(acc1)
     // voteUtils()
     // voteRouter()
+    deployerListBUSD()
+    deployerListBNB()
     voteReserve()
-    // voteRemoveCurated()
+    voteRemoveCurated()
     // voteAddCurated()
     // voteListBond()
     // voteDeListBond()
@@ -597,4 +599,16 @@ async function cancelBadProposal() {
         await truffleAssert.reverts(Dao.pollVotes({ from: acc0 }), "!open"); 
     })
 }
+async function deployerListBUSD(){
+    it('List BUSD asset for bonding', async () =>{
+        let asset = token1.address;
+        await Dao.listBondAsset(asset);
 
+    })
+}
+async function deployerListBNB(){
+    it('List BNB asset for bonding', async () =>{
+        let asset = _.BNB;
+        await Dao.listBondAsset(asset);
+    })
+}

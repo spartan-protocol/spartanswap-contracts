@@ -41,7 +41,7 @@ contract SynthVault {
         BASE = _base;
         DEPLOYER = msg.sender;
         erasToEarn = 30;
-        minimumDepositTime = 0; // 1 hour // 3600
+        minimumDepositTime = 60; // 60s testnet // 1hr for mainnet 3600
         vaultClaim = 1000;
         genesis = block.timestamp;
         lastMonth = 0;
