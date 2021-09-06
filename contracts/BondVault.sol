@@ -8,13 +8,16 @@ import "./iPOOLFACTORY.sol";
 import "./iRESERVE.sol";
 import "./iROUTER.sol";
 import "./iUTILS.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-
-contract BondVault {
+contract BondVault is ReentrancyGuard{
     address public immutable BASE;  // Sparta address
     address public DEPLOYER;        // Address that deployed this contract | can be purged to address(0)
     bool private bondRelease;       // If true; release all pending locked bond tokens (in the event of migration etc)
     address [] public arrayMembers; // History array of all past and present bond members
+
+    address[] public listedBondPools; // Current list of bond enabled assets
+    uint256 public bondingPeriodSeconds; // Vesting period for bonders (6 months) 
 
     struct ListedAssets {
         bool isListed;
@@ -30,10 +33,12 @@ contract BondVault {
         uint256 claimRate;
         uint256 lastBlockTime;
     }
-
+  mapping(address => bool) public isListed;   // Current list of bond enabled assets
     mapping(address => ListedAssets) public mapBondedAmount_memberDetails;
     mapping(address => bool) public isBondMember;
     mapping(address => uint256) public mapTotalPool_balance; // LP's locked in DAOVault
+    event ListedAsset(address indexed DAO, address indexed asset);
+    event DelistedAsset(address indexed DAO, address indexed asset);
 
     constructor (address _base) {
         require(_base != address(0), '!ZERO');
@@ -111,7 +116,6 @@ contract BondVault {
     // Update a member's weight in the DAOVault (scope: pool)
     function getMemberLPWeight(address member) external onlyDAO returns (uint256 memberWeight, uint256 totalWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
-        address [] memory listedBondPools = iDAO(_DAO().DAO()).allListedAssets(); // Get all listed bond assets
         for(uint i = 0; i < listedBondPools.length; i++){
             memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapBondedAmount_memberDetails[listedBondPools[i]].bondedLP[member]); // Get user's cumulative weight
             totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapTotalPool_balance[listedBondPools[i]]); // Get vault's cumulative total weight
@@ -147,4 +151,57 @@ contract BondVault {
     function getMemberPoolBalance(address _pool, address member) external view returns (uint256){
         return mapBondedAmount_memberDetails[_pool].bondedLP[member];
     }
+
+
+
+        //================================ BOND Feature ==================================//
+
+    // Can burn the SPARTA remaining in this contract (Bond allocations held in the DAO)
+    function burnBalance() external onlyDAO returns (bool){
+        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
+        iBASE(BASE).burn(baseBal);   
+        return true;
+    }
+
+    // Can transfer the SPARTA remaining in this contract to a new BOND
+    function moveBASEBalance(address newDAO) external onlyDAO {
+        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
+        iBEP20(BASE).transfer(newDAO, baseBal); // Tsf SPARTA (oldDao -> newDao)
+    }
+
+    // List an asset to be enabled for Bonding
+    function listBondAsset(address asset) external onlyDAO {
+        uint256 currentProposal = iDAO(_DAO().DAO()).currentProposal();
+        require(iDAO(_DAO().DAO()).mapPID_open(currentProposal) == false, "OPEN"); // Must not be an open proposal (de-sync proposal votes)
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get the relevant pool address
+        require(!isListed[_pool], 'listed'); // Asset must not be listed for Bond
+        isListed[_pool] = true; // Register as a bond-enabled asset
+        listedBondPools.push(_pool); // Add to record of current Bond assets
+        emit ListedAsset(msg.sender, asset);
+    }
+
+    // Delist an asset from the Bond program
+    function delistBondAsset(address asset) external onlyDAO {
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get the relevant pool address
+        require(isListed[_pool], '!listed'); // Asset must be listed for Bond
+        isListed[_pool] = false; // Unregister as a currently enabled asset
+        for (uint i = 0; i < listedBondPools.length; i++) {
+            if (listedBondPools[i] == _pool) {
+                listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
+                listedBondPools.pop(); // Remove the last element
+            }
+        }
+        emit DelistedAsset(msg.sender, asset);
+    }
+
+ // User claims unlocked bonded units of a selected asset (keep internal; otherwise add weightChange modifier)
+    function claim(address asset, address member) external onlyDAO returns  (bool){
+        address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get the pool address
+        uint claimAmount = calcBondedLP(member, _pool); // Check user's unlocked bonded LPs
+        if(claimAmount > 0){
+            claimForMember(_pool, member); // Claim LPs if any unlocked
+        }
+        return true;
+    }
+    
 }

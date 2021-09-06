@@ -60,7 +60,10 @@ contract('DAO', function (accounts) {
     // voteListBond()
     voteBadReserve()
     cancelBadProposal()
-    // voteDAO()
+     voteDAO()
+     withdrawBNBSPP(acc0) 
+     withdrawBNBSPP(acc2) 
+     finalise()
     // withdrawBNBSPP(acc1) 
     // withdrawBNBSPP(acc2) 
     // depositBUSDSPP(acc1, 5)
@@ -497,13 +500,15 @@ async function voteDAO() {
         await Dao.voteProposal({ from: acc0 })
         await Dao.pollVotes({from:acc0})
         await sleep(3100)
-        await Dao.finaliseProposal();
-        await Dao2.setGenesisAddresses(router.address,utils.address,reserve.address, utils.address);
-        await Dao2.setVaultAddresses(daoVault.address,bondVault.address, daoVault.address);
-        await Dao2.setFactoryAddresses(poolFactory.address,synthFactory.address);
-        await Dao2.setGenesisFactors(2, 30,6666,1000,400,true);
-        assert.equal(await Dao.DAO(), Dao2.address)
-        assert.equal(await Dao.daoHasMoved(), true)
+        
+         
+        // await Dao2.setGenesisAddresses(router.address,utils.address,reserve.address, utils.address);
+        // await Dao2.setVaultAddresses(daoVault.address,bondVault.address, daoVault.address);
+        // await Dao2.setFactoryAddresses(poolFactory.address,synthFactory.address);
+        // await Dao2.setGenesisFactors(2, 30,6666,1000,400,true);
+        // assert.equal(await Dao.DAO(), Dao2.address)
+        // assert.equal(await Dao.daoHasMoved(), true)
+
     })
 }
 async function voteRemoveCurated() {
@@ -602,13 +607,19 @@ async function cancelBadProposal() {
 async function deployerListBUSD(){
     it('List BUSD asset for bonding', async () =>{
         let asset = token1.address;
-        await Dao.listBondAsset(asset);
+        await bondVault.listBondAsset(asset);
 
     })
 }
 async function deployerListBNB(){
     it('List BNB asset for bonding', async () =>{
         let asset = _.BNB;
-        await Dao.listBondAsset(asset);
+        await bondVault.listBondAsset(asset);
+    })
+}
+async function finalise(){
+    it('finalise', async () =>{
+        await Dao.finaliseProposal();
+         assert.equal(await Dao.daoHasMoved(), false)
     })
 }

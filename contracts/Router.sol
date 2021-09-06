@@ -332,7 +332,7 @@ contract Router is ReentrancyGuard {
            if(_curatedPoolsCount != curatedPoolsCount){
                curatedPoolsCount = _curatedPoolsCount;
            }
-            uint256 _dividendReward = (reserve * diviClaim) / curatedPoolsCount / 10000; // Get the dividend share 
+            uint256 _dividendReward = (reserve * diviClaim) / _curatedPoolsCount / 10000; // Get the dividend share 
             if((mapAddress_30DayDividends[_pool] + _fees) < _dividendReward){
                 _revenueDetails(_fees, _pool); // Add to revenue metrics
                 iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Tsf SPARTA dividend (Reserve -> Pool)
@@ -367,10 +367,6 @@ contract Router is ReentrancyGuard {
 
     function RTC(uint poolRTC, address _pool) external onlyDAO {
         Pool(_pool).RTC(poolRTC);
-    }
-
-    function changeMinimumSynth(uint newMinimum, address _pool) external onlyDAO {
-        Pool(_pool).minimumSynth(newMinimum);
     }
 
     function _safetyTrigger(address _pool) internal {

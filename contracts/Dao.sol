@@ -54,12 +54,9 @@ contract Dao is ReentrancyGuard{
     iSYNTHVAULT private _SYNTHVAULT;
     iLEND private _LEND;
 
-    address[] public arrayMembers; // History array of all members
-    address[] public listedBondPools; // Current list of bond enabled assets
-    uint256 public bondingPeriodSeconds; // Vesting period for bonders (6 months) 
+    address[] public arrayMembers; // History array of all member
     
     mapping(address => bool) public isMember;   // Used to prevent duplicates in arrayMembers[]
-    mapping(address => bool) public isListed;   // Current list of bond enabled assets
     mapping(address => uint256) public mapMember_lastTime; // Member's last harvest time
     mapping(uint256 => uint256) public mapPID_param;    // Parameter mapped to the proposal
     mapping(uint256 => address) public mapPID_address;  // Address mapped to the proposal
@@ -82,8 +79,6 @@ contract Dao is ReentrancyGuard{
     event ProposalFinalising(address indexed member, uint indexed proposalID, uint timeFinalised, string proposalType);
     event CancelProposal(address indexed member, uint indexed proposalID);
     event FinalisedProposal(address indexed member, uint indexed proposalID, string proposalType);
-    event ListedAsset(address indexed DAO, address indexed asset);
-    event DelistedAsset(address indexed DAO, address indexed asset);
     event DepositAsset(address indexed owner, uint256 depositAmount, uint256 bondedLP);
 
     // Restrict access
@@ -119,14 +114,6 @@ contract Dao is ReentrancyGuard{
         BASE = _base;
         DEPLOYER = msg.sender;
         DAO = address(this);
-        coolOffPeriod = 259200; // 3 days
-        erasToEarn = 30;        // 30 days
-        majorityFactor = 6666;  // 66.66%
-        daoClaim = 1000;        // 10%
-        running = false;        // Proposals off by default
-        daoFee = 400;
-        cancelPeriod = 86400; //1day testnet - 15 days mainnet
-        bondingPeriodSeconds = 1296000; // 15days testnet - 6months mainnet 15552000
     }
 
     //==================================== PROTOCOL CONTRACTs SETTER =================================//
@@ -166,12 +153,6 @@ contract Dao is ReentrancyGuard{
     function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
     }
-
-    // Can change vesting period for bonders
-    function changeBondingPeriod(uint256 bondingSeconds) external onlyDAO {
-        bondingPeriodSeconds = bondingSeconds;
-    }
-
     //============================== USER - DEPOSIT/WITHDRAW ================================//
 
     // Contract deposits LP tokens for member
@@ -228,51 +209,12 @@ contract Dao is ReentrancyGuard{
         uint daoReward = (reserve * daoClaim) / 10000; // Get the DAO's share of that
         return _UTILS.calcShare(memberWeight, totalWeight, daoReward); // Get users's share of that (1 era worth)
     }
+     //==================================BOND =========================================//
 
-    //================================ BOND Feature ==================================//
-
-    // Can burn the SPARTA remaining in this contract (Bond allocations held in the DAO)
-    function burnBalance() external onlyDAO returns (bool){
-        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
-        iBASE(BASE).burn(baseBal);   
-        return true;
-    }
-
-    // Can transfer the SPARTA remaining in this contract to a new DAO (If DAO is upgraded)
-    function moveBASEBalance(address newDAO) external onlyDAO {
-        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
-        iBEP20(BASE).transfer(newDAO, baseBal); // Tsf SPARTA (oldDao -> newDao)
-    }
-
-    // List an asset to be enabled for Bonding
-    function listBondAsset(address asset) external onlyDAO {
-        require(mapPID_open[currentProposal] == false, "OPEN"); // Must not be an open proposal (de-sync proposal votes)
-        address _pool = _POOLFACTORY.getPool(asset); // Get the relevant pool address
-        require(!isListed[_pool], 'listed'); // Asset must not be listed for Bond
-        isListed[_pool] = true; // Register as a bond-enabled asset
-        listedBondPools.push(_pool); // Add to record of current Bond assets
-        emit ListedAsset(msg.sender, asset);
-    }
-
-    // Delist an asset from the Bond program
-    function delistBondAsset(address asset) external onlyDAO {
-        address _pool = _POOLFACTORY.getPool(asset); // Get the relevant pool address
-        require(isListed[_pool], '!listed'); // Asset must be listed for Bond
-        isListed[_pool] = false; // Unregister as a currently enabled asset
-        for (uint i = 0; i < listedBondPools.length; i++) {
-            if (listedBondPools[i] == _pool) {
-                listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
-                listedBondPools.pop(); // Remove the last element
-            }
-        }
-        emit DelistedAsset(msg.sender, asset);
-    }
-
-    // User deposits assets to be Bonded
     function bond(address asset, uint256 amount) external payable operational weightChange returns (bool success) {
         require(amount > 0, '!amount'); // Amount must be valid
         address _pool = _POOLFACTORY.getPool(asset); // Get the pool address
-        require(isListed[_pool], '!listed'); // Asset must be listed for Bond
+        require(_BONDVAULT.isListed(_pool), '!listed'); // Asset must be listed for Bond 
         if (isMember[msg.sender] != true) {
             arrayMembers.push(msg.sender); // If user is not a member; add them to the member array
             isMember[msg.sender] = true; // Register user as a member
@@ -304,24 +246,11 @@ contract Dao is ReentrancyGuard{
             LPunits = _ROUTER.addLiquidityForMember(_actualAmount, spartaAllocation, _token, address(_BONDVAULT)); // Add SPARTA & TOKEN liquidity, mint LP tokens to BondVault
         }
     }
-
-    // User claims a selection of their unlocked Bonded LPs
-    function claimAll(address [] memory bondAssets) external operational weightChange returns (bool){
-        for(uint i = 0; i < bondAssets.length; i++){
-            _claim(bondAssets[i]);
-        }
-        return true;
+       // User claims a selection of their unlocked Bonded LPs
+    function claimAll(address bondAsset) external  operational weightChange{
+            _BONDVAULT.claim(bondAsset, msg.sender); 
     }
 
-    // User claims unlocked bonded units of a selected asset (keep internal; otherwise add weightChange modifier)
-    function _claim(address asset) public operational returns (bool){
-        address _pool = _POOLFACTORY.getPool(asset); // Get the pool address
-        uint claimAmount = _BONDVAULT.calcBondedLP(msg.sender, _pool); // Check user's unlocked bonded LPs
-        if(claimAmount > 0){
-            _BONDVAULT.claimForMember(_pool, msg.sender); // Claim LPs if any unlocked
-        }
-        return true;
-    }
     
     //============================== CREATE PROPOSALS ================================//
 
@@ -481,7 +410,7 @@ contract Dao is ReentrancyGuard{
             } else if (isEqual(_type, 'RESERVE')){ // address
                 _moveReserve(_currentProposal);
             } else if (isEqual(_type, 'FLIP_EMISSIONS')){ // action
-                _flipEmissions(_currentProposal);
+                _flipEmissions();
             } else if (isEqual(_type, 'COOL_OFF')){ // param
                 _changeCooloff(_currentProposal);
             } else if (isEqual(_type, 'ERAS_TO_EARN')){ // param
@@ -489,7 +418,7 @@ contract Dao is ReentrancyGuard{
             } else if (isEqual(_type, 'GRANT')){ // grant
                 _grantFunds(_currentProposal);
             } else if (isEqual(_type, 'GET_SPARTA')){
-                _increaseSpartaAllocation(_currentProposal); // action
+                _increaseSpartaAllocation(); // action
             } else if (isEqual(_type, 'LIST_BOND')){
                 _listBondingAsset(_currentProposal);   // address
             } else if (isEqual(_type, 'DELIST_BOND')){
@@ -500,9 +429,9 @@ contract Dao is ReentrancyGuard{
                 _removeCuratedPool(_currentProposal); // address
             } else if (isEqual(_type, 'REALISE')){
                 _realise(_currentProposal);  // address
-            } else {
-                _completeProposal(_currentProposal); // If no match; close proposal
-            }
+            } 
+             _completeProposal(_currentProposal); // If no match; close proposal
+            
         }
     }
 
@@ -512,21 +441,18 @@ contract Dao is ReentrancyGuard{
         DAO = _proposedAddress; // Change the DAO to point to the new DAO address
         iBASE(BASE).changeDAO(_proposedAddress); // Change the BASE contract to point to the new DAO address
         daoHasMoved = true; // Set status of this old DAO
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change the ROUTER to a new contract address
     function _moveRouter(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
         _ROUTER = iROUTER(_proposedAddress); // Change the DAO to point to the new ROUTER address
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change the UTILS to a new contract address
     function _moveUtils(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
         _UTILS = iUTILS(_proposedAddress); // Change the DAO to point to the new UTILS address
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change the RESERVE to a new contract address
@@ -535,27 +461,23 @@ contract Dao is ReentrancyGuard{
         uint256 balance = iBEP20(BASE).balanceOf(address(_RESERVE));
         _RESERVE.grantFunds(balance, _proposedAddress); // Grant the funds to the recipient
         _RESERVE = iRESERVE(_proposedAddress); // Change the DAO to point to the new RESERVE address
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Flip the BASE emissions on/off
-    function _flipEmissions(uint _proposalID) internal {
+    function _flipEmissions() internal {
         iBASE(BASE).flipEmissions(); // Toggle emissions on the BASE contract
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change cool off period (Period of time until a finalising proposal can be finalised)
     function _changeCooloff(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID]; // Get the proposed new param
         coolOffPeriod = _proposedParam; // Change coolOffPeriod
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Change erasToEarn (Used to regulate the incentives flow)
     function _changeEras(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID]; // Get the proposed new param
         erasToEarn = _proposedParam; // Change erasToEarn
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Grant SPARTA to the proposed recipient
@@ -563,51 +485,30 @@ contract Dao is ReentrancyGuard{
         uint256 _proposedAmount = mapPID_param[_proposalID]; // Get the proposed SPARTA grant amount
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed SPARTA grant recipient
         _RESERVE.grantFunds(_proposedAmount, _proposedAddress); // Grant the funds to the recipient
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Mint a 2.5M SPARTA allocation for the Bond program
-    function _increaseSpartaAllocation(uint _proposalID) internal {
+    function _increaseSpartaAllocation() internal {
         uint256 _2point5m = 2.5*10**6*10**18; //_2.5m
         iBASE(BASE).mintFromDAO(_2point5m, address(this)); // Mint SPARTA and send to DAO to hold
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // Realise value out of a synth's collateral
     function _realise(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed SYNTH address for realise
         iSYNTH(_proposedAddress).realise(); // Calculate value of LPs vs synthSupply; burn the premium
-        _completeProposal(_proposalID); // Finalise the proposal
     }
 
     // List an asset to be enabled for Bonding
     function _listBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
-        address _pool = _POOLFACTORY.getPool(_proposedAddress); // Get the pool address
-        if(!isListed[_pool]){
-            isListed[_pool] = true; // Register asset as listed for Bond
-            listedBondPools.push(_pool); // Add asset to array of listed Bond assets
-        }
-        _completeProposal(_proposalID); // Finalise the proposal
-        emit ListedAsset(msg.sender, _proposedAddress);
-        
+       _BONDVAULT.listBondAsset(_proposedAddress); 
     }
 
     // Delist an asset from being allowed to Bond
     function _delistBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
-        address _pool = _POOLFACTORY.getPool(_proposedAddress); // Get the pool address
-        if(isListed[_pool]){
-            isListed[_pool] = false; // Unregister asset as listed for Bond
-            for(uint i = 0; i < listedBondPools.length; i++){
-                if(listedBondPools[i] == _pool){
-                    listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
-                    listedBondPools.pop(); // Remove the last element
-                }
-            }
-        }
-        _completeProposal(_proposalID); // Finalise the proposal
-        emit DelistedAsset(msg.sender, _proposedAddress);
+        _BONDVAULT.delistBondAsset(_proposedAddress); 
     }
 
     // Add a pool as 'Curated' to enable synths, weight and incentives
@@ -620,18 +521,8 @@ contract Dao is ReentrancyGuard{
     // Remove a pool from Curated status
     function _removeCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed asset for removal
-        address _pool = _POOLFACTORY.getPool(_proposedAddress);
-         if(isListed[_pool]){
-            isListed[_pool] = false; // Unregister asset as listed for Bond
-            for(uint i = 0; i < listedBondPools.length; i++){
-                if(listedBondPools[i] == _pool){
-                    listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
-                    listedBondPools.pop(); // Remove the last element
-                }
-            }
-        }
+        _BONDVAULT.delistBondAsset(_proposedAddress);
         _POOLFACTORY.removeCuratedPool(_proposedAddress); // Remove pool as Curated
-        _completeProposal(_proposalID); // Finalise the proposal
     }
     
     // After completing the proposal's action; close it
@@ -781,12 +672,6 @@ contract Dao is ReentrancyGuard{
         }
     }
 
-    //============================== HELPERS ================================//
-    
-    function memberCount() external view returns(uint){
-        return arrayMembers.length;
-    }
-
     function getProposalDetails(uint proposalID) external view returns (ProposalDetails memory proposalDetails){
         proposalDetails.id = proposalID;
         proposalDetails.proposalType = mapPID_type[proposalID];
@@ -806,14 +691,6 @@ contract Dao is ReentrancyGuard{
 
     function memberVoted(uint256 proposal, address member) public view returns (bool) {
         return mapPIDMember_hasVoted[proposal][member];
-    }
-
-    function assetListedCount() external view returns (uint256 count){
-        return listedBondPools.length;
-    }
-
-    function allListedAssets() external view returns (address[] memory _allListedAssets){
-        return listedBondPools;
     }
     
     function isEqual(bytes memory part1, bytes memory part2) private pure returns(bool){

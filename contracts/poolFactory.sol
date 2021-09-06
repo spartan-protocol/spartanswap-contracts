@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 import "./iDAO.sol";
+import "./iBONDVAULT.sol";
 import "./Pool.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -98,7 +99,7 @@ contract PoolFactory is ReentrancyGuard {
     function removeCuratedPool(address token) external onlyDAO {
         require(token != BASE, '!VALID'); // Token must not be SPARTA
         address _pool = getPool(token); // Get pool address
-        require(iDAO(_DAO().DAO()).isListed(_pool) == false, '!DELISTED'); 
+        require(iBONDVAULT(_DAO().BONDVAULT()).isListed(_pool) == false, '!DELISTED');   
         require(isCuratedPool[_pool] == true, '!CURATED'); // Pool must be Curated
         isCuratedPool[_pool] = false; // Record pool as not curated
         curatedPoolCount = curatedPoolCount - 1; // Decrease the curated pool count
