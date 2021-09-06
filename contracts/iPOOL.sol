@@ -12,5 +12,5 @@ interface iPOOL {
     function sync() external;
     function SYNTH() external returns (address);
     function stirCauldron(address) external returns (uint); 
-    function mintSynth(address, address) external returns (uint256, uint256);
+    function mintSynth( address) external returns (uint256, uint256);
 }

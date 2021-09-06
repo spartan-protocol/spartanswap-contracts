@@ -9,6 +9,7 @@ import "./iDAOVAULT.sol";
 import "./iROUTER.sol";
 import "./iSYNTH.sol"; 
 import "./iSYNTHFACTORY.sol"; 
+import "./iSYNTHVAULT.sol"; 
 import "hardhat/console.sol";
 
 contract Pool is iBEP20, ReentrancyGuard {  
@@ -66,7 +67,7 @@ contract Pool is iBEP20, ReentrancyGuard {
         _;
     }
     modifier onlyDAO() {
-        require(msg.sender == _DAO().DAO() || msg.sender == _DAO().ROUTER());
+        require(msg.sender == _DAO().DAO() || msg.sender == _DAO().ROUTER() || msg.sender == _DAO().SYNTHVAULT());
         _;
     }
      modifier onlySYNTH() {
@@ -252,7 +253,8 @@ contract Pool is iBEP20, ReentrancyGuard {
         uint _fee = _utils.calcSwapFee(_actualInputBase, baseAmount, tokenAmount); // Calc slip fee in TOKEN (virtualised)
         fee = _utils.calcSpotValueInBase(TOKEN, _fee); // Convert TOKEN fee to SPARTA
         _mint(synthOut, _liquidityUnits); // Mint the LP tokens directly to the Synth contract to hold
-        iSYNTH(synthOut).mintSynth(member, outputAmount); // Mint the Synth tokens directly to the user
+        iSYNTH(synthOut).mintSynth(address(_DAO().SYNTHVAULT()), outputAmount); // Mint the Synth tokens directly to the synthVault
+        iSYNTHVAULT(_DAO().SYNTHVAULT()).depositForMember(synthOut, member); //Deposit on behalf of member
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         emit MintSynth(member, _actualInputBase, _liquidityUnits, outputAmount, fee);
         return (outputAmount, fee);
@@ -351,7 +353,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     //=======================================BALANCES=========================================//
 
     // Sync internal balances to actual
-    function sync() external onlyDAO {
+    function sync() external onlyDAO  {
         baseAmount = iBEP20(BASE).balanceOf(address(this));
         tokenAmount = iBEP20(TOKEN).balanceOf(address(this));
     }

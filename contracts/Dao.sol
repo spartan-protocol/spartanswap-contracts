@@ -454,7 +454,6 @@ contract Dao is ReentrancyGuard{
         for(uint i = 0; i < votingAssets.length; i++){
            mapPIDAsset_votes[_currentProposal][votingAssets[i]] = 0; // Reset votes to 0
         }
-        mapPID_finalised[_currentProposal] = true; // Finalise the proposal
         mapPID_finalising[_currentProposal] = false; // Remove proposal from 'finalising' stage
         mapPID_open[_currentProposal] = false; // Close the proposal
         emit CancelProposal(msg.sender, _currentProposal);

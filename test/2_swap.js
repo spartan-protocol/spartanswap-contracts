@@ -425,7 +425,6 @@ async function swapBNB(acc, xx){
        
     })
 }
-
 async function zapLiquidity(acc, xx) {
     it("It should zap liquidity from BNB to BUSD pool", async () => {
         let x = _.getBN(xx * _.oneBN)
@@ -564,8 +563,6 @@ async function swapSpartaToSynth(acc, xx) {
         
     })
 }
-
-
 async function swapBNBToSynthBNB(acc, xx) {
     it("Swap BNB to Synthetic BNB", async () => {
         let x = _.getBN(xx * _.oneBN)
