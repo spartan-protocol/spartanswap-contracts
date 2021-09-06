@@ -10,7 +10,7 @@ import "./iROUTER.sol";
 import "./iSYNTH.sol"; 
 import "./iSYNTHFACTORY.sol"; 
 import "./iSYNTHVAULT.sol"; 
-import "hardhat/console.sol";
+
 
 contract Pool is iBEP20, ReentrancyGuard {  
     address public immutable BASE;  // Address of SPARTA base token contract

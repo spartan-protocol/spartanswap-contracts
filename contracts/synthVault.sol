@@ -9,7 +9,7 @@ import "./iUTILS.sol";
 import "./iRESERVE.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iPOOLFACTORY.sol";
-import "hardhat/console.sol";
+
 
 contract SynthVault {
     address public immutable BASE;      // Address of SPARTA base token contract

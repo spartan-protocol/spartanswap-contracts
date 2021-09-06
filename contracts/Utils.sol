@@ -6,7 +6,7 @@ import "./iSYNTHFACTORY.sol";
 import "./iPOOL.sol";
 import "./iSYNTH.sol";
 import "./iBEP20.sol";
-import "hardhat/console.sol";
+
 contract Utils {
     address public immutable BASE; // SPARTA base contract address
     uint256 private constant one = 1*10**18;

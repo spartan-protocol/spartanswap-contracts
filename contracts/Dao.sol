@@ -13,7 +13,7 @@ import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iSYNTHVAULT.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "hardhat/console.sol";
+
 contract Dao is ReentrancyGuard{
     address public DEPLOYER;        // Address that deployed contract | can be purged to address(0)
     address public immutable BASE;  // SPARTA base contract address
