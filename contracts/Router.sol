@@ -14,6 +14,7 @@ contract Router is ReentrancyGuard {
     uint256 public diviClaim;       // Basis points vs RESERVE holdings max dividend per month
     uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
     uint256 public curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
+    bool public synthMinting;
 
     mapping(address=> uint) public mapAddress_30DayDividends; // Current incomplete-period NET SPARTA divis by pool
     mapping(address=> uint) public mapAddress_Past30DayPoolDividends; // Previous full-period NET SPARTA divis by pool
@@ -30,11 +31,10 @@ contract Router is ReentrancyGuard {
     }
 
     constructor (address _base, address _wbnb) {
-        require(_base != address(0), '!ZERO');
-        require(_wbnb != address(0), '!ZERO');
         BASE = _base;
         WBNB = _wbnb;
         diviClaim = 100;
+        synthMinting = false;
         DEPLOYER = msg.sender;
     }
 
@@ -367,6 +367,9 @@ contract Router is ReentrancyGuard {
 
     function RTC(uint poolRTC, address _pool) external onlyDAO {
         Pool(_pool).RTC(poolRTC);
+    }
+    function flipSynthMinting() external onlyDAO {
+        synthMinting = !synthMinting;
     }
 
     function _safetyTrigger(address _pool) internal {

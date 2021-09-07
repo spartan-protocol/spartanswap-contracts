@@ -61,9 +61,9 @@ contract('DAO', function (accounts) {
     voteBadReserve()
     cancelBadProposal()
      voteDAO()
-     withdrawBNBSPP(acc0) 
-     withdrawBNBSPP(acc2) 
-     finalise()
+    //  withdrawBNBSPP(acc0) 
+    //  withdrawBNBSPP(acc2) 
+    //  finalise()
     // withdrawBNBSPP(acc1) 
     // withdrawBNBSPP(acc2) 
     // depositBUSDSPP(acc1, 5)
@@ -94,7 +94,7 @@ function constructor(accounts) {
      
         // await reserve.flipEmissions();    
         // await sparta.flipEmissions();  
-
+        await router.flipSynthMinting();
         await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await sparta.transfer(reserve.address, _.getBN(_.BN2Str(100000 * _.one)))
         await sparta.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))

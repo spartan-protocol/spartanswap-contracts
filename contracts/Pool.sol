@@ -35,7 +35,6 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint256 public override totalSupply;
     mapping(address => uint) private _balances;
     mapping(address => mapping(address => uint)) private _allowances;
-    mapping(address => bool) public minting; 
 
     uint256 public baseAmount;  // SPARTA amount that should be in the pool
     uint256 public tokenAmount; // TOKEN amount that should be in the pool
@@ -77,8 +76,6 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     constructor (address _base, address _token) {
-        require(_base != address(0), '!ZERO');
-        require(_token != address(0), '!ZERO');
         BASE = _base;
         TOKEN = _token;
         string memory poolName = "-SpartanProtocolPool";
@@ -87,11 +84,11 @@ contract Pool is iBEP20, ReentrancyGuard {
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), poolSymbol));
         decimals = 18;
         genesis = block.timestamp;
+        period = block.timestamp;
         synthCap = 2500;
         freezePoint = 3000;
         baseCap = 100000*10**18; //RAISE THE CAPS
-        period = block.timestamp;
-        initiationPeriod = 86400;//1day testnet //604800 mainnet
+        initiationPeriod = 0;//1day testnet //604800 mainnet
         lastStirred = 0;
         oneWeek = 60;//604800 mainnet
         initialPeriod = 14400; //4hr
@@ -239,7 +236,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     // Swap SPARTA for Synths
     function mintSynth(address member) external onlyPROTOCOL returns(uint outputAmount, uint fee) {
         address synthOut = SYNTH(); // Get the synth address
-        require(minting[synthOut], "!MINTING");
+        require(iROUTER(_DAO().ROUTER()).synthMinting(), "!MINTING");  
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut), "!synth"); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
@@ -453,10 +450,6 @@ contract Pool is iBEP20, ReentrancyGuard {
         require(newPeriod < 580, '!VALID');
         freeze = !freeze;
         period = block.timestamp + newPeriod;
-    }
-
-    function flipMinting(address synth) external onlyDAO {
-        minting[synth] = !minting[synth]; // Flip minting synth on/off
     }
 
     function setInitiation(uint newInitiation) external onlyPROTOCOL {

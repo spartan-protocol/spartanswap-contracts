@@ -75,7 +75,8 @@ function constructor(accounts) {
      
          
         // await sparta.flipEmissions();  
-
+        await router.flipSynthMinting();
+        
         await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await sparta.transfer(reserve.address, _.getBN(_.BN2Str(100000 * _.one)))
         await sparta.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
