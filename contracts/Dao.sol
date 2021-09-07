@@ -502,6 +502,7 @@ contract Dao is ReentrancyGuard{
     // List an asset to be enabled for Bonding
     function _listBondingAsset(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new asset
+        _completeProposal(_proposalID); // Finalise the proposal - fire and forget
        _BONDVAULT.listBondAsset(_proposedAddress); 
     }
 
@@ -521,6 +522,7 @@ contract Dao is ReentrancyGuard{
     // Remove a pool from Curated status
     function _removeCuratedPool(uint _proposalID) internal {
         address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed asset for removal
+        _completeProposal(_proposalID); // Finalise the proposal - fire and forget
         _BONDVAULT.delistBondAsset(_proposedAddress);
         _POOLFACTORY.removeCuratedPool(_proposedAddress); // Remove pool as Curated
     }

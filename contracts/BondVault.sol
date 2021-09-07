@@ -116,9 +116,10 @@ contract BondVault is ReentrancyGuard{
     // Update a member's weight in the DAOVault (scope: pool)
     function getMemberLPWeight(address member) external onlyDAO returns (uint256 memberWeight, uint256 totalWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
-        for(uint i = 0; i < listedBondPools.length; i++){
-            memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapBondedAmount_memberDetails[listedBondPools[i]].bondedLP[member]); // Get user's cumulative weight
-            totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(listedBondPools[i], mapTotalPool_balance[listedBondPools[i]]); // Get vault's cumulative total weight
+        address [] memory _listedBondPools = listedBondPools;
+        for(uint i = 0; i < _listedBondPools.length; i++){
+            memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_listedBondPools[i], mapBondedAmount_memberDetails[_listedBondPools[i]].bondedLP[member]); // Get user's cumulative weight
+            totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_listedBondPools[i], mapTotalPool_balance[_listedBondPools[i]]); // Get vault's cumulative total weight
         }
         return (memberWeight, totalWeight);
     }
