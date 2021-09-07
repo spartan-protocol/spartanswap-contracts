@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./iBEP20.sol";
 import "./iUTILS.sol";
 import "./iDAO.sol";
@@ -12,22 +11,22 @@ import "./iSYNTHFACTORY.sol";
 import "./iSYNTHVAULT.sol"; 
 
 
-contract Pool is iBEP20, ReentrancyGuard {  
-    address public immutable BASE;  // Address of SPARTA base token contract
+contract Pool is iBEP20 {  
+    address private immutable BASE;  // Address of SPARTA base token contract
     address public immutable TOKEN; // Address of the layer1 TOKEN represented in this pool
-    uint256 public synthCap;    // Basis points hard cap of synths that can be minted vs tokenDepth
-    uint256 public baseCap;     // Cap on the depth of the pool (in SPARTA)
+    uint256 private synthCap;    // Basis points hard cap of synths that can be minted vs tokenDepth
+    uint256 private baseCap;     // Cap on the depth of the pool (in SPARTA)
     uint256 private oldRate;    // Pool ratio from last period
     uint256 private period;     // Timestamp of next period
     uint256 private freezePoint; // Basis points change to trigger a freeze
     bool public freeze;         // Freeze status of the pool
-    uint256 public initiationPeriod; // Lockup period of pool from genesis (no liqRemove)
-    uint256 public oneWeek;
-    uint256 public stirRate;
+    uint256 private initiationPeriod; // Lockup period of pool from genesis (no liqRemove)
+    uint256 private oneWeek;
+    uint256 private stirRate;
 
-    uint public lastStirred;
-    uint public initialPeriod;
-    uint public stirStamp;
+    uint private lastStirred;
+    uint private initialPeriod;
+    uint private stirStamp;
 
     string private _name;
     string private _symbol;
@@ -39,12 +38,12 @@ contract Pool is iBEP20, ReentrancyGuard {
     uint256 public baseAmount;  // SPARTA amount that should be in the pool
     uint256 public tokenAmount; // TOKEN amount that should be in the pool
 
-    uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
+    uint private lastMonth;          // Timestamp of the start of current metric period (For UI)
     uint public immutable genesis;  // Timestamp from when the pool was first deployed (For UI)
 
     uint256 public map30DPoolRevenue;       // Tally of revenue during current incomplete metric period (for UI)
     uint256 public mapPast30DPoolRevenue;   // Tally of revenue from last full metric period (for UI)
-    uint256 [] public revenueArray;         // Array of the last two full metric periods (For UI)
+    uint256 [] private revenueArray;         // Array of the last two full metric periods (For UI)
     
     event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
     event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
@@ -71,7 +70,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
      modifier onlySYNTH() {
         require(msg.sender == SYNTH());
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(SYNTH()),'!SYNTH');
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(SYNTH()));
         _;
     }
 
@@ -184,11 +183,9 @@ contract Pool is iBEP20, ReentrancyGuard {
     // Contract adds liquidity for user 
     function addForMember(address member) external onlyPROTOCOL returns (uint liquidityUnits){
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get the received SPARTA amount
-        require((baseAmount + _actualInputBase) < baseCap, "RTC"); // LiqAdd must not push TVL over the cap
         uint256 _actualInputToken = _getAddedTokenAmount(); // Get the received TOKEN amount
         liquidityUnits = iUTILS(_DAO().UTILS()).calcLiquidityUnits(_actualInputBase, baseAmount, _actualInputToken, tokenAmount, totalSupply); // Calculate LP tokens to mint
         if(baseAmount == 0 || tokenAmount == 0){
-            require(_actualInputBase >= (100 * 10**18) && _actualInputToken >= 10000, "!Balanced");
             uint createFee = 100 * liquidityUnits / 10000; // First liqAdd charges 1% fee to the base contract (permanently removed from circulation; prevent 1wei rounding)
             liquidityUnits -= createFee; // Remove fee from the calculated LP units
             _mint(BASE, createFee); // Mint the fee portion of the LP units to the BASE contract (permanently removed from circulation)
@@ -202,22 +199,22 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Contract removes liquidity for the user
     function removeForMember(address member) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
-        require(block.timestamp > (genesis + initiationPeriod), '!INITIATED'); // Can not remove liquidity until 7 days after pool's creation
+        require(block.timestamp > (genesis + initiationPeriod)); // Can not remove liquidity until 7 days after pool's creation
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
         outputToken = _utils.calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
         _decrementPoolBalances(outputBase, outputToken); // Update recorded SPARTA and TOKEN amounts
         _burn(address(this), _actualInputUnits); // Burn the LP tokens
-        require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Tsf SPARTA (Pool -> User)
-        require(iBEP20(TOKEN).transfer(member, outputToken), '!transfer'); // Tsf TOKEN (Pool -> User)
+        require(iBEP20(BASE).transfer(member, outputBase)); // Tsf SPARTA (Pool -> User)
+        require(iBEP20(TOKEN).transfer(member, outputToken)); // Tsf TOKEN (Pool -> User)
         emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
 
     // Contract swaps tokens for the member
     function swapTo(address token, address member) external onlyPROTOCOL returns (uint outputAmount, uint fee) {
-        require((token == BASE || token == TOKEN), "!BASE||TOKEN"); // Must be SPARTA or the pool's relevant TOKEN
+        require((token == BASE || token == TOKEN)); // Must be SPARTA or the pool's relevant TOKEN
         address _fromToken; uint _amount;
         if(token == BASE){
             _fromToken = TOKEN; // If SPARTA is selected; swap from TOKEN
@@ -229,21 +226,20 @@ contract Pool is iBEP20, ReentrancyGuard {
             (outputAmount, fee) = _swapBaseToToken(_amount); // Calculate the TOKEN output from the swap
         }
         emit Swapped(_fromToken, token, member, _amount, outputAmount, fee);
-        require(iBEP20(token).transfer(member, outputAmount), '!transfer'); // Tsf swapped assets (Pool -> User)
+        require(iBEP20(token).transfer(member, outputAmount)); // Tsf swapped assets (Pool -> User)
         return (outputAmount, fee);
     }
 
     // Swap SPARTA for Synths
     function mintSynth(address member) external onlyPROTOCOL returns(uint outputAmount, uint fee) {
         address synthOut = SYNTH(); // Get the synth address
-        require(iROUTER(_DAO().ROUTER()).synthMinting(), "!MINTING");  
-        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut), "!synth"); // Must be a valid Synth
+        require(iROUTER(_DAO().ROUTER()).synthMinting());  
+        require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synthOut)); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
-        require((baseAmount + _actualInputBase) < baseCap, "RTC"); // SPARTA input must not push TVL over the cap
         uint256 steamedSynths = stirCauldron(synthOut);
         outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN (virtualised)
-        require(outputAmount <= steamedSynths,'!stirred'); //steam synths
+        require(outputAmount <= steamedSynths); //steam synths
         lastStirred = block.timestamp;
         uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
@@ -260,7 +256,7 @@ contract Pool is iBEP20, ReentrancyGuard {
     // Swap Synths for SPARTA
     function burnSynth(address member) external onlyPROTOCOL returns(uint outputAmount, uint fee) {
         address synthIN = SYNTH(); // Get the synth address
-        require(synthIN != address(0), "!synth"); // Must be a valid Synth
+        require(synthIN != address(0)); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
         uint output = _utils.calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA (virtualised)
@@ -270,18 +266,18 @@ contract Pool is iBEP20, ReentrancyGuard {
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the input SYNTH units 
         _burn(synthIN, liqUnits); // Burn the synth-held LP units
-        require(iBEP20(BASE).transfer(member, outputBase), '!transfer'); // Tsf SPARTA (Pool -> User)
+        require(iBEP20(BASE).transfer(member, outputBase)); // Tsf SPARTA (Pool -> User)
         emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
         return (outputBase, fee);
     }
 
-    function stirCauldron(address synth) public returns (uint256 steamedSynths){ 
+    function stirCauldron(address synth) internal returns (uint256 steamedSynths){ 
           uint256 synthsCap = tokenAmount * synthCap / 10000;
-          uint256 liquidSynths;
-         if(iBEP20(synth).totalSupply() >= synthsCap){
+          uint256 liquidSynths; uint256 totalSup = iBEP20(synth).totalSupply();
+         if(totalSup >= synthsCap){
              steamedSynths = 0;
          }else{
-             liquidSynths = synthsCap - iBEP20(synth).totalSupply(); 
+             liquidSynths = synthsCap - totalSup; 
          }
          if(lastStirred == 0){ 
             lastStirred = block.timestamp;
@@ -364,6 +360,7 @@ contract Pool is iBEP20, ReentrancyGuard {
 
     // Increment internal balances
     function _incrementPoolBalances(uint _baseAmount, uint _tokenAmount) internal {
+        require((baseAmount + _baseAmount) < baseCap); // SPARTA input must not push TVL over the cap
         baseAmount += _baseAmount;
         tokenAmount += _tokenAmount;
         _safetyCheck();
@@ -433,12 +430,12 @@ contract Pool is iBEP20, ReentrancyGuard {
     //=========================================== SYNTH CAPS =================================//
     
     function setSynthCap(uint256 _synthCap) external onlyPROTOCOL {
-        require(_synthCap <= 3000, '!MAX');
+        require(_synthCap <= 3000);
         synthCap = _synthCap;
     }
 
     function RTC(uint256 _newRTC) external onlyPROTOCOL {
-        require(_newRTC <= (baseCap * 2), '!MAX');
+        require(_newRTC <= (baseCap * 2));
         baseCap = _newRTC;
     }
 
@@ -447,13 +444,13 @@ contract Pool is iBEP20, ReentrancyGuard {
     }
 
     function flipFreeze(uint newPeriod) external onlyPROTOCOL {
-        require(newPeriod < 580, '!VALID');
+        require(newPeriod < 580);
         freeze = !freeze;
         period = block.timestamp + newPeriod;
     }
 
     function setInitiation(uint newInitiation) external onlyPROTOCOL {
-        require(newInitiation < 604800, '!VALID');
+        require(newInitiation < 604800);
         initiationPeriod = newInitiation;
     }
 }
