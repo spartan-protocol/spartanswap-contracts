@@ -12,7 +12,7 @@ import "./iSYNTHVAULT.sol";
 
 
 contract Pool is iBEP20 {  
-    address private immutable BASE;  // Address of SPARTA base token contract
+    address public immutable BASE;  // Address of SPARTA base token contract
     address public immutable TOKEN; // Address of the layer1 TOKEN represented in this pool
     uint256 private synthCap;    // Basis points hard cap of synths that can be minted vs tokenDepth
     uint256 private baseCap;     // Cap on the depth of the pool (in SPARTA)

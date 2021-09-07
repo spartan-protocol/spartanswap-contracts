@@ -8,12 +8,12 @@ import "./iWBNB.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Router is ReentrancyGuard {
-    address public immutable BASE;  // SPARTA base contract address
-    address public immutable WBNB;  // Address of WBNB
-    address public DEPLOYER;        // Address that deployed the contract
+    address private immutable BASE;  // SPARTA base contract address
+    address private immutable WBNB;  // Address of WBNB
+    address private DEPLOYER;        // Address that deployed the contract
     uint256 public diviClaim;       // Basis points vs RESERVE holdings max dividend per month
     uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
-    uint256 public curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
+    uint256 private curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
     bool public synthMinting;
 
     mapping(address=> uint) public mapAddress_30DayDividends; // Current incomplete-period NET SPARTA divis by pool
