@@ -39,9 +39,6 @@ contract Synth is iBEP20 {
     }
     
     constructor (address _base, address _token, address _pool) {
-        require(_base != address(0), '!ZERO');
-        require(_token != address(0), '!ZERO');
-        require(_pool != address(0), '!ZERO');
         BASE = _base;
         TOKEN = _token;
         POOL = _pool;

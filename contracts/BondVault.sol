@@ -40,7 +40,6 @@ contract BondVault {
     event DelistedAsset(address indexed DAO, address indexed asset);
 
     constructor (address _base) {
-        require(_base != address(0), '!ZERO');
         BASE = _base;
         DEPLOYER = msg.sender;
         bondRelease = false;

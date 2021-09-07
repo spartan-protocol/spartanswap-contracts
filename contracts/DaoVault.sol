@@ -14,7 +14,6 @@ contract DaoVault {
     address public DEPLOYER;        // Address that deployed contract
 
     constructor(address _base) {
-        require(_base != address(0), '!ZERO');
         BASE = _base;
         DEPLOYER = msg.sender;
     }

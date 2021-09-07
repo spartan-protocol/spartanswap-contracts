@@ -110,7 +110,6 @@ contract Dao is ReentrancyGuard{
     }
 
     constructor (address _base){
-        require(_base != address(0), '!ZERO');
         BASE = _base;
         DEPLOYER = msg.sender;
         DAO = address(this);
