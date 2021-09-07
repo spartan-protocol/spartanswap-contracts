@@ -6,9 +6,6 @@ interface iPOOL {
     function genesis() external view returns(uint);
     function baseAmount() external view returns(uint);
     function tokenAmount() external view returns(uint);
-    function fees() external view returns(uint);
-    function volume() external view returns(uint);
-    function txCount() external view returns(uint);
     function sync() external;
     function SYNTH() external returns (address);
     function stirCauldron(address) external returns (uint); 

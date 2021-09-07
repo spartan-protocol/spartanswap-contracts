@@ -12,7 +12,6 @@ interface iUTILS {
     function calcSwapValueInToken(address, uint) external view returns (uint);
     function calcSpotValueInBaseWithSynth(address, uint) external view returns (uint);
     function calcSpotValueInBase(address, uint) external view returns (uint);
-    function calcSpotValueIn(address, uint) external view returns (uint);
     function calcPart(uint, uint) external pure returns (uint);
     function calcLiquidityUnitsAsym(uint, address)external pure returns (uint);
     function calcActualSynthUnits(address, uint) external view returns (uint);

@@ -8,9 +8,8 @@ import "./iPOOLFACTORY.sol";
 import "./iRESERVE.sol";
 import "./iROUTER.sol";
 import "./iUTILS.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract BondVault is ReentrancyGuard{
+contract BondVault {
     address public immutable BASE;  // Sparta address
     address public DEPLOYER;        // Address that deployed this contract | can be purged to address(0)
     bool private bondRelease;       // If true; release all pending locked bond tokens (in the event of migration etc)
@@ -33,7 +32,7 @@ contract BondVault is ReentrancyGuard{
         uint256 claimRate;
         uint256 lastBlockTime;
     }
-  mapping(address => bool) public isListed;   // Current list of bond enabled assets
+    mapping(address => bool) public isListed;   // Current list of bond enabled assets
     mapping(address => ListedAssets) public mapBondedAmount_memberDetails;
     mapping(address => bool) public isBondMember;
     mapping(address => uint256) public mapTotalPool_balance; // LP's locked in DAOVault
@@ -45,6 +44,7 @@ contract BondVault is ReentrancyGuard{
         BASE = _base;
         DEPLOYER = msg.sender;
         bondRelease = false;
+        bondingPeriodSeconds = 1296000; // mainNet 6months
     }
 
     // Restrict access
@@ -78,7 +78,7 @@ contract BondVault is ReentrancyGuard{
         }
         mapBondedAmount_memberDetails[_pool].bondedLP[member] += amount; // Add new deposit to users remainder
         mapBondedAmount_memberDetails[_pool].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
-        mapBondedAmount_memberDetails[_pool].claimRate[member] = mapBondedAmount_memberDetails[_pool].bondedLP[member] / iDAO(_DAO().DAO()).bondingPeriodSeconds(); // Set claim rate per second
+        mapBondedAmount_memberDetails[_pool].claimRate[member] = mapBondedAmount_memberDetails[_pool].bondedLP[member] / bondingPeriodSeconds; // Set claim rate per second
         mapTotalPool_balance[_pool] += amount; // Add new deposit to vault's total remainder
         return true;
     }
@@ -152,9 +152,6 @@ contract BondVault is ReentrancyGuard{
     function getMemberPoolBalance(address _pool, address member) external view returns (uint256){
         return mapBondedAmount_memberDetails[_pool].bondedLP[member];
     }
-
-
-
         //================================ BOND Feature ==================================//
 
     // Can burn the SPARTA remaining in this contract (Bond allocations held in the DAO)
