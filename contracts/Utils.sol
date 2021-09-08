@@ -39,8 +39,8 @@ contract Utils {
         poolData.tokenAddress = token;
         poolData.poolAddress = pool;
         poolData.genesis = iPOOL(pool).genesis();
-        poolData.baseAmount = iPOOL(pool).baseAmount();
-        poolData.tokenAmount = iPOOL(pool).tokenAmount();
+        poolData.baseAmount = baseAmount;
+        poolData.tokenAmount = tokenAmount;
         poolData.poolUnits = iBEP20(pool).totalSupply();
         poolData.synthCap = tokenAmount *  iPOOL(pool).synthCap() / 10000;
         poolData.baseCap = baseAmount * iPOOL(pool).baseCap() /10000;   
