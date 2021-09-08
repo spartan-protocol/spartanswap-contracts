@@ -10,4 +10,6 @@ interface iPOOL {
     function SYNTH() external returns (address);
     function stirCauldron(address) external returns (uint); 
     function mintSynth( address) external returns (uint256, uint256);
+    function synthCap() external view returns (uint);
+    function baseCap() external view returns (uint);
 }

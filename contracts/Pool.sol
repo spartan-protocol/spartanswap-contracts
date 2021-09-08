@@ -10,23 +10,20 @@ import "./iSYNTH.sol";
 import "./iSYNTHFACTORY.sol"; 
 import "./iSYNTHVAULT.sol"; 
 
-
 contract Pool is iBEP20 {  
     address public immutable BASE;  // Address of SPARTA base token contract
     address public immutable TOKEN; // Address of the layer1 TOKEN represented in this pool
-    uint256 private synthCap;    // Basis points hard cap of synths that can be minted vs tokenDepth
-    uint256 private baseCap;     // Cap on the depth of the pool (in SPARTA)
+    uint256 public synthCap;    // Basis points hard cap of synths that can be minted vs tokenDepth
+    uint256 public baseCap;     // Cap on the depth of the pool (in SPARTA)
     uint256 private oldRate;    // Pool ratio from last period
     uint256 private period;     // Timestamp of next period
     uint256 private freezePoint; // Basis points change to trigger a freeze
     bool public freeze;         // Freeze status of the pool
-    uint256 private initiationPeriod; // Lockup period of pool from genesis (no liqRemove)
     uint256 private oneWeek;
-    uint256 private stirRate;
 
-    uint private lastStirred;
-    uint private initialPeriod;
-    uint private stirStamp;
+    uint256 public stirRate; // Rate of steaming
+    uint public lastStirred; // timestamp of last steamed
+    uint public stirStamp; // timestamp of last time stir rate was adjusted
 
     string private _name;
     string private _symbol;
@@ -84,13 +81,12 @@ contract Pool is iBEP20 {
         decimals = 18;
         genesis = block.timestamp;
         period = block.timestamp;
+        lastMonth = block.timestamp;
         synthCap = 2500;
         freezePoint = 3000;
         baseCap = 100000*10**18; //RAISE THE CAPS
-        initiationPeriod = 0;//1day testnet //604800 mainnet
         lastStirred = 0;
-        oneWeek = 60;//604800 mainnet
-        initialPeriod = 14400; //4hr
+        oneWeek = 0;//604800 mainnet
     }
 
     //========================================iBEP20=========================================//
@@ -199,7 +195,7 @@ contract Pool is iBEP20 {
 
     // Contract removes liquidity for the user
     function removeForMember(address member) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
-        require(block.timestamp > (genesis + initiationPeriod)); // Can not remove liquidity until 7 days after pool's creation
+        require(block.timestamp > (genesis + oneWeek)); // Can not remove liquidity until 7 days after pool's creation
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
@@ -274,19 +270,18 @@ contract Pool is iBEP20 {
     function stirCauldron(address synth) internal returns (uint256 steamedSynths){ 
           uint256 synthsCap = tokenAmount * synthCap / 10000;
           uint256 liquidSynths; uint256 totalSup = iBEP20(synth).totalSupply();
-         if(totalSup >= synthsCap){
-             steamedSynths = 0;
-         }else{
+          steamedSynths = 0;
+         if(synthsCap >= totalSup){
              liquidSynths = synthsCap - totalSup; 
          }
-         if(lastStirred == 0){ 
+         if(lastStirred != 0){ 
+            uint secondsSinceStirred = block.timestamp - lastStirred; //Get last time since stirred
+            steamedSynths = secondsSinceStirred * stirRate; //time since last minted
+         }else{
             lastStirred = block.timestamp;
             stirStamp = block.timestamp;
             stirRate = liquidSynths / oneWeek;
-            steamedSynths = initialPeriod * stirRate;  //4hrs
-         }else{
-             uint secondsSinceStirred = block.timestamp - lastStirred; //Get last time since stirred
-             steamedSynths = secondsSinceStirred * stirRate; //time since last minted
+            steamedSynths = 14400 * stirRate;  //4hrs
          }
          if(block.timestamp > (stirStamp + oneWeek)){
             stirRate = liquidSynths / oneWeek;
@@ -381,21 +376,20 @@ contract Pool is iBEP20 {
             } else {
                 rateDiff = oldRate - currentRate; // Get absolute rate diff
             }
-            rateDiff = rateDiff * 10000 / currentRate; // Get basispoints difference
-            if (rateDiff >= freezePoint) {
+           uint256 rateDiffBP = rateDiff * 10000 / currentRate; // Get basispoints difference
+            if (rateDiffBP >= freezePoint) {
                 freeze = true; // If exceeding; flip freeze to true
             } else if (block.timestamp > period) {
                 period = block.timestamp + 3600; // Set new period
                 oldRate = currentRate; // Update the stored ratio
             }
             if(freeze){
-                if(rateDiff <= freezePoint){
+                if(rateDiffBP <= freezePoint){
                     freeze = false; // If exceeding; flip freeze to false
                 }
                 if (block.timestamp > period) {
                     period = block.timestamp + 3600; // Set new period
-                    uint256 avgRate = (currentRate + (oldRate * 3) ) / 4; //increase rate by 25%
-                    oldRate = avgRate; // Update the stored ratio
+                    oldRate = (currentRate + (oldRate * 3) ) / 4; //increase rate by 25%
                 }
             }  
     }
@@ -403,9 +397,6 @@ contract Pool is iBEP20 {
     //===========================================POOL FEE ROI=================================//
 
     function _addPoolMetrics(uint256 _fee) internal {
-        if (lastMonth == 0) {
-            lastMonth = block.timestamp;
-        }
         if (block.timestamp <= (lastMonth + 2592000)) {
             map30DPoolRevenue = map30DPoolRevenue + _fee;
         } else {
@@ -417,11 +408,9 @@ contract Pool is iBEP20 {
     }
 
     function _archiveRevenue(uint _totalRev) internal {
-        uint[] memory _revenueArray = revenueArray; // store in memory to save gas
-        if (_revenueArray.length == 2) {
-            _revenueArray[0] = _revenueArray[1]; // Shift previous value to start of array
-            _revenueArray[1] = _totalRev; // Replace end of array with new value
-            revenueArray = _revenueArray; // Replace storage array with memory array
+        if (revenueArray.length == 2) {
+            revenueArray[0] = revenueArray[1]; // Shift previous value to start of array
+            revenueArray[1] = _totalRev; // Replace end of array with new value
         } else {
             revenueArray.push(_totalRev);
         }
@@ -447,10 +436,5 @@ contract Pool is iBEP20 {
         require(newPeriod < 580);
         freeze = !freeze;
         period = block.timestamp + newPeriod;
-    }
-
-    function setInitiation(uint newInitiation) external onlyPROTOCOL {
-        require(newInitiation < 604800);
-        initiationPeriod = newInitiation;
     }
 }

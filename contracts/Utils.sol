@@ -22,6 +22,8 @@ contract Utils {
         uint baseAmount;
         uint tokenAmount;
         uint poolUnits;
+        uint synthCap;
+        uint baseCap;
     }
 
     function _DAO() internal view returns(iDAO) {
@@ -32,12 +34,16 @@ contract Utils {
 
     function getPoolData(address token) external view returns(PoolDataStruct memory poolData){
         address pool = getPool(token);
+        uint256 tokenAmount = iPOOL(pool).tokenAmount();
+        uint256 baseAmount = iPOOL(pool).baseAmount();
         poolData.tokenAddress = token;
         poolData.poolAddress = pool;
         poolData.genesis = iPOOL(pool).genesis();
         poolData.baseAmount = iPOOL(pool).baseAmount();
         poolData.tokenAmount = iPOOL(pool).tokenAmount();
         poolData.poolUnits = iBEP20(pool).totalSupply();
+        poolData.synthCap = tokenAmount *  iPOOL(pool).synthCap() / 10000;
+        poolData.baseCap = baseAmount * iPOOL(pool).baseCap() /10000;   
         return poolData;
     }
 
