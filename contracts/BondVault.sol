@@ -201,9 +201,9 @@ contract BondVault {
         return true;
     }
 
-
     function getBondedAssets() external view returns (address [] memory bondedPools){
         return listedBondPools;
     }
     
 }
+
