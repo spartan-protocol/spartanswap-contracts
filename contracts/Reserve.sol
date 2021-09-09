@@ -3,6 +3,7 @@ pragma solidity 0.8.3;
 import "./iBEP20.sol";
 import "./iBASE.sol";
 import "./iDAO.sol";
+import "./TransferHelper.sol";
 
 contract Reserve {
     address public immutable BASE;  // Address of SPARTA base token contract
@@ -32,13 +33,14 @@ contract Reserve {
         if(amount > 0){ // Skip if amount is not valid
             if(emissions){ // Skip if emissions are off
                 if(amount > reserve){
-                    require(iBEP20(BASE).transfer(to, reserve), '!transfer'); // Send remainder
+                    TransferHelper.safeTransfer( BASE, to, reserve);
                 } else {
-                    require(iBEP20(BASE).transfer(to, amount), '!transfer'); // Send requested amount
+                    TransferHelper.safeTransfer(BASE, to, amount);
                 }
             }
         }
     }
+
 
     function flipEmissions() external onlyGrantor {
         emissions = !emissions; // Flip emissions on/off

@@ -9,7 +9,7 @@ import "./iUTILS.sol";
 import "./iRESERVE.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iPOOLFACTORY.sol";
-
+import "./TransferHelper.sol";
 
 contract SynthVault {
     address public immutable BASE;      // Address of SPARTA base token contract
@@ -93,7 +93,7 @@ contract SynthVault {
     // Contract deposits Synths in the SynthVault for user
     function deposit(address synth, uint256 amount) external {
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth'); // Must be a valid & active synth
-        require(iBEP20(synth).transferFrom(msg.sender, address(this), amount), '!transfer'); // Tsf SYNTH (User -> SynthVault)
+        TransferHelper.safeTransferFrom(synth, msg.sender, address(this), amount);
         _deposit(synth, msg.sender, amount); // Assess and record the deposit
     }
 
@@ -199,11 +199,10 @@ contract SynthVault {
         uint256 redeemedAmount = iUTILS(_DAO().UTILS()).calcPart(basisPoints, mapMemberSynth_deposit[msg.sender][synth]); // Calc amount to withdraw
         mapMemberSynth_deposit[msg.sender][synth] -= redeemedAmount; // Update vault balance (scope: member -> synth)
         mapTotalSynth_balance[synth] -= redeemedAmount; // Update vault balance (scope: vault -> synth)
-        require(iBEP20(synth).transfer(msg.sender, redeemedAmount), '!transfer'); // Tsf SYNTH (SynthVault -> User)
+        TransferHelper.safeTransfer( synth,  msg.sender,  redeemedAmount);
         emit MemberWithdraws(synth, msg.sender, redeemedAmount);
     }
 
-  
     //================================ Helper Functions ===============================//
 
     function reserveBASE() public view returns (uint256) {

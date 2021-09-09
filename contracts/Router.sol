@@ -4,10 +4,10 @@ import "./Pool.sol";
 import "./iRESERVE.sol"; 
 import "./iPOOLFACTORY.sol";  
 import "./iWBNB.sol";
-
+import "./TransferHelper.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Router is ReentrancyGuard {
+contract Router is ReentrancyGuard{
     address private immutable BASE;  // SPARTA base contract address
     address private immutable WBNB;  // Address of WBNB
     address private DEPLOYER;        // Address that deployed the contract
@@ -18,7 +18,6 @@ contract Router is ReentrancyGuard {
 
     mapping(address=> uint) public mapAddress_30DayDividends; // Current incomplete-period NET SPARTA divis by pool
     mapping(address=> uint) public mapAddress_Past30DayPoolDividends; // Previous full-period NET SPARTA divis by pool
-
     // Restrict access
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER);
@@ -96,24 +95,17 @@ contract Router is ReentrancyGuard {
         address _fromToken = Pool(fromPool).TOKEN(); // Get token underlying the fromPool
         address _toToken = Pool(toPool).TOKEN(); // Get token underlying the toPool
         address _member = msg.sender; // Get user's address
-        require(iBEP20(fromPool).transferFrom(_member, fromPool, unitsInput), '!transfer'); // Tsf LP units (User -> FromPool)
+       TransferHelper.safeTransferFrom(fromPool, _member, fromPool, unitsInput);
         Pool(fromPool).removeForMember(address(this)); // Remove liquidity; tsf SPARTA and fromTOKEN (Pool -> Router)
-        iBEP20(_fromToken).transfer(fromPool, iBEP20(_fromToken).balanceOf(address(this))); // Tsf fromTOKEN (Router -> FromPool)
+        TransferHelper.safeTransfer(_fromToken, fromPool, iBEP20(_fromToken).balanceOf(address(this)));
         Pool(fromPool).swapTo(BASE, address(this)); // Swap fromTOKEN for SPARTA (FromPool -> Router)
-        iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this)) / 2); // Tsf half of SPARTA (Router -> toPool)
+        TransferHelper.safeTransfer(BASE, toPool, iBEP20(BASE).balanceOf(address(this)) / 2);
         Pool(toPool).swapTo(_toToken, address(this)); // Swap SPARTA for toTOKEN (ToPool -> Router)
-        iBEP20(BASE).transfer(toPool, iBEP20(BASE).balanceOf(address(this))); // Tsf SPARTA (Router -> toPool)
-        iBEP20(_toToken).transfer(toPool, iBEP20(_toToken).balanceOf(address(this))); // Tsf ToTOKEN (Router -> toPool)
+        TransferHelper.safeTransfer(BASE, toPool, iBEP20(BASE).balanceOf(address(this)));
+        TransferHelper.safeTransfer(_toToken, toPool, iBEP20(_toToken).balanceOf(address(this)));
         Pool(toPool).addForMember(_member); // Add liquidity; tsf LPs (Pool -> User)
         _safetyTrigger(fromPool); // Check fromPool ratios
         _safetyTrigger(toPool); // Check toPool ratios
-    }
-
-    // User removes liquidity - redeems a percentage of their balance
-    function removeLiquidity(uint basisPoints, address token) external{
-        require(basisPoints > 0, '!VALID'); // Must be valid basis points, calcPart() handles the upper-check
-        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token)).balanceOf(msg.sender)); // Calc units based on input basisPoints
-        removeLiquidityExact(_units, token);
     }
 
     // User removes liquidity - redeems exact qty of LP tokens
@@ -124,7 +116,7 @@ contract Router is ReentrancyGuard {
         address _pool = _poolFactory.getPool(token); // Get the pool address
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid
         address _member = msg.sender; // Get user's address
-        require(iBEP20(_pool).transferFrom(_member, _pool, units), '!transfer'); // Tsf LP units (User -> Pool)
+        TransferHelper.safeTransferFrom(_pool, _member, _pool, units);
         if(token != address(0)){
             Pool(_pool).removeForMember(_member); // If not BNB; remove liquidity; tsf SPARTA and TOKEN (Pool -> User)
         } else {
@@ -137,12 +129,6 @@ contract Router is ReentrancyGuard {
         _safetyTrigger(_pool); // Check pool ratio
 
     }
-    
-    function removeLiquidityAsym(uint basisPoints, bool toBase, address token) external{
-        require(basisPoints > 0, '!VALID'); // Must be valid basis points, calcPart() handles the upper-check
-        uint _units = iUTILS(_DAO().UTILS()).calcPart(basisPoints, iBEP20(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token)).balanceOf(msg.sender)); // Calc units based on input basisPoints
-        removeLiquidityExactAsym(_units, toBase, token);
-    }
 
     function removeLiquidityExactAsym(uint units, bool toBase, address token) public {
         require(units > 0, '!VALID'); // Must be a valid amount
@@ -151,17 +137,17 @@ contract Router is ReentrancyGuard {
         address _pool = _poolFactory.getPool(token); // Get pool address
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid
         address _member = msg.sender; // Get user's address
-        require(iBEP20(_pool).transferFrom(_member, _pool, units), '!transfer'); // Tsf LP units (User -> Pool)
+        TransferHelper.safeTransferFrom(_pool, _member, _pool, units);
         Pool(_pool).removeForMember(address(this)); // Remove liquidity; tsf SPARTA and TOKEN (Wrapped) (Pool -> Router)
         address _token = token; // Get token address
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         uint fee;
         if(toBase){
-            iBEP20(_token).transfer(_pool, iBEP20(_token).balanceOf(address(this))); // Tsf TOKEN (Wrapped) (Router -> Pool)
+            TransferHelper.safeTransfer(_token, _pool, iBEP20(_token).balanceOf(address(this)));
             (, fee) = Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN (Wrapped) to SPARTA (Pool -> Router)
-            require(iBEP20(BASE).transfer(_member, iBEP20(BASE).balanceOf(address(this))), '!transfer'); // Tsf total SPARTA (Router -> User)
+             TransferHelper.safeTransfer(BASE, _member, iBEP20(BASE).balanceOf(address(this)));
         } else {
-            iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Tsf SPARTA (Router -> Pool)
+            TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
             (, fee) = Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA to TOKEN (Pool -> Router)
             _handleTransferOut(token, iBEP20(_token).balanceOf(address(this)), _member); // Tsf total TOKEN (Router -> User)
         } 
@@ -243,9 +229,9 @@ contract Router is ReentrancyGuard {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true, '!POOL'); // Pool must be valid
         if(fromToken != BASE){
             sellTo(inputAmount, fromToken, address(this), 0); // Swap TOKEN to SPARTA (User -> Pool -> Router)
-            iBEP20(BASE).transfer(_pool, iBEP20(BASE).balanceOf(address(this))); // Tsf SPARTA (Router -> Pool)
+           TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
         } else {
-            require(iBEP20(BASE).transferFrom(msg.sender, _pool, inputAmount), '!transfer'); // Tsf SPARTA (User -> Pool)
+             TransferHelper.safeTransferFrom(BASE, msg.sender, _pool, inputAmount);
         }
         (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Swap SPARTA for SYNTH (Pool -> User)
         _safetyTrigger(_pool); // Check pool ratios
@@ -261,7 +247,7 @@ contract Router is ReentrancyGuard {
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         address _synthPool = iSYNTH(fromSynth).POOL(); // Get underlying synthPool address
         require(_poolFactory.isPool(_synthPool) == true, '!POOL'); // synthPool must be valid
-        require(iBEP20(fromSynth).transferFrom(msg.sender, _synthPool, inputAmount), '!transfer'); // Tsf SYNTH (User -> synthPool)
+        TransferHelper.safeTransferFrom(fromSynth, msg.sender, _synthPool, inputAmount);
         uint synthFee;
         if(toToken == BASE){
             (, synthFee) = Pool(_synthPool).burnSynth(msg.sender); // Swap SYNTH to SPARTA (synthPool -> User)
@@ -293,11 +279,10 @@ contract Router is ReentrancyGuard {
         require(_amount > 0, '!GAS'); // Amount must be valid
         if(_token == address(0)){
             require((_amount == msg.value)); // Amount must be == msg.value
-            (bool success, ) = payable(WBNB).call{value: _amount}(""); // Wrap BNB (User -> Router)
-            require(success, "!send"); // BNB <> WBNB must be successful
-            iBEP20(WBNB).transfer(_pool, _amount); // Tsf WBNB (Router -> Pool)
+            TransferHelper.safeTransferBNB(WBNB,  _amount);
+            TransferHelper.safeTransfer(WBNB, _pool, _amount);
         } else {
-            require(iBEP20(_token).transferFrom(msg.sender, _pool, _amount), '!transfer'); // Tsf TOKEN (User -> Pool)
+            TransferHelper.safeTransferFrom(_token, msg.sender, _pool, _amount);
         }
     }
 
@@ -306,10 +291,9 @@ contract Router is ReentrancyGuard {
         if(_amount > 0) {
             if (_token == address(0)) {
                 iWBNB(WBNB).withdraw(_amount); // Unwrap WBNB to BNB (Router -> Router)
-                (bool success, ) = payable(_recipient).call{value:_amount}("");  // Tsf BNB (Router -> Recipient)
-                require(success, "!send");
+                TransferHelper.safeTransferBNB( _recipient,  _amount);
             } else {
-                require(iBEP20(_token).transfer(_recipient, _amount), '!transfer'); // Tsf TOKEN (Router -> Recipient)
+                TransferHelper.safeTransfer(_token, _recipient, _amount);
             }
         }
     }
@@ -385,6 +369,7 @@ contract Router is ReentrancyGuard {
               }
         }
     }
+
 
     function updatePoolStatus() external {
        if(iRESERVE(_DAO().RESERVE()).globalFreeze()){

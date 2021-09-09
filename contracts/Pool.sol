@@ -24,6 +24,7 @@ contract Pool is iBEP20 {
     uint256 public stirRate; // Rate of steaming
     uint public lastStirred; // timestamp of last steamed
     uint public stirStamp; // timestamp of last time stir rate was adjusted
+    bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
 
     string private _name;
     string private _symbol;
@@ -202,8 +203,8 @@ contract Pool is iBEP20 {
         outputToken = _utils.calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
         _decrementPoolBalances(outputBase, outputToken); // Update recorded SPARTA and TOKEN amounts
         _burn(address(this), _actualInputUnits); // Burn the LP tokens
-        require(iBEP20(BASE).transfer(member, outputBase)); // Tsf SPARTA (Pool -> User)
-        require(iBEP20(TOKEN).transfer(member, outputToken)); // Tsf TOKEN (Pool -> User)
+        _safeTransfer(BASE, member,outputBase);        
+        _safeTransfer(TOKEN, member,outputToken);
         emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
@@ -222,7 +223,7 @@ contract Pool is iBEP20 {
             (outputAmount, fee) = _swapBaseToToken(_amount); // Calculate the TOKEN output from the swap
         }
         emit Swapped(_fromToken, token, member, _amount, outputAmount, fee);
-        require(iBEP20(token).transfer(member, outputAmount)); // Tsf swapped assets (Pool -> User)
+        _safeTransfer(token, member,outputAmount);  
         return (outputAmount, fee);
     }
 
@@ -262,7 +263,7 @@ contract Pool is iBEP20 {
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the input SYNTH units 
         _burn(synthIN, liqUnits); // Burn the synth-held LP units
-        require(iBEP20(BASE).transfer(member, outputBase)); // Tsf SPARTA (Pool -> User)
+        _safeTransfer(BASE, member,outputBase);  
         emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
         return (outputBase, fee);
     }
@@ -366,6 +367,11 @@ contract Pool is iBEP20 {
         baseAmount -= _baseAmount;
         tokenAmount -= _tokenAmount; 
         _safetyCheck();
+    }
+
+    function _safeTransfer(address token, address to, uint value) private {
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(SELECTOR, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'Pancake: TRANSFER_FAILED');
     }
 
     function _safetyCheck() internal {
