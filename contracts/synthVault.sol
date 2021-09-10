@@ -10,8 +10,8 @@ import "./iRESERVE.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iPOOLFACTORY.sol";
 import "./TransferHelper.sol";
-
-contract SynthVault {
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+contract SynthVault is ReentrancyGuard{
     address public immutable BASE;      // Address of SPARTA base token contract
     address public DEPLOYER;            // Address that deployed the contract | can be purged to address(0)
 
@@ -193,7 +193,7 @@ contract SynthVault {
     //====================================== WITHDRAW ========================================//
 
     // User withdraws a percentage of their synths from the vault
-    function withdraw(address synth, uint256 basisPoints) external {
+    function withdraw(address synth, uint256 basisPoints) external nonReentrant {
         require(basisPoints > 0, '!VALID'); // Basis points must be valid
         require((block.timestamp > mapMember_depositTime[msg.sender] + minimumDepositTime), "lockout"); // Must not withdraw before lockup period passed
         uint256 redeemedAmount = iUTILS(_DAO().UTILS()).calcPart(basisPoints, mapMemberSynth_deposit[msg.sender][synth]); // Calc amount to withdraw

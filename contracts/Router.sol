@@ -87,7 +87,7 @@ contract Router is ReentrancyGuard{
     }
 
     // Swap LP tokens for a different pool's LP tokens
-    function zapLiquidity(uint unitsInput, address fromPool, address toPool) external {
+    function zapLiquidity(uint unitsInput, address fromPool, address toPool) external nonReentrant {
         require(fromPool != toPool && unitsInput > 0, '!VALID'); // Pools must be different and input must be valid
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         require(_poolFactory.isPool(fromPool) == true, '!POOL'); // FromPool must be a valid pool
@@ -109,7 +109,7 @@ contract Router is ReentrancyGuard{
     }
 
     // User removes liquidity - redeems exact qty of LP tokens
-    function removeLiquidityExact(uint units, address token) public {
+    function removeLiquidityExact(uint units, address token) public nonReentrant {
         require(units > 0, '!VALID'); // Must be a valid amount
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
@@ -130,7 +130,7 @@ contract Router is ReentrancyGuard{
 
     }
 
-    function removeLiquidityExactAsym(uint units, bool toBase, address token) public {
+    function removeLiquidityExactAsym(uint units, bool toBase, address token) public nonReentrant{
         require(units > 0, '!VALID'); // Must be a valid amount
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
@@ -221,7 +221,7 @@ contract Router is ReentrancyGuard{
     //================================ Swap Synths ========================================//
     
     // Swap TOKEN to Synth
-    function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) external payable {
+    function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) external payable nonReentrant {
         require(inputAmount > 0, '!VALID'); // Must be a valid amount
         require(fromToken != toSynth); // Tokens must not be the same
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
@@ -240,7 +240,7 @@ contract Router is ReentrancyGuard{
     }
    
     // Swap Synth to TOKEN
-    function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external {
+    function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external nonReentrant {
         require(inputAmount > 0, '!VALID'); // Must be a valid amount
         require(fromSynth != toToken); // Tokens must not be the same
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
