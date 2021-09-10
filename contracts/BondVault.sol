@@ -8,6 +8,7 @@ import "./iPOOLFACTORY.sol";
 import "./iRESERVE.sol";
 import "./iROUTER.sol";
 import "./iUTILS.sol";
+import "./TransferHelper.sol";
 
 contract BondVault {
     address public immutable BASE;  // Sparta address
@@ -94,7 +95,7 @@ contract BondVault {
             mapBondedAmount_memberDetails[_pool].claimRate[member] = 0; // If final claim; zero-out their claimRate
         }
         mapTotalPool_balance[_pool] -= _claimable; // Remove the claim amount from vault's total remainder
-        require(iBEP20(_pool).transfer(member, _claimable), '!transfer'); // Tsf LPs (BondVault -> User)
+        TransferHelper.safeTransfer(_pool, member, _claimable);
         return true;
     }
 

@@ -87,7 +87,7 @@ contract Pool is iBEP20 {
         freezePoint = 3000;
         baseCap = 100000*10**18; //RAISE THE CAPS
         lastStirred = 0;
-        oneWeek = 0;//604800 mainnet
+        oneWeek = 1;//604800 mainnet
     }
 
     //========================================iBEP20=========================================//
@@ -371,7 +371,7 @@ contract Pool is iBEP20 {
 
     function _safeTransfer(address token, address to, uint value) private {
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(SELECTOR, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'Pancake: TRANSFER_FAILED');
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TRANSFER_FAILED');
     }
 
     function _safetyCheck() internal {

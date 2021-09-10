@@ -86,7 +86,7 @@ function constructor(accounts) {
         await Dao.setGenesisFactors(2, 30,6666);
         await Dao.setDaoFactors(1000,400,true, 3);
         await sparta.changeDAO(Dao.address)
-     
+        await reserve.flipEmissions(); 
         await sparta.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
         await sparta.transfer(reserve.address, _.getBN(_.BN2Str(1000000 * _.one)))
         await sparta.transfer(acc2, _.getBN(_.BN2Str(100000 * _.one)))
@@ -280,8 +280,7 @@ async function harvest() {
 
     })
     it("It should harvest acc0 rewards", async () => {
-        await truffleAssert.reverts(Dao.harvest({ from: acc0 }), "!emissions"); 
-        await reserve.flipEmissions()
+        // await truffleAssert.reverts(Dao.harvest({ from: acc0 }), "!emissions"); 
         let balBefore = _.getBN(await sparta.balanceOf(acc0))
          console.log(_.BN2Str(balBefore)/_.one);
         await sleep(6300)
@@ -337,14 +336,14 @@ async function withdrawBUSDSPP(acc) {
 async function deployerListBUSD(){
     it('List BUSD asset for bonding', async () =>{
         let asset = token1.address;
-        await Dao.listBondAsset(asset);
+        await bondVault.listBondAsset(asset);
 
     })
 }
 async function deployerListBNB(){
     it('List BNB asset for bonding', async () =>{
         let asset = _.BNB;
-        await Dao.listBondAsset(asset);
+        await bondVault.listBondAsset(asset);
     })
 }
 async function bondBNB(acc, x){
@@ -392,7 +391,7 @@ async function bondBUSD(acc, x){
 async function deployerDeListBNB(){
     it('List BNB asset for bonding', async () =>{
         let asset = _.BNB;
-        await Dao.delistBondAsset(asset);
+        await bondVault.delistBondAsset(asset);
     })
 }
 async function bondBNBFail(acc, x){
@@ -412,10 +411,10 @@ async function claimBondedBNBLP(acc, ms){
         let claimRate = _.BN2Str(memberDetailsBefore.claimRate)
         let accBal = _.getBN(await poolBNB.balanceOf(acc))
         let claimAble = _.getBN(await bondVault.calcBondedLP(acc, poolBNB.address))
-         await Dao._claim(asset,{from:acc})
+         await Dao.claim(asset,{from:acc})
         //  await bondVault.release()
         // await Dao.changeBondingPeriod(3)
-        await Dao._claim(asset,{from:acc})
+        await Dao.claim(asset,{from:acc})
         let memberDetailsAfter = await bondVault.getMemberDetails(acc, poolBNB.address);
         let bondedLPAfter = _.getBN(memberDetailsAfter.bondedLP)
         let balAfter = _.getBN(await poolBNB.balanceOf(bondVault.address))
@@ -448,10 +447,10 @@ async function claimBondedBUSDLP(acc, ms){
         let claimRate = _.BN2Str(memberDetailsBefore.claimRate)
         let accBal = _.getBN(await poolBUSD.balanceOf(acc))
         let claimAble = _.getBN(await bondVault.calcBondedLP(acc, poolBUSD.address))
-         await Dao._claim(asset,{from:acc})
+         await Dao.claim(asset,{from:acc})
         //  await bondVault.release()
         // await Dao.changeBondingPeriod(3)
-        await Dao._claim(asset,{from:acc})
+        await Dao.claim(asset,{from:acc})
         let memberDetailsAfter = await bondVault.getMemberDetails(acc, poolBUSD.address);
         let bondedLPAfter = _.getBN(memberDetailsAfter.bondedLP)
         let balAfter = _.getBN(await poolBUSD.balanceOf(bondVault.address))
@@ -553,7 +552,7 @@ async function grantProposal(acc) {
             assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits.plus(busdUnitss)))
             assert.equal(await Dao.hasQuorum(currentProposal), true)
             assert.equal(await Dao.mapPID_finalising(currentProposal), false)
-            await reserve.flipEmissions(); 
+            
             await Dao.pollVotes({from:acc0})
             assert.equal(await Dao.mapPID_finalising(currentProposal), true)
             await truffleAssert.reverts(Dao.finaliseProposal(), "!cooloff");

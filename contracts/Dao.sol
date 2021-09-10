@@ -13,7 +13,7 @@ import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iSYNTHVAULT.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
+import "./TransferHelper.sol";
 contract Dao is ReentrancyGuard{
     address public DEPLOYER;        // Address that deployed contract | can be purged to address(0)
     address public immutable BASE;  // SPARTA base contract address
@@ -162,7 +162,7 @@ contract Dao is ReentrancyGuard{
             arrayMembers.push(msg.sender);  // If not a member; add user to member array
             isMember[msg.sender] = true;    // If not a member; register the user as member
         }
-        require(iBEP20(pool).transferFrom(msg.sender, address(_DAOVAULT), amount), "!transfer"); // Tsf LPs (User -> DaoVault)
+        TransferHelper.safeTransferFrom(pool, msg.sender, address(_DAOVAULT), amount);
         _DAOVAULT.depositLP(pool, amount, msg.sender); // Update user's deposit balance
         mapMember_lastTime[msg.sender] = block.timestamp + 60; // Reset user's last harvest time + blockShift
         emit MemberDeposits(msg.sender, pool, amount);
@@ -231,11 +231,11 @@ contract Dao is ReentrancyGuard{
             iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply()); // Increase SPARTA allowance if required
         }
         if(_token == address(0)){
-            require((_amount == msg.value), "!amount"); // Ensure BNB value matching
+            require((_amount == msg.value)); // Ensure BNB value matching
             uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _amount); // Get the SPARTA swap value of the bonded assets
             LPunits = _ROUTER.addLiquidityForMember{value:_amount}(_amount, spartaAllocation, _token, address(_BONDVAULT)); // Add SPARTA & BNB liquidity, mint LP tokens to BondVault
         } else {
-            require(iBEP20(_token).transferFrom(msg.sender, address(this), _amount), '!transfer'); // Tsf TOKEN to (User -> Dao)
+             TransferHelper.safeTransferFrom(_token, msg.sender, address(this), _amount);
             uint _actualAmount = iBEP20(_token).balanceOf(address(this)); // Get actual received TOKEN amount
             uint256 spartaAllocation = _UTILS.calcSwapValueInBase(_token, _actualAmount); // Get the SPARTA swap value of the bonded assets
             if(iBEP20(_token).allowance(address(this), address(_ROUTER)) < _actualAmount){
@@ -246,7 +246,7 @@ contract Dao is ReentrancyGuard{
         }
     }
        // User claims a selection of their unlocked Bonded LPs
-    function claimAll(address bondAsset) external  operational weightChange{
+    function claim(address bondAsset) external  operational weightChange{
             _BONDVAULT.claim(bondAsset, msg.sender); 
     }
 
@@ -318,7 +318,7 @@ contract Dao is ReentrancyGuard{
     
     // Pay a DAO fee
     function _payFee() internal returns(bool){
-        require(iBEP20(BASE).transferFrom(msg.sender, address(_RESERVE), daoFee * 10**18), '!transfer'); // Tsf SPARTA DAO fee (User -> Reserve)
+        TransferHelper.safeTransferFrom(BASE, msg.sender, address(_RESERVE), daoFee * 10**18);
         return true;
     } 
 

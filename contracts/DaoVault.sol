@@ -8,6 +8,7 @@ import "./iUTILS.sol";
 import "./iROUTER.sol";
 import "./iRESERVE.sol";
 import "./iPOOLFACTORY.sol";
+import "./TransferHelper.sol";
 
 contract DaoVault {
     address public immutable BASE;  // SPARTA base contract address
@@ -64,7 +65,7 @@ contract DaoVault {
         require(_balance > 0, "!balance"); // Withdraw amount must be valid
         mapTotalPool_balance[pool] -=_balance;//remove from total
         mapMemberPool_balance[member][pool] = 0; // Zero out user's DAOVault balance of the selected asset
-        require(iBEP20(pool).transfer(member, _balance), "!transfer"); // Tsf LPs (DaoVault -> User)
+        TransferHelper.safeTransfer(pool,member, _balance);
         return true;
     }
 
