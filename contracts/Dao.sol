@@ -192,6 +192,7 @@ contract Dao is ReentrancyGuard{
 
     // Calculate the user's current incentive-claim per era
     function calcCurrentReward(address member) public view operational returns(uint){
+        require(block.timestamp > mapMember_lastTime[member], "!VALID");
         uint secondsSinceClaim = block.timestamp - mapMember_lastTime[member]; // Get seconds passed since last claim
         uint share = calcReward(member); // Get share of rewards for user
         uint reward = (share * secondsSinceClaim) / iBASE(BASE).secondsPerEra(); // User's share times eras since they last claimed
