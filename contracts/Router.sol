@@ -109,7 +109,7 @@ contract Router is ReentrancyGuard{
     }
 
     // User removes liquidity - redeems exact qty of LP tokens
-    function removeLiquidityExact(uint units, address token) public nonReentrant {
+    function removeLiquidityExact(uint units, address token) public {
         require(units > 0, '!VALID'); // Must be a valid amount
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
@@ -130,7 +130,7 @@ contract Router is ReentrancyGuard{
 
     }
 
-    function removeLiquidityExactAsym(uint units, bool toBase, address token) public nonReentrant{
+    function removeLiquidityExactAsym(uint units, bool toBase, address token) public {
         require(units > 0, '!VALID'); // Must be a valid amount
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
