@@ -235,9 +235,10 @@ contract Pool is iBEP20 {
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         uint256 _actualInputBase = _getAddedBaseAmount(); // Get received SPARTA amount
         uint256 steamedSynths = stirCauldron(synthOut);
-        outputAmount = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN (virtualised)
-        require(outputAmount <= steamedSynths); //steam synths
+        uint256 output = _utils.calcSwapOutput(_actualInputBase, baseAmount, tokenAmount); // Calculate value of swapping SPARTA to the relevant underlying TOKEN (virtualised)
+        require(output <= steamedSynths); //steam synths
         lastStirred = block.timestamp;
+        outputAmount = output * 9900 / 10000; //1% fee reduction
         uint _liquidityUnits = _utils.calcLiquidityUnitsAsym(_actualInputBase, address(this)); // Calculate LP tokens to be minted
         _incrementPoolBalances(_actualInputBase, 0); // Update recorded SPARTA amount
         uint _fee = _utils.calcSwapFee(_actualInputBase, baseAmount, tokenAmount); // Calc slip fee in TOKEN (virtualised)
@@ -257,7 +258,7 @@ contract Pool is iBEP20 {
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         uint _actualInputSynth = iBEP20(synthIN).balanceOf(address(this)); // Get received SYNTH amount
         uint output = _utils.calcSwapOutput(_actualInputSynth, tokenAmount, baseAmount); // Calculate value of swapping relevant underlying TOKEN to SPARTA (virtualised)
-        uint outputBase = output * 9500 / 10000; 
+        uint outputBase = output * 9500 / 10000; //5% reduction
         fee = _utils.calcSwapFee(_actualInputSynth, tokenAmount, baseAmount); // Calc slip fee in SPARTA (virtualised)
         _decrementPoolBalances(outputBase, 0); // Update recorded SPARTA amount
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
