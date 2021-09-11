@@ -221,7 +221,7 @@ contract Router is ReentrancyGuard{
     //================================ Swap Synths ========================================//
     
     // Swap TOKEN to Synth
-    function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) external payable nonReentrant {
+    function swapAssetToSynth(uint inputAmount, address fromToken, address toSynth) external payable {
         require(inputAmount > 0, '!VALID'); // Must be a valid amount
         require(fromToken != toSynth); // Tokens must not be the same
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
@@ -240,7 +240,7 @@ contract Router is ReentrancyGuard{
     }
    
     // Swap Synth to TOKEN
-    function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external nonReentrant {
+    function swapSynthToAsset(uint inputAmount, address fromSynth, address toToken) external {
         require(inputAmount > 0, '!VALID'); // Must be a valid amount
         require(fromSynth != toToken); // Tokens must not be the same
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
