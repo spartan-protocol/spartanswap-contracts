@@ -41,7 +41,8 @@ contract SynthFactory {
         newSynth = new Synth(BASE, _token, _pool); // Deploy synth asset contract
         synth = address(newSynth); // Get new synth's address
         mapToken_Synth[_token] = synth; // Record synth address
-        _addSynth(synth); // Record new synth contract with the SynthFactory
+        arraySynths.push(synth); // Add synth address to the array
+        isSynth[synth] = true; // Record synth as valid
         emit CreateSynth(_token, _pool, synth);
         return synth;
     }

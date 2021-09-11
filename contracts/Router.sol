@@ -374,7 +374,7 @@ contract Router is ReentrancyGuard{
     function updatePoolStatus() external {
        if(iRESERVE(_DAO().RESERVE()).globalFreeze()){
         address [] memory _vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).getVaultAssets(); // Get list of vault enabled assets
-        bool unfreeze;
+        bool unfreeze = true;
         for(uint i = 0; i < _vaultAssets.length; i++){
             if(Pool(_vaultAssets[i]).freeze()){
                unfreeze = false;
