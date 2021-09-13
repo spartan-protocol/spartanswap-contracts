@@ -95,7 +95,7 @@ contract Router is ReentrancyGuard{
         address _fromToken = Pool(fromPool).TOKEN(); // Get token underlying the fromPool
         address _toToken = Pool(toPool).TOKEN(); // Get token underlying the toPool
         address _member = msg.sender; // Get user's address
-       TransferHelper.safeTransferFrom(fromPool, _member, fromPool, unitsInput);
+        TransferHelper.safeTransferFrom(fromPool, _member, fromPool, unitsInput);
         Pool(fromPool).removeForMember(address(this)); // Remove liquidity; tsf SPARTA and fromTOKEN (Pool -> Router)
         TransferHelper.safeTransfer(_fromToken, fromPool, iBEP20(_fromToken).balanceOf(address(this)));
         Pool(fromPool).swapTo(BASE, address(this)); // Swap fromTOKEN for SPARTA (FromPool -> Router)
@@ -112,7 +112,6 @@ contract Router is ReentrancyGuard{
     function removeLiquidityExact(uint units, address token) public {
         require(units > 0, '!VALID'); // Must be a valid amount
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
-        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
         address _pool = _poolFactory.getPool(token); // Get the pool address
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid
         address _member = msg.sender; // Get user's address
@@ -132,7 +131,6 @@ contract Router is ReentrancyGuard{
 
     function removeLiquidityExactAsym(uint units, bool toBase, address token) public {
         require(units > 0, '!VALID'); // Must be a valid amount
-        require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         address _pool = _poolFactory.getPool(token); // Get pool address
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid

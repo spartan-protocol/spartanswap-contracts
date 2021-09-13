@@ -33,29 +33,50 @@ function sleep(ms) {
 contract('SWAP + ZAP + MINT + BURN', function (accounts) {
     constructor(accounts)
     createPoolBNB(acc0, 10000, 30)
-    createPoolBUSD(acc0, 10000, 10000)
-    addLiquidityBNB(acc1, 9)
-    addLiquidityBUSD(acc1, 100)
+    // createPoolBUSD(acc0, 10000, 10000)
+    // addLiquidityBNB(acc1, 9)
+    // addLiquidityBUSD(acc1, 100)
     BNBPoolBalanceCheck()
-    swapSPARTAForBNB(acc1, 1000)
+    safetyCheck();
+    swapBNBForSparta(acc2, 3)
+    safetyCheck();
+    // swapSPARTAForBUSD(acc1, 500)
+    // swapBUSDForSparta(acc1, 300)
+    // swapBNBForBUSD(acc2, 2)
+    // swapBUSDForBNB(acc1, 500)
+    swapBNBForSparta(acc2, 3)
+    safetyCheck();
     swapBNBForSparta(acc2, 1)
-    swapSPARTAForBUSD(acc1, 500)
-    swapBUSDForSparta(acc1, 300)
-    swapBNBForBUSD(acc2, 2)
-    swapBUSDForBNB(acc1, 500)
-    curatePools()
+    safetyCheck();
+    swapSPARTAForBNB(acc1, 500)
+    safetyCheck();
+    // swapSPARTAForBNB(acc1, 500)
+    // safetyCheck();
+    // swapSPARTAForBNB(acc1, 500)
+    // safetyCheck();
+    // swapSPARTAForBNB(acc1, 500)
+    // safetyCheck();
+    // swapSPARTAForBNB(acc1, 500)
+    // swapSPARTAForBNB(acc1, 500)
+    // swapSPARTAForBNB(acc1, 500)
+    // swapSPARTAForBNB(acc1, 500)
+    // swapSPARTAForBNB(acc1, 500)
+    safetyCheck();
+    // curatePools()
+    // swapBNBForBUSD(acc2, 2)
+    // swapBUSDForBNB(acc1, 500)
     // swapSPARTA(acc1, 1000)
     // swapBNB(acc2, 1)
     // BNBPoolBalanceCheck()
-    zapLiquidity(acc1, 20)
-    createSyntheticBNB()
-    createSyntheticBUSD()
-    removeSynths()
-    addSynths()
-    swapSpartaToSynth(acc1, 200)
-    swapBNBToSynthBNB(acc2, 1)
+    // zapLiquidity(acc1, 20)
+    // createSyntheticBNB()
+    // createSyntheticBUSD()
+    // removeSynths()
+    // addSynths()
+    // swapSpartaToSynth(acc1, 200)
+    // swapBNBToSynthBNB(acc2, 1)
     //  TokenPoolBalanceCheck()
-     swapBUSDToSynthBUSD(acc1, 10)
+    //  swapBUSDToSynthBUSD(acc1, 10)
     //  removeCuratePools()
     // swapSynthBNBToSparta(acc1, 0.1)
     // swapSynthBUSDToBUSD(acc1, 1)
@@ -749,6 +770,36 @@ async function TokenPoolBalanceCheck() {
         console.log("BUSD POOL Sparta Bal: ", poolSB/10**18);
         console.log("BUSD POOL Token Bal: ", poolTB/10**18);
         console.log("BUSD POOL TotalSupply ", supply/10**18);
+    })
+}
+
+async function safetyCheck() {
+    it('test Ratio', async () =>{
+        let token = _.BNB
+        let poolData = await utils.getPoolData(token);
+        let oldRate = _.getBN(await poolBNB.oldRate());
+        var B = _.getBN(poolData.baseAmount)
+        var T = _.getBN(poolData.tokenAmount)
+        let currentRate = _.oneBN.times(B).div(T); // Get current rate
+        let rateDiff;
+        let freeze = false;
+        let rateDiffBP;
+        if (currentRate.isGreaterThan(oldRate)) {
+            rateDiff = currentRate.minus(oldRate); // Get absolute rate diff
+            rateDiffBP = rateDiff.times(10000).div(currentRate); // Get basispoints difference
+        } else {
+            rateDiff = oldRate.minus(currentRate); // Get absolute rate diff
+            rateDiffBP = rateDiff.times(10000).div(oldRate); // Get basispoints difference
+        }
+        if (rateDiffBP.isGreaterThan(3000)) {
+            freeze = true; // If exceeding; flip freeze to true
+        } 
+
+        console.log("CurrentRate",_.BN2Str(currentRate));
+        console.log("OldRate",_.BN2Str(oldRate));
+        console.log("RateDiff",_.BN2Str(rateDiff));
+        console.log("RateDiffBP",_.BN2Str(rateDiffBP) )
+        console.log("Freeze",freeze);
     })
 }
 

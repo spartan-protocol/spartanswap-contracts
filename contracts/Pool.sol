@@ -15,7 +15,7 @@ contract Pool is iBEP20 {
     address public immutable TOKEN; // Address of the layer1 TOKEN represented in this pool
     uint256 public synthCap;    // Basis points hard cap of synths that can be minted vs tokenDepth
     uint256 public baseCap;     // Cap on the depth of the pool (in SPARTA)
-    uint256 private oldRate;    // Pool ratio from last period
+    uint256 public oldRate;    // Pool ratio from last period
     uint256 private period;     // Timestamp of next period
     uint256 private freezePoint; // Basis points change to trigger a freeze
     bool public freeze;         // Freeze status of the pool
@@ -81,7 +81,7 @@ contract Pool is iBEP20 {
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), poolSymbol));
         decimals = 18;
         genesis = block.timestamp;
-        period = block.timestamp;
+        period = block.timestamp + 60; // 
         lastMonth = block.timestamp;
         synthCap = 2500;
         freezePoint = 3000;
@@ -186,7 +186,7 @@ contract Pool is iBEP20 {
             uint createFee = 100 * liquidityUnits / 10000; // First liqAdd charges 1% fee to the base contract (permanently removed from circulation; prevent 1wei rounding)
             liquidityUnits -= createFee; // Remove fee from the calculated LP units
             _mint(BASE, createFee); // Mint the fee portion of the LP units to the BASE contract (permanently removed from circulation)
-            oldRate = (_actualInputBase * _actualInputBase) / _actualInputToken; // Set the first / initial rate
+            oldRate = (10**18 * _actualInputBase) / _actualInputToken; // Set the first / initial rate
         }
         _incrementPoolBalances(_actualInputBase, _actualInputToken); // Update recorded BASE and TOKEN amounts
         _mint(member, liquidityUnits); // Mint the remaining LP tokens directly to the user
@@ -197,6 +197,7 @@ contract Pool is iBEP20 {
     // Contract removes liquidity for the user
     function removeForMember(address member) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
         require(block.timestamp > (genesis + oneWeek)); // Can not remove liquidity until 7 days after pool's creation
+        require(freeze = false);
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
@@ -376,14 +377,15 @@ contract Pool is iBEP20 {
     }
 
     function _safetyCheck() internal {
-            uint currentRate = (baseAmount * baseAmount) / tokenAmount; // Get current rate
-            uint rateDiff;
+            uint currentRate = (10**18 * baseAmount) / tokenAmount; // Get current rate
+            uint rateDiff; uint256 rateDiffBP;
             if (currentRate > oldRate) {
                 rateDiff = currentRate - oldRate; // Get absolute rate diff
+                rateDiffBP = rateDiff * 10000 / currentRate; // Get basispoints difference
             } else {
                 rateDiff = oldRate - currentRate; // Get absolute rate diff
+                rateDiffBP = rateDiff * 10000 / oldRate; // Get basispoints difference
             }
-           uint256 rateDiffBP = rateDiff * 10000 / currentRate; // Get basispoints difference
             if (rateDiffBP >= freezePoint) {
                 freeze = true; // If exceeding; flip freeze to true
             } else if (block.timestamp > period) {
@@ -396,7 +398,7 @@ contract Pool is iBEP20 {
                 }
                 if (block.timestamp > period) {
                     period = block.timestamp + 3600; // Set new period
-                    oldRate = (currentRate + (oldRate * 3) ) / 4; //increase rate by 25%
+                    oldRate = (currentRate + oldRate ) / 2; //increase rate by 25%
                 }
             }  
     }
@@ -437,11 +439,5 @@ contract Pool is iBEP20 {
 
     function setFreezePoint(uint256 _newFreezePoint) external onlyPROTOCOL {
         freezePoint = _newFreezePoint;
-    }
-
-    function flipFreeze(uint newPeriod) external onlyPROTOCOL {
-        require(newPeriod < 580);
-        freeze = !freeze;
-        period = block.timestamp + newPeriod;
     }
 }
