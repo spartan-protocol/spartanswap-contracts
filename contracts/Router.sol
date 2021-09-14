@@ -113,6 +113,7 @@ contract Router is ReentrancyGuard{
         require(units > 0, '!VALID'); // Must be a valid amount
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         address _pool = _poolFactory.getPool(token); // Get the pool address
+        require(Pool(_pool).freeze() == false); 
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid
         address _member = msg.sender; // Get user's address
         TransferHelper.safeTransferFrom(_pool, _member, _pool, units);
@@ -134,6 +135,7 @@ contract Router is ReentrancyGuard{
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         address _pool = _poolFactory.getPool(token); // Get pool address
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid
+        require(Pool(_pool).freeze() == false); 
         address _member = msg.sender; // Get user's address
         TransferHelper.safeTransferFrom(_pool, _member, _pool, units);
         Pool(_pool).removeForMember(address(this)); // Remove liquidity; tsf SPARTA and TOKEN (Wrapped) (Pool -> Router)

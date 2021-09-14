@@ -197,7 +197,6 @@ contract Pool is iBEP20 {
     // Contract removes liquidity for the user
     function removeForMember(address member) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
         require(block.timestamp > (genesis + oneWeek)); // Can not remove liquidity until 7 days after pool's creation
-        require(freeze = false);
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
         outputBase = _utils.calcLiquidityHoldings(_actualInputUnits, BASE, address(this)); // Get the SPARTA value of LP units
@@ -398,7 +397,7 @@ contract Pool is iBEP20 {
                 }
                 if (block.timestamp > period) {
                     period = block.timestamp + 3600; // Set new period
-                    oldRate = (currentRate + oldRate ) / 2; //increase rate by 25%
+                    oldRate = (currentRate + oldRate ) / 2; //Smooth rate increase
                 }
             }  
     }
