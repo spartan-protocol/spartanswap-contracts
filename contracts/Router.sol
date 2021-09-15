@@ -91,6 +91,9 @@ contract Router is ReentrancyGuard{
         require(fromPool != toPool && unitsInput > 0, '!VALID'); // Pools must be different and input must be valid
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         require(_poolFactory.isPool(fromPool) == true, '!POOL'); // FromPool must be a valid pool
+        if(_poolFactory.isCuratedPool(fromPool)){
+            require(Pool(fromPool).freeze() == false);
+        }
         require(_poolFactory.isPool(toPool) == true, '!POOL'); // ToPool must be a valid pool
         address _fromToken = Pool(fromPool).TOKEN(); // Get token underlying the fromPool
         address _toToken = Pool(toPool).TOKEN(); // Get token underlying the toPool
@@ -113,7 +116,9 @@ contract Router is ReentrancyGuard{
         require(units > 0, '!VALID'); // Must be a valid amount
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         address _pool = _poolFactory.getPool(token); // Get the pool address
-        require(Pool(_pool).freeze() == false); 
+        if(_poolFactory.isCuratedPool(_pool)){
+            require(Pool(_pool).freeze() == false);
+        }
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid
         address _member = msg.sender; // Get user's address
         TransferHelper.safeTransferFrom(_pool, _member, _pool, units);

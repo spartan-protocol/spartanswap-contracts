@@ -42,7 +42,7 @@ contract Utils {
         poolData.tokenAmount = tokenAmount;
         poolData.poolUnits = iBEP20(pool).totalSupply();
         poolData.synthCap = tokenAmount *  iPOOL(pool).synthCap() / 10000;
-        poolData.baseCap = iPOOL(pool).baseCap() /10000;   
+        poolData.baseCap = iPOOL(pool).baseCap();   
         return poolData;
     }
 
