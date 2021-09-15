@@ -119,21 +119,21 @@ contract SynthVault is ReentrancyGuard{
     }
 
     // User harvests available rewards of the chosen asset
-    function harvestSingle(address synth) public returns (bool) { 
+   function harvestSingle(address synth) public returns (bool) { 
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth'); // Must be a valid & active synth
         uint256 reward = calcCurrentReward(synth, msg.sender); // Calc user's current SPARTA reward
         if(reward > 0){
             require((block.timestamp > mapMemberSynth_lastTime[msg.sender][synth] + minimumDepositTime), 'LOCKED');  // Must not harvest before lockup period passed
-            mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp; // Set last harvest time as now
             address _poolOUT = iSYNTH(synth).POOL(); // Get pool address
             iPOOL(_poolOUT).sync(); // Sync here to prevent using SYNTH.transfer() to bypass lockup
             uint256 steamAvailable = iPOOL(_poolOUT).stirCauldron(synth); 
             uint256 swapOut = iUTILS(_DAO().UTILS()).calcSwapValueInToken(iPOOL(_poolOUT).TOKEN(), reward);  
             if(steamAvailable < swapOut){
                 iRESERVE(_DAO().RESERVE()).grantFunds(reward, msg.sender); // Tsf SPARTA (Reserve -> Pool)
+                mapMemberSynth_lastTime[msg.sender][synth] = block.timestamp; // Set last harvest time as now
             }else{
                 iRESERVE(_DAO().RESERVE()).grantFunds(reward, _poolOUT); // Tsf SPARTA (Reserve -> Pool)
-                iPOOL(_poolOUT).mintSynth(address(this)); // Mint SYNTH (Pool -> Synth -> SynthVault) 
+                iPOOL(_poolOUT).mintSynth(msg.sender); // Mint SYNTH (Pool -> Synth -> SynthVault) 
             }
             _addVaultMetrics(reward); // Add to the revenue metrics (for UI)
             emit MemberHarvests(synth, msg.sender, reward);

@@ -43,7 +43,7 @@ contract('Test Harvest Synths', function (accounts) {
     createSyntheticBUSD()
     swapSpartaToSynthBNB(acc1, 200)
     swapBNBToSynthBNB(acc2, 1)
-    withdraw(acc1, 1000) 
+    // withdraw(acc1, 1000) 
     // deposit(acc1);
     harvest(acc1);
    
