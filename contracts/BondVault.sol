@@ -181,15 +181,17 @@ contract BondVault {
     // Delist an asset from the Bond program
     function delistBondAsset(address asset) external onlyDAO {
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get the relevant pool address
-        require(isListed[_pool], '!listed'); // Asset must be listed for Bond
-        isListed[_pool] = false; // Unregister as a currently enabled asset
-        for (uint i = 0; i < listedBondPools.length; i++) {
+        if(isListed[_pool]){
+         isListed[_pool] = false; // Unregister as a currently enabled asset
+         for (uint i = 0; i < listedBondPools.length; i++) {
             if (listedBondPools[i] == _pool) {
                 listedBondPools[i] = listedBondPools[listedBondPools.length - 1]; // Move the last element into the place to delete
                 listedBondPools.pop(); // Remove the last element
             }
-        }
+         }
         emit DelistedAsset(msg.sender, asset);
+        }
+       
     }
 
  // User claims unlocked bonded units of a selected asset (keep internal; otherwise add weightChange modifier)

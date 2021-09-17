@@ -18,6 +18,7 @@ var POOL = artifacts.require("./Pool.sol");
 var POOLFACTORY = artifacts.require("./PoolFactory.sol");
 var ROUTER = artifacts.require("./Router.sol");
 var WBNB = artifacts.require("./WBNB");
+var SYNTHVAULT = artifacts.require("./SynthVault.sol");
 
 var SYNTH = artifacts.require("./Synth.sol");
 var SYNTHFACTORY = artifacts.require("./SynthFactory.sol");
@@ -45,7 +46,7 @@ contract('DAO', function (accounts) {
     depositBNBSPP(acc0, 5)
     depositBNBSPP(acc1, 3)
     depositBNBSPP(acc2, 2)
-    //  paramProposal(acc1)
+      paramProposal(acc1)
     //  actionProposal(acc2)
     //  grantProposal(acc1)
     // voteUtils()
@@ -83,10 +84,11 @@ function constructor(accounts) {
         daoVault = await DAOVAULT.new(sparta.address); // deploy daoVault
         bondVault = await BONDVAULT.new(sparta.address); // deploy daoVault
         router = await ROUTER.new(sparta.address, wbnb.address,); // deploy router
+        synthVault = await SYNTHVAULT.new(sparta.address); // deploy daoVault
         poolFactory = await POOLFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
         synthFactory = await SYNTHFACTORY.new(sparta.address,  wbnb.address) // deploy poolfactory
         await Dao.setGenesisAddresses(router.address,utils.address,reserve.address, utils.address);
-        await Dao.setVaultAddresses(daoVault.address,bondVault.address, daoVault.address);
+        await Dao.setVaultAddresses(daoVault.address,bondVault.address, synthVault.address);
         await Dao.setFactoryAddresses(poolFactory.address,synthFactory.address);
         await Dao.setGenesisFactors(2, 30,6666);
         await Dao.setDaoFactors(1000,400,true, 3);
@@ -323,8 +325,8 @@ async function paramProposal(acc) {
         assert.equal(await Dao.mapPID_finalised(currentProposal), true)
         assert.equal(await Dao.mapPID_open(currentProposal), false)
     })
-    it("It should vote, finalise ERAS_TO_EARN", async () => {
-        await Dao.newParamProposal('10', 'ERAS_TO_EARN', { from: acc })
+    it("It should vote, finalise DAOCLAIM", async () => {
+        await Dao.newParamProposal('10', 'DAO_CLAIM', { from: acc })
         let currentProposal = _.BN2Str(await Dao.currentProposal())
         await Dao.voteProposal( { from: acc0 })
         let bnbUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc0))
@@ -344,7 +346,35 @@ async function paramProposal(acc) {
         await truffleAssert.reverts(Dao.finaliseProposal(), "!cooloff");
         await sleep(3100)
         await Dao.finaliseProposal()
-        assert.equal(_.BN2Str(await Dao.erasToEarn()), '10')
+        assert.equal(_.BN2Str(await Dao.daoClaim()), '10')
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)), '0')
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBUSD.address)), '0')
+        assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+        assert.equal(await Dao.mapPID_finalised(currentProposal), true)
+        assert.equal(await Dao.mapPID_open(currentProposal), false)
+    })
+    it("It should vote, finalise SYNTHCLAIM", async () => {
+        await Dao.newParamProposal('10', 'SYNTH_CLAIM', { from: acc })
+        let currentProposal = _.BN2Str(await Dao.currentProposal())
+        await Dao.voteProposal( { from: acc0 })
+        let bnbUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc0))
+        let busdUnits = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc0))
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!finalising");
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits))
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits))
+        let bnbUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBNB.address, acc))
+        let busdUnitss = _.getBN(await daoVault.getMemberPoolBalance(poolBUSD.address, acc))
+        await Dao.voteProposal( { from: acc })
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)),_.BN2Str(bnbUnits.plus(bnbUnitss)))
+        assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal,poolBUSD.address)),_.BN2Str(busdUnits.plus(busdUnitss)))
+        assert.equal(await Dao.hasQuorum(currentProposal), true)
+        assert.equal(await Dao.mapPID_finalising(currentProposal), false)
+        await Dao.pollVotes({from:acc0})
+        assert.equal(await Dao.mapPID_finalising(currentProposal), true)
+        await truffleAssert.reverts(Dao.finaliseProposal(), "!cooloff");
+        await sleep(3100)
+        await Dao.finaliseProposal()
+        assert.equal(_.BN2Str(await synthVault.vaultClaim()), '10')
         assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBNB.address)), '0')
         assert.equal(_.BN2Str(await Dao.getProposalAssetVotes(currentProposal, poolBUSD.address)), '0')
         assert.equal(await Dao.mapPID_finalising(currentProposal), false)

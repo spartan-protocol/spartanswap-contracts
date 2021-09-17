@@ -250,7 +250,6 @@ contract Dao is ReentrancyGuard{
     function claim(address bondAsset) external  operational weightChange{
             _BONDVAULT.claim(bondAsset, msg.sender); 
     }
-
     
     //============================== CREATE PROPOSALS ================================//
 
@@ -413,8 +412,10 @@ contract Dao is ReentrancyGuard{
                 _flipEmissions();
             } else if (isEqual(_type, 'COOL_OFF')){ // param
                 _changeCooloff(_currentProposal);
-            } else if (isEqual(_type, 'ERAS_TO_EARN')){ // param
-                _changeEras(_currentProposal);
+            } else if (isEqual(_type, 'DAO_CLAIM')){ // param
+                _changeDAOClaim(_currentProposal);
+            } else if (isEqual(_type, 'SYNTH_CLAIM')){ // param
+                _changeSYNTHClaim(_currentProposal);
             } else if (isEqual(_type, 'GRANT')){ // grant
                 _grantFunds(_currentProposal);
             } else if (isEqual(_type, 'GET_SPARTA')){
@@ -475,9 +476,16 @@ contract Dao is ReentrancyGuard{
     }
 
     // Change erasToEarn (Used to regulate the incentives flow)
-    function _changeEras(uint _proposalID) internal {
+    function _changeDAOClaim(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID]; // Get the proposed new param
-        erasToEarn = _proposedParam; // Change erasToEarn
+        require(_proposedParam <= 1500);//maximum reserve claim 15%
+        daoClaim = _proposedParam; // Change erasToEarn
+    }
+
+    function _changeSYNTHClaim(uint _proposalID) internal {
+        uint256 _proposedParam = mapPID_param[_proposalID]; // Get the proposed new param
+        require(_proposedParam <= 1500);//maximum reserve claim 15%
+        _SYNTHVAULT.setReserveClaim(_proposedParam); // Change erasToEarn 
     }
 
     // Grant SPARTA to the proposed recipient

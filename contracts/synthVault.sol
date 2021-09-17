@@ -27,7 +27,7 @@ contract SynthVault is ReentrancyGuard{
 
     // Restrict access
     modifier onlyDAO() {
-        require(msg.sender == DEPLOYER);
+        require(msg.sender == DEPLOYER || msg.sender == _DAO().DAO());
         _;
     }
     // Restrict access
@@ -203,6 +203,7 @@ contract SynthVault is ReentrancyGuard{
         emit MemberWithdraws(synth, msg.sender, redeemedAmount);
     }
 
+
     //================================ Helper Functions ===============================//
 
     function reserveBASE() public view returns (uint256) {
@@ -218,6 +219,10 @@ contract SynthVault is ReentrancyGuard{
 
     function getMemberLastSynthTime(address synth, address member) external view returns (uint256){
         return mapMemberSynth_lastTime[member][synth];
+    }
+
+    function setReserveClaim(uint256 _setSynthClaim) external onlyDAO {
+        vaultClaim = _setSynthClaim;
     }
 
     //=============================== SynthVault Metrics =================================//
