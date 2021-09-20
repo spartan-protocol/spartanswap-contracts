@@ -46,7 +46,7 @@ contract('DAO', function (accounts) {
     depositBNBSPP(acc0, 5)
     depositBNBSPP(acc1, 3)
     depositBNBSPP(acc2, 2)
-      paramProposal(acc1)
+    paramProposal(acc1)
     //  actionProposal(acc2)
     //  grantProposal(acc1)
     // voteUtils()

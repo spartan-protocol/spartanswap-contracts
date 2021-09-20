@@ -15,7 +15,7 @@ import "./iSYNTHVAULT.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./TransferHelper.sol";
 contract Dao is ReentrancyGuard{
-    address public DEPLOYER;        // Address that deployed contract | can be purged to address(0)
+    address private DEPLOYER;        // Address that deployed contract | can be purged to address(0)
     address public immutable BASE;  // SPARTA base contract address
     bool public retire;             // If DAO retired/upgraded
     bool public running;            // DAO proposals running | default to false
@@ -41,7 +41,7 @@ contract Dao is ReentrancyGuard{
         uint startTime;
     }
 
-    bool public daoHasMoved;
+    bool private daoHasMoved;
     address public DAO;
 
     iROUTER private _ROUTER;
@@ -268,7 +268,6 @@ contract Dao is ReentrancyGuard{
 
     // New DAO proposal: uint parameter
     function newParamProposal(uint256 param, string memory typeStr) external {
-        require(param > 0, "!param"); // Param must be valid
         uint _currentProposal = _checkProposal(); // If no open proposal; construct new one
         _payFee(); // Pay SPARTA fee for new proposal
         mapPID_param[_currentProposal] = param; // Set the proposed parameter
@@ -472,6 +471,7 @@ contract Dao is ReentrancyGuard{
     // Change cool off period (Period of time until a finalising proposal can be finalised)
     function _changeCooloff(uint _proposalID) internal {
         uint256 _proposedParam = mapPID_param[_proposalID]; // Get the proposed new param
+        require(_proposedParam > 0, "!param"); // Param must be valid
         coolOffPeriod = _proposedParam; // Change coolOffPeriod
     }
 
