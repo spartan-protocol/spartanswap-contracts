@@ -79,7 +79,8 @@ contract Dao is ReentrancyGuard{
     event ProposalFinalising(address indexed member, uint indexed proposalID, uint timeFinalised, string proposalType);
     event CancelProposal(address indexed member, uint indexed proposalID);
     event FinalisedProposal(address indexed member, uint indexed proposalID, string proposalType);
-    event DepositAsset(address indexed owner, uint256 depositAmount, uint256 bondedLP);
+    event DepositAsset(address indexed owner, address indexed tokenAddress, address indexed poolAddress, uint256 depositAmount, uint256 bondedLP );
+    event Harvest(address indexed owner, uint amount);
 
     // Restrict access
     modifier onlyDAO() {
@@ -170,7 +171,7 @@ contract Dao is ReentrancyGuard{
     
     // User withdraws all of their selected asset from the DAOVault
     function withdraw(address pool) external operational weightChange {
-        uint256 amount = _DAOVAULT.getMemberPoolBalance(msg.sender, pool); // Get the members available vault balance
+        uint256 amount = _DAOVAULT.getMemberPoolBalance(pool, msg.sender); // Get the members available vault balance
         require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Withdraw assets from vault and tsf to user
         emit MemberWithdraws(msg.sender, pool, amount);
     }
@@ -188,6 +189,7 @@ contract Dao is ReentrancyGuard{
             reward = daoReward; // User cannot claim more than the daoReward limit
         }
         _RESERVE.grantFunds(reward, msg.sender); // Send the claim to the user
+        emit Harvest(msg.sender, reward);
     }
 
     // Calculate the user's current incentive-claim per era
@@ -222,7 +224,7 @@ contract Dao is ReentrancyGuard{
         uint256 liquidityUnits = _handleTransferIn(asset, amount); // Add liquidity and calculate LP units
         mapMember_lastTime[msg.sender] = block.timestamp + 60; // Reset user's last harvest time + blockShift
         _BONDVAULT.depositForMember(_pool, msg.sender, liquidityUnits); // Deposit the Bonded LP units in the BondVault
-        emit DepositAsset(msg.sender, amount, liquidityUnits);
+        emit DepositAsset(msg.sender,asset, _pool, amount, liquidityUnits);
         return true;
     }
 

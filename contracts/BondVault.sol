@@ -39,6 +39,7 @@ contract BondVault {
     mapping(address => uint256) public mapTotalPool_balance; // LP's locked in DAOVault
     event ListedAsset(address indexed DAO, address indexed asset);
     event DelistedAsset(address indexed DAO, address indexed asset);
+    event Claimed(address indexed owner, address indexed poolAddress, uint amount);
 
     constructor (address _base) {
         BASE = _base;
@@ -96,6 +97,7 @@ contract BondVault {
         }
         mapTotalPool_balance[_pool] -= _claimable; // Remove the claim amount from vault's total remainder
         TransferHelper.safeTransfer(_pool, member, _claimable);
+        emit Claimed(member, _pool, _claimable);
         return true;
     }
 
