@@ -43,11 +43,11 @@ contract Pool is iBEP20 {
     uint256 public mapPast30DPoolRevenue;   // Tally of revenue from last full metric period (for UI)
     uint256 [] private revenueArray;         // Array of the last two full metric periods (For UI)
     
-    event AddLiquidity(address indexed member, uint inputBase, uint inputToken, uint unitsIssued);
-    event RemoveLiquidity(address indexed member, uint outputBase, uint outputToken, uint unitsClaimed);
+    event AddLiquidity(address indexed member, address indexed tokenAddress, uint inputBase, uint inputToken, uint unitsIssued);
+    event RemoveLiquidity(address indexed member, address indexed tokenAddress, uint outputBase, uint outputToken, uint unitsClaimed);
     event Swapped(address indexed tokenFrom, address indexed tokenTo, address indexed recipient, uint inputAmount, uint outputAmount, uint fee);
-    event MintSynth(address indexed member, uint256 baseAmount, uint256 liqUnits, uint256 synthAmount, uint256 fee);
-    event BurnSynth(address indexed member, uint256 baseAmount, uint256 liqUnits, uint256 synthAmount, uint256 fee);
+    event MintSynth(address indexed member, address indexed synthAddress, uint256 baseAmount, uint256 liqUnits, uint256 synthAmount);
+    event BurnSynth(address indexed member, address indexed synthAddress, uint256 baseAmount, uint256 liqUnits, uint256 synthAmount);
 
     function SYNTH() public view returns(address) {
         return iSYNTHFACTORY(_DAO().SYNTHFACTORY()).getSynth(TOKEN); // Get the relevant synth address
@@ -190,7 +190,7 @@ contract Pool is iBEP20 {
         }
         _incrementPoolBalances(_actualInputBase, _actualInputToken); // Update recorded BASE and TOKEN amounts
         _mint(member, liquidityUnits); // Mint the remaining LP tokens directly to the user
-        emit AddLiquidity(member, _actualInputBase, _actualInputToken, liquidityUnits);
+        emit AddLiquidity(member, TOKEN, _actualInputBase, _actualInputToken, liquidityUnits);
         return liquidityUnits;
     }
 
@@ -205,7 +205,7 @@ contract Pool is iBEP20 {
         _burn(address(this), _actualInputUnits); // Burn the LP tokens
         _safeTransfer(BASE, recipient,outputBase);        
         _safeTransfer(TOKEN, recipient,outputToken);
-        emit RemoveLiquidity(actualMember, outputBase, outputToken, _actualInputUnits);
+        emit RemoveLiquidity(actualMember, TOKEN, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
 
@@ -247,7 +247,7 @@ contract Pool is iBEP20 {
         iSYNTH(synthOut).mintSynth(address(_DAO().SYNTHVAULT()), outputAmount); // Mint the Synth tokens directly to the synthVault
         iSYNTHVAULT(_DAO().SYNTHVAULT()).depositForMember(synthOut, member); //Deposit on behalf of member
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
-        emit MintSynth(member, _actualInputBase, _liquidityUnits, outputAmount, fee);
+        emit MintSynth(member,synthOut, _actualInputBase, _liquidityUnits, outputAmount);
         return (outputAmount, fee);
     }
     
@@ -265,7 +265,7 @@ contract Pool is iBEP20 {
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the input SYNTH units 
         _burn(synthIN, liqUnits); // Burn the synth-held LP units
         _safeTransfer(BASE, recipient,outputBase);  
-        emit BurnSynth(actualMember, outputBase, liqUnits, _actualInputSynth, fee);
+        emit BurnSynth(actualMember,synthIN, outputBase, liqUnits, _actualInputSynth);
         return (outputBase, fee);
     }
 
