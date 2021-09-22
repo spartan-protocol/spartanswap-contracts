@@ -99,7 +99,7 @@ contract Router is ReentrancyGuard{
         address _toToken = Pool(toPool).TOKEN(); // Get token underlying the toPool
         address _member = msg.sender; // Get user's address
         TransferHelper.safeTransferFrom(fromPool, _member, fromPool, unitsInput);
-        Pool(fromPool).removeForMember(address(this)); // Remove liquidity; tsf SPARTA and fromTOKEN (Pool -> Router)
+        Pool(fromPool).removeForMember(address(this), _member); // Remove liquidity; tsf SPARTA and fromTOKEN (Pool -> Router)
         TransferHelper.safeTransfer(_fromToken, fromPool, iBEP20(_fromToken).balanceOf(address(this)));
         Pool(fromPool).swapTo(BASE, address(this)); // Swap fromTOKEN for SPARTA (FromPool -> Router)
         TransferHelper.safeTransfer(BASE, toPool, iBEP20(BASE).balanceOf(address(this)) / 2);
@@ -123,9 +123,9 @@ contract Router is ReentrancyGuard{
         address _member = msg.sender; // Get user's address
         TransferHelper.safeTransferFrom(_pool, _member, _pool, units);
         if(token != address(0)){
-            Pool(_pool).removeForMember(_member); // If not BNB; remove liquidity; tsf SPARTA and TOKEN (Pool -> User)
+            Pool(_pool).removeForMember(_member, _member); // If not BNB; remove liquidity; tsf SPARTA and TOKEN (Pool -> User)
         } else {
-            Pool(_pool).removeForMember(address(this)); // If BNB; remove liquidity; tsf SPARTA and WBNB (Pool -> Router)
+            Pool(_pool).removeForMember(address(this), _member); // If BNB; remove liquidity; tsf SPARTA and WBNB (Pool -> Router)
             uint outputBase = iBEP20(BASE).balanceOf(address(this)); // Check the received SPARTA amount (Router)
             uint outputToken = iBEP20(WBNB).balanceOf(address(this)); // Check the received WBNB amount (Router)
             _handleTransferOut(token, outputToken, _member); // Unwrap to BNB & tsf (Router -> User)
@@ -143,7 +143,7 @@ contract Router is ReentrancyGuard{
         require(Pool(_pool).freeze() == false); 
         address _member = msg.sender; // Get user's address
         TransferHelper.safeTransferFrom(_pool, _member, _pool, units);
-        Pool(_pool).removeForMember(address(this)); // Remove liquidity; tsf SPARTA and TOKEN (Wrapped) (Pool -> Router)
+        Pool(_pool).removeForMember(address(this),_member); // Remove liquidity; tsf SPARTA and TOKEN (Wrapped) (Pool -> Router)
         address _token = token; // Get token address
         if(token == address(0)){_token = WBNB;} // Handle BNB -> WBNB
         uint fee;
@@ -255,13 +255,13 @@ contract Router is ReentrancyGuard{
         TransferHelper.safeTransferFrom(fromSynth, msg.sender, _synthPool, inputAmount);
         uint synthFee;
         if(toToken == BASE){
-            (, synthFee) = Pool(_synthPool).burnSynth(msg.sender); // Swap SYNTH to SPARTA (synthPool -> User)
+            (, synthFee) = Pool(_synthPool).burnSynth(msg.sender, msg.sender); // Swap SYNTH to SPARTA (synthPool -> User)
         } else {
              address _swapPool = _poolFactory.getPool(toToken); // Get TOKEN's relevant swapPool address
              require(_poolFactory.isPool(_swapPool) == true, '!POOL'); // swapPool must be valid
             uint swapFee;
             uint outputAmountY;
-            (, synthFee) = Pool(_synthPool).burnSynth(address(this)); // Swap SYNTH to SPARTA (synthPool -> Router)
+            (, synthFee) = Pool(_synthPool).burnSynth(address(this), msg.sender); // Swap SYNTH to SPARTA (synthPool -> Router)
             _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _swapPool); // Tsf SPARTA (Router -> swapPool)
             if(toToken != address(0)){
                 (, swapFee) = Pool(_swapPool).swapTo(toToken, msg.sender); // Swap SPARTA to TOKEN (swapPool -> User)

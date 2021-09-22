@@ -195,7 +195,7 @@ contract Pool is iBEP20 {
     }
 
     // Contract removes liquidity for the user
-    function removeForMember(address member) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
+    function removeForMember(address recipient, address actualMember) external onlyPROTOCOL returns (uint outputBase, uint outputToken) {
         require(block.timestamp > (genesis + oneWeek)); // Can not remove liquidity until 7 days after pool's creation
         uint256 _actualInputUnits = balanceOf(address(this)); // Get the received LP units amount
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
@@ -203,9 +203,9 @@ contract Pool is iBEP20 {
         outputToken = _utils.calcLiquidityHoldings(_actualInputUnits, TOKEN, address(this)); // Get the TOKEN value of LP units
         _decrementPoolBalances(outputBase, outputToken); // Update recorded SPARTA and TOKEN amounts
         _burn(address(this), _actualInputUnits); // Burn the LP tokens
-        _safeTransfer(BASE, member,outputBase);        
-        _safeTransfer(TOKEN, member,outputToken);
-        emit RemoveLiquidity(member, outputBase, outputToken, _actualInputUnits);
+        _safeTransfer(BASE, recipient,outputBase);        
+        _safeTransfer(TOKEN, recipient,outputToken);
+        emit RemoveLiquidity(actualMember, outputBase, outputToken, _actualInputUnits);
         return (outputBase, outputToken);
     }
 
@@ -252,7 +252,7 @@ contract Pool is iBEP20 {
     }
     
     // Swap Synths for SPARTA
-    function burnSynth(address member) external onlyPROTOCOL returns(uint outputAmount, uint fee) {
+    function burnSynth(address recipient, address actualMember) external onlyPROTOCOL returns(uint outputAmount, uint fee) {
         address synthIN = SYNTH(); // Get the synth address
         require(synthIN != address(0)); // Must be a valid Synth
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface the UTILS contract
@@ -264,8 +264,8 @@ contract Pool is iBEP20 {
         _addPoolMetrics(fee); // Add slip fee to the revenue metrics
         uint liqUnits = iSYNTH(synthIN).burnSynth(_actualInputSynth); // Burn the input SYNTH units 
         _burn(synthIN, liqUnits); // Burn the synth-held LP units
-        _safeTransfer(BASE, member,outputBase);  
-        emit BurnSynth(member, outputBase, liqUnits, _actualInputSynth, fee);
+        _safeTransfer(BASE, recipient,outputBase);  
+        emit BurnSynth(actualMember, outputBase, liqUnits, _actualInputSynth, fee);
         return (outputBase, fee);
     }
 
