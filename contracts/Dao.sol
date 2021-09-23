@@ -455,6 +455,7 @@ contract Dao is ReentrancyGuard{
         DAO = _proposedAddress; // Change the DAO to point to the new DAO address
         iBASE(BASE).changeDAO(_proposedAddress); // Change the BASE contract to point to the new DAO address
         daoHasMoved = true; // Set status of this old DAO
+        retire = true;
     }
 
     // Change the ROUTER to a new contract address
@@ -719,6 +720,9 @@ contract Dao is ReentrancyGuard{
     
     function isEqual(bytes memory part1, bytes memory part2) private pure returns(bool){
         return(sha256(part1) == sha256(part2));
+    }
+    function retireDao() external onlyDAO {
+        retire = true;
     }
 
 }
