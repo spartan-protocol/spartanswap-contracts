@@ -163,6 +163,7 @@ contract BondVault {
         uint256 currentProposal = iDAO(_DAO().DAO()).currentProposal();
         require(iDAO(_DAO().DAO()).mapPID_open(currentProposal) == false, "OPEN"); // Must not be an open proposal (de-sync proposal votes)
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get the relevant pool address
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool));
         require(!isListed[_pool], 'listed'); // Asset must not be listed for Bond
         isListed[_pool] = true; // Register as a bond-enabled asset
         listedBondPools.push(_pool); // Add to record of current Bond assets
