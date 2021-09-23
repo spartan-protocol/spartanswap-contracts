@@ -65,7 +65,7 @@ contract BondVault {
     }
 
     // Deposit amount in the BondVault for a user (Called from DAO)
-    function depositForMember(address _pool, address member, uint amount) external onlyDAO returns(bool){
+    function depositForMember(address _pool, address member, uint amount) external onlyDAO {
         if(!mapBondedAmount_memberDetails[_pool].isAssetMember[member]){
             mapBondedAmount_memberDetails[_pool].isAssetMember[member] = true;  // Register user as member (scope: user -> asset)
             mapBondedAmount_memberDetails[_pool].members.push(member);          // Add user to member array (scope: user -> asset)
@@ -81,11 +81,10 @@ contract BondVault {
         mapBondedAmount_memberDetails[_pool].lastBlockTime[member] = block.timestamp; // Set lastBlockTime to current time
         mapBondedAmount_memberDetails[_pool].claimRate[member] = mapBondedAmount_memberDetails[_pool].bondedLP[member] / bondingPeriodSeconds; // Set claim rate per second
         mapTotalPool_balance[_pool] += amount; // Add new deposit to vault's total remainder
-        return true;
     }
 
     // Perform a claim of the users's current available claim amount (Called from DAO)
-    function claimForMember(address _pool, address member) public onlyDAO returns (bool){
+    function claimForMember(address _pool, address member) public onlyDAO {
         require(_pool != address(0), "!POOL"); // Must be a valid pool
         require(mapBondedAmount_memberDetails[_pool].bondedLP[member] > 0, '!bonded'); // They must have remaining unclaimed LPs
         require(mapBondedAmount_memberDetails[_pool].isAssetMember[member], '!member'); // They must be a member (scope: user -> asset)
@@ -98,7 +97,6 @@ contract BondVault {
         mapTotalPool_balance[_pool] -= _claimable; // Remove the claim amount from vault's total remainder
         TransferHelper.safeTransfer(_pool, member, _claimable);
         emit Claimed(member, _pool, _claimable);
-        return true;
     }
 
      // Calculate the user's current available claim amount
@@ -120,9 +118,11 @@ contract BondVault {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
         address [] memory _listedBondPools = listedBondPools;
         for(uint i = 0; i < _listedBondPools.length; i++){
-            memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_listedBondPools[i], mapBondedAmount_memberDetails[_listedBondPools[i]].bondedLP[member]); // Get user's cumulative weight
-            totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_listedBondPools[i], mapTotalPool_balance[_listedBondPools[i]]); // Get vault's cumulative total weight
-        }
+             if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_listedBondPools[i])){
+                 memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_listedBondPools[i], mapBondedAmount_memberDetails[_listedBondPools[i]].bondedLP[member]); // Get user's cumulative weight
+                 totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_listedBondPools[i], mapTotalPool_balance[_listedBondPools[i]]); // Get vault's cumulative total weight
+             }
+           }
         return (memberWeight, totalWeight);
     }
 
@@ -156,18 +156,7 @@ contract BondVault {
     }
         //================================ BOND Feature ==================================//
 
-    // Can burn the SPARTA remaining in this contract (Bond allocations held in the DAO)
-    function burnBalance() external onlyDAO returns (bool){
-        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
-        iBASE(BASE).burn(baseBal);   
-        return true;
-    }
-
-    // Can transfer the SPARTA remaining in this contract to a new BOND
-    function moveBASEBalance(address newDAO) external onlyDAO {
-        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
-        iBEP20(BASE).transfer(newDAO, baseBal); // Tsf SPARTA (oldDao -> newDao)
-    }
+   
 
     // List an asset to be enabled for Bonding
     function listBondAsset(address asset) external onlyDAO {
@@ -197,13 +186,13 @@ contract BondVault {
     }
 
  // User claims unlocked bonded units of a selected asset (keep internal; otherwise add weightChange modifier)
-    function claim(address asset, address member) external onlyDAO returns  (bool){
+    function claim(address asset, address member) external onlyDAO {
+        require(msg.sender != DEPLOYER);
         address _pool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(asset); // Get the pool address
         uint claimAmount = calcBondedLP(member, _pool); // Check user's unlocked bonded LPs
         if(claimAmount > 0){
             claimForMember(_pool, member); // Claim LPs if any unlocked
         }
-        return true;
     }
 
     function getBondedAssets() external view returns (address [] memory bondedPools){

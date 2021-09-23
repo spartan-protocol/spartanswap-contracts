@@ -100,7 +100,7 @@ contract SynthVault is ReentrancyGuard{
     // Check and record the deposit
     function _deposit(address _synth, address _member, uint256 _amount) internal {
         require(_amount > 0, '!VALID'); // Must be a valid amount
-        require((block.timestamp > mapMemberSynth_lastTime[_member][_synth] + minimumDepositTime), '!DepositTime');// Deposits every hour
+        require((block.timestamp > mapMemberSynth_lastTime[_member][_synth] + 10), '!DepositTime');// Deposits every hour
         mapMemberSynth_lastTime[_member][_synth] = block.timestamp; // Record deposit time (scope: member -> synth)
         mapMember_depositTime[_member] = block.timestamp; // Record deposit time (scope: member)
         mapMemberSynth_deposit[_member][_synth] += _amount; // Update vault balance (scope: member -> synth
@@ -123,7 +123,7 @@ contract SynthVault is ReentrancyGuard{
         require(iSYNTHFACTORY(_DAO().SYNTHFACTORY()).isSynth(synth), '!Synth'); // Must be a valid & active synth
         uint256 reward = calcCurrentReward(synth, msg.sender); // Calc user's current SPARTA reward
         if(reward > 0){
-            require((block.timestamp > mapMemberSynth_lastTime[msg.sender][synth] + minimumDepositTime), 'LOCKED');  // Must not harvest before lockup period passed
+            require((block.timestamp > mapMemberSynth_lastTime[msg.sender][synth] + 10), 'LOCKED');  // Must not harvest before lockup period passed
             address _poolOUT = iSYNTH(synth).POOL(); // Get pool address
             iPOOL(_poolOUT).sync(); // Sync here to prevent using SYNTH.transfer() to bypass lockup
             uint256 steamAvailable = iPOOL(_poolOUT).stirCauldron(synth); 

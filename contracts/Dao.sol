@@ -252,6 +252,18 @@ contract Dao is ReentrancyGuard{
     function claim(address bondAsset) external  operational weightChange{
             _BONDVAULT.claim(bondAsset, msg.sender); 
     }
+     // Can burn the SPARTA remaining in this contract (Bond allocations held in the DAO)
+    function burnBalance() external onlyDAO returns (bool){
+        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
+        iBASE(BASE).burn(baseBal);   
+        return true;
+    }
+
+    // Can transfer the SPARTA remaining in this contract to a new BOND
+    function moveBASEBalance(address newDAO) external onlyDAO {
+        uint256 baseBal = iBEP20(BASE).balanceOf(address(this));
+        iBEP20(BASE).transfer(newDAO, baseBal); // Tsf SPARTA (oldDao -> newDao)
+    }
     
     //============================== CREATE PROPOSALS ================================//
 
