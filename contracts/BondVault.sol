@@ -116,11 +116,11 @@ contract BondVault {
     // Update a member's weight in the DAOVault (scope: pool)
     function getMemberLPWeight(address member) external onlyDAO returns (uint256 memberWeight, uint256 totalWeight) {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
-        address [] memory _listedBondPools = listedBondPools;
-        for(uint i = 0; i < _listedBondPools.length; i++){
-             if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_listedBondPools[i])){
-                 memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_listedBondPools[i], mapBondedAmount_memberDetails[_listedBondPools[i]].bondedLP[member]); // Get user's cumulative weight
-                 totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_listedBondPools[i], mapTotalPool_balance[_listedBondPools[i]]); // Get vault's cumulative total weight
+        address [] memory _vaultPools = iPOOLFACTORY(_DAO().POOLFACTORY()).getVaultAssets();
+        for(uint i = 0; i < _vaultPools.length; i++){
+             if(isListed[_vaultPools[i]]){
+                 memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_vaultPools[i], mapBondedAmount_memberDetails[_vaultPools[i]].bondedLP[member]); // Get user's cumulative weight
+                 totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_vaultPools[i], mapTotalPool_balance[_vaultPools[i]]); // Get vault's cumulative total weight
              }
            }
         return (memberWeight, totalWeight);
