@@ -64,7 +64,7 @@ contract Dao is ReentrancyGuard{
     mapping(uint256 => uint256) private mapPID_coolOffTime; // Cooloff ending timestamp to be able to check if finalising proposal can be actioned
     mapping(uint256 => bool) private mapPID_finalising;  // Is proposal in the finalizing stage
     mapping(uint256 => bool) private mapPID_finalised;   // Has the proposal already be finalised / completed
-    mapping(uint256 => bool) private mapPID_open;        // Is the proposal open or closed
+    mapping(uint256 => bool) public mapPID_open;        // Is the proposal open or closed
     mapping(uint256 => uint256) private mapPID_startTime; // Timestamp of proposal creation
 
     mapping(uint256 => mapping(address => uint256)) private mapPIDAsset_votes; // Balance of assets staked in favour of a proposal
