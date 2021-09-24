@@ -45,7 +45,7 @@ contract BondVault {
         BASE = _base;
         DEPLOYER = msg.sender;
         bondRelease = false;
-        bondingPeriodSeconds = 15552000; // mainNet 6months
+        bondingPeriodSeconds = 1555200; // mainNet 6months
     }
 
     // Restrict access
@@ -118,10 +118,8 @@ contract BondVault {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE');
         address [] memory _vaultPools = iPOOLFACTORY(_DAO().POOLFACTORY()).getVaultAssets();
         for(uint i = 0; i < _vaultPools.length; i++){
-             if(isListed[_vaultPools[i]]){
                  memberWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_vaultPools[i], mapBondedAmount_memberDetails[_vaultPools[i]].bondedLP[member]); // Get user's cumulative weight
                  totalWeight += iUTILS(_DAO().UTILS()).getPoolShareWeight(_vaultPools[i], mapTotalPool_balance[_vaultPools[i]]); // Get vault's cumulative total weight
-             }
            }
         return (memberWeight, totalWeight);
     }

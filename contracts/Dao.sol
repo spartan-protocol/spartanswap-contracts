@@ -58,14 +58,14 @@ contract Dao is ReentrancyGuard{
     
     mapping(address => bool) public isMember;   // Used to prevent duplicates in arrayMembers[]
     mapping(address => uint256) public mapMember_lastTime; // Member's last harvest time
-    mapping(uint256 => uint256) public mapPID_param;    // Parameter mapped to the proposal
-    mapping(uint256 => address) public mapPID_address;  // Address mapped to the proposal
-    mapping(uint256 => string) public mapPID_type;      // String of the proposal type
-    mapping(uint256 => uint256) public mapPID_coolOffTime; // Cooloff ending timestamp to be able to check if finalising proposal can be actioned
-    mapping(uint256 => bool) public mapPID_finalising;  // Is proposal in the finalizing stage
-    mapping(uint256 => bool) public mapPID_finalised;   // Has the proposal already be finalised / completed
-    mapping(uint256 => bool) public mapPID_open;        // Is the proposal open or closed
-    mapping(uint256 => uint256) public mapPID_startTime; // Timestamp of proposal creation
+    mapping(uint256 => uint256) private mapPID_param;    // Parameter mapped to the proposal
+    mapping(uint256 => address) private mapPID_address;  // Address mapped to the proposal
+    mapping(uint256 => string) private mapPID_type;      // String of the proposal type
+    mapping(uint256 => uint256) private mapPID_coolOffTime; // Cooloff ending timestamp to be able to check if finalising proposal can be actioned
+    mapping(uint256 => bool) private mapPID_finalising;  // Is proposal in the finalizing stage
+    mapping(uint256 => bool) private mapPID_finalised;   // Has the proposal already be finalised / completed
+    mapping(uint256 => bool) private mapPID_open;        // Is the proposal open or closed
+    mapping(uint256 => uint256) private mapPID_startTime; // Timestamp of proposal creation
 
     mapping(uint256 => mapping(address => uint256)) private mapPIDAsset_votes; // Balance of assets staked in favour of a proposal
     mapping(uint256 => mapping(address => bool)) private mapPIDMember_hasVoted; // Whether member has signaled their support of a proposal
@@ -157,8 +157,8 @@ contract Dao is ReentrancyGuard{
 
     // Contract deposits LP tokens for member
     function deposit(address pool, uint256 amount) external operational weightChange {
-        require(_POOLFACTORY.isCuratedPool(pool) == true, "!curated"); // Pool must be Curated
-        require(amount > 0, "!amount");     // Deposit amount must be valid
+        require(_POOLFACTORY.isCuratedPool(pool) == true); // Pool must be Curated
+        require(amount > 0);     // Deposit amount must be valid
         if (isMember[msg.sender] != true) {
             arrayMembers.push(msg.sender);  // If not a member; add user to member array
             isMember[msg.sender] = true;    // If not a member; register the user as member
@@ -172,7 +172,7 @@ contract Dao is ReentrancyGuard{
     // User withdraws all of their selected asset from the DAOVault
     function withdraw(address pool) external operational weightChange {
         uint256 amount = _DAOVAULT.getMemberPoolBalance(pool, msg.sender); // Get the members available vault balance
-        require(_DAOVAULT.withdraw(pool, msg.sender), "!transfer"); // Withdraw assets from vault and tsf to user
+        require(_DAOVAULT.withdraw(pool, msg.sender)); // Withdraw assets from vault and tsf to user
         emit MemberWithdraws(msg.sender, pool, amount);
     }
 
@@ -180,7 +180,7 @@ contract Dao is ReentrancyGuard{
     
     // User claims their DAOVault incentives
     function harvest() external operational {
-        require(_RESERVE.emissions(), "!emissions"); // Reserve must have emissions turned on
+        require(_RESERVE.emissions()); // Reserve must have emissions turned on
         uint reward = calcCurrentReward(msg.sender); // Calculate the user's claimable incentive
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)); // Get total BASE balance of RESERVE
@@ -194,7 +194,7 @@ contract Dao is ReentrancyGuard{
 
     // Calculate the user's current incentive-claim per era
     function calcCurrentReward(address member) public view operational returns(uint){
-        require(block.timestamp > mapMember_lastTime[member], "!VALID");
+        require(block.timestamp > mapMember_lastTime[member]);
         uint secondsSinceClaim = block.timestamp - mapMember_lastTime[member]; // Get seconds passed since last claim
         uint share = calcReward(member); // Get share of rewards for user
         uint reward = (share * secondsSinceClaim) / iBASE(BASE).secondsPerEra(); // User's share times eras since they last claimed
@@ -214,9 +214,9 @@ contract Dao is ReentrancyGuard{
      //==================================BOND =========================================//
 
     function bond(address asset, uint256 amount) external payable operational weightChange returns (bool success) {
-        require(amount > 0, '!amount'); // Amount must be valid
+        require(amount > 0); // Amount must be valid
         address _pool = _POOLFACTORY.getPool(asset); // Get the pool address
-        require(_BONDVAULT.isListed(_pool), '!listed'); // Asset must be listed for Bond 
+        require(_BONDVAULT.isListed(_pool)); // Asset must be listed for Bond 
         if (isMember[msg.sender] != true) {
             arrayMembers.push(msg.sender); // If user is not a member; add them to the member array
             isMember[msg.sender] = true; // Register user as a member
@@ -293,7 +293,7 @@ contract Dao is ReentrancyGuard{
     function newAddressProposal(address proposedAddress, string memory typeStr) external {
         bytes memory _type = bytes(typeStr); // Get the proposal type
         if (isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE') || isEqual(_type, 'REALISE')) {
-            require(proposedAddress != address(0), "!address"); // Proposed address must be valid
+            require(proposedAddress != address(0)); // Proposed address must be valid
         }
         uint _currentProposal = _checkProposal(); // If no open proposal; construct new one
         _payFee(); // Pay SPARTA fee for new proposal
@@ -304,10 +304,10 @@ contract Dao is ReentrancyGuard{
 
     // New DAO proposal: Grant SPARTA to wallet
     function newGrantProposal(address recipient, uint amount) external {
-        require(recipient != address(0), "!address"); // Proposed recipient must be valid
+        require(recipient != address(0)); // Proposed recipient must be valid
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)); // Get total BASE balance of RESERVE
         uint daoReward = (reserve * daoClaim) / 10000; // Get DAO's share of BASE balance of RESERVE (max user claim amount)
-        require((amount > 0) && (amount < daoReward), "!AMOUNT"); // Proposed grant amount must be valid
+        require((amount > 0) && (amount < daoReward)); // Proposed grant amount must be valid
         uint _currentProposal = _checkProposal(); // If no open proposal; construct new one
         _payFee(); // Pay SPARTA fee for new proposal
         string memory typeStr = "GRANT";
@@ -319,9 +319,9 @@ contract Dao is ReentrancyGuard{
 
     // If no existing open DAO proposal; register a new one
     function _checkProposal() internal operational isRunning returns(uint) {
-        require(_RESERVE.globalFreeze() != true, '!SAFE'); // There must not be a global freeze in place
+        require(_RESERVE.globalFreeze() != true); // There must not be a global freeze in place
         uint _currentProposal = currentProposal; // Get the current proposal ID
-        require(mapPID_open[_currentProposal] == false, '!open'); // There must not be an existing open proposal
+        require(mapPID_open[_currentProposal] == false); // There must not be an existing open proposal
         _currentProposal += 1; // Increment to the new PID
         currentProposal = _currentProposal; // Set current proposal to the new count
         mapPID_open[_currentProposal] = true; // Set new proposal as open status
@@ -339,9 +339,9 @@ contract Dao is ReentrancyGuard{
 
     // Vote for a proposal
     function voteProposal() external operational {
-        require(_RESERVE.globalFreeze() != true, '!SAFE'); // There must not be a global freeze in place
+        require(_RESERVE.globalFreeze() != true); // There must not be a global freeze in place
         uint _currentProposal = currentProposal; // Get the current proposal ID
-        require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
+        require(mapPID_open[_currentProposal] == true); // Proposal must be open status
         require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == false, "VOTED"); // User must not have already signaled their support
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
         bool nonZero = _addVotes(_currentProposal); // Add votes to current proposal
@@ -354,7 +354,7 @@ contract Dao is ReentrancyGuard{
     // Remove vote from a proposal
     function unvoteProposal() external operational {
         uint _currentProposal = currentProposal; // Get the current proposal ID
-        require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
+        require(mapPID_open[_currentProposal] == true); // Proposal must be open status
         require(mapPIDMember_hasVoted[_currentProposal][msg.sender] == true, "!VOTED"); // User must have already signaled their support
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
         bool nonZero = _removeVotes(_currentProposal); // Remove votes from current proposal
@@ -367,7 +367,7 @@ contract Dao is ReentrancyGuard{
     // Poll vote weights and check if proposal is ready to go into finalisation stage
     function pollVotes() external operational {
         uint _currentProposal = currentProposal; // Get the current proposal ID
-        require(mapPID_open[_currentProposal] == true, "!open"); // Proposal must be open status
+        require(mapPID_open[_currentProposal] == true); // Proposal must be open status
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
         if(hasQuorum(_currentProposal) && mapPID_finalising[_currentProposal] == false){
             if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE') || isEqual(_type, 'GET_SPARTA') || isEqual(_type, 'ROUTER') || isEqual(_type, 'LIST_BOND') || isEqual(_type, 'GRANT') || isEqual(_type, 'ADD_CURATED_POOL')){

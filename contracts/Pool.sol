@@ -87,7 +87,7 @@ contract Pool is iBEP20 {
         freezePoint = 3000;
         baseCap = 100000*10**18; //RAISE THE CAPS
         lastStirred = 0;
-        oneWeek = 604800;//604800 mainnet
+        oneWeek = 60480;//604800 mainnet
     }
 
     //========================================iBEP20=========================================//
