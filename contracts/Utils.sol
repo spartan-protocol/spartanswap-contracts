@@ -34,14 +34,13 @@ contract Utils {
 
     function getPoolData(address token) external view returns(PoolDataStruct memory poolData){
         address pool = getPool(token);
-        uint256 tokenAmount = iPOOL(pool).tokenAmount();
         poolData.tokenAddress = token;
         poolData.poolAddress = pool;
         poolData.genesis = iPOOL(pool).genesis();
         poolData.baseAmount = iPOOL(pool).baseAmount();
-        poolData.tokenAmount = tokenAmount;
+        poolData.tokenAmount = iPOOL(pool).tokenAmount();
         poolData.poolUnits = iBEP20(pool).totalSupply();
-        poolData.synthCap = tokenAmount *  iPOOL(pool).synthCap() / 10000;
+        poolData.synthCap = iPOOL(pool).synthCap();
         poolData.baseCap = iPOOL(pool).baseCap();   
         return poolData;
     }
