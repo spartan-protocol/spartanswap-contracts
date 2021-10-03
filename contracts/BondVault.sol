@@ -45,7 +45,7 @@ contract BondVault {
         BASE = _base;
         DEPLOYER = msg.sender;
         bondRelease = false;
-        bondingPeriodSeconds = 1555200; // mainNet 6months
+        bondingPeriodSeconds = 15552000; // mainNet 6months 
     }
 
     // Restrict access

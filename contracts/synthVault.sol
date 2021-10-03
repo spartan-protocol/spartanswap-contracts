@@ -40,7 +40,7 @@ contract SynthVault is ReentrancyGuard{
         BASE = _base;
         DEPLOYER = msg.sender;
         erasToEarn = 30;
-        minimumDepositTime = 60; // 60s testnet // 1hr for mainnet 3600
+        minimumDepositTime = 3600; //  1hr for mainnet 3600
         vaultClaim = 1000;
         genesis = block.timestamp;
         lastMonth = 0;

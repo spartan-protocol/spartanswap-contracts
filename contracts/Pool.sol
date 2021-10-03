@@ -81,13 +81,13 @@ contract Pool is iBEP20 {
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), poolSymbol));
         decimals = 18;
         genesis = block.timestamp;
-        period = block.timestamp + 60; // 
+        period = block.timestamp + 60; 
         lastMonth = block.timestamp;
-        synthCap = 2500;
-        freezePoint = 3000;
+        synthCap = 2500; //25%
+        freezePoint = 3000; //30%
         baseCap = 100000*10**18; //RAISE THE CAPS
         lastStirred = 0;
-        oneWeek = 60480;//604800 mainnet
+        oneWeek = 604800;//604800 mainnet
     }
 
     //========================================iBEP20=========================================//

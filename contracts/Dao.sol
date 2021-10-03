@@ -513,7 +513,7 @@ contract Dao is ReentrancyGuard{
 
     // Mint a 2.5M SPARTA allocation for the Bond program
     function _increaseSpartaAllocation() internal {
-        uint256 _2point5m = 2.5*10**6*10**18; //_2.5m
+        uint256 _2point5m = 2*10**6*10**18; //_2m
         iBASE(BASE).mintFromDAO(_2point5m, address(this)); // Mint SPARTA and send to DAO to hold
     }
 

@@ -33,7 +33,7 @@ contract PoolFactory  {
         BASE = _base;
         WBNB = _wbnb;
         curatedPoolSize = 10;
-        minBASE = 10000*10**18;
+        minBASE = 1000*10**18; //default
         DEPLOYER = msg.sender;
     }
 
