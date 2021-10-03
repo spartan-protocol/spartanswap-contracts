@@ -15,7 +15,7 @@ contract SynthVault is ReentrancyGuard{
     address public immutable BASE;      // Address of SPARTA base token contract
     address public DEPLOYER;            // Address that deployed the contract | can be purged to address(0)
 
-    uint256 public minimumDepositTime;  // Withdrawal & Harvest lockout period; intended to be 1 hour
+    uint256 public minimumDepositTime;  // Withdrawal lockout period; intended to be 1 hour
     uint256 public erasToEarn;          // Amount of eras that make up the targeted RESERVE depletion; regulates incentives
     uint256 public vaultClaim;          // The SynthVaults's portion of rewards; intended to be ~10% initially
     uint public lastMonth;              // Timestamp of the start of current metric period (For UI)

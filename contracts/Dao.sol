@@ -231,7 +231,7 @@ contract Dao is ReentrancyGuard{
 
     // Add bonded assets as liquidity and calculate LP units
     function _handleTransferIn(address _token, uint _amount) internal nonReentrant returns (uint LPunits){
-        if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < 2.5 * 10**6 * 10**18){
+        if(iBEP20(BASE).allowance(address(this), address(_ROUTER)) < 2 * 10**6 * 10**18){
             iBEP20(BASE).approve(address(_ROUTER), iBEP20(BASE).totalSupply()); // Increase SPARTA allowance if required
         }
         if(_token == address(0)){
@@ -511,10 +511,10 @@ contract Dao is ReentrancyGuard{
         _RESERVE.grantFunds(_proposedAmount, _proposedAddress); // Grant the funds to the recipient
     }
 
-    // Mint a 2.5M SPARTA allocation for the Bond program
+    // Mint a 2.0M SPARTA allocation for the Bond program
     function _increaseSpartaAllocation() internal {
-        uint256 _2point5m = 2*10**6*10**18; //_2m
-        iBASE(BASE).mintFromDAO(_2point5m, address(this)); // Mint SPARTA and send to DAO to hold
+        uint256 _2m = 2*10**6*10**18; //_2m
+        iBASE(BASE).mintFromDAO(_2m, address(this)); // Mint SPARTA and send to DAO to hold
     }
 
     // Realise value out of a synth's collateral
