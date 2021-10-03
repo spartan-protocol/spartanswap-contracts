@@ -215,6 +215,7 @@ contract Dao is ReentrancyGuard{
 
     function bond(address asset, uint256 amount) external payable operational weightChange returns (bool success) {
         require(amount > 0); // Amount must be valid
+        require(_RESERVE.globalFreeze() != true); // There must not be a global freeze in place
         address _pool = _POOLFACTORY.getPool(asset); // Get the pool address
         require(_BONDVAULT.isListed(_pool)); // Asset must be listed for Bond 
         if (isMember[msg.sender] != true) {
