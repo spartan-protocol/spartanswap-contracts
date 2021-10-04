@@ -5,7 +5,7 @@ import "./iRESERVE.sol";
 import "./iPOOLFACTORY.sol";  
 import "./iWBNB.sol";
 import "./TransferHelper.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./ReentrancyGuard.sol";
 
 contract Router is ReentrancyGuard{
     address private immutable BASE;  // SPARTA base contract address

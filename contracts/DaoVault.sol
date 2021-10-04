@@ -9,7 +9,7 @@ import "./iROUTER.sol";
 import "./iRESERVE.sol";
 import "./iPOOLFACTORY.sol";
 import "./TransferHelper.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./ReentrancyGuard.sol";
 
 contract DaoVault is ReentrancyGuard {
     address public immutable BASE;  // SPARTA base contract address

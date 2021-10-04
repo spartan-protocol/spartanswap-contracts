@@ -12,7 +12,7 @@ import "./iBEP20.sol";
 import "./iPOOLFACTORY.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iSYNTHVAULT.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./ReentrancyGuard.sol";
 import "./TransferHelper.sol";
 contract Dao is ReentrancyGuard{
     address private DEPLOYER;        // Address that deployed contract | can be purged to address(0)
