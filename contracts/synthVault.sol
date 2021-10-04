@@ -10,7 +10,7 @@ import "./iRESERVE.sol";
 import "./iSYNTHFACTORY.sol";
 import "./iPOOLFACTORY.sol";
 import "./TransferHelper.sol";
-import "./ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 contract SynthVault is ReentrancyGuard{
     address public immutable BASE;      // Address of SPARTA base token contract
     address public DEPLOYER;            // Address that deployed the contract | can be purged to address(0)
