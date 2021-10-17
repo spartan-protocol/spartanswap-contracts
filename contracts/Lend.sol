@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.3;
 pragma experimental ABIEncoderV2;
+import "./iDAO.sol";
+import "./iBASE.sol";
 import "hardhat/console.sol";
-import "./lendRouter.sol";
+
 
 contract SpartanLend {
 
     address public BASE;
     address public DEPLOYER;
     address public LendRouter;
+    address public LendVault;
 
     // Only DAO can execute
     modifier onlyDAO() {
@@ -26,8 +29,9 @@ contract SpartanLend {
     }
 
 
-    function setParams(address _lendRouter) external onlyDAO {
+    function setGenesisAddresses(address _lendRouter, address _lendVault) external onlyDAO {
         LendRouter = _lendRouter;
+        LendVault = _lendVault;
     }
 
     //Add collateral and borrow curated asset
