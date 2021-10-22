@@ -2,6 +2,7 @@
 pragma solidity 0.8.3;
 import "./Pool.sol";
 import "./iRESERVE.sol"; 
+import "./iROUTER.sol"; 
 import "./iPOOLFACTORY.sol";  
 import "./iWBNB.sol";
 import "./TransferHelper.sol";
@@ -32,7 +33,7 @@ contract Router is ReentrancyGuard{
     constructor (address _base, address _wbnb) {
         BASE = _base;
         WBNB = _wbnb;
-        diviClaim = 100;
+        diviClaim = 500;
         synthMinting = false;
         DEPLOYER = msg.sender;
     }
@@ -307,7 +308,7 @@ contract Router is ReentrancyGuard{
 
     // Check if fee should generate a dividend & send it to the pool
     function _getsDividend(address _pool, uint fee) internal {
-        if(fee > 10**18 && iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
+        if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
             _addDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
         }
     }
@@ -340,6 +341,14 @@ contract Router is ReentrancyGuard{
             lastMonth = block.timestamp;
             mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
             mapAddress_30DayDividends[_pool] = _fees;
+        }
+    }
+    function _migrateRevenue(address oldRouter) external onlyDAO {
+        lastMonth = iROUTER(oldRouter).lastMonth();  
+        address [] memory pools = iPOOLFACTORY(_DAO().POOLFACTORY()).getPoolAssets(); 
+        for(uint i = 0; i < pools.length; i++){
+            mapAddress_30DayDividends[pools[i]] = iROUTER(oldRouter).mapAddress_30DayDividends(pools[i]);  
+            mapAddress_Past30DayPoolDividends[pools[i]] = iROUTER(oldRouter).mapAddress_Past30DayPoolDividends(pools[i]);   
         }
     }
     
