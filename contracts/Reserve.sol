@@ -36,7 +36,7 @@ contract Reserve {
         DEPLOYER = msg.sender;
         polTime = 86400;
         polEmission = block.timestamp + 86400;
-        polClaim = 0;
+        polClaim = 100;//100 bp 
     }
 
     function setpParams(uint256 newPolTime, uint256 newpolClaim) external onlyDAO {
@@ -81,9 +81,7 @@ contract Reserve {
                }
         }
     }
-    function migratePOl(address newReserve, address newLendVault) external onlyDAO {
-
-    }
+   
 
     function performApprovals() external onlyDAO(){
         iBEP20(BASE).approve(_DAO().ROUTER(), 300000000000000000000000000);//entire supply called once

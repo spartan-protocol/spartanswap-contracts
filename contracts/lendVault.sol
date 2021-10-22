@@ -64,7 +64,7 @@ contract LendVault {
         require(block.timestamp > (mapMember_depositTime[msg.sender][_pool] + 86400), '!unlocked'); // 1 day must have passed since last deposit (lockup period)
         uint256 _balance = mapMemberPool_balance[msg.sender][_pool];  // Get user's whole balance of the selected asset
         require(_balance > 0, "!balance");                            // Withdraw amount must be valid
-        mapTotalPool_balance[_pool] -=_balance;                       // remove from total
+        mapTotalPool_balance[_pool] -= _balance;                      // remove from total
         mapMemberPool_balance[msg.sender][_pool] = 0;                 // Zero out user's balance of the selected asset
         TransferHelper.safeTransfer(_pool,msg.sender, _balance);
     }
