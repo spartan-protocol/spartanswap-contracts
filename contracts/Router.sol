@@ -307,7 +307,7 @@ contract Router is ReentrancyGuard{
 
     // Check if fee should generate a dividend & send it to the pool
     function _getsDividend(address _pool, uint fee) internal {
-        if(fee > 10**18 && iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
+        if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
             _addDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
         }
     }
