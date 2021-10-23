@@ -15,7 +15,8 @@ contract Reserve {
     uint256 public freezeTime;
     address public polTokenAddress;
     address public polPoolAddress;
-    uint256 public polEmissionTime;
+    uint256 public polEmission;
+    uint256 public polTime;
     bool public polStatus;
     uint256 public polClaim;
     
@@ -33,7 +34,8 @@ contract Reserve {
     constructor (address _base) {
         BASE = _base;
         DEPLOYER = msg.sender;
-        polEmissionTime = block.timestamp + 3600;
+        polTime = block.timestamp;
+        polEmission = 3600;
         polClaim = 50;//100 bp 
         polStatus = false;
     }
@@ -49,8 +51,8 @@ contract Reserve {
         polPoolAddress = _polPoolAddress;
     }
 
-    function setPOLParams(uint256 newPolEmissionTime, uint256 newpolClaim) external onlyDAO {
-        polEmissionTime = newPolEmissionTime;
+    function setPOLParams(uint256 newPolEmission, uint256 newpolClaim) external onlyDAO {
+        polEmission = newPolEmission;
         polClaim = newpolClaim;
     }
 
@@ -93,8 +95,9 @@ contract Reserve {
 
     function addPOL() internal {
      uint256 polAmount = (iBEP20(BASE).balanceOf(address(this)) * polClaim) / 10000; //get amount using balance of reserve
-         if((block.timestamp > polEmissionTime) && polStatus){ 
+         if((block.timestamp > polTime) && polStatus){ 
               iROUTER(_DAO().ROUTER()).addLiquidityAsym(polAmount, true, polTokenAddress); 
+              polTime = block.timestamp + polEmission;
         }
     }
 
