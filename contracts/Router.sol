@@ -16,6 +16,7 @@ contract Router is ReentrancyGuard{
     uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
     uint256 private curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
     bool public synthMinting;
+    uint private minDiv;
 
     mapping(address=> uint) public mapAddress_30DayDividends; // Current incomplete-period NET SPARTA divis by pool
     mapping(address=> uint) public mapAddress_Past30DayPoolDividends; // Previous full-period NET SPARTA divis by pool
@@ -36,6 +37,7 @@ contract Router is ReentrancyGuard{
         diviClaim = 500;
         synthMinting = false;
         DEPLOYER = msg.sender;
+        minDiv = 10**18;
     }
 
     receive() external payable {} // Used to receive BNB from WBNB contract
@@ -309,6 +311,9 @@ contract Router is ReentrancyGuard{
     // Check if fee should generate a dividend & send it to the pool
     function _getsDividend(address _pool, uint fee) internal {
         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
+            if(fee < 10**18){
+                fee = minDiv;
+            }
             _addDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
         }
     }
@@ -354,9 +359,10 @@ contract Router is ReentrancyGuard{
     
     //======================= Change Dividend Variables ===========================//
 
-    function changeDiviClaim(uint _newDiviClaim) external onlyDAO {
+    function changeDiviClaim(uint _newDiviClaim, uint _newDivFee) external onlyDAO {
         require(_newDiviClaim > 0 && _newDiviClaim < 5000, '!VALID');
         diviClaim = _newDiviClaim;
+        minDiv = _newDivFee;
     }
 
     function changeSynthCap(uint synthCap, address _pool) external onlyDAO {
