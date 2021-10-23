@@ -92,6 +92,10 @@ contract Reserve {
     function flipPol() external onlyGrantor {
         polStatus = !polStatus; // Flip emissions on/off
     }
+    
+    function performApprovals() external onlyDAO(){
+        iBEP20(BASE).approve(_DAO().ROUTER(), 300000000000000000000000000);//entire supply called once
+    }
 
     function addPOL() internal {
      uint256 polAmount = (iBEP20(BASE).balanceOf(address(this)) * polClaim) / 10000; //get amount using balance of reserve
