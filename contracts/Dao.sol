@@ -183,7 +183,8 @@ contract Dao is ReentrancyGuard{
         require(_RESERVE.emissions()); // Reserve must have emissions turned on
         uint reward = calcCurrentReward(msg.sender); // Calculate the user's claimable incentive
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
-        uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)); // Get total BASE balance of RESERVE
+        address polAddress = _RESERVE.polPoolAddress();//get POL pool address
+        uint reserve = iBEP20(polAddress).balanceOf(address(_RESERVE)); // Get total POL balance of RESERVE
         uint daoReward = (reserve * daoClaim) / 10000; // Get DAO's share of BASE balance of RESERVE (max user claim amount)
         if(reward > daoReward){
             reward = daoReward; // User cannot claim more than the daoReward limit
