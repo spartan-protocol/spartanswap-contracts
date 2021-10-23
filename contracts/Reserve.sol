@@ -45,8 +45,8 @@ contract Reserve {
     }
 
     function setParams(address token) external onlyDAO (){
-        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(token) == true);
         address _polPoolAddress = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_polPoolAddress) == true);
         polTokenAddress = token;
         polPoolAddress = _polPoolAddress;
     }
