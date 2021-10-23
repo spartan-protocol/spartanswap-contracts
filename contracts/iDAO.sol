@@ -15,4 +15,6 @@ interface iDAO {
     function currentProposal() external view returns (uint);
     function mapPID_open(uint) external view returns (bool);
     function isListed(address) external view returns (bool);
+    function arrayMembers(uint) external view returns (address);
+    function mapMember_lastTime(address) external view returns (uint);
 }

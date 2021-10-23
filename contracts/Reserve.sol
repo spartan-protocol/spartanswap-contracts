@@ -72,7 +72,7 @@ contract Reserve {
     }
 
     // Send POL to an incentive address
-    function grantPOLFunds(uint amount, address to) external onlyGrantor {
+    function grantPOLFunds(uint amount, address to) external onlyDAO {
         uint reserve = iBEP20(polPoolAddress).balanceOf(address(this)); // Get RESERVE's POL balance
         if(amount > 0){ // Skip if amount is not valid
             if(emissions){ // Skip if emissions are off
