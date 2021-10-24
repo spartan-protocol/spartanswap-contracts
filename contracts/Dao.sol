@@ -158,7 +158,7 @@ contract Dao is ReentrancyGuard{
         }
   
     }
-
+    
     // Can purge deployer once DAO is stable and final
     function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
@@ -193,13 +193,12 @@ contract Dao is ReentrancyGuard{
         require(_RESERVE.emissions()); // Reserve must have emissions turned on
         uint reward = calcCurrentReward(msg.sender); // Calculate the user's claimable incentive
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
-        address polAddress = _RESERVE.polPoolAddress();//get POL pool address
-        uint reserve = iBEP20(polAddress).balanceOf(address(_RESERVE)); // Get total POL balance of RESERVE
+        uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)); // Get total POL balance of RESERVE
         uint daoReward = (reserve * daoClaim) / 10000; // Get DAO's share of BASE balance of RESERVE (max user claim amount)
         if(reward > daoReward){
             reward = daoReward; // User cannot claim more than the daoReward limit
         }
-        _RESERVE.grantPOLFunds(reward, msg.sender); // Send the claim to the user  
+        _RESERVE.grantFunds(reward, msg.sender); // Send the claim to the user  
         emit Harvest(msg.sender, reward);
     }
 
@@ -217,7 +216,7 @@ contract Dao is ReentrancyGuard{
         (uint256 weightDAO, uint256 totalDAOWeight) = _DAOVAULT.getMemberLPWeight(member); // Get the DAOVault weights
         (uint256 weightBOND, uint256 totalBONDWeight) = _BONDVAULT.getMemberLPWeight(member); // Get the BondVault weights
         uint256 memberWeight = weightDAO + weightBOND; // Get user's combined vault weight
-        uint256 totalWeight = totalDAOWeight + totalBONDWeight; // Get vault's combined total weight
+        uint256 totalWeight = totalDAOWeight + totalBONDWeight; // Get vault's combined total weight  
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)) / erasToEarn; // Aim to deplete reserve over a number of days
         uint daoReward = (reserve * daoClaim) / 10000; // Get the DAO's share of that
         return _UTILS.calcShare(memberWeight, totalWeight, daoReward); // Get users's share of that (1 era worth)

@@ -36,7 +36,7 @@ contract Reserve {
         DEPLOYER = msg.sender;
         polTime = block.timestamp;
         polEmission = 3600;
-        polClaim = 50;//100 bp 
+        polClaim = 5;//100 bp 
         polStatus = false;
     }
 

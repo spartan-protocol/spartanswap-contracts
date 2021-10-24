@@ -8,5 +8,5 @@ interface iRESERVE {
     function setIncentiveAddresses(address, address, address, address) external;
     function globalFreeze() external returns(bool); 
     function freezeTime() external returns(uint256); 
-    function polPoolAddress() external returns(address); 
+    function polPoolAddress() external view returns(address); 
 }

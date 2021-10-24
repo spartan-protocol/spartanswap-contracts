@@ -2,6 +2,7 @@
 pragma solidity 0.8.3;
 interface iDAO {
     function ROUTER() external view returns(address);
+    function DAOVAULT() external view returns(address);
     function BASE() external view returns(address);
     function LEND() external view returns(address);
     function UTILS() external view returns(address);
