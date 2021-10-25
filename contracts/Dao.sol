@@ -149,16 +149,6 @@ contract Dao is ReentrancyGuard{
         cancelPeriod = _cancelPeriod;
     }
 
-    function migrateMemberDetails(address oldDao) external onlyDAO {
-        for(uint i = 0; i < 29; i++){ // must change for mainnet
-           address member = iDAO(oldDao).arrayMembers(i);   
-           isMember[member] = true; 
-           arrayMembers.push(member);  // If not a member; add user to member array
-           mapMember_lastTime[member] = iDAO(oldDao).mapMember_lastTime(member);   
-        }
-  
-    }
-
     // Can purge deployer once DAO is stable and final
     function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
@@ -724,9 +714,7 @@ contract Dao is ReentrancyGuard{
     function getProposalAssetVotes(uint256 proposal, address asset) public view returns (uint256) {
         return mapPIDAsset_votes[proposal][asset];
     }
-    function getMembersArray() public view returns(address [] memory members){
-        return arrayMembers;
-    }
+
     function memberVoted(uint256 proposal, address member) public view returns (bool) {
         return mapPIDMember_hasVoted[proposal][member];
     }
@@ -739,3 +727,6 @@ contract Dao is ReentrancyGuard{
     }
 
 }
+
+
+   

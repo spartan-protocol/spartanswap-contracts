@@ -382,8 +382,11 @@ contract Router is ReentrancyGuard{
     function flipSynthMinting() external onlyDAO {
         synthMinting = !synthMinting;
     }
-    function syncPool(address _pool) external onlyRESERVE {
-         Pool(_pool).sync(); // Sync the pool balances to attribute reward to the LPers
+    function syncPool(address _pool, uint256 amount) external onlyRESERVE {
+        address _token = Pool(_pool).TOKEN();
+        uint256 baseValue = iUTILS(_DAO().UTILS()).calcSpotValueInBase(_token, amount);
+        _revenueDetails(baseValue, _pool);
+        Pool(_pool).sync(); // Sync the pool balances to attribute reward to the LPers
     }
 
     function _safetyTrigger(address _pool) internal {

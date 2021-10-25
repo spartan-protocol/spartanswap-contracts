@@ -50,8 +50,10 @@ contract Reserve {
     function setParams(address token) external onlyDAO (){
         address _polPoolAddress = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_polPoolAddress) == true);
+        require(token != address(0));
         polTokenAddress = token;
         polPoolAddress = _polPoolAddress;
+        performApprovals();
     }
 
     function setPOLParams(uint256 newPolEmission, uint256 newPolClaim, uint256 newRealiseClaim) external onlyDAO {
@@ -107,7 +109,7 @@ contract Reserve {
         polStatus = !polStatus; // Flip emissions on/off
     }
     
-    function performApprovals() external onlyDAO(){
+    function performApprovals() public onlyDAO(){
         iBEP20(BASE).approve(_DAO().ROUTER(), 300000000000000000000000000);//entire supply called once
         iBEP20(polPoolAddress).approve(_DAO().ROUTER(), 300000000000000000000000000);//entire supply called once
     }
