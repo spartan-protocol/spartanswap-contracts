@@ -7,4 +7,6 @@ interface iROUTER {
       function mapAddress_30DayDividends(address) external returns (uint);
       function mapAddress_Past30DayPoolDividends(address) external returns (uint);
       function addLiquidityAsym(uint input, bool fromBase, address token) external;
+      function removeLiquidityExactAsym(uint input, bool fromBase, address token) external;
+      function syncPool(address) external;
 }

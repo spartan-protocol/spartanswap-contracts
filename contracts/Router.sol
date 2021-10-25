@@ -16,13 +16,18 @@ contract Router is ReentrancyGuard{
     uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
     uint256 private curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
     bool public synthMinting;
-    uint private minDiv;
+    uint public minDiv;
 
     mapping(address=> uint) public mapAddress_30DayDividends; // Current incomplete-period NET SPARTA divis by pool
     mapping(address=> uint) public mapAddress_Past30DayPoolDividends; // Previous full-period NET SPARTA divis by pool
+    event Dividend(address Pool, uint256 amount);
     // Restrict access
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER);
+        _;
+    }
+    modifier onlyRESERVE() {
+        require(msg.sender == _DAO().RESERVE());
         _;
     }
 
@@ -332,6 +337,7 @@ contract Router is ReentrancyGuard{
                 _revenueDetails(_fees, _pool); // Add to revenue metrics
                 iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Tsf SPARTA dividend (Reserve -> Pool)
                 Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
+                emit Dividend(_pool, _fees); 
             }
         }
     }
@@ -361,8 +367,9 @@ contract Router is ReentrancyGuard{
 
     function changeDiviClaim(uint _newDiviClaim, uint _newDivFee) external onlyDAO {
         require(_newDiviClaim > 0 && _newDiviClaim < 5000, '!VALID');
+        require(_newDivFee < 1000, '!VALID');
         diviClaim = _newDiviClaim;
-        minDiv = _newDivFee;
+        minDiv = _newDivFee * 10**18;
     }
 
     function changeSynthCap(uint synthCap, address _pool) external onlyDAO {
@@ -374,6 +381,9 @@ contract Router is ReentrancyGuard{
     }
     function flipSynthMinting() external onlyDAO {
         synthMinting = !synthMinting;
+    }
+    function syncPool(address _pool) external onlyRESERVE {
+         Pool(_pool).sync(); // Sync the pool balances to attribute reward to the LPers
     }
 
     function _safetyTrigger(address _pool) internal {

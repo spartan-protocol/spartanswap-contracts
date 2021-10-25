@@ -19,6 +19,7 @@ contract Reserve {
     uint256 public polTime;
     bool public polStatus;
     uint256 public polClaim;
+    uint256 public realiseClaim;
     
 
     // Restrict access
@@ -38,6 +39,7 @@ contract Reserve {
         polEmission = 3600;
         polClaim = 5;//100 bp 
         polStatus = false;
+        realiseClaim = 100;//bp
     }
 
     function _DAO() internal view returns(iDAO) {
@@ -51,9 +53,10 @@ contract Reserve {
         polPoolAddress = _polPoolAddress;
     }
 
-    function setPOLParams(uint256 newPolEmission, uint256 newpolClaim) external onlyDAO {
+    function setPOLParams(uint256 newPolEmission, uint256 newPolClaim, uint256 newRealiseClaim) external onlyDAO {
         polEmission = newPolEmission;
-        polClaim = newpolClaim;
+        polClaim = newPolClaim;
+        realiseClaim = newRealiseClaim;
     }
 
     // Send SPARTA to an incentive address (Vault harvest, dividends etc)
@@ -85,6 +88,14 @@ contract Reserve {
         }
     }
 
+    function realisePOL() external onlyDAO {
+        uint256 polFloat = iBEP20(polPoolAddress).balanceOf(address(this));
+        uint256 realiseAmount = polFloat * realiseClaim / 10000;
+        iROUTER(_DAO().ROUTER()).removeLiquidityExactAsym(realiseAmount, false, polTokenAddress);  
+        iBEP20(polTokenAddress).transfer(polPoolAddress, iBEP20(polTokenAddress).balanceOf(address(this)));
+        iROUTER(_DAO().ROUTER()).syncPool(polPoolAddress);
+    }
+
 
     function flipEmissions() external onlyGrantor {
         emissions = !emissions; // Flip emissions on/off
@@ -95,6 +106,7 @@ contract Reserve {
     
     function performApprovals() external onlyDAO(){
         iBEP20(BASE).approve(_DAO().ROUTER(), 300000000000000000000000000);//entire supply called once
+        iBEP20(polPoolAddress).approve(_DAO().ROUTER(), 300000000000000000000000000);//entire supply called once
     }
 
     function addPOL() internal {
