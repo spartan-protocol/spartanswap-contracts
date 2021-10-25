@@ -31,6 +31,7 @@ contract Reserve {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER);
         _;
     }
+    event RealisePOL(address pool, uint256 amount);
 
     constructor (address _base) {
         BASE = _base;
@@ -92,8 +93,10 @@ contract Reserve {
         uint256 polFloat = iBEP20(polPoolAddress).balanceOf(address(this));
         uint256 realiseAmount = polFloat * realiseClaim / 10000;
         iROUTER(_DAO().ROUTER()).removeLiquidityExactAsym(realiseAmount, false, polTokenAddress);  
-        iBEP20(polTokenAddress).transfer(polPoolAddress, iBEP20(polTokenAddress).balanceOf(address(this)));
+        uint256 amountToken = iBEP20(polTokenAddress).balanceOf(address(this));
+        iBEP20(polTokenAddress).transfer(polPoolAddress,amountToken);
         iROUTER(_DAO().ROUTER()).syncPool(polPoolAddress);
+        emit RealisePOL(polPoolAddress, amountToken);
     }
 
 
