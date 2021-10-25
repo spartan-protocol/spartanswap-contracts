@@ -158,7 +158,7 @@ contract Dao is ReentrancyGuard{
         }
   
     }
-    
+
     // Can purge deployer once DAO is stable and final
     function purgeDeployer() external onlyDAO {
         DEPLOYER = address(0);
@@ -193,12 +193,12 @@ contract Dao is ReentrancyGuard{
         require(_RESERVE.emissions()); // Reserve must have emissions turned on
         uint reward = calcCurrentReward(msg.sender); // Calculate the user's claimable incentive
         mapMember_lastTime[msg.sender] = block.timestamp; // Reset user's last harvest time
-        uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)); // Get total POL balance of RESERVE
+        uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)); // Get total BASE balance of RESERVE
         uint daoReward = (reserve * daoClaim) / 10000; // Get DAO's share of BASE balance of RESERVE (max user claim amount)
         if(reward > daoReward){
             reward = daoReward; // User cannot claim more than the daoReward limit
         }
-        _RESERVE.grantFunds(reward, msg.sender); // Send the claim to the user  
+        _RESERVE.grantFunds(reward, msg.sender); // Send the claim to the user
         emit Harvest(msg.sender, reward);
     }
 
@@ -216,7 +216,7 @@ contract Dao is ReentrancyGuard{
         (uint256 weightDAO, uint256 totalDAOWeight) = _DAOVAULT.getMemberLPWeight(member); // Get the DAOVault weights
         (uint256 weightBOND, uint256 totalBONDWeight) = _BONDVAULT.getMemberLPWeight(member); // Get the BondVault weights
         uint256 memberWeight = weightDAO + weightBOND; // Get user's combined vault weight
-        uint256 totalWeight = totalDAOWeight + totalBONDWeight; // Get vault's combined total weight  
+        uint256 totalWeight = totalDAOWeight + totalBONDWeight; // Get vault's combined total weight
         uint reserve = iBEP20(BASE).balanceOf(address(_RESERVE)) / erasToEarn; // Aim to deplete reserve over a number of days
         uint daoReward = (reserve * daoClaim) / 10000; // Get the DAO's share of that
         return _UTILS.calcShare(memberWeight, totalWeight, daoReward); // Get users's share of that (1 era worth)
@@ -303,7 +303,7 @@ contract Dao is ReentrancyGuard{
     // New DAO proposal: Address parameter
     function newAddressProposal(address proposedAddress, string memory typeStr) external {
         bytes memory _type = bytes(typeStr); // Get the proposal type
-        if (isEqual(_type, 'REALISE')) {
+        if (isEqual(_type, 'DAO') || isEqual(_type, 'ROUTER') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE') || isEqual(_type, 'REALISE')) {
             require(proposedAddress != address(0)); // Proposed address must be valid
         }
         uint _currentProposal = _checkProposal(); // If no open proposal; construct new one
@@ -381,7 +381,7 @@ contract Dao is ReentrancyGuard{
         require(mapPID_open[_currentProposal] == true); // Proposal must be open status
         bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
         if(hasQuorum(_currentProposal) && mapPID_finalising[_currentProposal] == false){
-            if(isEqual(_type, 'GET_SPARTA') || isEqual(_type, 'LIST_BOND') || isEqual(_type, 'GRANT') || isEqual(_type, 'ADD_CURATED_POOL')){
+            if(isEqual(_type, 'DAO') || isEqual(_type, 'UTILS') || isEqual(_type, 'RESERVE') || isEqual(_type, 'GET_SPARTA') || isEqual(_type, 'ROUTER') || isEqual(_type, 'LIST_BOND') || isEqual(_type, 'GRANT') || isEqual(_type, 'ADD_CURATED_POOL')){
                 if(hasMajority(_currentProposal)){
                     _finalise(_currentProposal, _type); // Critical proposals require 'majority' consensus to enter finalization phase
                 }
@@ -424,7 +424,15 @@ contract Dao is ReentrancyGuard{
             mapPID_finalising[_currentProposal] = false; // If proposal has lost quorum consensus; kick it out of the finalising stage
         } else {
             bytes memory _type = bytes(mapPID_type[_currentProposal]); // Get the proposal type
-            if (isEqual(_type, 'FLIP_EMISSIONS')){ // action
+            if(isEqual(_type, 'DAO')){
+                _moveDao(_currentProposal);
+            } else if (isEqual(_type, 'ROUTER')) { // address
+                _moveRouter(_currentProposal);
+            } else if (isEqual(_type, 'UTILS')){ // address
+                _moveUtils(_currentProposal);
+            } else if (isEqual(_type, 'RESERVE')){ // address
+                _moveReserve(_currentProposal);
+            } else if (isEqual(_type, 'FLIP_EMISSIONS')){ // action
                 _flipEmissions();
             } else if (isEqual(_type, 'COOL_OFF')){ // param
                 _changeCooloff(_currentProposal);
@@ -450,6 +458,35 @@ contract Dao is ReentrancyGuard{
              _completeProposal(_currentProposal); // If no match; close proposal
             
         }
+    }
+
+    // Change the DAO to a new contract address
+    function _moveDao(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
+        DAO = _proposedAddress; // Change the DAO to point to the new DAO address
+        iBASE(BASE).changeDAO(_proposedAddress); // Change the BASE contract to point to the new DAO address
+        daoHasMoved = true; // Set status of this old DAO
+        retire = true;
+    }
+
+    // Change the ROUTER to a new contract address
+    function _moveRouter(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
+        _ROUTER = iROUTER(_proposedAddress); // Change the DAO to point to the new ROUTER address
+    }
+
+    // Change the UTILS to a new contract address
+    function _moveUtils(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
+        _UTILS = iUTILS(_proposedAddress); // Change the DAO to point to the new UTILS address
+    }
+
+    // Change the RESERVE to a new contract address
+    function _moveReserve(uint _proposalID) internal {
+        address _proposedAddress = mapPID_address[_proposalID]; // Get the proposed new address
+        uint256 balance = iBEP20(BASE).balanceOf(address(_RESERVE));
+        _RESERVE.grantFunds(balance, _proposedAddress); // Grant the funds to the recipient
+        _RESERVE = iRESERVE(_proposedAddress); // Change the DAO to point to the new RESERVE address
     }
 
     // Flip the BASE emissions on/off
@@ -690,7 +727,6 @@ contract Dao is ReentrancyGuard{
     function getMembersArray() public view returns(address [] memory members){
         return arrayMembers;
     }
-
     function memberVoted(uint256 proposal, address member) public view returns (bool) {
         return mapPIDMember_hasVoted[proposal][member];
     }
@@ -703,6 +739,3 @@ contract Dao is ReentrancyGuard{
     }
 
 }
-
-
-   
