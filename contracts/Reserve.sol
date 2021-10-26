@@ -6,9 +6,11 @@ import "./iDAO.sol";
 import "./TransferHelper.sol";
 import "./iPOOLFACTORY.sol";  
 import "./iROUTER.sol";
-
+import "./iPOOL.sol";
+import "hardhat/console.sol";
 contract Reserve {
     address public immutable BASE;  // Address of SPARTA base token contract
+    address private immutable WBNB;  // Address of WBNB
     address public DEPLOYER;        // Address that deployed the contract | can be purged to address(0)
     bool public emissions;          // Is SPARTA emitting from RESERVE -> incentive addresses
     bool public globalFreeze;       // Is there a global pause in place
@@ -33,24 +35,26 @@ contract Reserve {
     }
     event RealisePOL(address pool, uint256 amount);
 
-    constructor (address _base) {
+    constructor (address _base, address _wbnb) {
         BASE = _base;
+        WBNB = _wbnb;
         DEPLOYER = msg.sender;
         polTime = block.timestamp;
         polEmission = 3600;
         polClaim = 5;//100 bp 
         polStatus = false;
-        realiseClaim = 100;//bp
+        realiseClaim = 250;//bp
     }
 
     function _DAO() internal view returns(iDAO) {
         return iBASE(BASE).DAO();
     }
 
+    receive() external payable {} // Used to receive BNB from WBNB contract
+
     function setParams(address token) external onlyDAO (){
         address _polPoolAddress = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_polPoolAddress) == true);
-        require(token != address(0));
         polTokenAddress = token;
         polPoolAddress = _polPoolAddress;
         performApprovals();
@@ -95,10 +99,17 @@ contract Reserve {
         uint256 polFloat = iBEP20(polPoolAddress).balanceOf(address(this));
         uint256 realiseAmount = polFloat * realiseClaim / 10000;
         iROUTER(_DAO().ROUTER()).removeLiquidityExactAsym(realiseAmount, false, polTokenAddress);  
-        uint256 amountToken = iBEP20(polTokenAddress).balanceOf(address(this));
-        iBEP20(polTokenAddress).transfer(polPoolAddress,amountToken);
-        iROUTER(_DAO().ROUTER()).syncPool(polPoolAddress, amountToken); 
-        emit RealisePOL(polPoolAddress, amountToken);
+       uint256 amountAsset;
+       if(polTokenAddress == address(0)){
+              amountAsset = address(this).balance;
+              TransferHelper.safeTransferBNB(WBNB,  amountAsset);
+              TransferHelper.safeTransfer(WBNB, polPoolAddress, amountAsset);
+          }else{
+              amountAsset = iBEP20(polTokenAddress).balanceOf(address(this));
+              iBEP20(polTokenAddress).transfer(polPoolAddress,amountAsset);
+          }
+        iROUTER(_DAO().ROUTER()).syncPool(polPoolAddress, amountAsset); 
+        emit RealisePOL(polPoolAddress, amountAsset);
     }
 
 
@@ -115,10 +126,15 @@ contract Reserve {
     }
 
     function addPOL() internal {
-     uint256 polAmount = (iBEP20(BASE).balanceOf(address(this)) * polClaim) / 10000; //get amount using balance of reserve
+        uint256 polAmount = (iBEP20(BASE).balanceOf(address(this)) * polClaim) / 10000; //get amount using balance of reserve
          if((block.timestamp > polTime) && polStatus){ 
-              iROUTER(_DAO().ROUTER()).addLiquidityAsym(polAmount, true, polTokenAddress); 
-              polTime = block.timestamp + polEmission;
+             uint256 baseCap = iPOOL(polPoolAddress).baseCap();
+             uint256 baseDepth = iPOOL(polPoolAddress).baseAmount();
+             if((baseDepth + polAmount) < baseCap){
+                iROUTER(_DAO().ROUTER()).addLiquidityAsym(polAmount, true, polTokenAddress); 
+                polTime = block.timestamp + polEmission;
+             }
+             
         }
     }
 
