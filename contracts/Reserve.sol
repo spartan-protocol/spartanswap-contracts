@@ -97,7 +97,7 @@ contract Reserve {
         iROUTER(_DAO().ROUTER()).removeLiquidityExactAsym(realiseAmount, false, polTokenAddress);  
         uint256 amountToken = iBEP20(polTokenAddress).balanceOf(address(this));
         iBEP20(polTokenAddress).transfer(polPoolAddress,amountToken);
-        iROUTER(_DAO().ROUTER()).syncPool(polPoolAddress);
+        iROUTER(_DAO().ROUTER()).syncPool(polPoolAddress, amountToken); 
         emit RealisePOL(polPoolAddress, amountToken);
     }
 
