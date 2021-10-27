@@ -10,7 +10,7 @@ import "./iPOOL.sol";
 import "hardhat/console.sol";
 contract Reserve {
     address public immutable BASE;  // Address of SPARTA base token contract
-    address private immutable WBNB;  // Address of WBNB
+    address private immutable WBNB; // Address of WBNB
     address public DEPLOYER;        // Address that deployed the contract | can be purged to address(0)
     bool public emissions;          // Is SPARTA emitting from RESERVE -> incentive addresses
     bool public globalFreeze;       // Is there a global pause in place
@@ -43,7 +43,7 @@ contract Reserve {
         polEmission = 3600;
         polClaim = 5;//100 bp 
         polStatus = false;
-        realiseClaim = 250;//bp
+        realiseClaim = 500;//bp
     }
 
     function _DAO() internal view returns(iDAO) {
@@ -55,6 +55,7 @@ contract Reserve {
     function setParams(address token) external onlyDAO (){
         address _polPoolAddress = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_polPoolAddress) == true);
+        require(token != WBNB);
         polTokenAddress = token;
         polPoolAddress = _polPoolAddress;
         performApprovals();
@@ -95,21 +96,22 @@ contract Reserve {
         }
     }
 
-    function realisePOL() external onlyDAO {
-        uint256 polFloat = iBEP20(polPoolAddress).balanceOf(address(this));
+    function realisePOL(address token) external onlyDAO {
+        address _polPool = iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(token);
+        uint256 polFloat = iBEP20(_polPool).balanceOf(address(this));
         uint256 realiseAmount = polFloat * realiseClaim / 10000;
-        iROUTER(_DAO().ROUTER()).removeLiquidityExactAsym(realiseAmount, false, polTokenAddress);  
+        iROUTER(_DAO().ROUTER()).removeLiquidityExactAsym(realiseAmount, false, token);  
        uint256 amountAsset;
-       if(polTokenAddress == address(0)){
+       if(token == address(0)){
               amountAsset = address(this).balance;
               TransferHelper.safeTransferBNB(WBNB,  amountAsset);
-              TransferHelper.safeTransfer(WBNB, polPoolAddress, amountAsset);
+              TransferHelper.safeTransfer(WBNB, _polPool, amountAsset);
           }else{
-              amountAsset = iBEP20(polTokenAddress).balanceOf(address(this));
-              iBEP20(polTokenAddress).transfer(polPoolAddress,amountAsset);
-          }
-        iROUTER(_DAO().ROUTER()).syncPool(polPoolAddress, amountAsset); 
-        emit RealisePOL(polPoolAddress, amountAsset);
+              amountAsset = iBEP20(token).balanceOf(address(this));
+              iBEP20(token).transfer(_polPool,amountAsset);
+        }
+        iROUTER(_DAO().ROUTER()).syncPool(_polPool, amountAsset); 
+        emit RealisePOL(_polPool, amountAsset);
     }
 
 

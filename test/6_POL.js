@@ -50,7 +50,7 @@ contract('PROTOCOL OWNED LIQUIDITY', function (accounts) {
     swapBNBForSparta(acc2, 3)
     swapSPARTAForBNB(acc1, 500)
     swapSPARTAForBNB(acc1, 500)
-    realise()
+    realiseBUSD()
     swapSPARTAForBUSD(acc1, 500)
     swapBUSDForSparta(acc1, 300)
     swapBNBForSparta(acc2, 3)
@@ -59,13 +59,13 @@ contract('PROTOCOL OWNED LIQUIDITY', function (accounts) {
     print2()
     swapSPARTAForBNB(acc1, 500)
     swapSPARTAForBNB(acc1, 500)
-    realise()
+    realiseBNB()
     swapSPARTAForBUSD(acc1, 500)
     swapBUSDForSparta(acc1, 300)
     swapBNBForSparta(acc2, 3)
-    realise()
+    realiseBNB()
     print()
-    realise()
+    realiseBNB()
     print()
 })
 
@@ -279,9 +279,15 @@ async function print2(){
     })
 }
 
-async function realise(){
+async function realiseBNB(){
     it(` realise`, async () =>{
-        await reserve.realisePOL();
+        await reserve.realisePOL(_.BNB);
+       
+    })
+}
+async function realiseBUSD(){
+    it(` realise`, async () =>{
+        await reserve.realisePOL(token1.address);
        
     })
 }
