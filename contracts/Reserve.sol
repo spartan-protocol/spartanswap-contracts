@@ -129,12 +129,12 @@ contract Reserve {
 
     function addPOL() internal {
         uint256 polAmount = (iBEP20(BASE).balanceOf(address(this)) * polClaim) / 10000; //get amount using balance of reserve
-         if((block.timestamp > polTime) && polStatus){ 
+         if((block.timestamp > (polTime + polEmission)) && polStatus){ 
              uint256 baseCap = iPOOL(polPoolAddress).baseCap();
              uint256 baseDepth = iPOOL(polPoolAddress).baseAmount();
              if((baseDepth + polAmount) < baseCap){
                 iROUTER(_DAO().ROUTER()).addLiquidityAsym(polAmount, true, polTokenAddress); 
-                polTime = block.timestamp + polEmission;
+                polTime = block.timestamp;
              }
              
         }
