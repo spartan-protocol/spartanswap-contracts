@@ -192,7 +192,7 @@ contract Router is ReentrancyGuard{
     }
 
     // Swap TOKEN for SPARTA
-    function sellTo(uint amount, address token, address member, uint minAmount) public payable returns (uint){
+    function sellTo(uint amount, address token, address member, uint minAmount, bool yesDiv) public payable returns (uint){
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         address _pool = _poolFactory.getPool(token); // Get pool address
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid
@@ -200,7 +200,9 @@ contract Router is ReentrancyGuard{
         (uint output, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA (Pool -> User)
         require(output >= minAmount, '!RATE'); // Revert if output is too low
         _safetyTrigger(_pool); // Check pool ratios
-        _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
+        if(yesDiv){
+             _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
+        }
         return fee;
     }
 
@@ -215,19 +217,19 @@ contract Router is ReentrancyGuard{
         if(fromToken == BASE){
             buyTo(inputAmount, toToken, member, minAmount); // Swap SPARTA to TOKEN (User -> Pool -> User)
         } else if(toToken == BASE) {
-            sellTo(inputAmount, fromToken, member, minAmount); // Swap TOKEN to SPARTA (User -> Pool -> User)
+            sellTo(inputAmount, fromToken, member, minAmount, true); // Swap TOKEN to SPARTA (User -> Pool -> User)
         } else {
             iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
             address _poolTo = _poolFactory.getPool(toToken); // Get pool address
             require(_poolFactory.isPool(_poolTo) == true, '!POOL'); // Pool must be valid
-            sellTo(inputAmount, fromToken, _poolTo, 0); // Swap TOKEN (Not wrapped) to SPARTA (User -> fromPool -> toPool)
+            sellTo(inputAmount, fromToken, _poolTo, 0, false); // Swap TOKEN (Not wrapped) to SPARTA (User -> fromPool -> toPool)
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} // Handle BNB -> WBNB
             (uint _zz, uint _feez) = Pool(_poolTo).swapTo(_toToken, address(this)); // Swap SPARTA to TOKEN (Wrapped) (toPool -> Router)
             require(_zz >= minAmount, '!RATE'); // Revert if output is too low
             _safetyTrigger(_poolTo); // Check pool ratios
-            _getsDividend(_poolTo, _feez); // Check for dividend & tsf (Reserve -> Pool)
             _handleTransferOut(toToken, iBEP20(_toToken).balanceOf(address(this)), member); // Tsf TOKEN (Unwrapped) (Router -> User)
+            _getsDividend(_poolTo, _feez); // Check for dividend & tsf (Reserve -> Pool)
         }
     }
 
@@ -241,7 +243,7 @@ contract Router is ReentrancyGuard{
         address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true, '!POOL'); // Pool must be valid
         if(fromToken != BASE){
-            sellTo(inputAmount, fromToken, address(this), 0); // Swap TOKEN to SPARTA (User -> Pool -> Router)
+            sellTo(inputAmount, fromToken, address(this), 0, false); // Swap TOKEN to SPARTA (User -> Pool -> Router)
            TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
         } else {
              TransferHelper.safeTransferFrom(BASE, msg.sender, _pool, inputAmount);
@@ -266,11 +268,11 @@ contract Router is ReentrancyGuard{
             (, synthFee) = Pool(_synthPool).burnSynth(msg.sender, msg.sender); // Swap SYNTH to SPARTA (synthPool -> User)
         } else {
              address _swapPool = _poolFactory.getPool(toToken); // Get TOKEN's relevant swapPool address
-             require(_poolFactory.isPool(_swapPool) == true, '!POOL'); // swapPool must be valid
-            uint swapFee;
-            uint outputAmountY;
+               require(_poolFactory.isPool(_swapPool) == true, '!POOL'); // swapPool must be valid
+               uint swapFee;
+               uint outputAmountY;
             (, synthFee) = Pool(_synthPool).burnSynth(address(this), msg.sender); // Swap SYNTH to SPARTA (synthPool -> Router)
-            _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _swapPool); // Tsf SPARTA (Router -> swapPool)
+                _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _swapPool); // Tsf SPARTA (Router -> swapPool)
             if(toToken != address(0)){
                 (, swapFee) = Pool(_swapPool).swapTo(toToken, msg.sender); // Swap SPARTA to TOKEN (swapPool -> User)
             } else {
