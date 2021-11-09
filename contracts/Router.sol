@@ -321,6 +321,8 @@ contract Router is ReentrancyGuard{
             if(fee < minDiv){
                 fee = minDiv;
             }
+=======
+
             _addDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
         }
     }
