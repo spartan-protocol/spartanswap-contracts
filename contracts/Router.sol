@@ -13,13 +13,13 @@ contract Router is ReentrancyGuard{
     address private immutable WBNB;  // Address of WBNB
     address private DEPLOYER;        // Address that deployed the contract
     uint256 public diviClaim;       // Basis points vs RESERVE holdings max dividend per month
-    uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
+    uint256 public rollingRevenue;
+
     uint256 private curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
     bool public synthMinting;
     uint public minDiv;
 
-    mapping(address=> uint) public mapAddress_30DayDividends; // Current incomplete-period NET SPARTA divis by pool
-    mapping(address=> uint) public mapAddress_Past30DayPoolDividends; // Previous full-period NET SPARTA divis by pool
+
     event Dividend(address Pool, uint256 amount);
     // Restrict access
     modifier onlyDAO() {
@@ -330,13 +330,9 @@ contract Router is ReentrancyGuard{
         uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
         bool emissions = iRESERVE(_DAO().RESERVE()).emissions();
         if(reserve > 0 && emissions){
-           uint256 _curatedPoolsCount = iPOOLFACTORY(_DAO().POOLFACTORY()).curatedPoolCount(); 
-           if(_curatedPoolsCount != curatedPoolsCount){
-               curatedPoolsCount = _curatedPoolsCount;
-           }
-            uint256 _dividendReward = (reserve * diviClaim) / _curatedPoolsCount / 10000; // Get the dividend share 
-            if((mapAddress_30DayDividends[_pool] + _fees) < _dividendReward){
-                _revenueDetails(_fees, _pool); // Add to revenue metrics
+            uint256 _dividendReward = (reserve * diviClaim) / 10000; // Get the dividend share 
+            if((rollingRevenue + _fees) < _dividendReward){
+                _revenueDetails(_fees); // Add to revenue metrics
                 iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Tsf SPARTA dividend (Reserve -> Pool)
                 Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
                 emit Dividend(_pool, _fees); 
@@ -344,25 +340,17 @@ contract Router is ReentrancyGuard{
         }
     }
 
-    function _revenueDetails(uint _fees, address _pool) internal {
-        if(lastMonth == 0){
-            lastMonth = block.timestamp;
-        }
+    function _revenueDetails(uint _fees) internal {
         if(block.timestamp <= lastMonth + 2592000){ // 30 days
-            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool] + _fees;
+            rollingRevenue = rollingRevenue + _fees; //add monthly revenue
         } else {
             lastMonth = block.timestamp;
-            mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
-            mapAddress_30DayDividends[_pool] = _fees;
+            rollingRevenue = 0; //clear revenue
         }
     }
+
     function _migrateRevenue(address oldRouter) external onlyDAO {
         lastMonth = iROUTER(oldRouter).lastMonth();  
-        address [] memory pools = iPOOLFACTORY(_DAO().POOLFACTORY()).getPoolAssets(); 
-        for(uint i = 0; i < pools.length; i++){
-            mapAddress_30DayDividends[pools[i]] = iROUTER(oldRouter).mapAddress_30DayDividends(pools[i]);  
-            mapAddress_Past30DayPoolDividends[pools[i]] = iROUTER(oldRouter).mapAddress_Past30DayPoolDividends(pools[i]);   
-        }
     }
     
     //======================= Change Dividend Variables ===========================//
