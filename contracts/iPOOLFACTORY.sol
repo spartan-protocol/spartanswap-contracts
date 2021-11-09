@@ -7,5 +7,6 @@ interface iPOOLFACTORY {
     function isPool(address) external returns (bool);
     function getPool(address) external view returns(address);
     function getVaultAssets() external view returns(address [] memory);
+    function getPoolAssets() external view returns(address [] memory);
     function curatedPoolCount() external view returns (uint);
 }

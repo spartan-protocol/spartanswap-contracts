@@ -2,6 +2,7 @@
 pragma solidity 0.8.3;
 import "./Pool.sol";
 import "./iRESERVE.sol"; 
+import "./iROUTER.sol"; 
 import "./iPOOLFACTORY.sol";  
 import "./iWBNB.sol";
 import "./TransferHelper.sol";
@@ -12,15 +13,21 @@ contract Router is ReentrancyGuard{
     address private immutable WBNB;  // Address of WBNB
     address private DEPLOYER;        // Address that deployed the contract
     uint256 public diviClaim;       // Basis points vs RESERVE holdings max dividend per month
-    uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
+    uint256 public rollingRevenue;
+
     uint256 private curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
     bool public synthMinting;
+    uint public minDiv;
 
-    mapping(address=> uint) public mapAddress_30DayDividends; // Current incomplete-period NET SPARTA divis by pool
-    mapping(address=> uint) public mapAddress_Past30DayPoolDividends; // Previous full-period NET SPARTA divis by pool
+
+    event Dividend(address Pool, uint256 amount);
     // Restrict access
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER);
+        _;
+    }
+    modifier onlyRESERVE() {
+        require(msg.sender == _DAO().RESERVE());
         _;
     }
 
@@ -32,9 +39,10 @@ contract Router is ReentrancyGuard{
     constructor (address _base, address _wbnb) {
         BASE = _base;
         WBNB = _wbnb;
-        diviClaim = 100;
+        diviClaim = 500;
         synthMinting = false;
         DEPLOYER = msg.sender;
+        minDiv = 10**18;
     }
 
     receive() external payable {} // Used to receive BNB from WBNB contract
@@ -184,7 +192,7 @@ contract Router is ReentrancyGuard{
     }
 
     // Swap TOKEN for SPARTA
-    function sellTo(uint amount, address token, address member, uint minAmount) public payable returns (uint){
+    function sellTo(uint amount, address token, address member, uint minAmount, bool yesDiv) public payable returns (uint){
         iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
         address _pool = _poolFactory.getPool(token); // Get pool address
         require(_poolFactory.isPool(_pool) == true, '!POOL'); // Pool must be valid
@@ -192,7 +200,9 @@ contract Router is ReentrancyGuard{
         (uint output, uint fee) = Pool(_pool).swapTo(BASE, member); // Swap TOKEN to SPARTA (Pool -> User)
         require(output >= minAmount, '!RATE'); // Revert if output is too low
         _safetyTrigger(_pool); // Check pool ratios
-        _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
+        if(yesDiv){
+             _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
+        }
         return fee;
     }
 
@@ -207,19 +217,19 @@ contract Router is ReentrancyGuard{
         if(fromToken == BASE){
             buyTo(inputAmount, toToken, member, minAmount); // Swap SPARTA to TOKEN (User -> Pool -> User)
         } else if(toToken == BASE) {
-            sellTo(inputAmount, fromToken, member, minAmount); // Swap TOKEN to SPARTA (User -> Pool -> User)
+            sellTo(inputAmount, fromToken, member, minAmount, true); // Swap TOKEN to SPARTA (User -> Pool -> User)
         } else {
             iPOOLFACTORY _poolFactory = iPOOLFACTORY(_DAO().POOLFACTORY()); // Interface the PoolFactory
             address _poolTo = _poolFactory.getPool(toToken); // Get pool address
             require(_poolFactory.isPool(_poolTo) == true, '!POOL'); // Pool must be valid
-            sellTo(inputAmount, fromToken, _poolTo, 0); // Swap TOKEN (Not wrapped) to SPARTA (User -> fromPool -> toPool)
+            sellTo(inputAmount, fromToken, _poolTo, 0, false); // Swap TOKEN (Not wrapped) to SPARTA (User -> fromPool -> toPool)
             address _toToken = toToken;
             if(toToken == address(0)){_toToken = WBNB;} // Handle BNB -> WBNB
             (uint _zz, uint _feez) = Pool(_poolTo).swapTo(_toToken, address(this)); // Swap SPARTA to TOKEN (Wrapped) (toPool -> Router)
             require(_zz >= minAmount, '!RATE'); // Revert if output is too low
             _safetyTrigger(_poolTo); // Check pool ratios
-            _getsDividend(_poolTo, _feez); // Check for dividend & tsf (Reserve -> Pool)
             _handleTransferOut(toToken, iBEP20(_toToken).balanceOf(address(this)), member); // Tsf TOKEN (Unwrapped) (Router -> User)
+            _getsDividend(_poolTo, _feez); // Check for dividend & tsf (Reserve -> Pool)
         }
     }
 
@@ -233,7 +243,7 @@ contract Router is ReentrancyGuard{
         address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true, '!POOL'); // Pool must be valid
         if(fromToken != BASE){
-            sellTo(inputAmount, fromToken, address(this), 0); // Swap TOKEN to SPARTA (User -> Pool -> Router)
+            sellTo(inputAmount, fromToken, address(this), 0, false); // Swap TOKEN to SPARTA (User -> Pool -> Router)
            TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
         } else {
              TransferHelper.safeTransferFrom(BASE, msg.sender, _pool, inputAmount);
@@ -258,11 +268,11 @@ contract Router is ReentrancyGuard{
             (, synthFee) = Pool(_synthPool).burnSynth(msg.sender, msg.sender); // Swap SYNTH to SPARTA (synthPool -> User)
         } else {
              address _swapPool = _poolFactory.getPool(toToken); // Get TOKEN's relevant swapPool address
-             require(_poolFactory.isPool(_swapPool) == true, '!POOL'); // swapPool must be valid
-            uint swapFee;
-            uint outputAmountY;
+               require(_poolFactory.isPool(_swapPool) == true, '!POOL'); // swapPool must be valid
+               uint swapFee;
+               uint outputAmountY;
             (, synthFee) = Pool(_synthPool).burnSynth(address(this), msg.sender); // Swap SYNTH to SPARTA (synthPool -> Router)
-            _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _swapPool); // Tsf SPARTA (Router -> swapPool)
+                _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _swapPool); // Tsf SPARTA (Router -> swapPool)
             if(toToken != address(0)){
                 (, swapFee) = Pool(_swapPool).swapTo(toToken, msg.sender); // Swap SPARTA to TOKEN (swapPool -> User)
             } else {
@@ -308,6 +318,11 @@ contract Router is ReentrancyGuard{
     // Check if fee should generate a dividend & send it to the pool
     function _getsDividend(address _pool, uint fee) internal {
         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_pool) == true){
+            if(fee < minDiv){
+                fee = minDiv;
+            }
+=======
+
             _addDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
         }
     }
@@ -317,37 +332,36 @@ contract Router is ReentrancyGuard{
         uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
         bool emissions = iRESERVE(_DAO().RESERVE()).emissions();
         if(reserve > 0 && emissions){
-           uint256 _curatedPoolsCount = iPOOLFACTORY(_DAO().POOLFACTORY()).curatedPoolCount(); 
-           if(_curatedPoolsCount != curatedPoolsCount){
-               curatedPoolsCount = _curatedPoolsCount;
-           }
-            uint256 _dividendReward = (reserve * diviClaim) / _curatedPoolsCount / 10000; // Get the dividend share 
-            if((mapAddress_30DayDividends[_pool] + _fees) < _dividendReward){
-                _revenueDetails(_fees, _pool); // Add to revenue metrics
+            uint256 _dividendReward = (reserve * diviClaim) / 10000; // Get the dividend share 
+            if((rollingRevenue + _fees) < _dividendReward){
+                _revenueDetails(_fees); // Add to revenue metrics
                 iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Tsf SPARTA dividend (Reserve -> Pool)
                 Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
+                emit Dividend(_pool, _fees); 
             }
         }
     }
 
-    function _revenueDetails(uint _fees, address _pool) internal {
-        if(lastMonth == 0){
-            lastMonth = block.timestamp;
-        }
+    function _revenueDetails(uint _fees) internal {
         if(block.timestamp <= lastMonth + 2592000){ // 30 days
-            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool] + _fees;
+            rollingRevenue = rollingRevenue + _fees; //add monthly revenue
         } else {
             lastMonth = block.timestamp;
-            mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
-            mapAddress_30DayDividends[_pool] = _fees;
+            rollingRevenue = 0; //clear revenue
         }
+    }
+
+    function _migrateRevenue(address oldRouter) external onlyDAO {
+        lastMonth = iROUTER(oldRouter).lastMonth();  
     }
     
     //======================= Change Dividend Variables ===========================//
 
-    function changeDiviClaim(uint _newDiviClaim) external onlyDAO {
+    function changeDiviClaim(uint _newDiviClaim, uint _newDivFee) external onlyDAO {
         require(_newDiviClaim > 0 && _newDiviClaim < 5000, '!VALID');
+        require(_newDivFee < 1000, '!VALID');
         diviClaim = _newDiviClaim;
+        minDiv = _newDivFee * 10**18;
     }
 
     function changeSynthCap(uint synthCap, address _pool) external onlyDAO {
@@ -359,6 +373,12 @@ contract Router is ReentrancyGuard{
     }
     function flipSynthMinting() external onlyDAO {
         synthMinting = !synthMinting;
+    }
+    function syncPool(address _pool, uint256 amount) external onlyRESERVE {
+        address _token = Pool(_pool).TOKEN();
+        uint256 baseValue = iUTILS(_DAO().UTILS()).calcSpotValueInBase(_token, amount);
+        _revenueDetails(baseValue, _pool);
+        Pool(_pool).sync(); // Sync the pool balances to attribute reward to the LPers
     }
 
     function _safetyTrigger(address _pool) internal {
