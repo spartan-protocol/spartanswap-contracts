@@ -148,19 +148,6 @@ contract Reserve {
         }
     }
 
-    // function addPOL(uint256 _polAmount, address _to) internal {
-    //     if((block.timestamp > polEmission) && polStatus){
-    //         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_to)){
-    //             iROUTER(_DAO().ROUTER()).addLiquidityAsym(_polAmount, true, _to);
-    //             if(iBEP20(_to).allowance(address(this), iLEND(_DAO().LEND()).LendVault()) < 0){
-    //                 iBEP20(_to).approve(iLEND(_DAO().LEND()).LendVault(), 1000000000000000000000000000);//approve a large amount 1,000,000,000
-    //             }
-    //             iLENDVAULT(iLEND(_DAO().LEND()).LendVault()).lendLP(_to, iBEP20(_to).balanceOf(address(this)));
-    //             polEmission += polTime; //update emission
-    //         }
-    //     }
-    // }
-
     function setGlobalFreeze(bool freeze) external onlyGrantor {
         globalFreeze = freeze;
         if(freeze){
