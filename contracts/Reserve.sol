@@ -17,11 +17,9 @@ contract Reserve {
     address public immutable BASE;  // Address of SPARTA base token contract
     address private immutable WBNB; // Address of WBNB
     address public DEPLOYER;        // Address that deployed the contract | can be purged to address(0)
-
     bool public emissions;          // Is SPARTA emitting from RESERVE -> incentive addresses
     bool public globalFreeze;       // Is there a global pause in place
     uint256 public freezeTime;
-
     address public polTokenAddress;
     address public polPoolAddress;
     uint256 public polEmission;
@@ -29,6 +27,7 @@ contract Reserve {
     bool public polStatus;
     uint256 public polClaim;
     uint256 public realiseClaim;
+    
 
     // Restrict access
     modifier onlyGrantor() {
@@ -79,7 +78,7 @@ contract Reserve {
         if(amount > 0){ // Skip if amount is not valid
             if(emissions){ // Skip if emissions are off
                 if(amount > reserve){
-                    TransferHelper.safeTransfer(BASE, to, reserve);
+                    TransferHelper.safeTransfer( BASE, to, reserve);
                 } else {
                     TransferHelper.safeTransfer(BASE, to, amount);
                 }
@@ -98,8 +97,6 @@ contract Reserve {
                 } else {
                     TransferHelper.safeTransfer(polPoolAddress, to, amount);
                 }
-                // uint256 polAmount = (iBEP20(BASE).balanceOf(address(this)) * polClaim) / 10000; //get amount using balance of reserve
-                // addPOL(polAmount, to);
             }
         }
     }
@@ -109,14 +106,14 @@ contract Reserve {
         uint256 polFloat = iBEP20(_polPool).balanceOf(address(this));
         uint256 realiseAmount = polFloat * realiseClaim / 10000;
         iROUTER(_DAO().ROUTER()).removeLiquidityExactAsym(realiseAmount, false, token);  
-        uint256 amountAsset;
-        if(token == address(0)){
-            amountAsset = address(this).balance;
-            TransferHelper.safeTransferBNB(WBNB, amountAsset);
-            TransferHelper.safeTransfer(WBNB, _polPool, amountAsset);
-        }else{
-            amountAsset = iBEP20(token).balanceOf(address(this));
-            iBEP20(token).transfer(_polPool, amountAsset);
+       uint256 amountAsset;
+       if(token == address(0)){
+              amountAsset = address(this).balance;
+              TransferHelper.safeTransferBNB(WBNB,  amountAsset);
+              TransferHelper.safeTransfer(WBNB, _polPool, amountAsset);
+          }else{
+              amountAsset = iBEP20(token).balanceOf(address(this));
+              iBEP20(token).transfer(_polPool,amountAsset);
         }
         iROUTER(_DAO().ROUTER()).syncPool(_polPool, amountAsset); 
         emit RealisePOL(_polPool, amountAsset);
@@ -126,7 +123,6 @@ contract Reserve {
     function flipEmissions() external onlyGrantor {
         emissions = !emissions; // Flip emissions on/off
     }
-
     function flipPol() external onlyGrantor {
         polStatus = !polStatus; // Flip emissions on/off
     }
@@ -138,28 +134,16 @@ contract Reserve {
 
     function addPOL() internal {
         uint256 polAmount = (iBEP20(BASE).balanceOf(address(this)) * polClaim) / 10000; //get amount using balance of reserve
-        if((block.timestamp > (polTime + polEmission)) && polStatus){ 
-            uint256 baseCap = iPOOL(polPoolAddress).baseCap();
-            uint256 baseDepth = iPOOL(polPoolAddress).baseAmount();
-            if((baseDepth + polAmount) < baseCap){
+         if((block.timestamp > polTime) && polStatus){ 
+             uint256 baseCap = iPOOL(polPoolAddress).baseCap();
+             uint256 baseDepth = iPOOL(polPoolAddress).baseAmount();
+             if((baseDepth + polAmount) < baseCap){
                 iROUTER(_DAO().ROUTER()).addLiquidityAsym(polAmount, true, polTokenAddress); 
-                polTime = block.timestamp;
-            } 
+                polTime = block.timestamp + polEmission;
+             }
+             
         }
     }
-
-    // function addPOL(uint256 _polAmount, address _to) internal {
-    //     if((block.timestamp > polEmission) && polStatus){
-    //         if(iPOOLFACTORY(_DAO().POOLFACTORY()).isCuratedPool(_to)){
-    //             iROUTER(_DAO().ROUTER()).addLiquidityAsym(_polAmount, true, _to);
-    //             if(iBEP20(_to).allowance(address(this), iLEND(_DAO().LEND()).LendVault()) < 0){
-    //                 iBEP20(_to).approve(iLEND(_DAO().LEND()).LendVault(), 1000000000000000000000000000);//approve a large amount 1,000,000,000
-    //             }
-    //             iLENDVAULT(iLEND(_DAO().LEND()).LendVault()).lendLP(_to, iBEP20(_to).balanceOf(address(this)));
-    //             polEmission += polTime; //update emission
-    //         }
-    //     }
-    // }
 
     function setGlobalFreeze(bool freeze) external onlyGrantor {
         globalFreeze = freeze;
