@@ -61,12 +61,15 @@ contract Utils {
     //================================== CORE-MATH ==================================//
     
     // Calculate the feeBurn's feeOnTransfer based on total supply
-    function getFeeOnTransfer(uint256 totalSupply, uint256 maxSupply) external pure returns (uint256) {
-        return calcShare(totalSupply, maxSupply, 100); // 0 -> 100bp
+    function getFeeOnTransfer(uint256, uint256) external pure returns (uint256) {
+        return 0;
     }
 
     // Calculate 'part' of a total using basis points | 10,000 basis points = 100.00%
-    function calcPart(uint256 bp, uint256 total) external pure returns (uint256) {
+    function calcPart(uint256 bp, uint256 total) external view returns (uint256) {
+        if (msg.sender == BASE) {
+            return 0;
+        }
         require(bp <= 10000, "!bp"); // basis points must be valid
         return calcShare(bp, 10000, total);
     }
