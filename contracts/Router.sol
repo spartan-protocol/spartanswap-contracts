@@ -9,16 +9,17 @@ import "./TransferHelper.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Router is ReentrancyGuard {
+    // Vars
     address private immutable BASE;  // SPARTA base contract address
     address private immutable WBNB;  // Address of WBNB
     address private DEPLOYER;        // Address that deployed the contract
     uint public minDiv;              // Minimum dividend going into curated pools
-    bool public synthMinting;        // safety switch for synths
+    bool public synthMinting;        // Switch synths on/off
 
-    mapping(address=> uint) public mapAddress_30DayDividends; // Current incomplete-period NET SPARTA divis by pool
-    mapping(address=> uint) public mapAddress_Past30DayPoolDividends; // Previous full-period NET SPARTA divis by pool
+    // Events
     event Dividend(address Pool, uint256 amount);
-    // Restrict access
+
+    // Access Control
     modifier onlyDAO() {
         require(msg.sender == _DAO().DAO() || msg.sender == DEPLOYER);
         _;
@@ -36,7 +37,7 @@ contract Router is ReentrancyGuard {
     constructor (address _base, address _wbnb) {
         BASE = _base;
         WBNB = _wbnb;
-        synthMinting = true; //true by default
+        synthMinting = true; // True by default (Mainnet already)
         DEPLOYER = msg.sender;
         minDiv = 10**18;
     }
@@ -154,7 +155,7 @@ contract Router is ReentrancyGuard {
         if(toBase){
             TransferHelper.safeTransfer(_token, _pool, iBEP20(_token).balanceOf(address(this)));
             (, fee) = Pool(_pool).swapTo(BASE, address(this)); // Swap TOKEN (Wrapped) to SPARTA (Pool -> Router)
-             TransferHelper.safeTransfer(BASE, _member, iBEP20(BASE).balanceOf(address(this)));
+            TransferHelper.safeTransfer(BASE, _member, iBEP20(BASE).balanceOf(address(this)));
         } else {
             TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
             (, fee) = Pool(_pool).swapTo(_token, address(this)); // Swap SPARTA to TOKEN (Pool -> Router)
@@ -197,7 +198,7 @@ contract Router is ReentrancyGuard {
         require(output >= minAmount, '!RATE'); // Revert if output is too low
         _safetyTrigger(_pool); // Check pool ratios
         if(yesDiv){
-             _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
+            _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
         }
         return fee;
     }
@@ -240,9 +241,9 @@ contract Router is ReentrancyGuard {
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true, '!POOL'); // Pool must be valid
         if(fromToken != BASE){
             sellTo(inputAmount, fromToken, address(this), 0, false); // Swap TOKEN to SPARTA (User -> Pool -> Router)
-           TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
+            TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
         } else {
-             TransferHelper.safeTransferFrom(BASE, msg.sender, _pool, inputAmount);
+            TransferHelper.safeTransferFrom(BASE, msg.sender, _pool, inputAmount);
         }
         (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Swap SPARTA for SYNTH (Pool -> User)
         _safetyTrigger(_pool); // Check pool ratios
@@ -263,12 +264,12 @@ contract Router is ReentrancyGuard {
         if(toToken == BASE){
             (, synthFee) = Pool(_synthPool).burnSynth(msg.sender, msg.sender); // Swap SYNTH to SPARTA (synthPool -> User)
         } else {
-             address _swapPool = _poolFactory.getPool(toToken); // Get TOKEN's relevant swapPool address
-               require(_poolFactory.isPool(_swapPool) == true, '!POOL'); // swapPool must be valid
-               uint swapFee;
-               uint outputAmountY;
+            address _swapPool = _poolFactory.getPool(toToken); // Get TOKEN's relevant swapPool address
+            require(_poolFactory.isPool(_swapPool) == true, '!POOL'); // swapPool must be valid
+            uint swapFee;
+            uint outputAmountY;
             (, synthFee) = Pool(_synthPool).burnSynth(address(this), msg.sender); // Swap SYNTH to SPARTA (synthPool -> Router)
-                _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _swapPool); // Tsf SPARTA (Router -> swapPool)
+            _handleTransferOut(BASE, iBEP20(BASE).balanceOf(address(this)), _swapPool); // Tsf SPARTA (Router -> swapPool)
             if(toToken != address(0)){
                 (, swapFee) = Pool(_swapPool).swapTo(toToken, msg.sender); // Swap SPARTA to TOKEN (swapPool -> User)
             } else {
@@ -279,8 +280,7 @@ contract Router is ReentrancyGuard {
             _getsDividend(_swapPool, swapFee); // Check for dividend & tsf (Reserve -> swapPool)
         }
         _safetyTrigger(_synthPool); // Check synthPool ratios
-        
-        (_synthPool, synthFee); // Check for dividend & tsf (Reserve -> synthPool)
+        _getsDividend(_synthPool, synthFee); // Check for dividend & tsf (Reserve -> synthPool)
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
     }
 
@@ -326,16 +326,16 @@ contract Router is ReentrancyGuard {
     function _addDividend(address _pool, uint256 _fees) internal {
         uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
         bool emissions = iRESERVE(_DAO().RESERVE()).emissions();
-        if(reserve > 0 && emissions){
-                iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Tsf SPARTA dividend (Reserve -> Pool)
-                Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
-                emit Dividend(_pool, _fees); 
+        if(reserve >= _fees && emissions){
+            iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Tsf SPARTA dividend (Reserve -> Pool)
+            Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
+            emit Dividend(_pool, _fees); // Enforce 'reserve >= _fees' so that the emitted event is always correct for subgraph
         }
     }
 
     //======================= Change Dividend Variables ===========================//
 
-    function changeDiviClaim( uint _newMinDiv) external onlyDAO {
+    function changeDiviClaim(uint _newMinDiv) external onlyDAO {
         require(_newMinDiv < 1000, '!VALID');
         minDiv = _newMinDiv * 10**18;
     }
@@ -347,6 +347,7 @@ contract Router is ReentrancyGuard {
     function RTC(uint poolRTC, address _pool) external onlyDAO {
         Pool(_pool).RTC(poolRTC);
     }
+
     function flipSynthMinting() external onlyDAO {
         synthMinting = !synthMinting;
     }
@@ -363,25 +364,24 @@ contract Router is ReentrancyGuard {
             if(iRESERVE(_DAO().RESERVE()).globalFreeze()){
                 uint256 freezeTime = iRESERVE(_DAO().RESERVE()).freezeTime(); 
                 if(block.timestamp > freezeTime + 3600){
-                   iRESERVE(_DAO().RESERVE()).setGlobalFreeze(false);   
+                    iRESERVE(_DAO().RESERVE()).setGlobalFreeze(false);   
                 }
-              }
+            }
         }
     }
 
     function updatePoolStatus() external {
-       if(iRESERVE(_DAO().RESERVE()).globalFreeze()){
-        address [] memory _vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).getVaultAssets(); // Get list of vault enabled assets
-        bool unfreeze = true;
-        for(uint i = 0; i < _vaultAssets.length; i++){
-            if(Pool(_vaultAssets[i]).freeze()){
-               unfreeze = false;
+        if(iRESERVE(_DAO().RESERVE()).globalFreeze()){
+            address [] memory _vaultAssets = iPOOLFACTORY(_DAO().POOLFACTORY()).getVaultAssets(); // Get list of vault enabled assets
+            bool unfreeze = true;
+            for(uint i = 0; i < _vaultAssets.length; i++){
+                if(Pool(_vaultAssets[i]).freeze()){
+                    unfreeze = false;
+                }
+            }
+            if(unfreeze){
+                iRESERVE(_DAO().RESERVE()).setGlobalFreeze(false);
             }
         }
-        if(unfreeze){
-           iRESERVE(_DAO().RESERVE()).setGlobalFreeze(false);
-        }
     }
-    }
-
 }
