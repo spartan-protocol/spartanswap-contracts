@@ -37,12 +37,14 @@ contract Synth is iBEP20 {
         require(msg.sender == _DAO().DAO());
         _;
     }
+
+    event RealiseCollateral(address indexed pool, uint256 amount);
     
     constructor (address _base, address _token, address _pool) {
         BASE = _base;
         TOKEN = _token;
         POOL = _pool;
-        string memory synthName = "-SpartanProtocolSynthetic";
+        string memory synthName = "-SpartanProtocolSynth";
         string memory synthSymbol = "-SPS";
         _name = string(abi.encodePacked(iBEP20(_token).name(), synthName));
         _symbol = string(abi.encodePacked(iBEP20(_token).symbol(), synthSymbol));
@@ -164,6 +166,7 @@ contract Synth is iBEP20 {
                 uint premiumLP = iUTILS(_DAO().UTILS()).calcLiquidityUnitsAsym(premium, POOL); // Get the LP value of the premium
                 collateral -= premiumLP; // Reduce the LP balance
                 Pool(POOL).burn(premiumLP); // Burn the premium of the LP tokens
+                emit RealiseCollateral(POOL, premiumLP);
             }
         }
     }

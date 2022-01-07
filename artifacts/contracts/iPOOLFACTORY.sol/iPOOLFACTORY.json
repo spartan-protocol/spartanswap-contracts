@@ -50,6 +50,19 @@
     },
     {
       "inputs": [],
+      "name": "getPoolAssets",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "",
+          "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "getVaultAssets",
       "outputs": [
         {
