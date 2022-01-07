@@ -8,15 +8,12 @@ import "./iWBNB.sol";
 import "./TransferHelper.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Router is ReentrancyGuard{
+contract Router is ReentrancyGuard {
     address private immutable BASE;  // SPARTA base contract address
     address private immutable WBNB;  // Address of WBNB
     address private DEPLOYER;        // Address that deployed the contract
-    uint256 public diviClaim;       // Basis points vs RESERVE holdings max dividend per month
-    uint public lastMonth;          // Timestamp of the start of current metric period (For UI)
-    uint256 private curatedPoolsCount; // Count of curated pools, synced from PoolFactory once per month
-    bool public synthMinting;
-    uint public minDiv;
+    uint public minDiv;              // Minimum dividend going into curated pools
+    bool public synthMinting;        // safety switch for synths
 
     mapping(address=> uint) public mapAddress_30DayDividends; // Current incomplete-period NET SPARTA divis by pool
     mapping(address=> uint) public mapAddress_Past30DayPoolDividends; // Previous full-period NET SPARTA divis by pool
@@ -39,8 +36,7 @@ contract Router is ReentrancyGuard{
     constructor (address _base, address _wbnb) {
         BASE = _base;
         WBNB = _wbnb;
-        diviClaim = 500;
-        synthMinting = false;
+        synthMinting = true; //true by default
         DEPLOYER = msg.sender;
         minDiv = 10**18;
     }
@@ -283,7 +279,8 @@ contract Router is ReentrancyGuard{
             _getsDividend(_swapPool, swapFee); // Check for dividend & tsf (Reserve -> swapPool)
         }
         _safetyTrigger(_synthPool); // Check synthPool ratios
-        _getsDividend(_synthPool, synthFee); // Check for dividend & tsf (Reserve -> synthPool)
+        
+        (_synthPool, synthFee); // Check for dividend & tsf (Reserve -> synthPool)
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
     }
 
@@ -330,48 +327,17 @@ contract Router is ReentrancyGuard{
         uint reserve = iBEP20(BASE).balanceOf(_DAO().RESERVE()); // Get SPARTA balance in the RESERVE contract
         bool emissions = iRESERVE(_DAO().RESERVE()).emissions();
         if(reserve > 0 && emissions){
-           uint256 _curatedPoolsCount = iPOOLFACTORY(_DAO().POOLFACTORY()).curatedPoolCount(); 
-           if(_curatedPoolsCount != curatedPoolsCount){
-               curatedPoolsCount = _curatedPoolsCount;
-           }
-            uint256 _dividendReward = (reserve * diviClaim) / _curatedPoolsCount / 10000; // Get the dividend share 
-            if((mapAddress_30DayDividends[_pool] + _fees) < _dividendReward){
-                _revenueDetails(_fees, _pool); // Add to revenue metrics
                 iRESERVE(_DAO().RESERVE()).grantFunds(_fees, _pool); // Tsf SPARTA dividend (Reserve -> Pool)
                 Pool(_pool).sync(); // Sync the pool balances to attribute the dividend to the existing LPers
                 emit Dividend(_pool, _fees); 
-            }
         }
     }
 
-    function _revenueDetails(uint _fees, address _pool) internal {
-        if(lastMonth == 0){
-            lastMonth = block.timestamp;
-        }
-        if(block.timestamp <= lastMonth + 2592000){ // 30 days
-            mapAddress_30DayDividends[_pool] = mapAddress_30DayDividends[_pool] + _fees;
-        } else {
-            lastMonth = block.timestamp;
-            mapAddress_Past30DayPoolDividends[_pool] = mapAddress_30DayDividends[_pool];
-            mapAddress_30DayDividends[_pool] = _fees;
-        }
-    }
-    function _migrateRevenue(address oldRouter) external onlyDAO {
-        lastMonth = iROUTER(oldRouter).lastMonth();  
-        address [] memory pools = iPOOLFACTORY(_DAO().POOLFACTORY()).getPoolAssets(); 
-        for(uint i = 0; i < pools.length; i++){
-            mapAddress_30DayDividends[pools[i]] = iROUTER(oldRouter).mapAddress_30DayDividends(pools[i]);  
-            mapAddress_Past30DayPoolDividends[pools[i]] = iROUTER(oldRouter).mapAddress_Past30DayPoolDividends(pools[i]);   
-        }
-    }
-    
     //======================= Change Dividend Variables ===========================//
 
-    function changeDiviClaim(uint _newDiviClaim, uint _newDivFee) external onlyDAO {
-        require(_newDiviClaim > 0 && _newDiviClaim < 5000, '!VALID');
-        require(_newDivFee < 1000, '!VALID');
-        diviClaim = _newDiviClaim;
-        minDiv = _newDivFee * 10**18;
+    function changeDiviClaim( uint _newMinDiv) external onlyDAO {
+        require(_newMinDiv < 1000, '!VALID');
+        minDiv = _newMinDiv * 10**18;
     }
 
     function changeSynthCap(uint synthCap, address _pool) external onlyDAO {
@@ -384,10 +350,8 @@ contract Router is ReentrancyGuard{
     function flipSynthMinting() external onlyDAO {
         synthMinting = !synthMinting;
     }
-    function syncPool(address _pool, uint256 amount) external onlyRESERVE {
-        address _token = Pool(_pool).TOKEN();
-        uint256 baseValue = iUTILS(_DAO().UTILS()).calcSpotValueInBase(_token, amount);
-        _revenueDetails(baseValue, _pool);
+
+    function syncPool(address _pool, uint256) external onlyRESERVE {
         Pool(_pool).sync(); // Sync the pool balances to attribute reward to the LPers
     }
 
@@ -404,7 +368,6 @@ contract Router is ReentrancyGuard{
               }
         }
     }
-
 
     function updatePoolStatus() external {
        if(iRESERVE(_DAO().RESERVE()).globalFreeze()){
