@@ -246,6 +246,9 @@ contract Router is ReentrancyGuard {
             TransferHelper.safeTransferFrom(BASE, msg.sender, _pool, inputAmount);
         }
         (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Swap SPARTA for SYNTH (Pool -> User)
+        uint256 totalSup = iSYNTH(toSynth).totalSupply();
+        uint256 synthsCap = Pool(_pool).tokenAmount() * Pool(_pool).synthCap() / 10000;
+        require(totalSup <= synthsCap, '!CAPS'); // Must be a valid amount
         _safetyTrigger(_pool); // Check pool ratios
         _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze

@@ -7,4 +7,5 @@ interface iSYNTH {
     function mintSynth(address, uint) external returns(uint256);
     function burnSynth(uint) external returns(uint);
     function realise() external;
+    function totalSupply() external view returns(uint256);
 }
