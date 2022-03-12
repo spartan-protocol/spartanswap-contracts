@@ -4,6 +4,7 @@ import "./Pool.sol";
 import "./iRESERVE.sol"; 
 import "./iROUTER.sol"; 
 import "./iPOOLFACTORY.sol";  
+import "./iPOOL.sol";  
 import "./iWBNB.sol";
 import "./TransferHelper.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -245,10 +246,9 @@ contract Router is ReentrancyGuard {
         uint256 synthsCap = tokenAmount * Pool(_pool).synthCap() / 10000; // Calculate synth hard cap
         iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface Utils
         if(fromToken != BASE){
-            uint256 swapOutput = _utils.calcSwapOutput(inputAmount, tokenAmount, baseAmount); // Calc SPARTA amount
-            baseAmount = baseAmount - swapOutput; // Adjusted baseAmount post-swap
-            tokenAmount = tokenAmount + inputAmount; // Adjusted tokenAmount post-swap
-            uint256 output = _utils.calcSwapOutput(swapOutput, baseAmount, tokenAmount); // Calc Synth amount
+            iPOOL swapPool = iPOOL(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(fromToken)); // Interface the swap pool (can be different to synth's pool)
+            uint256 swapOutput = iUTILS(_DAO().UTILS()).calcSwapOutput(inputAmount, swapPool.tokenAmount(), swapPool.baseAmount()); // Calc SPARTA output from swap
+            uint256 output = _utils.calcSwapOutput(swapOutput, baseAmount, tokenAmount); // Calc Synth amount (ignoring pool movements post-swap)
             uint256 outputAmount = output * 9900 / 10000; // After 1% fee reduction
             require((totalSup + outputAmount) <= synthsCap, '!CAPS'); // Revert if pushing over the hard cap
             sellTo(inputAmount, fromToken, address(this), 0, false); // Swap TOKEN to SPARTA (User -> Pool -> Router)
