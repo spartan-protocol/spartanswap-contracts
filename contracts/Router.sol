@@ -3,6 +3,7 @@ pragma solidity 0.8.3;
 import "./Pool.sol";
 import "./iRESERVE.sol"; 
 import "./iROUTER.sol"; 
+import "./iPOOL.sol";  
 import "./iPOOLFACTORY.sol";  
 import "./iWBNB.sol";
 import "./TransferHelper.sol";
@@ -239,12 +240,10 @@ contract Router is ReentrancyGuard {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
         address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true, '!POOL'); // Pool must be valid
-        uint256 baseAmount = Pool(_pool).baseAmount(); // Get pool's base balance
-        uint256 tokenAmount = Pool(_pool).tokenAmount(); // Get pool's token balance
-        iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface Utils
-        uint256 synthMax = baseAmount * 50 / 10000; // Calculate synth max mint
+        uint256 synthMax = Pool(_pool).baseAmount() * 50 / 10000; // Calculate synth max mint
         if(fromToken != BASE){
-            uint256 swapOutput = _utils.calcSwapOutput(inputAmount, tokenAmount, baseAmount); // Calc SPARTA amount
+            iPOOL swapPool = iPOOL(iPOOLFACTORY(_DAO().POOLFACTORY()).getPool(fromToken)); // Interface the swap pool (can be different to synth's pool)
+            uint256 swapOutput = iUTILS(_DAO().UTILS()).calcSwapOutput(inputAmount, swapPool.tokenAmount(), swapPool.baseAmount()); // Calc SPARTA output from swap
             require(swapOutput <= synthMax, '!MAX'); // Revert if mint too large
             sellTo(inputAmount, fromToken, address(this), 0, false); // Swap TOKEN to SPARTA (User -> Pool -> Router)
             TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
