@@ -239,16 +239,27 @@ contract Router is ReentrancyGuard {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
         address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true, '!POOL'); // Pool must be valid
+        uint256 baseAmount = Pool(_pool).baseAmount(); // Get pool's base balance
+        uint256 tokenAmount = Pool(_pool).tokenAmount(); // Get pool's token balance
+        uint256 totalSup = iSYNTH(toSynth).totalSupply(); // Get synth's total supply
+        uint256 synthsCap = tokenAmount * Pool(_pool).synthCap() / 10000; // Calculate synth hard cap
+        iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface Utils
         if(fromToken != BASE){
+            uint256 swapOutput = _utils.calcSwapOutput(inputAmount, tokenAmount, baseAmount); // Calc SPARTA amount
+            baseAmount = baseAmount - swapOutput; // Adjusted baseAmount post-swap
+            tokenAmount = tokenAmount + inputAmount; // Adjusted tokenAmount post-swap
+            uint256 output = _utils.calcSwapOutput(swapOutput, baseAmount, tokenAmount); // Calc Synth amount
+            uint256 outputAmount = output * 9900 / 10000; // After 1% fee reduction
+            require((totalSup + outputAmount) <= synthsCap, '!CAPS'); // Revert if pushing over the hard cap
             sellTo(inputAmount, fromToken, address(this), 0, false); // Swap TOKEN to SPARTA (User -> Pool -> Router)
             TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
         } else {
+            uint256 output = _utils.calcSwapOutput(inputAmount, baseAmount, tokenAmount); // Calc Synth amount
+            uint256 outputAmount = output * 9900 / 10000; // After 1% fee reduction
+            require((totalSup + outputAmount) <= synthsCap, '!CAPS'); // Revert if pushing over the hard cap
             TransferHelper.safeTransferFrom(BASE, msg.sender, _pool, inputAmount);
         }
         (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Swap SPARTA for SYNTH (Pool -> User)
-        uint256 totalSup = iSYNTH(toSynth).totalSupply();
-        uint256 synthsCap = Pool(_pool).tokenAmount() * Pool(_pool).synthCap() / 10000;
-        require(totalSup <= synthsCap, '!CAPS'); // Must be a valid amount
         _safetyTrigger(_pool); // Check pool ratios
         _getsDividend(_pool, fee); // Check for dividend & tsf (Reserve -> Pool)
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
