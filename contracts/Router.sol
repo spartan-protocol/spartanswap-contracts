@@ -239,10 +239,17 @@ contract Router is ReentrancyGuard {
         require(iRESERVE(_DAO().RESERVE()).globalFreeze() != true, '!SAFE'); // Must not be a global freeze
         address _pool = iSYNTH(toSynth).POOL(); // Get underlying pool address
         require(iPOOLFACTORY(_DAO().POOLFACTORY()).isPool(_pool) == true, '!POOL'); // Pool must be valid
+        uint256 baseAmount = Pool(_pool).baseAmount(); // Get pool's base balance
+        uint256 tokenAmount = Pool(_pool).tokenAmount(); // Get pool's token balance
+        iUTILS _utils = iUTILS(_DAO().UTILS()); // Interface Utils
+        uint256 synthMax = baseAmount * 50 / 10000; // Calculate synth max mint
         if(fromToken != BASE){
+            uint256 swapOutput = _utils.calcSwapOutput(inputAmount, tokenAmount, baseAmount); // Calc SPARTA amount
+            require(swapOutput <= synthMax, '!MAX'); // Revert if mint too large
             sellTo(inputAmount, fromToken, address(this), 0, false); // Swap TOKEN to SPARTA (User -> Pool -> Router)
             TransferHelper.safeTransfer(BASE, _pool, iBEP20(BASE).balanceOf(address(this)));
         } else {
+            require(inputAmount <= synthMax, '!MAX'); // Revert if mint too large
             TransferHelper.safeTransferFrom(BASE, msg.sender, _pool, inputAmount);
         }
         (, uint fee) = Pool(_pool).mintSynth(msg.sender); // Swap SPARTA for SYNTH (Pool -> User)
